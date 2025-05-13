@@ -43,6 +43,10 @@ class TestConfigurationAdapter:
         
         self.mock_pipeline = MagicMock(spec=DataPipeline)
         
+        # Add data_sources and pipeline attributes to the mock config manager
+        self.mock_config_manager.data_sources = {}
+        self.mock_config_manager.pipeline = self.mock_pipeline
+        
         self.mock_data_source = MagicMock(spec=DataSource)
         self.mock_data_source.dataset = xr.Dataset(
             data_vars={

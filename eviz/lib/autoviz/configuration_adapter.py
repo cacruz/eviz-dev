@@ -7,6 +7,7 @@ import logging
 from typing import Dict, List, Optional, Any
 
 from eviz.lib.autoviz.config_manager import ConfigManager
+from eviz.lib.data.pipeline import DataPipeline  # Import for backward compatibility with tests
 
 
 class ConfigurationAdapter:
