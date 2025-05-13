@@ -5,6 +5,8 @@ from argparse import Namespace
 from dataclasses import dataclass, field
 from eviz.lib.autoviz.config import Config
 from eviz.lib.autoviz.config_manager import ConfigManager
+from eviz.lib.autoviz.configuration_adapter import ConfigurationAdapter
+from eviz.lib.autoviz.model_extension import ModelExtensionFactory
 from eviz.models.root_factory import (CrestFactory, 
                               GenericFactory, 
                               WrfFactory, 
@@ -126,25 +128,59 @@ class Autoviz:
         _start_time = time.time()
         self._config_manager.input_config.start_time = _start_time
         
+        # Create configuration adapter
+        self.config_adapter = ConfigurationAdapter(self._config_manager)
+        
         # Handle integration options from command line
         if hasattr(self.args, 'integrate') and self.args.integrate:
             self.logger.info("Data integration mode enabled")
             self._config_manager.input_config._enable_integration = True
         
-        if hasattr(self.args, 'composite') and self.args.composite:
-            composite_args = self.args.composite[0].split(',')
-            if len(composite_args) >= 3:
-                field1, field2, operation = composite_args[:3]
-                self.logger.info(f"Creating composite field: {field1} {operation} {field2}")
-                for factory in self.factory_sources:
-                    model = factory.create_root_instance(self._config_manager)
-                    model.plot_composite_field(field1, field2, operation)
-                return
+        # Process configuration using the adapter
+        try:
+            self.logger.info("Processing configuration using adapter")
+            self.config_adapter.process_configuration()
+            
+            # Apply model-specific extensions to data sources
+            self._apply_model_extensions()
+            
+            # Handle composite fields from command line
+            if hasattr(self.args, 'composite') and self.args.composite:
+                composite_args = self.args.composite[0].split(',')
+                if len(composite_args) >= 3:
+                    field1, field2, operation = composite_args[:3]
+                    self.logger.info(f"Creating composite field: {field1} {operation} {field2}")
+                    for factory in self.factory_sources:
+                        model = factory.create_root_instance(self._config_manager)
+                        # Pass data sources to the model
+                        for file_path, data_source in self.config_adapter.get_all_data_sources().items():
+                            model.add_data_source(file_path, data_source)
+                        model.plot_composite_field(field1, field2, operation)
+                    return
+            
+            # Normal plotting
+            for factory in self.factory_sources:
+                model = factory.create_root_instance(self._config_manager)
+                # Pass data sources to the model
+                for file_path, data_source in self.config_adapter.get_all_data_sources().items():
+                    model.add_data_source(file_path, data_source)
+                model()
+                
+        finally:
+            # Clean up resources
+            self.config_adapter.close()
     
-        # Normal plotting
-        for factory in self.factory_sources:
-            model = factory.create_root_instance(self._config_manager)
-            model()
+    def _apply_model_extensions(self):
+        """Apply model-specific extensions to data sources."""
+        for source_name in self.source_names:
+            # Create model extension
+            extension = ModelExtensionFactory.create_extension(source_name, self._config_manager)
+            
+            # Apply extension to all data sources for this model
+            for file_path, data_source in self.config_adapter.get_all_data_sources().items():
+                if data_source.model_name == source_name:
+                    self.logger.info(f"Applying {source_name} extension to {file_path}")
+                    extension.process_data_source(data_source)
             
     def set_data(self, input_files):
         """ Assign model input files as specified in model config file

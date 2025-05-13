@@ -80,6 +80,7 @@ def main():
         print("\n=== Delegation approach (direct method access) ===")
         # New approach with delegation: access methods directly
         if args.variable in data_source.data_vars:
+            print(args.variable)
             # Get the same statistics but with direct method access
             min_val = data_source[args.variable].min().values
             max_val = data_source[args.variable].max().values
