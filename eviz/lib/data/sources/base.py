@@ -105,3 +105,26 @@ class DataSource(ABC):
         """Close the dataset and free resources."""
         if hasattr(self.dataset, 'close'):
             self.dataset.close()
+    
+    def __getattr__(self, name: str) -> Any:
+        """Delegate attribute access to the underlying dataset.
+        
+        This allows users to call xarray.Dataset methods directly on DataSource objects
+        without having to access the .dataset attribute explicitly.
+        
+        Args:
+            name: Name of the attribute to access
+            
+        Returns:
+            The attribute from the underlying dataset
+            
+        Raises:
+            AttributeError: If the attribute doesn't exist in the dataset
+        """
+        if self.dataset is None:
+            raise AttributeError(f"'{self.__class__.__name__}' has no dataset loaded")
+        
+        if hasattr(self.dataset, name):
+            return getattr(self.dataset, name)
+        
+        raise AttributeError(f"'{self.__class__.__name__}' object has no attribute '{name}'")
