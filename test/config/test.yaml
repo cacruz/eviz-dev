@@ -1,0 +1,71 @@
+inputs:
+   # File name, can be local or absolute file path
+   - name        : spacetime.nc
+     # Optional location
+     location    : test/data
+     # The following string will be used in the plot title
+     exp_id    : eviz_4D_data
+     # Not being used (yet)
+     description : Sample 4D test data
+     # Specify list of fields to plot
+     to_plot     :
+        # Specify file (as it appears in file metadata) and plot type
+        # Possible plot types are xy (lat-lon), yz (zonal mean), xt (time series), tx (hovmoller)
+        air_temp: xy
+     # String (or prefix) specifying what variables to ignore
+     ignore: Var_
+   # Another dataset - must be aligned with the first one
+   - name          : timeseries.nc
+     location      : test/data
+     exp_id      : eviz_TS_data
+     description   : Sample timeseries test data
+     to_plot       :
+        data1: xt
+     ignore: Var_
+
+# Entries here are applied to the inputs above
+for_inputs:
+    # If compare is specified then comparison plots (simple difference) will be created between files
+    # identified in exp_list
+    compare:
+      ids: eviz_4D_data,eviz_TS_data  # Note they are comma-separated
+      # Some plot have an additional comparison plot, 3 types: ratio, percc, percd
+      extra_diff: ratio
+      # Use different colormap for comparison plots
+      cmap: jet
+    # Assume airmass files have the following format - this is specific for GEOS-support
+    airmass_file_name: airmass.clim.*.nc4
+    airmass_field_name: AIRMASS
+    airmass_season: DJF
+
+# Output options
+outputs:
+    # print maps to an image file (default is no)
+    print_to_file: yes
+    # if print_to_file is yes, then dump plots here:
+    output_dir: test/data  # default is ./output_plots
+    print_format: jpg
+    make_pdf: no
+    # Compute and pint basic stats (mean, std) on plot
+    print_basic_stats: yes
+    # Some options: seaborn, ggplot, fivethirtyeight, Solarize_Light2, dark_background
+    mpl_style: classic
+    subplots: (2, 2)
+
+system_opts:
+    # Parallelize map generation with a multiprocessing pool
+    use_mp_pool: no
+    # Archive plots to be accessible via a web browser
+    archive_web_results: no
+
+# This is a GEOS-specific feature under development
+history:
+    use_history: no
+    history_dir: test/data
+    history_collection: collection
+    history_year: 2010
+    history_month: 1
+    history_season: ANN
+    history_to_plot: PS
+
+

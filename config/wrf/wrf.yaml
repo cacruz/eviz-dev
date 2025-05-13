@@ -1,0 +1,39 @@
+# WRF base configuration
+inputs:
+  - name: /discover/nobackup/projects/jh_tutorials/eviz/sample_data/wrf/wrfout_d01_2015-07-11_12:00:00.noahmp0
+    exp_id:  wrf_only_noahmp
+    to_plot:
+      SMOIS: xy
+      TSLB: xy
+      ALBEDO: xy
+      EMISS: xy
+      TSK: xy
+      HFX: xy
+      QFX: xy
+      GRDFLX: xy
+      SWDOWN: xy
+      T2: xy
+      Q2: xy
+  
+
+  - name: /discover/nobackup/projects/jh_tutorials/eviz/sample_data/wrf/wrfout_d01_2015-07-11_12:00:00.noahmp
+    exp_id:  wrf_lis_noahmp
+    to_plot:
+      SMOIS: xy
+      TSLB: xy
+      ALBEDO: xy
+      EMISS: xy
+      TSK: xy
+      HFX: xy
+      QFX: xy
+      GRDFLX: xy
+      SWDOWN: xy
+      T2: xy
+      Q2: xy
+
+outputs:
+    print_to_file: yes
+
+for_inputs:
+    compare:
+      ids: wrf_only_noahmp,wrf_lis_noahmp

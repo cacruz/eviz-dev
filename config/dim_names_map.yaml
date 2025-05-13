@@ -1,0 +1,26 @@
+# Dimension names
+GEOS:
+    tc: time
+    xc: lon
+    yc: lat
+    zc: lev
+GMI:
+    tc: rec_dim
+    xc: longitude_dim
+    yc: latitude_dim
+    zc: eta_dim
+WRF:
+    tc: Time
+    xc: west_east
+    yc: south_north
+    zc: bottom_top
+LIS:
+    tc: time
+    xc: east_west
+    yc: north_south
+    zc: bottom_top
+airnow:
+    tc: time
+    xc: Longitude
+    yc: Latitude
+

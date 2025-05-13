@@ -1,0 +1,15 @@
+inputs:
+- name: ~/Downloads/crest/examples/lstm_for_two_r2.nc
+  to_plot:
+    sm_obs: xt
+    soil_moisture: xt
+outputs:
+  make_pdf: false
+  output_dir: null
+  print_basic_stats: true
+  print_format: png
+  print_to_file: yes
+system_opts:
+  archive_web_results: false
+  use_mp_pool: false
+

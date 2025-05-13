@@ -1,0 +1,7 @@
+files:
+  - name: /path/to/data1.nc
+  - name: /path/to/data2.csv
+  - name: /path/to/data3.hdf5
+other_config:
+  output_dir: /path/to/output
+  log_level: DEBUG

@@ -1,0 +1,101 @@
+[build-system]
+requires = ["flit_core >=3.9,<4"]
+build-backend = "flit_core.buildapi"
+
+[project]
+name = "eviz"
+description = "EViz: Earth System Model Visualization Toolkit"
+dynamic = ["version"]
+authors = [ { name = "EViz Contributors" }]
+maintainers = [{ name="Carlos Cruz", email="carlos.a.cruz@nasa.gov" }, ]
+readme = "README.rst"
+keywords = [
+    "visualization",
+    "interactive",
+    "eviz",
+]
+license = {file = "LICENSE"}
+requires-python = ">=3.10.14"
+classifiers = [
+    "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: Apache Software License",
+    "Natural Language :: English",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3 :: Only",
+]
+
+[project.urls]
+"Repository" = "https://github.com/cacruz/eviz"
+"Documentation" = "https://cacruz.github.io/eviz/"
+
+# We want:
+# https://github.com/astg/eviz
+# https://astg.github.io/visualization/eviz/
+
+dependencies = [
+    'xesmf>=0.7.1',
+    'matplotlib >=3.8.2',
+    'cartopy==0.22.0',
+    'cftime>=1.6.3',
+    'dask==2024.2.1',
+    'h5py==3.7.0',
+    'netcdf4==1.6.3',
+    'numpy==1.24.4',
+    'geckodriver',
+    'pandas==1.5.3',
+    'pyhdf==0.11.3',
+    'pyproj==3.6.1',
+    'pyyaml>=6.0.1',
+    'pyviz_comms==3.0.1',
+    'scipy==1.13.0',
+    'sklearn==1.5.2',
+    'xarray==0.21.1',
+    'pydap==3.4.0',
+    'streamlit>=1.37.0',
+    'email-validator>=2.2.0',
+    'python-dotenv>=1.0.1',
+]
+
+[project.optional-dependencies]
+dev = [
+  "pip >=24.2.0",
+  "pytest >=8.0.0",
+  "ipython >=8.5.0",
+]
+docs = [
+  "furo >=2023.9.10",
+  "ipykernel",
+  "sphinx >=7.0.0",
+  "sphinx-autobuild >=2024.4.16",
+  "sphinx-autodoc-typehints",
+  "sphinx-design",
+  "sphinx-autodoc-typehints",
+  "sphinx_rtd_theme",
+]
+all = ["eviz[dev]", "eviz[docs]"]
+
+[tool.flit.sdist]
+include = [
+  "eviz*",
+  "config/*",
+  "CHANGELOG.md",
+  "CONTRIBUTING.rst",
+  "LICENSE",
+  "Makefile",
+  "README.rst"
+]
+exclude = ["test*"]
+
+[tool.deptry.package_module_name_map]
+"scikit-learn" = "sklearn"
+"pyyaml" = "yaml"
+
+[tool.pytest.ini_options]
+markers = [
+    "integtest: marks tests as integration (deselect with '-m \"not integtest\"')",
+]

@@ -1,0 +1,4 @@
+inputs:
+   - name         : /Users/vvalenti/data/satellite_data/LT50830152011198GLC00.hdf
+    #  location     : /discover/nobackup/projects/jh_tutorials/eviz/sample_data/ccm/Benchmark_F_c180/tavg24_3d_dat_Np
+     exp_name    : BenchmarkFc180

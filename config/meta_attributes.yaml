@@ -1,0 +1,39 @@
+units: units
+field_name: 
+  generic: long_name
+  geos: long_name
+  ccm: long_name
+  cf: long_name
+  lis: long_name
+  wrf: description
+  test: long_name
+xc:
+  generic: lon
+  lis: east_west
+  wrf: west_east
+  test: lon
+yc:
+  generic: lat
+  lis: north_south
+  wrf: south_north
+  test: lat
+projection:
+  lis: MAP_PROJECTION
+  wrf: MAP_PROJ_CHAR
+  test: 'Lambert Conformal'
+standlon:
+  wrf: STAND_LON
+  test: STANDARD_LON
+swclat:
+  lis: SOUTH_WEST_CORNER_LAT
+  test: SOUTH_WEST_CORNER_LAT
+swclon:
+  lis: SOUTH_WEST_CORNER_LON
+  test: SOUTH_WEST_CORNER_LON
+truelat1:
+  lis: TRUELAT1
+  test: TRUELAT1
+truelat2:
+  lis: TRUELAT2
+  wrf: TRUELAT2
+  test: TRUELAT2

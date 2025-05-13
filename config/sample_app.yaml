@@ -1,0 +1,112 @@
+inputs:
+   # File name, can be local or absolute file path
+   - name         : bench_10-17-6_gmi_free_c180_72lev.tavg24_3d_dat_Np.monthly.clim.JJA.nc4
+     # Optional location
+     location     : /Users/ccruz/scratch/eviz/sample_data/ccm/Benchmark_F_c180/tavg24_3d_dat_Np
+     # The following string will be used in the plot title
+     exp_name    : BenchmarkF
+     # If given, the following string will be used for comparisons
+     exp_id    : BenchmarkFc180
+     # If provided, will be used in the plot title (replaces exp_name)
+     description : GMI free-running simulation, with GOCART aerosols and TR passive tracers
+     # Specify list of fields to plot
+     to_plot       :
+        # Specify field (as it appears in file metadata) and plot type
+        # Possible plot types are xy (lat-lon), yz (zonal mean), xt (time series), tx (hovmoller)
+        co_25: yz
+        aoa: yz
+     # String (or prefix) specifying what variables to ignore
+     ignore: Var_,PS
+   # Another dataset - must be aligned with the first one
+   - name         : RefD1.tavg24_3d_dat_Np.monthly.clim.ANN.nc4
+     location     : /Users/ccruz/scratch/eviz/sample_data/ccm/RefD1/tavg24_3d_dat_Np
+     # The following string will be used in the plot title
+     exp_name    : RefD1
+     # If given, the following string will be used for comparisons
+     exp_id    : RefD1
+     description : test2
+     to_plot       :
+        co_25: yz
+        aoa: yz
+     ignore: Var_,PS
+
+# Entries here are applied to the inputs above
+for_inputs:
+    # If compare is specified then comparison plots (simple difference) will be created between files
+    # identified in exp_list
+    compare:
+      ids: BenchmarkFc180,RefD1  # IDs associated with input exp_id values in inputs section.
+      # Note they are comma-separated
+      # Some plot have an additional comparison plot, 4 types: ratio, percc, percd, profile
+      #   ratio = ratio of 2 fields
+      #   percc = percent change of 2 fields
+      #   ratio = percent difference of 2 fields
+      #   profile = profile comparison of 2 or more fields
+      #             must be 3D fields, else eviz will skip the comparison
+      extra_diff: ratio
+      # Use different colormap for comparison plots
+      # These are matplotlib colormaps: https://matplotlib.org/stable/users/explain/colors/colormaps.html
+      cmap: coolwarm
+
+    # The following options, trop_height and sphum_field, are GEOS-specific, i.e. "--source geos" or
+    # "-s geos" or its sub-classes (currently only ccm, cf). Therefore, options will be ignored if
+     # used with other "sources"
+    #### Use tropopause height field to display tropopause on zonal-mean plots
+    trop_height:
+        # File name, can be local or absolute file path
+      - name: bench_10-17-6_gmi_free_c180_72lev.tavg24_2d_dad_Nx.monthly.clim.JJA.nc4
+        # Optional location
+        location: /Users/ccruz/scratch/eviz/sample_data/ccm/Benchmark_F_c180/tavg24_2d_dad_Nx
+        # Apply to this experiment
+        exp_name: BenchmarkFc180
+        ## Possibilities: TROPPV (Pa), TROPPT(Pa), TROPPB(Pa)
+        trop_field_name: TROPPB
+    ### Retrieve specific humidity field for kgkg-1 to molmol-1 conversion:
+    ### This is only needed if fields are radionuclides
+    sphum_field:
+      - name: RefD1.tavg24_3d_dad_Np.monthly.clim.JJA.nc4
+        location: /Users/ccruz/scratch/eviz/sample_data/ccm/RefD1/tavg24_3d_dad_Np
+        ## Possibilities: Q, QV
+        sphum_field_name: Q
+        # Apply to this experiment
+        exp_name: RefD1
+    # The following option is CCM-specific (i.e. "-s ccm")  but can be generalized
+    airmass_file_name: /Users/ccruz/scratch/eviz/sample_data/ccm/RefD1/RefD1.tavg24_3d_dac_Np.monthly.clim.ANN.nc4
+    airmass_field_name: AIRMASS
+    # airmass_season: 'ANN' (season is inferred from dataset datetime or obtained from here)
+
+system_opts:
+    # Parallelize map generation with a multiprocessing pool
+    use_mp_pool: no
+    # Archive plots to be accessible via a web browser (used by streamlit app)
+    archive_web_results: no
+
+# This is a GEOS-specific feature under development
+history:
+    use_history: no
+    history_dir: /Users/ccruz/scratch/eviz/sample_data/geos_history
+    history_collection: tavg24_3d_dat_Np
+    history_year: 2010
+    history_month: 1
+    history_season: ANN
+    history_to_plot:
+
+# Output options
+outputs:
+    # print maps to an image file (default is no)
+    print_to_file: yes
+    # if print_to_file is yes, then dump plots here:
+    output_dir: /Users/ccruz/scratch/eviz/output/ccm  # default is ./output_plots
+    print_format: png
+    make_pdf: no
+    # Use make_git to create GIF for one field only! If multiple fields are specified, default is used
+    make_gif: yes  # default is no
+    # frames per second of GIF animation
+    gif_fps: 1  # default is 1; ignored if make_gif = no
+    # Compute and pint basic stats (mean, std) on plot
+    print_basic_stats: yes
+    mpl_style: classic
+    # Some mpl_style options are: ggplot, fivethirtyeight, Solarize_Light2, dark_background, seaborn-v0_8
+    # This last one has additional sub-options: seaborn-v0_8-<option> where <option> is
+    # colorblind, dark, deep, muted, notebook, pastel, poster, talk, ticks, white, whitegrid
+

@@ -1,0 +1,13 @@
+single:
+  wrfout_katrina_d01: demo_config/wrf.yaml
+  RefD1.tavg24_3d_dat_Np.monthly.clim.DJF.nc4: demo_config/ccm_refd1djf.yaml
+  RefD1.tavg24_3d_dat_Np.monthly.clim.JJA.nc4: demo_config/ccm_refd1jja.yaml
+  RefD2.tavg24_3d_dat_Np.monthly.clim.DJF.nc4: demo_config/ccm_refd2djf.yaml
+  RefD2.tavg24_3d_dat_Np.monthly.clim.JJA.nc4: demo_config/ccm_refd2jja.yaml
+  tas_Amon_CESM2_historical_r1i1p1f1_gn_185001-201412.nc: demo_config/cesm2.yaml
+  MERRA2_400.inst6_3d_ana_Np.20211123.nc4: demo_config/merra2.yaml
+  d5124_m2_jan10.tavg1_2d_ocn_Nx.diurnal.202111.nc4: demo_config/geos.yaml
+
+compare:
+  RefD1.tavg24_3d_dat_Np.monthly.clim.ANN.nc4: demo_config/ccm_compare_refd1ann.yaml
+  RefD2.tavg24_3d_dat_Np.monthly.clim.ANN.nc4: demo_config/ccm_compare_refd2ann.yaml

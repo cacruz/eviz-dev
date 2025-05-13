@@ -1,0 +1,7 @@
+inputs
+   - name     : spacetime.nc
+     to_plot  :
+        air_temp : xy
+   - name     : test/data/timeseries.nc
+     to_plot  :
+        data1 : xt

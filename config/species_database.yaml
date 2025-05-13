@@ -1,0 +1,257 @@
+AIRMASS:
+  MW_kg: 0.029
+  MW_g: 29
+  Unitconversion: 1.0
+
+aoa_PROP: &aoaproperties
+  MW_kg: 1.0
+  Units: days
+  Unitconversion: 1.0
+
+aoa:
+  << : *aoaproperties
+  FullName: Age of air uniform source tracer
+
+aoa_bl:
+  << : *aoaproperties
+  FullName: Age of air uniform source tracer with sink restricted to the boundary layer
+
+aoa_nh:
+  << : *aoaproperties
+  FullName: Age of air uniform source tracer with surface sink restricted to a zone in the northern hemisphere
+  extent: [30.0, 50.0]
+
+Be_PROP: &Beproperties
+  Is_RadioNuclide: true
+
+Be10:
+  << : *Beproperties
+  Formula: Be10
+  FullName: Beryllium-10 isotope
+  MW_kg: 0.010
+  MW_g: 10
+  Unitconversion: 2.3699E20
+  Units: nBq/SCM
+
+Be10s:
+  << : *Beproperties
+  Formula: Be10
+  FullName: Beryllium-10 isotope stratospheric-source tracer
+  MW_kg: 0.010
+  MW_g: 10
+  Unitconversion: 2.3699E20
+  Units: nBq/SCM
+
+Be7:
+  << : *Beproperties
+  Formula: Be7
+  FullName: Beryllium-7 isotope
+  MW_kg: 0.07
+  MW_g: 7
+  Unitconversion: 4.0513E21
+  Units: nBq/SCM
+
+Be7s:
+  << : *Beproperties
+  Formula: Be7
+  FullName: Beryllium-7 isotope stratospheric-source tracer
+  MW_kg: 0.07
+  MW_g: 7
+  Unitconversion: 4.0513E21
+  Units: nBq/SCM
+
+CH3I:
+  Formula: CH3I
+  FullName: Methyl iodide
+  MW_kg: 0.14194
+  MW_g: 141.94
+  Unitconversion: 1E21
+
+CO_PROP: &COproperties
+  Formula: CO
+  MW_kg: 0.02801
+  MW_g: 28.01
+  Unitconversion: 1E9
+
+CO:
+  << : *COproperties
+  FullName: Carbon monoxide
+
+co_25:
+  << : *COproperties
+  FullName: Anthropogenic CO 25 day tracer
+
+co_50:
+  << : *COproperties
+  FullName: Anthropogenic CO 50 day tracer
+
+CO_GLB:
+  << : *COproperties
+  FullName: CO 50 day tracer Global CMIP6+M2G
+
+CO_EAS:
+  << : *COproperties
+  FullName: CO 50 day tracer East Asia CMIP6+M2G
+
+CO_EUR:
+  << : *COproperties
+  FullName: CO 50 day tracer Europe CMIP6+M2G
+
+CO_NAM:
+  << : *COproperties
+  FullName: CO 50 day tracer North America CMIP6+M2G
+
+CO_SAS:
+  << : *COproperties
+  FullName: CO 50 day tracer South Asia CMIP6+M2G
+
+e90_PROP: &e90properties
+  MW_kg: 1.0
+
+e90:
+  << : *e90properties
+  FullName: Constant burden 90 day tracer
+  Unitconversion: 1E9
+
+e90_n:
+  << : *e90properties
+  FullName: Constant burden Northern Hemisphere 90 day tracer
+  extent: [ 40.0, 91.0]
+
+e90_s:
+  << : *e90properties
+  FullName: Constant burden Southern Hemisphere 90 day tracer
+  extent: [ -91.0, -40.0 ]
+
+nh_PROP: &nhproperties
+  MW_kg: 1.0
+  extent: [30.0, 50.0]
+  Unitconversion: 1E9
+
+nh_5:
+  << : *nhproperties
+  FullName: Northern Hemisphere 5 day tracer
+
+nh_50:
+  << : *nhproperties
+  FullName: Northern Hemisphere 50 day tracer
+
+O3_PROP: &O3properties
+  Formula: O3
+  FullName: Ozone
+  MW_kg: 0.048
+  MW_g: 48
+  Unitconversion_DU: 2.69E16
+  Unitconversion: 1E9
+
+O3:
+  << : *O3properties
+
+stO3:
+  << : *O3properties
+  FullName: Ozone produced in the stratosphere
+
+Pb210_PROP: &Pbproperties
+  Formula: Pb210
+  Is_RadioNuclide: true
+  MW_kg: 0.21
+  MW_g: 210
+  Unitconversion: 2.6141E19
+
+Pb210:
+  << : *Pbproperties
+  FullName: Lead-210 isotope
+
+Pb210s:
+  << : *Pbproperties
+  FullName: Lead-210 isotope stratospheric-source tracer
+
+Rn222:
+  Formula: Rn222
+  FullName: Radon-222 isotope
+  Is_RadioNuclide: true
+  MW_kg: 0.222
+  MW_g: 222
+  Unitconversion: 5.6397E22
+
+sf6:
+  Formula: SF6
+  FullName: Sulfur hexafluoride
+  MW_kg: 0.14606
+  MW_g: 146.06
+  Unitconversion: 1E12
+
+st80_25:
+  FullName: Stratosphere source 25 day tracer
+  MW_kg: 1.0
+  Unitconversion: 1E9
+
+HCHO:
+  Formula: HCHO
+  FullName: Formaldehyde
+  MW_kg: 0.3003
+  MW_g: 300.3
+  Unitconversion: 1
+
+CH2O:
+  Formula: CH2O
+  FullName: Formaldehyde
+  MW_kg: 0.3003
+  MW_g: 300.3
+  Unitconversion: 1
+
+N2O:
+  Formula: N2O
+  FullName: Nitrous oxide
+  MW_kg: 0.04402
+  MW_g: 44.02
+  Unitconversion: 1
+
+NO:
+  Formula: NO
+  FullName: Nitrogen oxide
+  MW_kg: 0.03001
+  MW_g: 30.01
+  Unitconversion: 1
+
+NO2:
+  Formula: NO2
+  FullName: Nitrogen dioxide
+  MW_kg: 0.04601
+  MW_g: 46.01
+  Unitconversion: 1
+
+NO3:
+  Formula: NO3
+  FullName: Nitrate radical
+  MW_kg: 0.06201
+  MW_g: 62.01
+  Unitconversion: 1
+
+BC:
+  Formula: C
+  FullName: Black Carbon
+  MW_kg: 0.01201
+  MW_g: 12.01
+  Unitconversion: 1
+
+NH3:
+  Formula: NH3
+  FullName: Ammonia (NH3, gas phase)
+  MW_kg: 0.017034
+  MW_g: 17.034
+  Unitconversion: 1
+
+SO2:
+  Formula: SO2
+  FullName: Sulphur dioxide
+  MW_kg: 0.06407
+  MW_g: 64.07
+  Unitconversion: 1
+
+SO4:
+  Formula: SO4
+  FullName: Sulphate aerosol
+  MW_kg: 0.09607
+  MW_g: 96.07
+  Unitconversion: 1

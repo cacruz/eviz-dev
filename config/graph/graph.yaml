@@ -1,0 +1,10 @@
+inputs:
+   - name         : ~/data/eviz/graph/my_graph.graphml
+
+outputs:
+    print_to_file: yes
+    print_format: png
+    make_pdf: no
+    print_basic_stats: no
+    file_name: my_graph
+

@@ -1,0 +1,34 @@
+inputs:
+   - name         : bench_10-17-6_gmi_free_c180_72lev.tavg24_3d_dat_Np.monthly.clim.JJA.nc4
+     location     : /Users/ccruz/data/eviz/ccm
+     exp_name    : Benchmark Run for C180 resolution
+     exp_id    : BenchmarkFc180
+     description : GMI free-running simulation, with GOCART aerosols and TR passive #tracers
+     to_plot       :
+        smap: box
+     ignore: Var_
+   - name         : GEOS-CF.v01.rpl.chm_tavg_1hr_g1440x721_p40.20171003_1130z.nc4
+     location     : /Users/ccruz/data/eviz/cf
+     exp_name    : GEOS CF (Composition Forecast)
+     exp_id    : GEOS_CF
+     description : GEOS CF 3d time-averaged chemistry fields on pressure levels
+     to_plot:
+         CO: yz
+
+outputs:
+    output_dir: /Users/ccruz/scratch/eviz/output/ccm
+    print_to_file: yes
+    print_format: png
+    make_pdf: no
+    make_gif: yes
+    print_basic_stats: yes
+
+system_opts:
+    use_mp_pool: no
+    archive_web_results: no
+
+for_inputs:
+    compare:
+      ids: BenchmarkFc180,GEOS_CF
+      cmap: coolwarm
+

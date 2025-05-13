@@ -1,0 +1,3 @@
+inputs:
+   - name     : /discover/nobackup/projects/jh_tutorials/eviz/sample_data/airnow/
+   - name     : /discover/nobackup/projects/jh_tutorials/eviz/sample_data/cf/GEOS-CF.v01.rpl.chm_tavg_1hr_g1440x721_p40.20171003_1130z.nc4

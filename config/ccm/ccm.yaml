@@ -1,0 +1,53 @@
+inputs:
+   - name         : bench_10-17-6_gmi_free_c180_72lev.tavg24_3d_dat_Np.monthly.clim.JJA.nc4
+     location     : /discover/nobackup/projects/jh_tutorials/eviz/sample_data/ccm/Benchmark_F_c180/tavg24_3d_dat_Np
+     exp_name    : BenchmarkFc180
+     description : GMI free-running simulation, with GOCART aerosols and TR passive tracers
+     to_plot       :
+        co_25: yz
+        aoa: xy
+     ignore: Var_
+   - name         : RefD1.tavg24_3d_dat_Np.monthly.clim.ANN.nc4
+     location     : /discover/nobackup/projects/jh_tutorials/eviz/sample_data/ccm/RefD1/tavg24_3d_dat_Np
+     exp_name    : RefD1
+     description : test2
+     to_plot       :
+        co_25: yz
+        aoa: xy
+     ignore: Var_
+
+for_inputs:
+    compare:
+      exp_list: BenchmarkFc180,RefD1
+      extra_diff: ratio
+      panels: 1,3
+      # Use different colormap for comparison plots
+      cmap: coolwarm
+#    # The following options, trop_height and sphum_field, are GEOS-specific
+#    #### Use tropopause height field to display tropopause on zonal-mean plots
+    trop_height:
+      - name: bench_10-17-6_gmi_free_c180_72lev.tavg24_2d_dad_Nx.monthly.clim.JJA.nc4
+        location: /discover/nobackup/projects/jh_tutorials/eviz/sample_data/ccm/Benchmark_F_c180/tavg24_2d_dad_Nx
+        # Apply to this experiment
+        exp_name: BenchmarkFc180
+        ## Possibilities: TROPPV (Pa), TROPPT(Pa), TROPPB(Pa)
+        trop_field_name: TROPPB
+#    ### Retrieve specific humidity field for kgkg-1 to molmol-1 conversion:
+#    ### This is only needed if fields are radionuclides
+#    sphum_field:
+#      - name: RefD1.tavg24_3d_dad_Np.monthly.clim.JJA.nc4
+#        location: /discover/nobackup/projects/jh_tutorials/eviz/sample_data/ccm/RefD1/tavg24_3d_dad_Np
+#        ## Possibilities: Q, QV
+#        sphum_field_name: Q
+#        # Apply to this experiment
+#        exp_name: RefD1
+
+outputs:
+    print_to_file: yes
+    print_format: png
+    make_pdf: no
+    print_basic_stats: yes
+
+system_opts:
+    use_mp_pool: no
+    archive_web_results: yes

@@ -1,0 +1,24 @@
+inputs:
+   - name     : spacetime.nc
+     location : test/data
+     to_plot  :
+        air_temp : xy
+   - name     : test/data/timeseries.nc
+     to_plot  :
+        data1 : xt
+
+outputs:
+    # print maps to an image file (default is no)
+    print_to_file: no
+    make_pdf: yes
+    # Compute and pint basic stats (mean, std) on plot
+    print_basic_stats: no
+    # Some options: seaborn, ggplot, fivethirtyeight, Solarize_Light2, dark_background
+    mpl_style: seaborn
+
+system_opts:
+    # Parallelize map generation with a multiprocessing pool
+    use_mp_pool: yes
+    # Archive plots to be accessible via a web browser
+    archive_web_results: yes
+

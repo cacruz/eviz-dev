@@ -1,0 +1,120 @@
+# WRF field-specific configuration
+# --------------------------------
+# Fields will always be plotted in a 2D Cartesian plane (i.e. an "XY graph")
+# even though they may be 3D or 4D fields. However, plots may be generated
+# using abscissa and ordinate values other than X and Y given that it is often
+# desirable to plot using  other dimensions. For example and "YZ plot" is one
+# where the abscissas and ordinates correspond to the y-values and the z-values
+# of the data dimensions respectively. Thus, the following "XY graphs" are possible:
+#   XYplot : the basic lat-lon plot, at a given time level
+#   YZplot : generally a zonal mean, at a given time level
+#   pTplot : a time series plot
+#            where p = X, Y, or Z, at a given p' value and p' is some
+#            orthogonal dimension
+
+
+
+U:
+    #time: 4
+    yzplot:
+        contours:
+
+    xyplot:
+        levels:
+            1000:
+          #[-5, 0, 1, 2, 4, 6, 8, 10, 12, 15, 20, 25, 40, 50]
+            #500: [200, 225, 250, 275, 280, 285, 290, 295, 300]
+V:
+    #time: 4
+    yzplot:
+        contours:
+
+    xyplot:
+        levels:
+            1000:
+          #[-5, 0, 1, 2, 4, 6, 8, 10, 12, 15, 20, 25, 40, 50]
+            #500: [200, 225, 250, 275, 280, 285, 290, 295, 300]
+
+T:
+    yzplot:
+        profile_dim: yc
+#        zrange: [1000, 0.1]
+#        zscale: log
+        contours:
+    xyplot:
+        levels:
+            1000:
+            #500: [200, 225, 250, 275, 280, 285, 290, 295, 300]
+    xtplot:
+        times: all
+        grid: yes
+
+PB:
+    #time: 4
+    yzplot:
+        contours:
+
+    xyplot:
+        levels:
+            1000:
+            #500: [200, 225, 250, 275, 280, 285, 290, 295, 300]
+
+SMOIS:
+    xyplot:
+        time_lev: 1
+        levels:
+            0:
+TSLB:
+    xyplot:
+        time_lev: 1
+        levels:
+            0:
+ALBEDO:
+    xyplot:
+        time_lev: 1
+        levels:
+            0:
+EMISS:
+    xyplot:
+        time_lev: 1
+        levels:
+            0:
+TSK:
+    xyplot:
+        time_lev: 1
+#        projection: albers
+        levels:
+            0:
+#        contours: [280, 282, 284, 286, 288, 290, 292, 294, 296, 298, 300, 302, 304]
+        #contours: [270, 275, 280, 285, 290, 295, 300, 305, 310, 315, 320]
+HFX:
+    xyplot:
+        time_lev: 1
+        levels:
+            0:
+QFX:
+    xyplot:
+        time_lev: 1
+        levels:
+            0:
+GRDFLX:
+    xyplot:
+        time_lev: 1
+        levels:
+            0:
+SWDOWN:
+    xyplot:
+        time_lev: 1
+        levels:
+            0:
+T2:
+    xyplot:
+        time_lev: 1
+        levels:
+            0:
+Q2:
+    xyplot:
+        time_lev: 1
+        levels:
+            0:
+        contours: []

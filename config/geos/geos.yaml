@@ -1,0 +1,40 @@
+inputs:
+    - name : /discover/nobackup/projects/jh_tutorials/eviz/sample_data/merra2/MERRA2_400.inst6_3d_ana_Np.20211123.nc4  # 576x361x42x4
+      description: 3d,6-Hourly,Instantaneous,Pressure-Level,Analysis,Analyzed Meteorological Fields
+      to_plot:
+        T: xy,yz
+        O3: yz
+        SLP: xy
+
+    - name : /discover/nobackup/projects/jh_tutorials/eviz/sample_data/merra2/d5124_m2_jan10.tavg1_2d_ocn_Nx.diurnal.202111.nc4 # 576x361x1x24
+      description: Ocean DAS
+      to_plot:
+          RAINOCN: tx
+          FRSEAICE: polar
+          U10M: xt
+          TAUXWTR: xy
+          TAUYWTR: xy
+
+    - name : /discover/nobackup/projects/jh_tutorials/eviz/sample_data/merra2/MERRA2_400.tavgU_2d_lnd_Nx.202111.nc4  # 576x361x1x24
+      description: 2d,1-Hourly,Time-Averaged,Single-Level,Assimilation,Land Surface Diagnostics Diurnal Mean
+      to_plot:
+          TSURF: xt,xy
+          TSOIL1: xt,xy
+          RUNOFF: xt,xy
+
+outputs:
+    print_to_file: yes
+    print_format: jpg
+    make_pdf: no
+    print_basic_stats: yes
+
+history:
+    use_history: no
+    history_dir: /discover/nobackup/ccruz/data/eviz/sample_data/geos_history
+    history_collection: tavg24_3d_dat_Np
+    history_year: 2010
+    history_month: 1
+    history_season: ANN
+    history_to_plot:
+
+

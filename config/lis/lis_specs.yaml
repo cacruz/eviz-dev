@@ -1,0 +1,81 @@
+# LIS field-specific configuration
+AvgSurfT_tavg:
+    xyplot:
+#        projection: albers
+        levels:
+            0:
+        contours:
+AvgSurfT_inst:
+    xyplot:
+        levels:
+            0:
+        contours:
+SoilTemp_inst:
+    xyplot:
+        levels:
+            0:
+        contours:
+Tempbot_inst:
+    xyplot:
+        levels:
+            0:
+        contours:
+TotalPrecip_tavg:
+    xyplot:
+        levels:
+            0:
+        contours:
+Qle_tavg:
+    xyplot:
+        levels:
+            0:
+        contours:
+Qh_tavg:
+    xyplot:
+        levels:
+            0:
+        contours:
+Qg_tavg:
+    xyplot:
+        levels:
+            0:
+        contours:
+Qs_tavg:
+    xyplot:
+        levels:
+            0:
+        contours:
+Albedo_inst:
+    xyplot:
+        levels:
+            0:
+        contours:
+
+ALBEDO:
+    xyplot:
+        levels:
+            0:
+        contours:
+
+LANDMASK:
+    xyplot:
+        levels:
+            0:
+        contours:
+
+SLOPETYPE:
+    xyplot:
+        levels:
+            0:
+        contours:
+
+Greenness_inst:
+    xyplot:
+        levels:
+            0:
+        contours:
+RelSMC_inst:
+    xyplot:
+        levels:
+            0:
+        contours:

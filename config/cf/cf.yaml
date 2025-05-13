@@ -1,0 +1,31 @@
+inputs:
+   - name         : GEOS-CF.v01.rpl.chm_tavg_1hr_g1440x721_p40.20171003_1130z.nc4
+     location     : /discover/nobackup/projects/jh_tutorials/eviz/sample_data/cf
+     exp_name    : GEOS-CF v1 Spinup
+     description : test1
+     to_plot       :
+        O3: yz
+        PM25_RH35_GCC: yz
+     ignore: Var_
+   - name         : GEOS-CF.v01.rpl.chm_tavg_1hr_g1440x721_p40.20171003_1230z.nc4
+     location     : /discover/nobackup/projects/jh_tutorials/eviz/sample_data/cf
+     exp_name    : GEOS-CF v1 Spinup
+     description : test2
+     to_plot       :
+        O3: xy
+     ignore: Var_
+
+#for_inputs:
+#    compare:
+#        exp_list: GEOS-CF.v01.rpl,GEOS-CF.v01.rpl
+#        extra_diff: percc
+
+outputs:
+    print_to_file: yes
+    print_format: png
+    make_pdf: no
+    print_basic_stats: yes
+
+system_opts:
+    use_mp_pool: no
+    archive_web_results: no

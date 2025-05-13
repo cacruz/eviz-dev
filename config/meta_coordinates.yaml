@@ -1,0 +1,91 @@
+# Dimension names in each supported  data source (AKA model)
+# Notes:
+# (1) The key values (i.e. xc, yc, ...)  represent the internal
+#     Eviz coordinate names while the model values are all the
+#     Eviz-recognized coordinate names for that particular source
+# (2)  generic model is one that generates NetCDF4 output
+
+# x-coordinate name: model
+xc:
+    geos: lon
+    ccm: lon
+    cf: lon
+    gmi: longitude_dim
+    generic: lon,longitude,im
+    airnow: Longitude
+    omi: longitude,Longitude,Long,long,lon
+    wrf:
+        dim: west_east
+        coords: XLONG,XLONG_U,XLONG_V
+    lis:
+        dim: east_west
+        coords: lon
+    test:
+        dim: lon
+        coords: lon
+    spacetime: lon
+    timeseries: time
+    crest: longitude
+
+# y-coordinate name: model
+yc:
+    geos: lat
+    ccm: lat
+    cf: lat
+    gmi: latitude_dim
+    generic: lat,latitude,jm
+    airnow: Latitude
+    omi: Latitude,latitude,lat
+    wrf:
+        dim: south_north
+        coords: XLAT,XLAT_U,XLAT_V
+    lis:
+        dim: north_south
+        coords: lat
+    test:
+        dim: lat
+        coords: lat
+    spacetime: lat
+    timeseries: location
+    crest: latitude
+
+# z-coordinate name: model
+zc:
+    geos: lev
+    ccm: lev
+    cf: lev
+    gmi: eta_dim
+    generic: lev,level,levels,plev,lm,eta_dim
+    airnow: NA
+    omi: NA
+    wrf:
+        dim: bottom_top,bottom_top_stag,soil_layers,soil_layers_stag
+        coords: VERT
+    lis:
+        dim: RelSMC_profiles,SoilTemp_profiles,SoilMoist_profiles,SmLiqFrac_profiles
+    test: lev
+    spacetime: lev
+
+# time-coordinate name: model
+tc:
+    geos: time
+    ccm: time
+    cf: time
+    gmi: rec_dim
+    generic: time,rec_dim,ntimemax
+    airnow: time
+    omi: Time
+    wrf:
+        dim: Time
+        coords: XTIME
+    lis:
+        dim: time
+        coords: time
+    test: time
+    spacetime: time
+    crest: datetime
+
+# chemical species name
+spec:
+    gmi: species_dim
+

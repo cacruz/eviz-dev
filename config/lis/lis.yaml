@@ -1,0 +1,29 @@
+inputs:
+   - name     : /discover/nobackup/projects/jh_tutorials/eviz/sample_data/lis/LIS_HIST_201507121200_gdas.d01.nc
+     exp_id: gdas
+     to_plot  :
+        AvgSurfT_tavg: xy
+        Tempbot_inst: xy
+        Greenness_inst: xy
+        CanopInt_inst: xy
+        Albedo_inst: xy
+        SoilTemp_inst: xy
+        RelSMC_inst: xy
+   - name     : /discover/nobackup/projects/jh_tutorials/eviz/sample_data/lis/LIS_HIST_201507121200_nldas.d01.nc
+     exp_id: nldas
+     to_plot  :
+        AvgSurfT_tavg: xy
+        Tempbot_inst: xy
+        Greenness_inst: xy
+        CanopInt_inst: xy
+        Albedo_inst: xy
+        SoilTemp_inst: xy
+        RelSMC_inst: xy
+
+for_inputs:
+    compare:
+      exp_list: gdas,nldas
+
+
+outputs:
+    print_to_file: yes
