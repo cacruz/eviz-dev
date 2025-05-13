@@ -31,7 +31,7 @@ class ConfigurationAdapter:
     def process_configuration(self):
         """Process the configuration and set up the data pipeline."""
         # Process each input file
-        for file_index, file_info in enumerate(self.config_manager.app_data.get('inputs', [])):
+        for file_index, file_info in enumerate(self.config_manager.app_data.inputs):
             # Extract file information
             file_path = os.path.join(file_info.get('location', ''), file_info.get('name', ''))
             model_name = file_info.get('exp_name')

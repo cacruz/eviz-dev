@@ -19,7 +19,7 @@ class Fluxnet(Root):
     Parameters:
         config (Config) : Config object associated with this data source
     """
-    config: Config
+    config: Config = None
     source_data: Any = None
     _ds_attrs: dict = field(default_factory=dict)
     maps_params: dict = field(default_factory=dict)

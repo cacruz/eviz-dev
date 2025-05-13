@@ -87,17 +87,17 @@ class Root(AbstractRoot):
             # If there is no SPECS file, produce "simple" visualizations
             if not self.config_manager.spec_data:
                 plotter = SimplePlotter()
-                self._simple_plots(plotter, data_source)
+                self._simple_plots(plotter)
             else:
                 if self.config_manager.compare:
                     plotter = ComparisonPlotter(self.config_manager.compare_exp_ids)
-                    self._side_by_side_plots(plotter, data_source)
+                    self._side_by_side_plots(plotter)
                 elif self.config_manager.compare_diff:
                     plotter = ComparisonPlotter(self.config_manager.compare_exp_ids)
-                    self._comparison_plots(plotter, data_source)
+                    self._comparison_plots(plotter)
                 else:
                     plotter = SinglePlotter()
-                    self._single_plots(plotter, data_source)
+                    self._single_plots(plotter)
 
         # Handle output file generation
         if self.config_manager.output_config.print_to_file:
@@ -122,25 +122,25 @@ class Root(AbstractRoot):
         self.logger.info("Done.")
 
     # Add a new method for side-by-side comparison plots
-    def _side_by_side_plots(self, plotter, data_source):
-        """Generate side-by-side comparison plots for the given data source."""
-        self.logger.info(f"Generating side-by-side plots for data source: {data_source}")
-        # Add logic to generate side-by-side plots using the plotter and data_source
+    def _side_by_side_plots(self, plotter):
+        """Generate side-by-side comparison plots."""
+        self.logger.info("Generating side-by-side plots")
+        # Add logic to generate side-by-side plots using the plotter
 
-    def _simple_plots(self, plotter, data_source):
-        """Generate simple plots for the given data source."""
-        self.logger.info(f"Generating simple plots for data source: {data_source}")
-        # Add logic to generate simple plots using the plotter and data_source
+    def _simple_plots(self, plotter):
+        """Generate simple plots."""
+        self.logger.info("Generating simple plots")
+        # Add logic to generate simple plots using the plotter
 
-    def _single_plots(self, plotter, data_source):
-        """Generate single plots for the given data source."""
-        self.logger.info(f"Generating single plots for data source: {data_source}")
-        # Add logic to generate single plots using the plotter and data_source
+    def _single_plots(self, plotter):
+        """Generate single plots."""
+        self.logger.info("Generating single plots")
+        # Add logic to generate single plots using the plotter
 
-    def _comparison_plots(self, plotter, data_source):
-        """Generate comparison plots for the given data source."""
-        self.logger.info(f"Generating comparison plots for data source: {data_source}")
-        # Add logic to generate comparison plots using the plotter and data_source
+    def _comparison_plots(self, plotter):
+        """Generate comparison plots."""
+        self.logger.info("Generating comparison plots")
+        # Add logic to generate comparison plots using the plotter
 
     def _get_field_for_simple_plot(self, *args):
         pass

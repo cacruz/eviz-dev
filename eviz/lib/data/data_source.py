@@ -170,10 +170,10 @@ class DataProcessor(DataSource):
         meta_attrs (dict) : A dictionary of metadata attribute names from the file list.
 
     """
-    model_name: str
-    file_list: dict
-    meta_coords: dict
-    meta_attrs: dict
+    model_name: str = None
+    file_list: dict = field(default_factory=dict)
+    meta_coords: dict = field(default_factory=dict)
+    meta_attrs: dict = field(default_factory=dict)
     season: Any = None
 
     @property
@@ -717,6 +717,3 @@ def make_fake_column_dataset(path=None):
     u.mkdir_p(path)
     ds.to_netcdf(os.path.join(path, 'column.nc'), format='NETCDF4')
     return ds
-
-
-
