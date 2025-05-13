@@ -143,8 +143,8 @@ class Autoviz:
             self.logger.info("Processing configuration using adapter")
             self.config_adapter.process_configuration()
             
-            # Check if any data sources were loaded
-            if not self.config_adapter.get_all_data_sources():
+            # Check if any data sources were loaded - use the shared data sources
+            if not self._config_manager.data_sources:
                 self.logger.error("No data sources were loaded. Check if the input files exist and are accessible.")
                 print("No data sources were loaded. Check if the input files exist and are accessible.")
                 print("Input files specified in the configuration:")
@@ -164,8 +164,8 @@ class Autoviz:
                     self.logger.info(f"Creating composite field: {field1} {operation} {field2}")
                     for factory in self.factory_sources:
                         model = factory.create_root_instance(self._config_manager)
-                        # Pass data sources to the model
-                        for file_path, data_source in self.config_adapter.get_all_data_sources().items():
+                        # Pass data sources to the model - use the shared data sources from config_manager
+                        for file_path, data_source in self._config_manager.data_sources.items():
                             model.add_data_source(file_path, data_source)
                         model.plot_composite_field(field1, field2, operation)
                     return
@@ -173,8 +173,8 @@ class Autoviz:
             # Normal plotting
             for factory in self.factory_sources:
                 model = factory.create_root_instance(self._config_manager)
-                # Pass data sources to the model
-                for file_path, data_source in self.config_adapter.get_all_data_sources().items():
+                # Pass data sources to the model - use the shared data sources from config_manager
+                for file_path, data_source in self._config_manager.data_sources.items():
                     model.add_data_source(file_path, data_source)
                 
                 # Ensure map_params are available to the model
@@ -196,8 +196,8 @@ class Autoviz:
             # Create model extension
             extension = ModelExtensionFactory.create_extension(source_name, self._config_manager)
             
-            # Apply extension to all data sources for this model
-            for file_path, data_source in self.config_adapter.get_all_data_sources().items():
+            # Apply extension to all data sources for this model - use the shared data sources
+            for file_path, data_source in self._config_manager.data_sources.items():
                 if data_source.model_name == source_name:
                     self.logger.info(f"Applying {source_name} extension to {file_path}")
                     extension.process_data_source(data_source)

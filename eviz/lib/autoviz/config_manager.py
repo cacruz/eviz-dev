@@ -8,6 +8,7 @@ from eviz.lib.autoviz.history_config import HistoryConfig
 import eviz.lib.utils as u
 from eviz.lib.data.units import Units
 from eviz.lib.data.integrator import DataIntegrator
+from eviz.lib.data.pipeline import DataPipeline
 
 
 class ConfigManager:
@@ -21,6 +22,8 @@ class ConfigManager:
         self.config = config
         self._units = None  # Placeholder for Units instance
         self._integrator = None  # Placeholder for DataIntegrator instance
+        self._pipeline = None  # Placeholder for DataPipeline instance
+        self.data_sources = {}  # Maps file paths to data sources
 
         # Initialize a_list and b_list
         self.a_list = []
@@ -49,6 +52,13 @@ class ConfigManager:
         if self._units is None:
             self._units = Units(self)
         return self._units
+        
+    @property
+    def pipeline(self):
+        """Lazy initialization of DataPipeline."""
+        if self._pipeline is None:
+            self._pipeline = DataPipeline()
+        return self._pipeline
 
     def to_dict(self) -> dict:
         """Return a dictionary representation of all configuration objects."""

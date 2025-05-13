@@ -7,7 +7,6 @@ import logging
 from typing import Dict, List, Optional, Any
 
 from eviz.lib.autoviz.config_manager import ConfigManager
-from eviz.lib.data.pipeline import DataPipeline
 
 
 class ConfigurationAdapter:
@@ -24,9 +23,11 @@ class ConfigurationAdapter:
             config_manager: The configuration manager
         """
         self.config_manager = config_manager
-        self.pipeline = DataPipeline()
         self.logger = logging.getLogger(__name__)
-        self.data_sources = {}  # Maps file paths to data sources
+        # Use the pipeline from the config_manager instead of creating a new one
+        self.pipeline = self.config_manager.pipeline
+        # Use the data_sources from the config_manager
+        self.data_sources = self.config_manager.data_sources
         
     def process_configuration(self):
         """Process the configuration and set up the data pipeline."""

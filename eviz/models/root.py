@@ -89,24 +89,20 @@ class Root(AbstractRoot):
         """Top-level interface for generic (NetCDF) maps."""
         self.logger.info("Generate plots.")
 
-        # Iterate over each data source and apply plotting logic
-        for name, data_source in self.data_sources.items():
-            self.logger.info(f"Plotting data source: {name}")
-
-            # If there is no SPECS file, produce "simple" visualizations
-            if not self.config_manager.spec_data:
-                plotter = SimplePlotter()
-                self._simple_plots(plotter)
+        # Create the appropriate plotter based on configuration
+        if not self.config_manager.spec_data:
+            plotter = SimplePlotter()
+            self._simple_plots(plotter)
+        else:
+            if self.config_manager.compare:
+                plotter = ComparisonPlotter(self.config_manager.compare_exp_ids)
+                self._side_by_side_plots(plotter)
+            elif self.config_manager.compare_diff:
+                plotter = ComparisonPlotter(self.config_manager.compare_exp_ids)
+                self._comparison_plots(plotter)
             else:
-                if self.config_manager.compare:
-                    plotter = ComparisonPlotter(self.config_manager.compare_exp_ids)
-                    self._side_by_side_plots(plotter)
-                elif self.config_manager.compare_diff:
-                    plotter = ComparisonPlotter(self.config_manager.compare_exp_ids)
-                    self._comparison_plots(plotter)
-                else:
-                    plotter = SinglePlotter()
-                    self._single_plots(plotter)
+                plotter = SinglePlotter()
+                self._single_plots(plotter)
 
         # Handle output file generation
         if self.config_manager.output_config.print_to_file:
