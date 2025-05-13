@@ -48,7 +48,7 @@ Model-specific extensions provide a way to apply model-specific processing to da
 - `ModelExtensionFactory`: Factory for creating model-specific extensions
 
 ```python
-from eviz.lib.autoviz.model_extension import ModelExtensionFactory
+from eviz.models.extensions.factory import ModelExtensionFactory
 
 # Create a model extension
 extension = ModelExtensionFactory.create_extension(model_name, config_manager)
@@ -56,6 +56,21 @@ extension = ModelExtensionFactory.create_extension(model_name, config_manager)
 # Apply the extension to a data source
 extension.process_data_source(data_source)
 ```
+
+The model extensions are organized in the following directory structure:
+
+```
+eviz/
+└── models/
+    ├── extensions/
+    │   ├── base.py             # Base ModelExtension class
+    │   └── factory.py          # ModelExtensionFactory
+    └── esm/
+        ├── ccm_extension.py    # CCM-specific extension
+        └── generic_extension.py # Generic-specific extension
+```
+
+This structure keeps the library code (eviz/lib) model-independent, while allowing for model-specific processing in the models directory.
 
 ## Configuration Structure
 

@@ -6,7 +6,7 @@ from dataclasses import dataclass, field
 from eviz.lib.autoviz.config import Config
 from eviz.lib.autoviz.config_manager import ConfigManager
 from eviz.lib.autoviz.configuration_adapter import ConfigurationAdapter
-from eviz.lib.autoviz.model_extension import ModelExtensionFactory
+from eviz.models.extensions.factory import ModelExtensionFactory
 from eviz.models.root_factory import (CrestFactory, 
                               GenericFactory, 
                               WrfFactory, 
