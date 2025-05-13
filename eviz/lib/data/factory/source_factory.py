@@ -1,0 +1,120 @@
+"""
+Factory for creating data source instances.
+"""
+
+import os
+import logging
+from typing import Dict, Type, List, Optional
+
+from eviz.lib.data.sources import (
+    DataSource,
+    NetCDFDataSource,
+    HDF5DataSource,
+    CSVDataSource,
+    GRIBDataSource
+)
+from .registry import DataSourceRegistry
+
+
+class DataSourceFactory:
+    """Factory for creating data source instances.
+    
+    This class provides methods to create appropriate data source instances
+    based on file extensions.
+    """
+    
+    def __init__(self):
+        """Initialize a new DataSourceFactory."""
+        self.registry = DataSourceRegistry()
+        self._register_default_data_sources()
+        self.logger = logging.getLogger(__name__)
+    
+    def _register_default_data_sources(self) -> None:
+        """Register the default data source implementations."""
+        # Register NetCDF data source
+        self.registry.register(['nc', 'nc4', 'netcdf', 'netcdf4'], NetCDFDataSource)
+        
+        # Register HDF5 data source
+        self.registry.register(['h5', 'hdf5', 'hdf'], HDF5DataSource)
+        
+        # Register CSV data source
+        self.registry.register(['csv', 'dat', 'txt'], CSVDataSource)
+        
+        # Register GRIB data source
+        self.registry.register(['grib', 'grib2'], GRIBDataSource)
+    
+    def register_data_source(self, extensions: List[str], data_source_class: Type[DataSource]) -> None:
+        """Register a custom data source class.
+        
+        Args:
+            extensions: List of file extensions (without the dot)
+            data_source_class: The data source class to register
+        """
+        self.registry.register(extensions, data_source_class)
+    
+    def create_data_source(self, file_path: str, model_name: Optional[str] = None) -> DataSource:
+        """Create a data source instance for the specified file.
+        
+        Args:
+            file_path: Path to the data file
+            model_name: Optional name of the model this data source belongs to
+            
+        Returns:
+            A data source instance for the specified file
+            
+        Raises:
+            ValueError: If the file extension is not supported
+        """
+        # Get the file extension
+        _, ext = os.path.splitext(file_path)
+        if not ext:
+            # Try to infer the extension from the file name
+            if 'nc' in file_path.lower() or 'netcdf' in file_path.lower():
+                ext = '.nc'
+            elif 'h5' in file_path.lower() or 'hdf5' in file_path.lower():
+                ext = '.h5'
+            elif 'csv' in file_path.lower():
+                ext = '.csv'
+            elif 'grib' in file_path.lower():
+                ext = '.grib'
+            else:
+                raise ValueError(f"Could not determine file extension for: {file_path}")
+        
+        # Remove the leading dot
+        ext = ext[1:] if ext.startswith('.') else ext
+        
+        # Get the data source class
+        try:
+            data_source_class = self.registry.get_data_source_class(ext)
+        except ValueError:
+            self.logger.error(f"Unsupported file extension: {ext}")
+            raise ValueError(f"Unsupported file extension: {ext}")
+        
+        # Create and return the data source instance
+        return data_source_class(model_name)
+    
+    def get_supported_extensions(self) -> List[str]:
+        """Get the list of supported file extensions.
+        
+        Returns:
+            List of supported file extensions
+        """
+        return sorted(list(self.registry.get_supported_extensions()))
+    
+    def is_supported(self, file_path: str) -> bool:
+        """Check if the specified file is supported.
+        
+        Args:
+            file_path: Path to the data file
+            
+        Returns:
+            True if the file is supported, False otherwise
+        """
+        _, ext = os.path.splitext(file_path)
+        if not ext:
+            return False
+        
+        # Remove the leading dot
+        ext = ext[1:] if ext.startswith('.') else ext
+        
+        return self.registry.is_supported(ext)
