@@ -113,11 +113,8 @@ def integrator():
 @pytest.fixture
 def temp_netcdf_file():
     """Create a temporary NetCDF file for testing."""
-    # Create a temporary file
     fd, path = tempfile.mkstemp(suffix='.nc')
-    os.close(fd)
-    
-    # Create a dataset
+    os.close(fd)    
     ds = xr.Dataset(
         data_vars={
             'temperature': xr.DataArray(
@@ -140,12 +137,6 @@ def temp_netcdf_file():
             )
         }
     )
-    
-    # Save the dataset to the temporary file
-    ds.to_netcdf(path)
-    
-    # Return the path to the temporary file
-    yield path
-    
-    # Clean up the temporary file
+    ds.to_netcdf(path)    
+    yield path    
     os.remove(path)
