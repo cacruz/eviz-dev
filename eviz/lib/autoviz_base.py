@@ -7,8 +7,7 @@ from eviz.lib.autoviz.config import Config
 from eviz.lib.autoviz.config_manager import ConfigManager
 from eviz.lib.autoviz.configuration_adapter import ConfigurationAdapter
 from eviz.models.extensions.factory import ModelExtensionFactory
-from eviz.models.root_factory import (CrestFactory, 
-                              GenericFactory, 
+from eviz.models.root_factory import (GenericFactory, 
                               WrfFactory, 
                               LisFactory,
                               AirnowFactory,
@@ -65,7 +64,7 @@ def get_factory_from_user_input(inputs):
         "geos": GenericFactory(),      # use this for MERRA
         "ccm": GenericFactory(),       # CCM and CF are "special" streams
         "cf": GenericFactory(),        #
-        "crest": CrestFactory(),     #
+        # "crest": CrestFactory(),     #
         "lis": LisFactory(),           # LIS and WRF are generic but require special
         "wrf": WrfFactory(),           # "treatment" due to the "regional" nature of the data
         "airnow": AirnowFactory(),     # CSV
@@ -128,6 +127,9 @@ class Autoviz:
         _start_time = time.time()
         self._config_manager.input_config.start_time = _start_time
         
+        # Check if input files exist
+        self._check_input_files()
+        
         # Create configuration adapter
         self.config_adapter = ConfigurationAdapter(self._config_manager)
         
@@ -140,6 +142,16 @@ class Autoviz:
         try:
             self.logger.info("Processing configuration using adapter")
             self.config_adapter.process_configuration()
+            
+            # Check if any data sources were loaded
+            if not self.config_adapter.get_all_data_sources():
+                self.logger.error("No data sources were loaded. Check if the input files exist and are accessible.")
+                print("No data sources were loaded. Check if the input files exist and are accessible.")
+                print("Input files specified in the configuration:")
+                for i, entry in enumerate(self._config_manager.app_data.inputs):
+                    file_path = os.path.join(entry.get('location', ''), entry.get('name', ''))
+                    print(f"  {i+1}. {file_path}")
+                return
             
             # Apply model-specific extensions to data sources
             self._apply_model_extensions()
@@ -164,6 +176,14 @@ class Autoviz:
                 # Pass data sources to the model
                 for file_path, data_source in self.config_adapter.get_all_data_sources().items():
                     model.add_data_source(file_path, data_source)
+                
+                # Ensure map_params are available to the model
+                if hasattr(model, 'set_map_params') and self._config_manager.map_params:
+                    self.logger.info(f"Setting map_params with {len(self._config_manager.map_params)} entries")
+                    model.set_map_params(self._config_manager.map_params)
+                else:
+                    self.logger.warning("No map_params available or model doesn't support set_map_params")
+                
                 model()
                 
         finally:
@@ -191,6 +211,27 @@ class Autoviz:
         config = self._config_manager.input_config
         config.set_input_files(input_files)
 
+    def _check_input_files(self):
+        """Check if input files exist and provide warnings for missing files."""
+        if not hasattr(self._config_manager, 'app_data') or not hasattr(self._config_manager.app_data, 'inputs'):
+            self.logger.warning("No input files specified in configuration.")
+            return
+            
+        missing_files = []
+        for i, entry in enumerate(self._config_manager.app_data.inputs):
+            file_path = os.path.join(entry.get('location', ''), entry.get('name', ''))
+            if not os.path.exists(file_path):
+                missing_files.append((i, file_path))
+                
+        if missing_files:
+            self.logger.warning(f"Found {len(missing_files)} missing input files:")
+            for i, file_path in missing_files:
+                self.logger.warning(f"  {i+1}. {file_path}")
+            print(f"Warning: {len(missing_files)} input files are missing:")
+            for i, file_path in missing_files:
+                print(f"  {i+1}. {file_path}")
+            print("The application will attempt to continue, but plotting may fail.")
+            
     def set_output(self, output_dir):
         """ Assign model output directory as specified in model config file
 

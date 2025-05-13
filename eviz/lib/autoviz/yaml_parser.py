@@ -117,13 +117,27 @@ class YAMLParser:
             for i, input_entry in enumerate(current_inputs):
                 filename = os.path.join(input_entry.get('location', ''), input_entry.get('name', ''))
                 exp_id = input_entry.get('exp_id', '')
+                exp_name = input_entry.get('exp_name', exp_id)  # Use exp_id as fallback for exp_name
                 source_name = input_dict.get('source', '')
                 source_reader = self.app_data.get(source_name, None)
-                description = input_dict.get('description', '')
-                to_ignore = input_dict.get('ignore', '')
+                description = input_entry.get('description', input_dict.get('description', ''))
+                to_ignore = input_entry.get('ignore', input_dict.get('ignore', ''))
 
-                # Handle fields to plot
+                # Handle fields to plot - check both to_plot and variables sections
                 current_to_plot = input_entry.get('to_plot', {})
+                
+                # If to_plot is empty, try to use the variables section (for CCM format)
+                if not current_to_plot and 'variables' in input_entry:
+                    current_to_plot = {}
+                    for var_name, var_config in input_entry['variables'].items():
+                        plot_type = var_config.get('plot_type', 'xy')  # Default to xy if not specified
+                        current_to_plot[var_name] = plot_type
+                
+                # If still empty, log a warning
+                if not current_to_plot:
+                    self.logger.warning(f"No fields to plot found for {filename}")
+                    continue
+                
                 source_index = self.source_names.index(source_name)
                 for field_name, field_values in current_to_plot.items():
                     field_specs = get_nested_key(self.spec_data, [field_name], default={})
@@ -139,6 +153,17 @@ class YAMLParser:
                     elif is_in_compare_diff:
                         compare_with = [cid for cid in compare_diff_ids if cid != exp_id]
                     
+                    # Handle different formats for field_values
+                    to_plot_values = []
+                    if isinstance(field_values, str):
+                        to_plot_values = field_values.split(',')
+                    elif isinstance(field_values, dict) and 'plot_type' in field_values:
+                        # Handle CCM format where field_values is a dict with plot_type
+                        to_plot_values = [field_values['plot_type']]
+                    else:
+                        # Default to xy if format is unknown
+                        to_plot_values = ['xy']
+                    
                     _maps[len(_maps)] = {
                         'source_name': source_name,
                         'source_reader': source_reader,
@@ -149,7 +174,8 @@ class YAMLParser:
                         'description': description,
                         'ignore': to_ignore,
                         'exp_id': exp_id,
-                        'to_plot': field_values.split(','),
+                        'exp_name': exp_name,  # Add exp_name field
+                        'to_plot': to_plot_values,
                         'compare': is_in_compare,
                         'compare_diff': is_in_compare_diff,
                         'compare_with': compare_with,
@@ -181,4 +207,4 @@ class YAMLParser:
             "app_data": self.app_data,  # Already a dictionary
             "spec_data": self.spec_data,  # Already a dictionary
             "map_params": self._map_params,  # Already a dictionary
-        }   
+        }

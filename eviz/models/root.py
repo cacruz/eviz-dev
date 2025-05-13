@@ -11,7 +11,7 @@ from eviz.lib import const as constants
 
 from eviz.lib.autoviz.config_manager import ConfigManager
 from eviz.models.base import AbstractRoot
-from eviz.lib.data.data_source import DataSourceFactory
+from eviz.lib.data.factory import DataSourceFactory
 
 
 @dataclass
@@ -64,6 +64,15 @@ class Root(AbstractRoot):
     def get_data_source(self, name: str):
         """Retrieve a data source by name."""
         return self.data_sources.get(name)
+        
+    def set_map_params(self, map_params):
+        """Set the map parameters for plotting.
+        
+        Args:
+            map_params: Dictionary of map parameters from YAML parser
+        """
+        self.map_data = map_params
+        self.logger.info(f"Set map_params with {len(map_params)} entries")
 
     def load_data_sources(self, file_list: list):
         """Load multiple data sources from a list of file paths."""
@@ -135,7 +144,51 @@ class Root(AbstractRoot):
     def _single_plots(self, plotter):
         """Generate single plots."""
         self.logger.info("Generating single plots")
-        # Add logic to generate single plots using the plotter
+        
+        # Check if map_data is available
+        if not self.map_data:
+            self.logger.error("No map_params available for plotting. Make sure set_map_params is called.")
+            return
+            
+        # Check if we have any data sources
+        if not self.data_sources:
+            self.logger.error("No data sources available. Check your YAML configuration and ensure data files exist.")
+            self.logger.info("Map parameters found but no data sources loaded. Here are the expected files:")
+            for idx, params in self.map_data.items():
+                filename = params.get('filename')
+                if filename:
+                    self.logger.info(f"  - {filename}")
+            return
+            
+        # Iterate through map_params to generate plots
+        for idx, params in self.map_data.items():
+            field_name = params.get('field')
+            if not field_name:
+                continue
+                
+            self.logger.info(f"Processing field: {field_name}")
+            
+            # Get the data source based on the filename in map_params
+            filename = params.get('filename')
+            data_source = self.data_sources.get(filename)
+            
+            if not data_source:
+                self.logger.warning(f"No data source found for {filename}")
+                continue
+                
+            # Get the field data from the data source
+            field_data = data_source.get_variable(field_name)
+            
+            if field_data is None:
+                self.logger.warning(f"Field {field_name} not found in data source")
+                continue
+                
+            # Get plot type from map_params
+            plot_type = params.get('to_plot', ['xy'])[0]  # Default to 'xy' if not specified
+            
+            # Generate the plot using the plotter
+            self.logger.info(f"Plotting {field_name} as {plot_type} plot")
+            plotter.plot(self.config_manager, (field_data, None, None, field_name, plot_type, 0, None, None), level=0)
 
     def _comparison_plots(self, plotter):
         """Generate comparison plots."""

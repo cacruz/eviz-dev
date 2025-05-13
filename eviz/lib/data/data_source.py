@@ -47,6 +47,26 @@ class DataSource(xr.Dataset, ABC):
         """Validate the loaded data."""
         self.logger.debug("Validating data")
         # Add validation logic here
+        
+    def get_variable(self, variable_name):
+        """Get a variable from the dataset by name.
+        
+        Args:
+            variable_name (str): The name of the variable to retrieve
+            
+        Returns:
+            xarray.DataArray or None: The requested variable, or None if not found
+        """
+        self.logger.debug(f"Getting variable: {variable_name}")
+        try:
+            if variable_name in self:
+                return self[variable_name]
+            else:
+                self.logger.warning(f"Variable {variable_name} not found in dataset")
+                return None
+        except Exception as e:
+            self.logger.error(f"Error retrieving variable {variable_name}: {e}")
+            return None
 
 
 @dataclass
