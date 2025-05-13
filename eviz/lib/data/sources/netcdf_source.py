@@ -25,9 +25,6 @@ class NetCDFDataSource(DataSource):
         Args:
             model_name: Name of the model this data source belongs to
         """
-        print(30*"*")
-        print(30*"*")
-        print(30*"*")
         super().__init__(model_name)
         self.datasets = {}  # Dictionary to store datasets by file name
     

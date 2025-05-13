@@ -6,10 +6,8 @@ from typing import List, Dict, Any
 from eviz.lib.utils import join_file_path, log_method
 from eviz.lib.autoviz.plot_utils import get_subplot_shape
 from eviz.lib.autoviz.app_data import AppData
-from eviz.lib.data.netcdf4_reader import NetCDFDataReader
-from eviz.lib.data.hdf5_reader import HDF5DataReader
-from eviz.lib.data.hdf4_reader import HDF4DataReader
-from eviz.lib.data.tabular_reader import CSVDataReader
+# Import the factory instead of individual reader classes
+from eviz.lib.data.factory.source_factory import DataSourceFactory
 
 
 @dataclass
@@ -288,36 +286,32 @@ class InputConfig:
         
         return None
 
-    def _get_reader(self, source_name: str, file_extension: str) -> 'DataReader':
+    def _get_reader(self, source_name: str, file_extension: str) -> Any:
         """
-        Return the appropriate reader based on file extension.
+        Return the appropriate reader based on file extension using the factory.
 
         Args:
             source_name (str): The name of the data source.
             file_extension (str): The file extension of the input file.
 
         Returns:
-            DataReader: An instance of the appropriate reader class.
+            Any: An instance of the appropriate data source class.
         """
-        # Handle empty or WRF-specific extensions
-        if file_extension == '' or file_extension.startswith('.wrf'):
-            self.logger.info(f"Using NetCDF reader for file with extension: '{file_extension}'")
-            return NetCDFDataReader(source_name=source_name)
-            
-        # Standard extensions
-        if file_extension in ['.csv', '.dat']:
-            return CSVDataReader(source_name=source_name)
-        elif file_extension in ['.hdf', '.hdf4']:
-            return HDF4DataReader(source_name=source_name)
-        elif file_extension in ['.h5', '.he5']:
-            return HDF5DataReader(source_name=source_name)
-        elif file_extension in ['.nc', '.nc4']:
-            return NetCDFDataReader(source_name=source_name)
-        else:
+        # Create a factory instance
+        factory = DataSourceFactory()
+        
+        # Create a dummy file path to use with the factory
+        dummy_path = f"dummy{file_extension}"
+        
+        try:
+            # Use the factory to create the appropriate data source
+            return factory.create_data_source(dummy_path, source_name)
+        except ValueError as e:
+            self.logger.error(f"Error creating data source: {e}")
             # Default to NetCDF for unrecognized extensions when WRF is involved
             if 'wrf' in source_name.lower():
                 self.logger.warning(f"Unrecognized extension '{file_extension}' for WRF source, defaulting to NetCDF reader")
-                return NetCDFDataReader(source_name=source_name)
+                return factory.create_data_source("dummy.nc", source_name)
             else:
                 raise ValueError(f"Unsupported file extension: {file_extension}")
         

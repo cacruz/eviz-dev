@@ -38,9 +38,22 @@ class Generic(Root):
         # First, try to load from the specific file
         reader = self.config_manager.get_reader_for_file(source_name, filename)
         if reader:
-            source_data = reader.read_data(filename)
-            if source_data:
-                return source_data
+            try:
+                # Try the new data source interface first (load_data)
+                if hasattr(reader, 'load_data'):
+                    self.logger.debug(f"Using load_data method for {filename}")
+                    reader.load_data(filename)
+                    if hasattr(reader, 'dataset'):
+                        return {'vars': reader.dataset}
+                
+                # Fall back to the old reader interface (read_data)
+                if hasattr(reader, 'read_data'):
+                    self.logger.debug(f"Using read_data method for {filename}")
+                    source_data = reader.read_data(filename)
+                    if source_data:
+                        return source_data
+            except Exception as e:
+                self.logger.error(f"Error loading data from {filename}: {e}")
         
         # If that fails or if we need to combine data from multiple files
         self.logger.info(f"Attempting to integrate data from multiple files for {source_name}")
@@ -394,11 +407,42 @@ class Generic(Root):
             self.logger.error("No suitable readers found")
             sys.exit()
         
-        sdat1 = reader1.read_data(filename1)
-        sdat2 = reader2.read_data(filename2)
+        # Load data from the first reader
+        sdat1 = None
+        try:
+            # Try the new data source interface first (load_data)
+            if hasattr(reader1, 'load_data'):
+                self.logger.debug(f"Using load_data method for {filename1}")
+                reader1.load_data(filename1)
+                if hasattr(reader1, 'dataset'):
+                    sdat1 = {'vars': reader1.dataset}
+            
+            # Fall back to the old reader interface (read_data)
+            if not sdat1 and hasattr(reader1, 'read_data'):
+                self.logger.debug(f"Using read_data method for {filename1}")
+                sdat1 = reader1.read_data(filename1)
+        except Exception as e:
+            self.logger.error(f"Error loading data from {filename1}: {e}")
+        
+        # Load data from the second reader
+        sdat2 = None
+        try:
+            # Try the new data source interface first (load_data)
+            if hasattr(reader2, 'load_data'):
+                self.logger.debug(f"Using load_data method for {filename2}")
+                reader2.load_data(filename2)
+                if hasattr(reader2, 'dataset'):
+                    sdat2 = {'vars': reader2.dataset}
+            
+            # Fall back to the old reader interface (read_data)
+            if not sdat2 and hasattr(reader2, 'read_data'):
+                self.logger.debug(f"Using read_data method for {filename2}")
+                sdat2 = reader2.read_data(filename2)
+        except Exception as e:
+            self.logger.error(f"Error loading data from {filename2}: {e}")
 
         if not sdat1 or not sdat2:
-            self.logger.error("Cannot continue")
+            self.logger.error("Cannot continue - failed to load data from one or both sources")
             sys.exit()
 
         return sdat1, sdat2

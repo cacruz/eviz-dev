@@ -14,9 +14,6 @@ class NetCDFDataReader(DataReader):
     findex: int = 0
 
     def __post_init__(self):
-        print(30*"!")
-        print(30*"!")
-        print(30*"!")
         super().__post_init__()
 
     def read_data(self, file_path: str) -> Any:
