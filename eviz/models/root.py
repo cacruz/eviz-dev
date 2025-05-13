@@ -11,7 +11,7 @@ from eviz.lib import const as constants
 
 from eviz.lib.autoviz.config_manager import ConfigManager
 from eviz.models.base import AbstractRoot
-from eviz.lib.data.factory import DataSourceFactory
+from eviz.lib.data.factory.source_factory import DataSourceFactory
 
 
 @dataclass
