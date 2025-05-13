@@ -4,7 +4,7 @@ import subprocess
 import argparse
 
 from eviz.lib.utils import logger_setup, timer
-from eviz.lib.autoviz_base import Autoviz
+from eviz.lib.autoviz.autoviz_base import Autoviz
 
 
 def parse_command_line() -> argparse.Namespace:
