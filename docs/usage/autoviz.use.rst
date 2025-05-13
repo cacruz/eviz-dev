@@ -308,7 +308,7 @@ The terminal output may look something like this (depending on the options):
 
 .. code-block::
 
-    INFO :: autoviz_base (__post_init__:93) : Start init
+    INFO :: base (__post_init__:93) : Start init
     INFO :: config (__post_init__:119) : Start init
     INFO :: config (_init_readers:370) : Setup NetCDF reader
     INFO :: reader (__post_init__:19) : Start init

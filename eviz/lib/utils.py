@@ -266,7 +266,7 @@ def log_method(func):
 
 def read_species_db() -> dict:
     """Read species database YAML file and load into data structure."""
-    root_path = os.path.dirname(os.path.abspath('autoviz_base.py'))
+    root_path = os.path.dirname(os.path.abspath('const.py'))
     db_path = constants.species_db_path
     if not os.path.exists(db_path):
         db_path = os.path.join(root_path, constants.species_db_path)
@@ -274,7 +274,7 @@ def read_species_db() -> dict:
 
 def read_meta_coords() -> dict:
     """ Read meta coordinates YAML file and load into data structure"""
-    root_path = os.path.dirname(os.path.abspath('autoviz_base.py'))
+    root_path = os.path.dirname(os.path.abspath('const.py'))
     coord_file_path = constants.meta_coords_path
     if not os.path.exists(coord_file_path):
         coord_file_path = os.path.join(root_path, constants.meta_coords_path)
@@ -283,7 +283,7 @@ def read_meta_coords() -> dict:
 
 def read_meta_attrs() -> dict:
     """ Read meta attributes YAML file and load into data structure"""
-    root_path = os.path.dirname(os.path.abspath('autoviz_base.py'))
+    root_path = os.path.dirname(os.path.abspath('const.py'))
     attr_file_path = constants.meta_attrs_path
     if not os.path.exists(attr_file_path):
         attr_file_path = os.path.join(root_path, constants.meta_attrs_path)
@@ -292,7 +292,7 @@ def read_meta_attrs() -> dict:
 
 def read_species_db() -> dict:
     """ Read species database YAML file and load into data structure"""
-    root_path = os.path.dirname(os.path.abspath('autoviz_base.py'))
+    root_path = os.path.dirname(os.path.abspath('const.py'))
     db_path = constants.species_db_path
     if not os.path.exists(db_path):
         db_path = os.path.join(root_path, constants.species_db_path)

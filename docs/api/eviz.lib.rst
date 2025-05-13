@@ -24,7 +24,7 @@ eviz.lib.const module
 eviz.lib.autoviz\_base module
 -----------------------------
 
-.. automodule:: eviz.lib.autoviz_base
+.. automodule:: eviz.lib.autoviz.base
    :members:
    :undoc-members:
    :show-inheritance:

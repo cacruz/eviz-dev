@@ -96,7 +96,7 @@ class _const:
 
     def _set_meta_coords(self):
         """ Read meta coordinates YAML file and set as class attributes"""
-        root_path = os.path.dirname(os.path.abspath('autoviz_base.py'))
+        root_path = os.path.dirname(os.path.abspath('const.py'))
         coord_file_path = self.__getattribute__('meta_coords_path')
         if not os.path.exists(coord_file_path):
             coord_file_path = os.path.join(root_path, self.__getattribute__('meta_coords_path'))
@@ -106,7 +106,7 @@ class _const:
 
     def _set_meta_attrs(self):
         """ Read meta attributes YAML file and set as class attributes"""
-        root_path = os.path.dirname(os.path.abspath('autoviz_base.py'))
+        root_path = os.path.dirname(os.path.abspath('const.py'))
         attr_file_path = self.__getattribute__('meta_attrs_path')
         if not os.path.exists(attr_file_path):
             attr_file_path = os.path.join(root_path, self.__getattribute__('meta_attrs_path'))
