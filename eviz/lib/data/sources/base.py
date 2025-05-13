@@ -128,3 +128,24 @@ class DataSource(ABC):
             return getattr(self.dataset, name)
         
         raise AttributeError(f"'{self.__class__.__name__}' object has no attribute '{name}'")
+    
+    def __getitem__(self, key: str) -> Any:
+        """Delegate item access to the underlying dataset.
+        
+        This allows users to access variables using square brackets directly on DataSource objects
+        without having to access the .dataset attribute explicitly.
+        
+        Args:
+            key: Key to access (usually a variable name)
+            
+        Returns:
+            The item from the underlying dataset
+            
+        Raises:
+            KeyError: If the key doesn't exist in the dataset
+            TypeError: If no dataset is loaded
+        """
+        if self.dataset is None:
+            raise TypeError(f"'{self.__class__.__name__}' has no dataset loaded")
+        
+        return self.dataset[key]
