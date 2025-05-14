@@ -25,9 +25,9 @@ class DataSourceRegistry:
             data_source_class: The data source class to register
         """
         for ext in extensions:
-            ext = ext.lower()  # Normalize to lowercase
+            ext = ext.lower()
             if ext.startswith('.'):
-                ext = ext[1:]  # Remove leading dot if present
+                ext = ext[1:]
             self._registry[ext] = data_source_class
     
     def get_data_source_class(self, file_extension: str) -> Type[DataSource]:
@@ -42,9 +42,9 @@ class DataSourceRegistry:
         Raises:
             ValueError: If no data source class is registered for the specified file extension
         """
-        ext = file_extension.lower()  # Normalize to lowercase
+        ext = file_extension.lower()
         if ext.startswith('.'):
-            ext = ext[1:]  # Remove leading dot if present
+            ext = ext[1:]
         
         if ext not in self._registry:
             raise ValueError(f"No data source registered for file extension: {file_extension}")
@@ -68,8 +68,8 @@ class DataSourceRegistry:
         Returns:
             True if the file extension is supported, False otherwise
         """
-        ext = file_extension.lower()  # Normalize to lowercase
+        ext = file_extension.lower()
         if ext.startswith('.'):
-            ext = ext[1:]  # Remove leading dot if present
+            ext = ext[1:]
         
         return ext in self._registry

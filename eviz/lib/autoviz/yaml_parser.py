@@ -36,40 +36,32 @@ class YAMLParser:
         _source_index = 0
         for index, file_path in enumerate(self.config_files):
             self.ds_index = _source_index
-            # Load the main YAML file
             yaml_content = u.load_yaml_simple(file_path)
             yaml_content['source'] = self.source_names[index]
             concat.append(yaml_content)
 
-            # Merge inputs
             if 'inputs' in yaml_content:
                 result.setdefault('inputs', []).extend(yaml_content['inputs'])
             else:
                 self.logger.error(f"No inputs specified in {file_path}.")
                 raise ValueError(f"No inputs specified in {file_path}.")
 
-            # Merge for_inputs
             if 'for_inputs' in yaml_content:
                 result.setdefault('for_inputs', {}).update(yaml_content['for_inputs'])
 
-            # Merge system_opts
             if 'system_opts' in yaml_content:
                 result.setdefault('system_opts', {}).update(yaml_content['system_opts'])
 
-            # Merge outputs
             if 'outputs' in yaml_content:
                 result.setdefault('outputs', {}).update(yaml_content['outputs'])
 
-            # Merge history (special case for GEOS sources)
             if 'geos' in self.source_names and len(set(self.source_names)) == 1:
                 if 'history' in yaml_content:
                     result.setdefault('history', {}).update(yaml_content['history'])
 
-            # Collect output directories
             if 'outputs' in yaml_content and 'output_dir' in yaml_content['outputs']:
                 output_dirs.append(yaml_content['outputs']['output_dir'])
 
-            # Load associated specs file
             specs_file = os.path.join(os.path.dirname(file_path), f"{os.path.splitext(os.path.basename(file_path))[0]}_specs.yaml")
             if os.path.exists(specs_file):
                 specs_content = u.load_yaml_simple(specs_file)
@@ -90,11 +82,9 @@ class YAMLParser:
             current_inputs = input_dict.get('inputs', [])
             current_outputs = input_dict.get('outputs', {})
             
-            # Extract comparison IDs for both compare and compare_diff
             compare_ids = get_nested_key(self.app_data, ['for_inputs', 'compare', 'ids'], default='')
             compare_diff_ids = get_nested_key(self.app_data, ['for_inputs', 'compare_diff', 'ids'], default='')
             
-            # Convert to lists if they're strings
             if isinstance(compare_ids, str) and compare_ids:
                 compare_ids = compare_ids.split(',')
             elif not isinstance(compare_ids, list):
@@ -105,11 +95,9 @@ class YAMLParser:
             elif not isinstance(compare_diff_ids, list):
                 compare_diff_ids = []
 
-            # Set flags for comparison types
             compare_flag = len(compare_ids) > 0
             compare_diff_flag = len(compare_diff_ids) > 0
             
-            # Set up output directory for comparisons
             compare_dir = None
             if compare_flag or compare_diff_flag:
                 compare_dir = os.path.join(os.path.dirname(current_outputs.get('output_dir', '')), 'comparisons')
@@ -133,7 +121,6 @@ class YAMLParser:
                         plot_type = var_config.get('plot_type', 'xy')  # Default to xy if not specified
                         current_to_plot[var_name] = plot_type
                 
-                # If still empty, log a warning
                 if not current_to_plot:
                     self.logger.warning(f"No fields to plot found for {filename}")
                     continue
@@ -142,7 +129,6 @@ class YAMLParser:
                 for field_name, field_values in current_to_plot.items():
                     field_specs = get_nested_key(self.spec_data, [field_name], default={})
                     
-                    # Determine comparison settings for this field
                     is_in_compare = exp_id in compare_ids
                     is_in_compare_diff = exp_id in compare_diff_ids
                     

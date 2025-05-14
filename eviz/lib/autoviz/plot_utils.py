@@ -159,7 +159,6 @@ def create_gif(config):
             json.dump(config.vis_summary, fp)
             fp.close()
 
-    # clean up
     for my_file in files:
         os.remove(my_file)
 

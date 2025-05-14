@@ -26,7 +26,6 @@ class Config:
         self.logger.info("Initializing Config")
 
         self.yaml_parser = YAMLParser(config_files=self.config_files, source_names=self.source_names)
-        # Parse YAML files and initialize configurations
         self.yaml_parser.parse()
         # We need to convert parsed app_data to AppData object
         self.app_data = AppData(**self.yaml_parser.app_data)  
@@ -38,7 +37,6 @@ class Config:
         self.meta_attrs = self.yaml_parser.meta_attrs
         self.species_db = self.yaml_parser.species_db
 
-        # Instantiate sub-configurations
         self.input_config = InputConfig(self.source_names, self.config_files)
         self.output_config = OutputConfig()
         self.system_config = SystemConfig()
@@ -46,7 +44,6 @@ class Config:
 
         self._assign_app_data_to_subconfigs()
 
-        # Initialize all configurations
         self.initialize()
 
     def _assign_app_data_to_subconfigs(self):

@@ -55,13 +55,9 @@ class NetCDFDataSource(DataSource):
                 dataset = xr.open_dataset(file_path, decode_cf=True)
                 self.logger.info(f"Loaded single NetCDF file: {file_path}")
             
-            # Store the dataset
             self.dataset = dataset
-            
-            # Store metadata
             self._extract_metadata(dataset)
             
-            # Store the dataset in the dictionary using the file name as the key
             file_name = os.path.basename(file_path)
             self.datasets[file_name] = dataset
             
@@ -90,13 +86,8 @@ class NetCDFDataSource(DataSource):
         if dataset is None:
             return
         
-        # Extract global attributes
         self.metadata["global_attrs"] = dict(dataset.attrs)
-        
-        # Extract dimension information
         self.metadata["dimensions"] = {dim: dataset.dims[dim] for dim in dataset.dims}
-        
-        # Extract variable information
         self.metadata["variables"] = {}
         for var_name, var in dataset.data_vars.items():
             self.metadata["variables"][var_name] = {

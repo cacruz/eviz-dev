@@ -32,12 +32,9 @@ class DataProcessor:
         """
         self.logger.debug("Processing data source")
         
-        # Validate the data
         if not data_source.validate_data():
             self.logger.error("Data validation failed")
             return data_source
-        
-        # Process the data
         data_source.dataset = self._process_dataset(data_source.dataset)
         
         return data_source
@@ -54,7 +51,6 @@ class DataProcessor:
         if dataset is None:
             return None
         
-        # Apply common processing steps
         dataset = self._standardize_coordinates(dataset)
         dataset = self._handle_missing_values(dataset)
         dataset = self._apply_unit_conversions(dataset)
@@ -70,7 +66,6 @@ class DataProcessor:
         Returns:
             The processed dataset
         """
-        # Define standard coordinate names
         coord_mappings = {
             'latitude': 'lat',
             'longitude': 'lon',
@@ -83,7 +78,6 @@ class DataProcessor:
             'lon_bnds': 'lon_bounds',
         }
         
-        # Rename coordinates if needed
         rename_dict = {}
         for old_name, new_name in coord_mappings.items():
             if old_name in dataset.coords and new_name not in dataset.coords:

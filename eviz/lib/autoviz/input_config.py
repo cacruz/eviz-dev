@@ -23,10 +23,8 @@ class InputConfig:
     _sphum_conv_file_list: dict = field(default_factory=dict)
     _use_trop_height: bool = False
     _use_sphum_conv: bool = False
-    # Track file-to-reader mapping
     _file_reader_mapping: Dict[str, str] = field(default_factory=dict)
     
-    # Add these attributes with default values
     _compare: bool = field(default=False, init=False)
     _compare_diff: bool = field(default=False, init=False)
     _compare_exp_ids: List[str] = field(default_factory=list, init=False)
@@ -40,7 +38,6 @@ class InputConfig:
     @log_method
     def initialize(self):
         """Initialize input configuration."""
-        # Initialize _compare and _compare_diff from class attributes
         self._compare = self.compare
         self._compare_diff = self.compare_diff
         
@@ -57,7 +54,6 @@ class InputConfig:
 
         self.logger.debug(f"Processing {len(self.app_data.inputs)} input file entries.")
         for i, entry in enumerate(self.app_data.inputs):
-            # Construct the full file path
             filename = join_file_path(entry.get('location', ''), entry['name'])
             self.file_list[i] = entry
             self.file_list[i]['filename'] = filename
@@ -72,7 +68,6 @@ class InputConfig:
                 sys.exit()
             return None  # TODO: Implement self.make_dict(self.hist_list_files())
         else:
-            # Reset compare if only one file is present
             if len(self.file_list) == 1:
                 self.compare = False
                 self.compare_diff = False
@@ -111,7 +106,6 @@ class InputConfig:
             reader_type = self._get_reader_type_for_extension(file_path)
             
             if reader_type:
-                # For each source, add this file and its reader type
                 for source_name in self.source_names:
                     reader_mapping[source_name].append({
                         'file_entry': file_entry,
@@ -122,10 +116,8 @@ class InputConfig:
 
     def _init_readers(self):
         """Initialize readers based on file extensions and special cases."""
-        # Initialize the readers structure
         self._init_reader_structure()
         
-        # Process each file and determine its reader type
         file_reader_types = {}
         for file_idx, file_entry in self.file_list.items():
             file_path = file_entry['filename']
@@ -133,25 +125,21 @@ class InputConfig:
             
             if reader_type:
                 file_reader_types[file_path] = reader_type
-                # Remember the mapping of file to reader type
                 self._file_reader_mapping[file_path] = reader_type
             else:
                 self.logger.warning(f"Could not determine reader type for {file_path}")
         
-        # Group files by reader type for each source
         for source_name in self.source_names:
-            # Track the file extensions we've processed for this source
             processed_extensions = set()
             
             for file_path, reader_type in file_reader_types.items():
                 file_extension = os.path.splitext(file_path)[1]
                 
-                # Only create one reader per extension type per source
+                # One reader per extension type per source
                 if (reader_type, file_extension) in processed_extensions:
                     continue
                     
                 try:
-                    # Initialize reader if it doesn't exist yet
                     if reader_type not in self.readers[source_name]:
                         self.logger.info(f"Setting up {reader_type} reader for source: {source_name}")
                         self.readers[source_name][reader_type] = self._get_reader(source_name, file_extension)
@@ -160,7 +148,6 @@ class InputConfig:
                 except Exception as e:
                     self.logger.error(f"Failed to initialize {reader_type} reader for {file_path}: {str(e)}")
     
-        # Log the initialized readers
         for source_name, readers in self.readers.items():
             self.logger.info(f"Initialized readers for source {source_name}: {list(readers.keys())}")
 
@@ -174,7 +161,6 @@ class InputConfig:
         Returns:
             str: The reader type identifier ('NetCDF', 'CSV', 'HDF5', or 'HDF4') or None if unknown
         """
-        # Handle wildcards
         if '*' in file_path:
             self.logger.info(f"File path contains wildcards: {file_path}, assuming NetCDF")
             return 'NetCDF'
@@ -184,10 +170,8 @@ class InputConfig:
             self.logger.info(f"Detected WRF file: {file_path}, using NetCDF reader")
             return 'NetCDF'
         
-        # Get file extension
         file_extension = os.path.splitext(file_path)[1]
         
-        # Map extension to reader type
         if file_extension in ['.nc', '.nc4', '']:  # Added empty extension
             return 'NetCDF'
         elif file_extension in ['.csv', '.dat']:
@@ -210,7 +194,6 @@ class InputConfig:
             elif any(x in file_path.lower() for x in ['hdf4', 'hdf']):
                 return 'HDF4'
                 
-        # If no type could be determined
         self.logger.error(f"Unsupported file extension: {file_extension} in file {file_path}")
         return 'NetCDF'  # Default to NetCDF as a fallback
                        
@@ -221,13 +204,11 @@ class InputConfig:
             file_path = file_entry['filename']
             file_extension = os.path.splitext(file_path)[1]
 
-            # Handle special cases for WRF and test sources
             if 'wrf' in file_path:
                 data_types_needed['NetCDF'] = True
             elif 'test' in file_path:
                 data_types_needed['NetCDF'] = True
             else:
-                # Determine data type based on file extension
                 if file_extension in ['.nc', '.nc4']:
                     data_types_needed['NetCDF'] = True
                 elif file_extension in ['.csv', '.dat']:
@@ -297,14 +278,11 @@ class InputConfig:
         Returns:
             Any: An instance of the appropriate data source class.
         """
-        # Create a factory instance
         factory = DataSourceFactory()
         
-        # Create a dummy file path to use with the factory
         dummy_path = f"dummy{file_extension}"
         
         try:
-            # Use the factory to create the appropriate data source
             return factory.create_data_source(dummy_path, source_name)
         except ValueError as e:
             self.logger.error(f"Error creating data source: {e}")
@@ -319,7 +297,6 @@ class InputConfig:
         """Initialize parameters in the `for_inputs` section of the AppData object."""
         for_inputs = getattr(self.app_data, 'for_inputs', {})
         
-        # Initialize attributes
         self._compare_exp_ids = []
         self._extra_diff_plot = False
         self._profile = False
@@ -328,10 +305,8 @@ class InputConfig:
         self._comp_panels = for_inputs.get('comp_panels', (1, 1))
         self._subplot_specs = for_inputs.get('subplot_specs', (1, 1))
         
-        # Use _parse_for_inputs to handle compare and compare_diff
         self._parse_for_inputs(for_inputs)
         
-        # Now we can safely check these attributes
         if self._compare_diff:
             self._extra_diff_plot = for_inputs.get('compare_diff', {}).get('_extra_diff_plot', False)
             self._profile = for_inputs.get('compare_diff', {}).get('profile', False)
@@ -347,7 +322,6 @@ class InputConfig:
         if self._use_trop_height:
             self._set_trop_height_file_list()  # Custom method for trop_height logic
 
-        # Log the initialized values for debugging
         self.logger.debug(f"Initialized for_inputs with: "
                         f"compare={self._compare}, "
                         f"compare_diff={self._compare_diff}, "
@@ -411,28 +385,23 @@ class InputConfig:
         if not for_inputs:
             return
         
-        # Initialize comparison flags
         self._compare = False
         self._compare_diff = False
         self._compare_exp_ids = []
         
-        # Handle compare option
         if 'compare' in for_inputs:
             self._compare = True
             compare_config = for_inputs['compare']
             
-            # Get experiment IDs to compare
             if 'ids' in compare_config:
                 self._compare_exp_ids = compare_config['ids'].split(',')
             elif 'exp_list' in compare_config:
                 self._compare_exp_ids = compare_config['exp_list'].split(',')
         
-        # Handle compare_diff option
         elif 'compare_diff' in for_inputs:
             self._compare_diff = True
             compare_diff_config = for_inputs['compare_diff']
             
-            # Get experiment IDs to compare with difference
             if 'ids' in compare_diff_config:
                 self._compare_exp_ids = compare_diff_config['ids'].split(',')
             elif 'exp_list' in compare_diff_config:

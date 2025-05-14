@@ -34,12 +34,10 @@ class DataTransformer:
         """
         self.logger.debug("Transforming data source")
         
-        # Validate the data
         if not data_source.validate_data():
             self.logger.error("Data validation failed")
             return data_source
         
-        # Transform the data
         data_source.dataset = self._transform_dataset(data_source.dataset, **kwargs)
         
         return data_source
@@ -57,7 +55,6 @@ class DataTransformer:
         if dataset is None:
             return None
         
-        # Apply transformations based on kwargs
         if kwargs.get('regrid', False):
             dataset = self._regrid_dataset(dataset, **kwargs)
         
@@ -87,7 +84,6 @@ class DataTransformer:
         """
         self.logger.debug("Regridding dataset")
         
-        # Get regridding parameters
         target_grid = kwargs.get('target_grid')
         method = kwargs.get('method', 'linear')
         
@@ -116,25 +112,20 @@ class DataTransformer:
             self.logger.error("Invalid target grid specification")
             return dataset
         
-        # Create a new dataset with the new grid
         new_dataset = xr.Dataset(coords={'lat': new_lat, 'lon': new_lon})
         
-        # Regrid each variable
         for var_name, var in dataset.data_vars.items():
             # Skip variables that don't have lat/lon dimensions
             if 'lat' not in var.dims or 'lon' not in var.dims:
                 new_dataset[var_name] = var
                 continue
             
-            # Get the original lat/lon coordinates
             orig_lat = dataset.coords['lat'].values
             orig_lon = dataset.coords['lon'].values
             
-            # Create a meshgrid for the original and new coordinates
             orig_lon_grid, orig_lat_grid = np.meshgrid(orig_lon, orig_lat)
             new_lon_grid, new_lat_grid = np.meshgrid(new_lon, new_lat)
             
-            # Regrid the variable
             if len(var.dims) == 2:  # 2D variable (lat, lon)
                 regridded_data = self._regrid_2d(var.values, orig_lat_grid, orig_lon_grid,
                                                 new_lat_grid, new_lon_grid, method)
@@ -188,16 +179,13 @@ class DataTransformer:
         Returns:
             The regridded data
         """
-        # Flatten the original grid points and data
         orig_points = np.column_stack((orig_lat_grid.flatten(), orig_lon_grid.flatten()))
         orig_values = data.flatten()
         
-        # Remove NaN values
         valid_indices = ~np.isnan(orig_values)
         orig_points = orig_points[valid_indices]
         orig_values = orig_values[valid_indices]
         
-        # Interpolate to the new grid
         if method == 'nearest':
             regridded_data = interp.griddata(orig_points, orig_values,
                                             (new_lat_grid, new_lon_grid),
@@ -229,13 +217,11 @@ class DataTransformer:
         """
         self.logger.debug("Subsetting dataset")
         
-        # Get subsetting parameters
         lat_range = kwargs.get('lat_range')
         lon_range = kwargs.get('lon_range')
         time_range = kwargs.get('time_range')
         lev_range = kwargs.get('lev_range')
         
-        # Apply subsetting
         if lat_range is not None and 'lat' in dataset.coords:
             dataset = dataset.sel(lat=slice(lat_range[0], lat_range[1]))
         
@@ -262,14 +248,12 @@ class DataTransformer:
         """
         self.logger.debug("Computing time average of dataset")
         
-        # Get averaging parameters
         time_dim = kwargs.get('time_dim', 'time')
         
         if time_dim not in dataset.dims:
             self.logger.warning(f"Time dimension '{time_dim}' not found in dataset")
             return dataset
         
-        # Compute the time average
         return dataset.mean(dim=time_dim)
     
     def _vertical_average_dataset(self, dataset: xr.Dataset, **kwargs) -> xr.Dataset:
@@ -284,14 +268,12 @@ class DataTransformer:
         """
         self.logger.debug("Computing vertical average of dataset")
         
-        # Get averaging parameters
         lev_dim = kwargs.get('lev_dim', 'lev')
         
         if lev_dim not in dataset.dims:
             self.logger.warning(f"Vertical dimension '{lev_dim}' not found in dataset")
             return dataset
         
-        # Compute the vertical average
         return dataset.mean(dim=lev_dim)
     
     def _vertical_sum_dataset(self, dataset: xr.Dataset, **kwargs) -> xr.Dataset:
@@ -306,12 +288,10 @@ class DataTransformer:
         """
         self.logger.debug("Computing vertical sum of dataset")
         
-        # Get summing parameters
         lev_dim = kwargs.get('lev_dim', 'lev')
         
         if lev_dim not in dataset.dims:
             self.logger.warning(f"Vertical dimension '{lev_dim}' not found in dataset")
             return dataset
         
-        # Compute the vertical sum
         return dataset.sum(dim=lev_dim)

@@ -40,24 +40,18 @@ class DataReader:
         """
         self.logger.debug(f"Reading file: {file_path}")
         
-        # Check if the file exists
         if not os.path.exists(file_path):
             self.logger.error(f"File not found: {file_path}")
             raise FileNotFoundError(f"File not found: {file_path}")
         
-        # Check if we already have a data source for this file
         if file_path in self.data_sources:
             self.logger.debug(f"Using cached data source for file: {file_path}")
             return self.data_sources[file_path]
         
-        # Create a data source for the file
         try:
             data_source = self.factory.create_data_source(file_path, model_name)
-            
-            # Load the data
             data_source.load_data(file_path)
-            
-            # Cache the data source
+            # Caching
             self.data_sources[file_path] = data_source
             
             return data_source

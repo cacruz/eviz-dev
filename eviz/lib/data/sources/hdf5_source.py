@@ -55,12 +55,8 @@ class HDF5DataSource(DataSource):
                 dataset = self._load_with_h5py(file_path)
                 self.logger.info(f"Loaded HDF5 file using h5py: {file_path}")
             
-            # Store the dataset
             self.dataset = dataset
-            
-            # Store metadata
             self._extract_metadata(dataset)
-            
             return dataset
             
         except Exception as exc:
@@ -76,19 +72,11 @@ class HDF5DataSource(DataSource):
         Returns:
             An Xarray dataset containing the loaded data
         """
-        # Open the HDF5 file
         self.h5_file = h5py.File(file_path, 'r')
-        
-        # Create an empty dataset
         dataset_dict = {}
         coords_dict = {}
-        
-        # Process all groups and datasets
         self._process_h5_group(self.h5_file, dataset_dict, coords_dict)
-        
-        # Create the xarray dataset
         dataset = xr.Dataset(dataset_dict, coords=coords_dict)
-        
         return dataset
     
     def _process_h5_group(self, group, dataset_dict, coords_dict, path=""):
@@ -107,18 +95,14 @@ class HDF5DataSource(DataSource):
                 # Recursively process groups
                 self._process_h5_group(item, dataset_dict, coords_dict, item_path)
             elif isinstance(item, h5py.Dataset):
-                # Process datasets
                 data = item[()]
                 
                 # Check if this looks like a coordinate variable
                 if len(data.shape) == 1 and (key.lower() in ['lat', 'latitude', 'lon', 'longitude', 'time', 'lev', 'level']):
                     coords_dict[key] = data
                 else:
-                    # Create a data array with appropriate dimensions
                     dims = [f"dim_{i}" for i in range(len(data.shape))]
                     dataset_dict[item_path] = xr.DataArray(data, dims=dims)
-                    
-                    # Store attributes
                     for attr_key, attr_value in item.attrs.items():
                         dataset_dict[item_path].attrs[attr_key] = attr_value
     
@@ -131,13 +115,8 @@ class HDF5DataSource(DataSource):
         if dataset is None:
             return
         
-        # Extract global attributes
         self.metadata["global_attrs"] = dict(dataset.attrs)
-        
-        # Extract dimension information
         self.metadata["dimensions"] = {dim: dataset.dims[dim] for dim in dataset.dims}
-        
-        # Extract variable information
         self.metadata["variables"] = {}
         for var_name, var in dataset.data_vars.items():
             self.metadata["variables"][var_name] = {

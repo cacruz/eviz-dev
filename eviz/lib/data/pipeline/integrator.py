@@ -38,10 +38,8 @@ class DataIntegrator:
             self.logger.warning("No data sources to integrate")
             return None
         
-        # Get integration parameters
         method = kwargs.get('method', 'merge')
         
-        # Apply the appropriate integration method
         if method == 'merge':
             return self._merge_datasets([ds.dataset for ds in data_sources], **kwargs)
         elif method == 'concatenate':
@@ -65,11 +63,9 @@ class DataIntegrator:
         if not datasets:
             return None
         
-        # Get merging parameters
         join = kwargs.get('join', 'outer')
         compat = kwargs.get('compat', 'override')
         
-        # Merge the datasets
         try:
             result = xr.merge(datasets, join=join, compat=compat)
             self.logger.info(f"Successfully merged {len(datasets)} datasets")
@@ -93,16 +89,13 @@ class DataIntegrator:
         if not datasets:
             return None
         
-        # Get concatenation parameters
         dim = kwargs.get('dim', 'time')
         
-        # Check if the dimension exists in all datasets
         for i, ds in enumerate(datasets):
             if dim not in ds.dims:
                 self.logger.warning(f"Dimension '{dim}' not found in dataset {i}")
                 return datasets[0]  # Return the first dataset as a fallback
         
-        # Concatenate the datasets
         try:
             result = xr.concat(datasets, dim=dim)
             self.logger.info(f"Successfully concatenated {len(datasets)} datasets along dimension '{dim}'")
@@ -128,13 +121,11 @@ class DataIntegrator:
         if not dataset or not variables:
             return dataset
         
-        # Check if all variables exist in the dataset
         for var in variables:
             if var not in dataset.data_vars:
                 self.logger.warning(f"Variable '{var}' not found in dataset")
                 return dataset
         
-        # Apply the operation
         try:
             if operation == 'add':
                 result = sum(dataset[var] for var in variables)
@@ -166,10 +157,7 @@ class DataIntegrator:
                 self.logger.error(f"Unknown operation: {operation}")
                 return dataset
             
-            # Add the result to the dataset
             dataset[output_name] = result
-            
-            # Add metadata
             dataset[output_name].attrs['long_name'] = f"{operation.capitalize()} of {', '.join(variables)}"
             dataset[output_name].attrs['operation'] = operation
             dataset[output_name].attrs['source_variables'] = variables
@@ -198,19 +186,15 @@ class DataIntegrator:
         if not datasets:
             return None
         
-        # Get integration parameters
         time_dim = kwargs.get('time_dim', 'time')
         
-        # Check if the time dimension exists in all datasets
         for i, ds in enumerate(datasets):
             if time_dim not in ds.dims:
                 self.logger.warning(f"Time dimension '{time_dim}' not found in dataset {i}")
                 return datasets[0]  # Return the first dataset as a fallback
         
-        # Sort datasets by time
         sorted_datasets = sorted(datasets, key=lambda ds: ds[time_dim].values[0])
         
-        # Concatenate the datasets
         try:
             result = xr.concat(sorted_datasets, dim=time_dim)
             

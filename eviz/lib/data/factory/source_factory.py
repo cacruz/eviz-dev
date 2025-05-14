@@ -31,16 +31,9 @@ class DataSourceFactory:
     
     def _register_default_data_sources(self) -> None:
         """Register the default data source implementations."""
-        # Register NetCDF data source
         self.registry.register(['nc', 'nc4', 'netcdf', 'netcdf4'], NetCDFDataSource)
-        
-        # Register HDF5 data source
         self.registry.register(['h5', 'hdf5', 'hdf'], HDF5DataSource)
-        
-        # Register CSV data source
         self.registry.register(['csv', 'dat', 'txt'], CSVDataSource)
-        
-        # Register GRIB data source
         self.registry.register(['grib', 'grib2'], GRIBDataSource)
     
     def register_data_source(self, extensions: List[str], data_source_class: Type[DataSource]) -> None:
@@ -65,10 +58,8 @@ class DataSourceFactory:
         Raises:
             ValueError: If the file extension is not supported
         """
-        # Get the file extension
         _, ext = os.path.splitext(file_path)
         if not ext:
-            # Try to infer the extension from the file name
             if 'nc' in file_path.lower() or 'netcdf' in file_path.lower():
                 ext = '.nc'
             elif 'h5' in file_path.lower() or 'hdf5' in file_path.lower():
@@ -80,17 +71,13 @@ class DataSourceFactory:
             else:
                 raise ValueError(f"Could not determine file extension for: {file_path}")
         
-        # Remove the leading dot
         ext = ext[1:] if ext.startswith('.') else ext
-        
-        # Get the data source class
         try:
             data_source_class = self.registry.get_data_source_class(ext)
         except ValueError:
             self.logger.error(f"Unsupported file extension: {ext}")
             raise ValueError(f"Unsupported file extension: {ext}")
         
-        # Create and return the data source instance
         return data_source_class(model_name)
     
     def get_supported_extensions(self) -> List[str]:
@@ -114,7 +101,6 @@ class DataSourceFactory:
         if not ext:
             return False
         
-        # Remove the leading dot
         ext = ext[1:] if ext.startswith('.') else ext
         
         return self.registry.is_supported(ext)

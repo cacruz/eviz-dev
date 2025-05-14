@@ -1,8 +1,8 @@
 inputs:
-#   - name: OST_ElNinox2_144x90.1979-2008avg.CMIP5PRE.nc
-#     location: /Users/ccruz/data/eviz/modelE
-#     to_plot:
-#        sst: xy
+   - name: OST_ElNinox0.5_144x90.1979-2008avg.CMIP5PRE.nc
+     location: /Users/ccruz/data/eviz/modelE
+     to_plot:
+        sst: xy
 
    - name: /Users/ccruz/data/eviz/cru/cru_ts4.03.1901.1910.tmp.dat.nc
      description: CRU TS4.03 Mean Temperature. 720x360x120 (2D+time)
@@ -38,6 +38,24 @@ inputs:
      description: CMIP6 model data produced by GISS (abrupt doubling of CO2)
      to_plot:
         ts: xt
+
+   - name : d5124_m2_jan10.tavg1_2d_ocn_Nx.diurnal.202111.nc4
+     location: /Users/ccruz/data/eviz/merra2
+     description: Ocean DAS
+     to_plot:
+          FRSEAICE: polar
+          RAINOCN: tx
+          U10M: xy,xt
+          TAUXWTR: xy
+          TAUYWTR: xy
+
+   - name: MERRA2_400.inst6_3d_ana_Np.20211123.nc4
+     location: /Users/ccruz/data/eviz/merra2
+     description: 3d,6-Hourly,Instantaneous,Pressure-Level,Analysis,Analyzed Meteorological Fields
+     to_plot:
+        SLP: xy
+        O3: xy,yz
+        T: xy,yz
 
 outputs:
     output_dir: /Users/ccruz/scratch/eviz/output/generic

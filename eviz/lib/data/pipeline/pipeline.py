@@ -28,11 +28,7 @@ class DataPipeline:
         self.transformer = DataTransformer()
         self.integrator = DataIntegrator()
         self.logger = logging.getLogger(__name__)
-        
-        # Store the processed data sources
         self.data_sources = {}
-        
-        # Store the final integrated dataset
         self.dataset = None
     
     def process_file(self, file_path: str, model_name: Optional[str] = None,
@@ -52,18 +48,11 @@ class DataPipeline:
         """
         self.logger.debug(f"Processing file: {file_path}")
         
-        # Read the file
         data_source = self.reader.read_file(file_path, model_name)
-        
-        # Process the data
         if process:
             data_source = self.processor.process_data_source(data_source)
-        
-        # Transform the data
         if transform and transform_params:
             data_source = self.transformer.transform_data_source(data_source, **transform_params)
-        
-        # Store the processed data source
         self.data_sources[file_path] = data_source
         
         return data_source
@@ -92,7 +81,6 @@ class DataPipeline:
                 result[file_path] = data_source
             except Exception as e:
                 self.logger.error(f"Error processing file: {file_path}. Exception: {e}")
-                # Continue with the next file
         
         return result
     
@@ -109,7 +97,6 @@ class DataPipeline:
         """
         self.logger.debug("Integrating data sources")
         
-        # Get the data sources to integrate
         if file_paths:
             data_sources = [self.data_sources[fp] for fp in file_paths if fp in self.data_sources]
         else:
@@ -119,7 +106,6 @@ class DataPipeline:
             self.logger.warning("No data sources to integrate")
             return None
         
-        # Integrate the data sources
         integration_params = integration_params or {}
         self.dataset = self.integrator.integrate_data_sources(data_sources, **integration_params)
         
@@ -142,7 +128,6 @@ class DataPipeline:
             self.logger.warning("No dataset available for variable integration")
             return None
         
-        # Integrate the variables
         self.dataset = self.integrator.integrate_variables(self.dataset, variables, operation, output_name)
         
         return self.dataset

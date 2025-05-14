@@ -57,15 +57,9 @@ class GRIBDataSource(DataSource):
                     self.logger.error("Neither cfgrib nor pynio is installed. Cannot read GRIB files.")
                     raise ImportError("Neither cfgrib nor pynio is installed. Please install one of them to read GRIB files.")
             
-            # Store the dataset
             self.dataset = dataset
-            
-            # Process the dataset
             dataset = self._process_data(dataset)
-            
-            # Store metadata
             self._extract_metadata(dataset)
-            
             return dataset
             
         except Exception as exc:
@@ -83,10 +77,7 @@ class GRIBDataSource(DataSource):
         """
         self.logger.debug("Processing GRIB data")
         
-        # Standardize coordinate names
         rename_dict = {}
-        
-        # Common coordinate name mappings in GRIB files
         coord_mappings = {
             'latitude': 'lat',
             'longitude': 'lon',
@@ -96,12 +87,10 @@ class GRIBDataSource(DataSource):
             'valid_time': 'time'
         }
         
-        # Check for coordinates that need to be renamed
         for old_name, new_name in coord_mappings.items():
             if old_name in dataset.coords and new_name not in dataset.coords:
                 rename_dict[old_name] = new_name
         
-        # Rename coordinates if needed
         if rename_dict:
             dataset = dataset.rename(rename_dict)
             self.logger.debug(f"Renamed coordinates: {rename_dict}")
@@ -124,13 +113,8 @@ class GRIBDataSource(DataSource):
         if dataset is None:
             return
         
-        # Extract global attributes
         self.metadata["global_attrs"] = dict(dataset.attrs)
-        
-        # Extract dimension information
         self.metadata["dimensions"] = {dim: dataset.dims[dim] for dim in dataset.dims}
-        
-        # Extract variable information
         self.metadata["variables"] = {}
         for var_name, var in dataset.data_vars.items():
             self.metadata["variables"][var_name] = {

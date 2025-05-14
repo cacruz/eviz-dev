@@ -90,15 +90,13 @@ class CSVDataSource(DataSource):
         """
         self.logger.debug("Processing CSV data")
         
-        # Check for date/time columns and convert to datetime
         for var_name in dataset.variables:
             # Skip coordinate variables
             if var_name in dataset.dims:
                 continue
                 
             var = dataset[var_name]
-            
-            # Check if this looks like a date/time column
+            # Is this a date/time column?
             if var_name.lower() in ['date', 'time', 'datetime', 'timestamp']:
                 try:
                     # Convert to datetime and set as a coordinate
@@ -131,13 +129,8 @@ class CSVDataSource(DataSource):
         if dataset is None:
             return
         
-        # Extract global attributes
         self.metadata["global_attrs"] = dict(dataset.attrs)
-        
-        # Extract dimension information
         self.metadata["dimensions"] = {dim: dataset.dims[dim] for dim in dataset.dims}
-        
-        # Extract variable information
         self.metadata["variables"] = {}
         for var_name, var in dataset.data_vars.items():
             self.metadata["variables"][var_name] = {

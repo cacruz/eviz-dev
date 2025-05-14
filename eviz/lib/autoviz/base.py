@@ -36,7 +36,7 @@ def create_config(args):
         else:
             config_dir = get_config_path_from_env()
             if not config_dir:
-                print(f"Warning: No configuration directory specified. Using default.")
+                print("Warning: No configuration directory specified. Using default.")
                 config_dir = constants.config_path
             config_files = [os.path.join(config_dir, source_name, f"{source_name}.yaml") for source_name in source_names]
         config = Config(source_names=source_names, config_files=config_files)
@@ -47,7 +47,6 @@ def create_config(args):
     system_config = config.system_config
     history_config = config.history_config
 
-    # Return a ConfigManager
     return ConfigManager(input_config, output_config, system_config, history_config, config=config)
 
 
@@ -127,18 +126,14 @@ class Autoviz:
         _start_time = time.time()
         self._config_manager.input_config.start_time = _start_time
         
-        # Check if input files exist
-        self._check_input_files()
+        self._check_input_files()  # Check if input files exist
         
-        # Create configuration adapter
         self.config_adapter = ConfigurationAdapter(self._config_manager)
         
-        # Handle integration options from command line
         if hasattr(self.args, 'integrate') and self.args.integrate:
             self.logger.info("Data integration mode enabled")
             self._config_manager.input_config._enable_integration = True
         
-        # Process configuration using the adapter
         try:
             self.logger.info("Processing configuration using adapter")
             self.config_adapter.process_configuration()
@@ -156,7 +151,6 @@ class Autoviz:
             # Apply model-specific extensions to data sources
             self._apply_model_extensions()
             
-            # Handle composite fields from command line
             if hasattr(self.args, 'composite') and self.args.composite:
                 composite_args = self.args.composite[0].split(',')
                 if len(composite_args) >= 3:
@@ -187,13 +181,11 @@ class Autoviz:
                 model()
                 
         finally:
-            # Clean up resources
             self.config_adapter.close()
     
     def _apply_model_extensions(self):
         """Apply model-specific extensions to data sources."""
         for source_name in self.source_names:
-            # Create model extension
             extension = ModelExtensionFactory.create_extension(source_name, self._config_manager)
             
             # Apply extension to all data sources for this model - use the shared data sources

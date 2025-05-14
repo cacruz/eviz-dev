@@ -21,7 +21,6 @@ class OutputConfig:
     @log_method
     def initialize(self):
         """Initialize output configuration."""
-        # Initialize parameters from the `outputs` section of app_data
         outputs = self.app_data.outputs
 
         self.add_logo = outputs.get('add_logo', False)
@@ -33,10 +32,8 @@ class OutputConfig:
         self.make_gif = outputs.get('make_gif', False)
         self.gif_fps = outputs.get('gif_fps', 10)
 
-        # Set the output directory
         self._set_output_dir()
 
-        # Log the initialized values for debugging
         self.logger.debug(f"OutputConfig initialized with: "
                           f"add_logo={self.add_logo}, "
                           f"print_to_file={self.print_to_file}, "

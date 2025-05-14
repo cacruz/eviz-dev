@@ -17,21 +17,16 @@ class SystemConfig:
     @log_method
     def initialize(self):
         """Initialize system configuration."""
-        # Access attributes of the AppData object directly
         system_opts = self.app_data.system_opts
 
-        # Initialize use_mp_pool
         self.use_mp_pool = system_opts.get('use_mp_pool', False)
 
-        # Initialize archive_web_results and event_stamp
         self.archive_web_results = system_opts.get('archive_web_results', False)
         if self.archive_web_results:
             self.event_stamp = strftime("%Y%m%d-%H%M%S")
 
-        # Initialize collection
         self.collection = system_opts.get('collection', '')
 
-        # Log the initialized values for debugging
         self.logger.debug(f"SystemConfig initialized with: "
                           f"use_mp_pool={self.use_mp_pool}, "
                           f"archive_web_results={self.archive_web_results}, "

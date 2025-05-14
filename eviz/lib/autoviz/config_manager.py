@@ -15,6 +15,7 @@ class ConfigManager:
     """Centralized manager for all configuration objects."""
     def __init__(self, input_config: InputConfig, output_config: OutputConfig,
                  system_config: SystemConfig, history_config: HistoryConfig, config: Config):
+        self.logger.info("Initializing ConfigManager")
         self.input_config = input_config
         self.output_config = output_config
         self.system_config = system_config
@@ -24,15 +25,8 @@ class ConfigManager:
         self._integrator = None  # Placeholder for DataIntegrator instance
         self._pipeline = None  # Placeholder for DataPipeline instance
         self.data_sources = {}  # Maps file paths to data sources
-
-        # Initialize a_list and b_list
         self.a_list = []
-        self.b_list = []
-        
-        # Make sure all dependencies are ready before setting up comparison
-        self.logger.debug("Initializing config manager")
-        
-        # Setup comparison if enabled - must be done after input_config is initialized
+        self.b_list = []        
         self.setup_comparison()
 
     @property
@@ -81,11 +75,9 @@ class ConfigManager:
         if name in self.__dict__:
             return self.__dict__[name]
 
-        # Check if the attribute exists in the Config object
         if hasattr(self.config, name):
             return getattr(self.config, name)
 
-        # Check if the attribute exists in the sub-configurations
         for config in [self.input_config, self.output_config, self.system_config, self.history_config]:
             if hasattr(config, name):
                 return getattr(config, name)
@@ -117,13 +109,11 @@ class ConfigManager:
         """
         source = self.source_names[self.ds_index]
         
-        # Return None if source not in meta_coords
         if source not in self.meta_coords.get(dim_name, {}):
             return None
             
         coords = self.meta_coords[dim_name][source]
         
-        # Handle comma-separated coordinate list
         if ',' in coords:
             coord_candidates = coords.split(',')
             
@@ -168,7 +158,6 @@ class ConfigManager:
                 
             return None
         
-        # Return single coordinate
         return coords
         
     def get_reader_for_file(self, source_name: str, file_path: str):
@@ -210,21 +199,17 @@ class ConfigManager:
         self.a_list = []
         self.b_list = []
         
-        # Check if comparison is enabled - use input_config's properties
         if not (self.input_config._compare or self.input_config._compare_diff):
             self.logger.debug("Comparison not enabled")
             return
         
-        # Get the IDs to compare from config
         compare_ids = self.input_config._compare_exp_ids
         if not compare_ids or len(compare_ids) < 2:
             self.logger.warning(f"Need at least 2 IDs for comparison, found: {compare_ids}")
             return
         
-        # Get the indices of files matching the IDs
         id_a, id_b = compare_ids[0].strip(), compare_ids[1].strip()
         
-        # Find matching files by exp_id
         for i, entry in enumerate(self.app_data.inputs):
             if 'exp_id' in entry and entry['exp_id'] == id_a:
                 self.a_list.append(i)
@@ -263,7 +248,6 @@ class ConfigManager:
         try:
             return self.file_list[file]['description']
         except (KeyError, IndexError, TypeError) as e:
-            # More specific error handling
             self.logger.debug(f'Unable to get file description: {e}')
             return None
         
