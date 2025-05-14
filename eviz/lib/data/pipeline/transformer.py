@@ -91,7 +91,6 @@ class DataTransformer:
             self.logger.warning("No target grid specified for regridding")
             return dataset
         
-        # Create the new grid
         if isinstance(target_grid, dict):
             # Create a new grid from the specified parameters
             lat_min = target_grid.get('lat_min', -90)

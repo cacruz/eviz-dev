@@ -149,7 +149,7 @@ class Autoviz:
                 return
             
             # Apply model-specific extensions to data sources
-            self._apply_model_extensions()
+            # self._apply_model_extensions()
             
             if hasattr(self.args, 'composite') and self.args.composite:
                 composite_args = self.args.composite[0].split(',')

@@ -43,6 +43,7 @@ class ConfigManager:
         
     @property
     def units(self):
+        """Lazy initialization of Units."""
         if self._units is None:
             self._units = Units(self)
         return self._units
@@ -123,6 +124,7 @@ class ConfigManager:
                 if source in self.readers and not isinstance(self.readers[source], dict):
                     reader = self.readers[source]
                     available_dims = list(reader.datasets[self.findex]['dims'].keys())
+                    print(f"1) Available dimensions: {available_dims}")
                 
                 # Case 2: New structure - reader is in a dictionary by type
                 elif source in self.readers and isinstance(self.readers[source], dict):
@@ -140,6 +142,7 @@ class ConfigManager:
                     # Get dimensions from the reader
                     if hasattr(reader, 'datasets') and self.findex in reader.datasets:
                         available_dims = list(reader.datasets[self.findex]['dims'].keys())
+                        print(f"2) Available dimensions: {available_dims}")
                     else:
                         self.logger.warning(f"Reader for {source} has no dataset at index {self.findex}")
                         return None
@@ -148,8 +151,10 @@ class ConfigManager:
                     return None
                 
                 # Return first matching coordinate
+                print(f"3) Coordinate candidates: {coord_candidates}")
                 for coord in coord_candidates:
                     if coord in available_dims:
+                        print(f"4) Found matching coordinate: {coord}")
                         return coord
                         
             except (KeyError, AttributeError) as e:

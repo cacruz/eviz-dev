@@ -31,7 +31,6 @@ class DataSourceFactory:
         """
         self.registry = DataSourceRegistry()
         self._register_default_data_sources()
-        self.logger = logging.getLogger(__name__)
         self.config_manager = config_manager
     
     def _register_default_data_sources(self) -> None:

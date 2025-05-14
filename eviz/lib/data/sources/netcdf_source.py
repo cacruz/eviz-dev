@@ -4,7 +4,7 @@ NetCDF data source implementation.
 
 import os
 import logging
-from typing import Dict, List, Optional, Union
+from typing import Dict, Optional
 from glob import glob
 
 import xarray as xr
@@ -26,9 +26,11 @@ class NetCDFDataSource(DataSource):
             model_name: Name of the model this data source belongs to
             config_manager: Configuration manager instance
         """
+        self.logger.info(f"model name: {model_name}")
         super().__init__(model_name, config_manager)
         self.datasets = {}  # Dictionary to store datasets by file name
-    
+        self.logger.info(f"model name: {self.model_name}")
+
     @property
     def logger(self) -> logging.Logger:
         """Get the logger for this class."""
@@ -43,7 +45,7 @@ class NetCDFDataSource(DataSource):
         Returns:
             An Xarray dataset containing the loaded data
         """
-        self.logger.debug(f"Loading NetCDF data from {file_path}")
+        self.logger.info(f"Loading NetCDF data from {file_path}")
         
         try:
             if "*" in file_path:
@@ -133,6 +135,8 @@ class NetCDFDataSource(DataSource):
         Returns:
             xarray Dataset with standardized dimension names
         """
+        self.logger.info(f"model name: {self.model_name}")
+
         if self.model_name in ['wrf', 'lis']:
             # Skip renaming for these special models
             return ds
@@ -151,15 +155,19 @@ class NetCDFDataSource(DataSource):
         
         # Add mappings only for dimensions that exist and need renaming
         if xc and xc != 'lon' and xc in available_dims:
+            print(f"Renaming {xc} to lon")
             rename_dict[xc] = 'lon'
         
         if yc and yc != 'lat' and yc in available_dims:
+            print(f"Renaming {yc} to lat")
             rename_dict[yc] = 'lat'
         
         if zc and zc != 'lev' and zc in available_dims:
+            print(f"Renaming {zc} to lev")
             rename_dict[zc] = 'lev'
         
         if tc and tc != 'time' and tc in available_dims:
+            print(f"Renaming {tc} to time") 
             rename_dict[tc] = 'time'
         
         # Only rename if there's something to rename

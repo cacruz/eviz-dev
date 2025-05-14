@@ -26,6 +26,7 @@ class DataSource(ABC):
         self.dataset = None
         self.metadata = {}
         self.config_manager = config_manager
+        self.logger.info(f"model name: {self.model_name}")
     
     @property
     def logger(self) -> logging.Logger:
@@ -152,6 +153,35 @@ class DataSource(ABC):
         
         return self.dataset[key]
         
+    def _get_model_dim_name2(self, dim_name, dims):
+        # Get the list of valid values from the meta_coords dictionary
+        meta_coords = self.config_manager.meta_coords
+        if isinstance(meta_coords[dim_name][self.model_name], list):
+            for valid_value in meta_coords[dim_name][self.model_name]:
+                for dim in dims:
+                    if dim_name == 'xc' and dim in valid_value:
+                        return dim
+                    if dim_name == 'yc' and dim in valid_value:
+                        return dim
+                    if dim_name == 'zc' and dim in valid_value:
+                        return dim
+                    if dim_name == 'tc' and dim in valid_value:
+                        return dim
+                return None
+        else:
+            valid_values = meta_coords[dim_name][self.model_name].split(',')
+            # Check if any entry in the dimensions list is in the valid values list
+            for dim in dims:
+                if dim_name == 'xc' and dim in valid_values:
+                    return dim
+                if dim_name == 'yc' and dim in valid_values:
+                    return dim
+                if dim_name == 'zc' and dim in valid_values:
+                    return dim
+                if dim_name == 'tc' and dim in valid_values:
+                    return dim
+            return None
+        
     def _get_model_dim_name(self, generic_dim_name, available_dims=None):
         """
         Get the model-specific dimension name for a generic dimension.
@@ -177,13 +207,14 @@ class DataSource(ABC):
             self.logger.warning(f"No mapping found for dimension '{generic_dim_name}'")
             return None
             
+        self.logger.info(f"model: {self.model_name}")
         # Get the mapping for this model
         if not self.model_name or self.model_name not in meta_coords[generic_dim_name]:
             self.logger.warning(f"No mapping found for model '{self.model_name}' and dimension '{generic_dim_name}'")
             return None
             
         coords = meta_coords[generic_dim_name][self.model_name]
-        
+        print(coords)
         # Handle comma-separated list of possible dimension names
         if ',' in coords:
             coord_candidates = coords.split(',')
