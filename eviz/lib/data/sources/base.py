@@ -15,15 +15,17 @@ class DataSource(ABC):
     Subclasses must implement the `load_data` method to populate the dataset.
     """
     
-    def __init__(self, model_name: str = None):
+    def __init__(self, model_name: str = None, config_manager=None):
         """Initialize a new DataSource.
         
         Args:
             model_name: Name of the model this data source belongs to
+            config_manager: Configuration manager instance
         """
         self.model_name = model_name
         self.dataset = None
         self.metadata = {}
+        self.config_manager = config_manager
     
     @property
     def logger(self) -> logging.Logger:
@@ -149,3 +151,75 @@ class DataSource(ABC):
             raise TypeError(f"'{self.__class__.__name__}' has no dataset loaded")
         
         return self.dataset[key]
+        
+    def _get_model_dim_name(self, generic_dim_name, available_dims=None):
+        """
+        Get the model-specific dimension name for a generic dimension.
+        
+        Args:
+            generic_dim_name: Generic dimension name (e.g., 'xc', 'yc', 'zc', 'tc')
+            available_dims: List of available dimensions in the dataset
+            
+        Returns:
+            str: The model-specific dimension name if found, otherwise None
+        """
+        if not hasattr(self, 'config_manager') or not self.config_manager:
+            self.logger.warning("No config_manager available to get dimension mappings")
+            return None
+            
+        # Get the mapping from meta_coordinates.yaml
+        if not hasattr(self.config_manager, 'meta_coords'):
+            self.logger.warning("No meta_coords available in config_manager")
+            return None
+            
+        meta_coords = self.config_manager.meta_coords
+        if generic_dim_name not in meta_coords:
+            self.logger.warning(f"No mapping found for dimension '{generic_dim_name}'")
+            return None
+            
+        # Get the mapping for this model
+        if not self.model_name or self.model_name not in meta_coords[generic_dim_name]:
+            self.logger.warning(f"No mapping found for model '{self.model_name}' and dimension '{generic_dim_name}'")
+            return None
+            
+        coords = meta_coords[generic_dim_name][self.model_name]
+        
+        # Handle comma-separated list of possible dimension names
+        if ',' in coords:
+            coord_candidates = coords.split(',')
+            
+            # If available_dims is provided, check which candidate exists
+            if available_dims:
+                for coord in coord_candidates:
+                    if coord in available_dims:
+                        return coord
+                
+                # No matching dimension found
+                self.logger.warning(f"None of the candidate dimensions {coord_candidates} found in available dimensions {available_dims}")
+                return None
+            
+            # If no available_dims provided, return the first candidate
+            return coord_candidates[0]
+        
+        # Handle special case for WRF, LIS, etc. with nested structure
+        if isinstance(coords, dict):
+            if 'dim' in coords:
+                # For dimension names
+                if available_dims:
+                    # If multiple dimensions are specified (comma-separated), check each one
+                    if ',' in coords['dim']:
+                        dim_candidates = coords['dim'].split(',')
+                        for dim in dim_candidates:
+                            if dim in available_dims:
+                                return dim
+                        return None
+                    # Single dimension name
+                    return coords['dim'] if coords['dim'] in available_dims else None
+                return coords['dim']
+            
+            if 'coords' in coords:
+                # For coordinate names
+                return coords['coords']
+        
+        # Simple case: direct mapping
+        return coords

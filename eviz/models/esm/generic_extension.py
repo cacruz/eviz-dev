@@ -21,8 +21,8 @@ class GenericExtension(ModelExtension):
         Returns:
             The processed data source
         """
-        # Apply standard coordinate naming
-        self._standardize_coordinates(data_source)
+        # Apply standard coordinate naming - DISABLED to avoid conflict with NetCDFDataSource._rename_dims
+        # self._standardize_coordinates(data_source)
         
         # Apply unit conversions if needed
         self._apply_unit_conversions(data_source)
@@ -35,6 +35,10 @@ class GenericExtension(ModelExtension):
         Args:
             data_source: The data source to process
         """
+        # This method is disabled to avoid conflict with NetCDFDataSource._rename_dims
+        self.logger.info("Coordinate standardization is now handled by NetCDFDataSource._rename_dims")
+        return
+        
         if data_source.dataset is None:
             return
         

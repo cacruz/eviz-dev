@@ -51,7 +51,7 @@ class ConfigManager:
     def pipeline(self):
         """Lazy initialization of DataPipeline."""
         if self._pipeline is None:
-            self._pipeline = DataPipeline()
+            self._pipeline = DataPipeline(self)
         return self._pipeline
 
     def to_dict(self) -> dict:

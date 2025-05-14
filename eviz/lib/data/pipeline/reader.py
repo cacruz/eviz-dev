@@ -18,11 +18,16 @@ class DataReader:
     This class handles reading data from files using the appropriate data source.
     """
     
-    def __init__(self):
-        """Initialize a new DataReader."""
-        self.factory = DataSourceFactory()
+    def __init__(self, config_manager=None):
+        """Initialize a new DataReader.
+        
+        Args:
+            config_manager: Configuration manager instance
+        """
+        self.factory = DataSourceFactory(config_manager)
         self.logger = logging.getLogger(__name__)
         self.data_sources = {}  # Maps file paths to data source instances
+        self.config_manager = config_manager
     
     def read_file(self, file_path: str, model_name: Optional[str] = None) -> DataSource:
         """Read data from a file.

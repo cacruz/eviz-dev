@@ -344,7 +344,53 @@ class Generic(Root):
         
         if 'xt' in plot_type or 'tx' in plot_type:
             return data2d, None, None, field_name, plot_type, file_index, figure, ax
-        return data2d, data2d[dim1].values, data2d[dim2].values, field_name, plot_type, file_index, figure, ax
+        
+        # Check if the standard dimension names (lon, lat) exist in the dataset
+        # If not, try to use the actual coordinate names in the dataset
+        try:
+            x_values = data2d[dim1].values
+            y_values = data2d[dim2].values
+        except KeyError:
+            # Try to find the actual coordinate names in the dataset
+            self.logger.info(f"Dimension names {dim1} and/or {dim2} not found in dataset. Trying to find actual coordinate names.")
+            
+            # Get all coordinate names
+            coord_names = list(data2d.coords.keys())
+            self.logger.info(f"Available coordinates: {coord_names}")
+            
+            # Try to find x and y coordinates
+            x_coord = None
+            y_coord = None
+            
+            # Look for common x coordinate names
+            for name in ['xc', 'lon', 'longitude', 'x']:
+                if name in coord_names:
+                    x_coord = name
+                    break
+            
+            # Look for common y coordinate names
+            for name in ['yc', 'lat', 'latitude', 'y']:
+                if name in coord_names:
+                    y_coord = name
+                    break
+            
+            if x_coord and y_coord:
+                self.logger.info(f"Using coordinates {x_coord} and {y_coord} instead of {dim1} and {dim2}")
+                x_values = data2d[x_coord].values
+                y_values = data2d[y_coord].values
+            else:
+                self.logger.error(f"Could not find suitable coordinates in dataset")
+                # Fall back to using the first two dimensions as x and y
+                dims = list(data2d.dims)
+                if len(dims) >= 2:
+                    self.logger.info(f"Falling back to using dimensions {dims[0]} and {dims[1]}")
+                    x_values = data2d[dims[0]].values
+                    y_values = data2d[dims[1]].values
+                else:
+                    self.logger.error(f"Dataset has fewer than 2 dimensions, cannot plot")
+                    return None
+        
+        return data2d, x_values, y_values, field_name, plot_type, file_index, figure, ax
 
     # COMPARE_DIFF METHODS (always need SPECS file)
     #--------------------------------------------------------------------------

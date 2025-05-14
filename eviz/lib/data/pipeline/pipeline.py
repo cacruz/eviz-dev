@@ -21,15 +21,20 @@ class DataPipeline:
     and integrating data from various sources.
     """
     
-    def __init__(self):
-        """Initialize a new DataPipeline."""
-        self.reader = DataReader()
+    def __init__(self, config_manager=None):
+        """Initialize a new DataPipeline.
+        
+        Args:
+            config_manager: Configuration manager instance
+        """
+        self.reader = DataReader(config_manager)
         self.processor = DataProcessor()
         self.transformer = DataTransformer()
         self.integrator = DataIntegrator()
         self.logger = logging.getLogger(__name__)
         self.data_sources = {}
         self.dataset = None
+        self.config_manager = config_manager
     
     def process_file(self, file_path: str, model_name: Optional[str] = None,
                     process: bool = True, transform: bool = False,

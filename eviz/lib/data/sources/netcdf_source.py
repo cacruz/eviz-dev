@@ -19,13 +19,14 @@ class NetCDFDataSource(DataSource):
     This class handles loading and processing data from NetCDF files.
     """
     
-    def __init__(self, model_name: str = None):
+    def __init__(self, model_name: str = None, config_manager=None):
         """Initialize a new NetCDFDataSource.
         
         Args:
             model_name: Name of the model this data source belongs to
+            config_manager: Configuration manager instance
         """
-        super().__init__(model_name)
+        super().__init__(model_name, config_manager)
         self.datasets = {}  # Dictionary to store datasets by file name
     
     @property
@@ -54,6 +55,9 @@ class NetCDFDataSource(DataSource):
                 # Handle a single file
                 dataset = xr.open_dataset(file_path, decode_cf=True)
                 self.logger.info(f"Loaded single NetCDF file: {file_path}")
+            
+            # Standardize dimension names
+            dataset = self._rename_dims(dataset)
             
             self.dataset = dataset
             self._extract_metadata(dataset)
@@ -115,6 +119,58 @@ class NetCDFDataSource(DataSource):
             Dictionary of all loaded datasets
         """
         return self.datasets
+    
+    def _rename_dims(self, ds):
+        """
+        Standardize dimension names in the dataset.
+        
+        This method renames dimensions to standard names (lon, lat, lev, time)
+        regardless of their original names in the source data.
+        
+        Args:
+            ds: xarray Dataset to rename dimensions in
+            
+        Returns:
+            xarray Dataset with standardized dimension names
+        """
+        if self.model_name in ['wrf', 'lis']:
+            # Skip renaming for these special models
+            return ds
+        
+        # Get available dimensions
+        available_dims = list(ds.dims)
+        
+        # Get model-specific dimension names
+        xc = self._get_model_dim_name('xc', available_dims)
+        yc = self._get_model_dim_name('yc', available_dims)
+        zc = self._get_model_dim_name('zc', available_dims)
+        tc = self._get_model_dim_name('tc', available_dims)
+        
+        # Create rename mapping
+        rename_dict = {}
+        
+        # Add mappings only for dimensions that exist and need renaming
+        if xc and xc != 'lon' and xc in available_dims:
+            rename_dict[xc] = 'lon'
+        
+        if yc and yc != 'lat' and yc in available_dims:
+            rename_dict[yc] = 'lat'
+        
+        if zc and zc != 'lev' and zc in available_dims:
+            rename_dict[zc] = 'lev'
+        
+        if tc and tc != 'time' and tc in available_dims:
+            rename_dict[tc] = 'time'
+        
+        # Only rename if there's something to rename
+        if rename_dict:
+            self.logger.info(f"Renaming dimensions: {rename_dict}")
+            try:
+                ds = ds.rename(rename_dict)
+            except Exception as e:
+                self.logger.error(f"Error renaming dimensions: {e}")
+        
+        return ds
     
     def close(self) -> None:
         """Close all datasets and free resources."""

@@ -23,11 +23,16 @@ class DataSourceFactory:
     based on file extensions.
     """
     
-    def __init__(self):
-        """Initialize a new DataSourceFactory."""
+    def __init__(self, config_manager=None):
+        """Initialize a new DataSourceFactory.
+        
+        Args:
+            config_manager: Configuration manager instance
+        """
         self.registry = DataSourceRegistry()
         self._register_default_data_sources()
         self.logger = logging.getLogger(__name__)
+        self.config_manager = config_manager
     
     def _register_default_data_sources(self) -> None:
         """Register the default data source implementations."""
@@ -78,7 +83,7 @@ class DataSourceFactory:
             self.logger.error(f"Unsupported file extension: {ext}")
             raise ValueError(f"Unsupported file extension: {ext}")
         
-        return data_source_class(model_name)
+        return data_source_class(model_name, self.config_manager)
     
     def get_supported_extensions(self) -> List[str]:
         """Get the list of supported file extensions.
