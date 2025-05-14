@@ -1,13 +1,16 @@
 """
 Adapter between YAML configuration and data source architecture.
 """
-
-import os
 import logging
-from typing import Dict, List, Optional, Any
+import os
+from typing import Dict, Any, List, Optional
+
+import xarray as xr
 
 from eviz.lib.autoviz.config_manager import ConfigManager
-from eviz.lib.data.pipeline import DataPipeline  # Import for backward compatibility with tests
+from eviz.lib.data.pipeline import DataPipeline
+from eviz.lib.data.sources import DataSource
+
 
 class ConfigurationAdapter:
     """Adapter for configuration management."""
@@ -20,9 +23,8 @@ class ConfigurationAdapter:
         """
         self.logger = logging.getLogger(__name__)
         self.config_manager = config_manager
-        # Instead of directly accessing data_sources, we'll use the pipeline
-        # self.data_sources = self.config_manager.data_sources  # This line causes the error
-        # We don't need to store data_sources locally, as they're managed by the pipeline
+        # For backward compatibility with tests
+        self.data_sources = {}
         
     def process_configuration(self):
         """Process the configuration and load data."""
@@ -31,7 +33,10 @@ class ConfigurationAdapter:
         # Load data for each input file
         for i, file_entry in enumerate(self.config_manager.app_data.inputs):
             file_path = self._get_file_path(file_entry)
-            source_name = file_entry.get('source_name', self.config_manager.source_names[0])
+            # Check for both 'exp_name' and 'source_name' to maintain compatibility with tests
+            source_name = file_entry.get('source_name', 
+                        file_entry.get('exp_name', 
+                        self.config_manager.source_names[0]))
             
             self.logger.info(f"Loading data for file {i+1}: {file_path}")
             
@@ -47,12 +52,14 @@ class ConfigurationAdapter:
                     self.logger.warning(f"Failed to load data from {file_path}")
                 else:
                     self.logger.info(f"Successfully loaded data from {file_path}")
+                    # For backward compatibility with tests
+                    self.data_sources[file_path] = data_source
                     
             except Exception as e:
                 self.logger.error(f"Error loading data from {file_path}: {e}")
         
         # If integration is enabled, integrate the datasets
-        if hasattr(self.config_manager.input_config, '_enable_integration') and self.config_manager.input_config._enable_integration:
+        if hasattr(self.config_manager.input_config, '_integrate') and self.config_manager.input_config._integrate:
             self.logger.info("Integrating datasets")
             try:
                 # Use the pipeline's integrator to integrate the datasets
@@ -63,6 +70,21 @@ class ConfigurationAdapter:
                     self.logger.warning("Failed to integrate datasets")
             except Exception as e:
                 self.logger.error(f"Error integrating datasets: {e}")
+                
+        # If composite is enabled, integrate variables
+        if hasattr(self.config_manager.input_config, '_composite') and self.config_manager.input_config._composite:
+            self.logger.info("Creating composite field")
+            try:
+                # Use the pipeline's integrator to integrate variables
+                composite_config = self.config_manager.input_config._composite
+                variables = composite_config.get('variables', [])
+                operation = composite_config.get('operation', 'add')
+                output_name = composite_config.get('output_name', 'composite')
+                
+                self.config_manager.pipeline.integrate_variables(variables, operation, output_name)
+                self.logger.info(f"Successfully created composite field {output_name}")
+            except Exception as e:
+                self.logger.error(f"Error creating composite field: {e}")
     
     def _get_file_path(self, file_entry: Dict[str, Any]) -> str:
         """Get the full file path from a file entry.
@@ -77,11 +99,41 @@ class ConfigurationAdapter:
         name = file_entry.get('name', '')
         
         if location:
-            return f"{location}/{name}"
+            return os.path.join(location, name)
         else:
             return name
     
-    def close(self):
+    def get_data_source(self, file_path: str) -> Optional[DataSource]:
+        """Get a data source from the adapter.
+        
+        Args:
+            file_path: Path to the data file
+            
+        Returns:
+            The data source for the file path, or None if not found
+        """
+        # For backward compatibility with tests
+        return self.data_sources.get(file_path)
+    
+    def get_all_data_sources(self) -> Dict[str, DataSource]:
+        """Get all data sources from the adapter.
+        
+        Returns:
+            A dictionary mapping file paths to data sources
+        """
+        # For backward compatibility with tests
+        return self.data_sources
+    
+    def get_dataset(self) -> Optional[xr.Dataset]:
+        """Get the integrated dataset from the adapter.
+        
+        Returns:
+            The integrated dataset, or None if not available
+        """
+        # Delegate to the pipeline
+        return self.config_manager.pipeline.get_dataset()
+    
+    def close(self) -> None:
         """Close resources used by the adapter."""
         self.logger.debug("Closing ConfigurationAdapter resources")
         # Close the pipeline, which will close all data sources

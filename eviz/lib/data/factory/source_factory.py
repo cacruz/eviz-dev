@@ -2,6 +2,7 @@
 Factory for creating data source instances.
 """
 
+# File: eviz/lib/data/factory/source_factory.py
 import os
 import logging
 from typing import Dict, Type, List, Optional
@@ -17,11 +18,7 @@ from .registry import DataSourceRegistry
 
 
 class DataSourceFactory:
-    """Factory for creating data source instances.
-    
-    This class provides methods to create appropriate data source instances
-    based on file extensions.
-    """
+    """Factory for creating data source instances."""
     
     def __init__(self, config_manager=None):
         """Initialize a new DataSourceFactory.
@@ -32,6 +29,8 @@ class DataSourceFactory:
         self.registry = DataSourceRegistry()
         self._register_default_data_sources()
         self.config_manager = config_manager
+        self.logger = logging.getLogger(__name__)
+    
     
     def _register_default_data_sources(self) -> None:
         """Register the default data source implementations."""

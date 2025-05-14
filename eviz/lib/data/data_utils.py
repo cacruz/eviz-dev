@@ -26,7 +26,7 @@ def apply_conversion(config, data2d, name):
         else:
             data2d = data2d * float(config.spec_data[name]['unitconversion'])
     # A user specifies units AND no unitconversion factor, in that case we use units module
-    elif 'units' in config.spec_data[name] and not 'unitconversion' in config.spec_data[name]:
+    elif 'units' in config.spec_data[name] and 'unitconversion' not in config.spec_data[name]:
         # If field name is a chemical species...
         if name in config.species_db.keys():
             data2d = config.units.convert_chem(data2d, name, config.spec_data[name]['units'])
