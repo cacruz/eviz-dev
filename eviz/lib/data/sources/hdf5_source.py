@@ -19,13 +19,14 @@ class HDF5DataSource(DataSource):
     This class handles loading and processing data from HDF5 files.
     """
     
-    def __init__(self, model_name: str = None):
+    def __init__(self, model_name: str = None, config_manager=None):
         """Initialize a new HDF5DataSource.
         
         Args:
             model_name: Name of the model this data source belongs to
+            config_manager: Configuration manager instance
         """
-        super().__init__(model_name)
+        super().__init__(model_name, config_manager)
         self.h5_file = None
     
     @property

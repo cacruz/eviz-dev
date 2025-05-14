@@ -18,13 +18,14 @@ class GRIBDataSource(DataSource):
     This class handles loading and processing data from GRIB files.
     """
     
-    def __init__(self, model_name: str = None):
+    def __init__(self, model_name: str = None, config_manager=None):
         """Initialize a new GRIBDataSource.
         
         Args:
             model_name: Name of the model this data source belongs to
+            config_manager: Configuration manager instance
         """
-        super().__init__(model_name)
+        super().__init__(model_name, config_manager)
     
     @property
     def logger(self) -> logging.Logger:
