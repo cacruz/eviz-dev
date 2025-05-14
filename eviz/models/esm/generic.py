@@ -1,3 +1,4 @@
+# File: eviz/models/esm/generic.py
 from dataclasses import dataclass
 import logging
 import warnings
@@ -33,938 +34,1199 @@ class Generic(Root):
         self.logger.info("Start init")
         super().__post_init__()
 
-    def _load_source_data(self, source_name, filename):
-        """Load data from the specified source and filename."""
-        # First, try to load from the specific file
-        reader = self.config_manager.get_reader_for_file(source_name, filename)
-        if reader:
-            try:
-                # Try the new data source interface first (load_data)
-                if hasattr(reader, 'load_data'):
-                    self.logger.debug(f"Using load_data method for {filename}")
-                    reader.load_data(filename)
-                    if hasattr(reader, 'dataset'):
-                        return {'vars': reader.dataset}
-                
-                # Fall back to the old reader interface (read_data)
-                if hasattr(reader, 'read_data'):
-                    self.logger.debug(f"Using read_data method for {filename}")
-                    source_data = reader.read_data(filename)
-                    if source_data:
-                        return source_data
-            except Exception as e:
-                self.logger.error(f"Error loading data from {filename}: {e}")
-        
-        # If that fails or if we need to combine data from multiple files
-        self.logger.info(f"Attempting to integrate data from multiple files for {source_name}")
-        integrated_data = self._integrate_datasets(source_name)
-        
-        if integrated_data:
-            # Convert xarray Dataset to the expected format
-            return {'vars': integrated_data}
-        
-        self.logger.error(f"Failed to load data for {source_name} from {filename}")
-        return None    
-
-    def _integrate_datasets(self, source_name, field_name=None):
+    def add_data_source(self, file_path, data_source):
         """
-        Integrate datasets from multiple files for a single source.
+        Add a data source to the model.
+        
+        This method is required by AbstractRoot but is now a no-op since data sources
+        are managed by the pipeline. It's kept for backward compatibility.
         
         Args:
-            source_name (str): The source name
-            field_name (str, optional): If provided, ensures this field exists in the result
+            file_path: Path to the data file
+            data_source: The data source to add
+        """
+        self.logger.warning("add_data_source is deprecated. Data sources are now managed by the pipeline.")
+        # No need to do anything, as data sources are managed by the pipeline
+
+    def get_data_source(self, file_path):
+        """
+        Get a data source from the model.
+        
+        This method is required by AbstractRoot but now delegates to the pipeline.
+        
+        Args:
+            file_path: Path to the data file
             
         Returns:
-            xr.Dataset: The integrated dataset or None if integration failed
+            The data source for the file path, or None if not found
         """
-        # Get all files for this source
-        file_paths = []
-        for file_idx, file_entry in self.config_manager.file_list.items():
-            if file_entry.get('source_name', None) == source_name:
-                file_paths.append(file_entry['filename'])
+        return self.config_manager.pipeline.get_data_source(file_path)
+
+    def load_data_sources(self):
+        """
+        Load data sources for the model.
         
-        # No files found
-        if not file_paths:
-            self.logger.warning(f"No files found for source {source_name}")
-            return None
-        
-        # Use the integrator to combine datasets
-        integrated_data = self.config_manager.integrator.integrate_datasets(source_name, file_paths)
-        
-        # Check if the requested field exists in the integrated dataset
-        if field_name and integrated_data is not None:
-            if field_name not in integrated_data:
-                self.logger.warning(f"Field {field_name} not found in integrated dataset")
-                return None
-        
-        return integrated_data
+        This method is required by AbstractRoot but is now a no-op since data sources
+        are loaded by the ConfigurationAdapter. It's kept for backward compatibility.
+        """
+        self.logger.warning("load_data_sources is deprecated. Data sources are now loaded by the ConfigurationAdapter.")
+        # No need to do anything, as data sources are loaded by the ConfigurationAdapter
+
+
+    # Removed _load_source_data and _integrate_datasets methods
+    # Data loading and integration are now handled by the DataPipeline
+    # and ConfigurationAdapter before the model's plot() method is called.
 
 
     # SIMPLE PLOTS METHODS (no SPECS file)
     #--------------------------------------------------------------------------
     def _simple_plots(self, plotter):
+        """Generate simple plots."""
+        self.logger.info("Generating simple plots")
         map_params = self.config_manager.map_params
         field_num = 0
-        self.config_manager.findex = 0
-        for i in map_params.keys():
-            field_name = map_params[i]['field']
-            source_name = map_params[i]['source_name']
-            filename = map_params[i]['filename']
-            file_index = self.config_manager.get_file_index(filename)
-            source_data = self._load_source_data(source_name, filename)
-            if field_name not in source_data['vars']:
+        # self.config_manager.findex = 0 # findex is set in _single_plots loop
+
+        # Access data sources via the pipeline
+        all_data_sources = self.config_manager.pipeline.get_all_data_sources()
+        if not all_data_sources:
+            self.logger.error("No data sources available for simple plotting.")
+            return
+
+        for i, params in map_params.items():
+            field_name = params.get('field')
+            if not field_name:
                 continue
-            self.config_manager.findex = file_index
+
+            filename = params.get('filename')
+            data_source = self.config_manager.pipeline.get_data_source(filename)
+
+            if not data_source or not hasattr(data_source, 'dataset') or data_source.dataset is None:
+                self.logger.warning(f"No data source or dataset found in pipeline for {filename}")
+                continue
+
+            if field_name not in data_source.dataset:
+                self.logger.warning(f"Field {field_name} not found in dataset for {filename}")
+                continue
+
+            # Update config_manager state variables before plotting
+            # Use the index from map_params as findex
+            self.config_manager.findex = i
             self.config_manager.pindex = field_num
             self.config_manager.axindex = 0
-            for pt in map_params[i]['to_plot']:
+
+            field_data_array = data_source.dataset[field_name]
+
+            for pt in params.get('to_plot', ['xy']): # Default to 'xy' if not specified
                 self.logger.info(f"Plotting {field_name}, {pt} plot")
-                field_to_plot = self._get_field_for_simple_plot(source_data, field_name, pt)
-                plotter.simple_plot(self.config_manager, field_to_plot)
+                # Pass the DataArray directly to the helper
+                field_to_plot = self._get_field_for_simple_plot(field_data_array, field_name, pt)
+                if field_to_plot:
+                    # The simple_plot method in SimplePlotter expects a tuple
+                    # (data2d, dim1, dim2, field_name, plot_type)
+                    plotter.simple_plot(self.config_manager, (*field_to_plot, pt))
             field_num += 1
 
+
     # Simple plots do not use configurations in SPECS file
-    def _get_field_for_simple_plot(self, model_data, field_name, plot_type):
-        d = model_data['vars']
+    def _get_field_for_simple_plot(self, data_array: xr.DataArray, field_name: str, plot_type: str) -> tuple:
+        """Prepare data for simple plots."""
+        if data_array is None:
+            return None
+
+        data2d = None
+        dim1_name, dim2_name = None, None
+
         if 'xy' in plot_type:
-            dim1 = self.config_manager.get_model_dim_name('xc')
-            dim2 = self.config_manager.get_model_dim_name('yc')
-            data2d = self._get_xy_simple(d, field_name, 0)
+            dim1_name = self.config_manager.get_model_dim_name('xc')
+            dim2_name = self.config_manager.get_model_dim_name('yc')
+            data2d = self._get_xy_simple(data_array, 0) # Assuming time_lev=0 for simple plots
         elif 'yz' in plot_type:
-            dim1 = self.config_manager.get_model_dim_name('yc')
-            dim2 = self.config_manager.get_model_dim_name('zc')
-            data2d = self._get_yz_simple(d, field_name)
+            dim1_name = self.config_manager.get_model_dim_name('yc')
+            dim2_name = self.config_manager.get_model_dim_name('zc')
+            data2d = self._get_yz_simple(data_array)
+        elif 'sc' in plot_type:
+             # Assuming scatter plots use lat/lon
+            dim1_name = self.config_manager.get_model_dim_name('xc')
+            dim2_name = self.config_manager.get_model_dim_name('yc')
+            data2d = data_array.squeeze() # Scatter plots usually don't need slicing
+        elif 'graph' in plot_type:
+             # Assuming graph data is the DataArray itself
+             data2d = data_array
+             dim1_name, dim2_name = None, None # Graph plots don't have standard dims
         else:
             self.logger.error(f'Plot type [{plot_type}] error: Either specify in SPECS file or create plot type.')
-            sys.exit()
-        coords = data2d.coords
-        return data2d, coords[dim1], coords[dim2], field_name, plot_type
-
-    def _get_xy_simple(self, d, name, level):
-        """ Extract XY slice from N-dim data field"""
-        if d is None:
-            return
-        data2d = d[name].squeeze()
-        # Hackish
-        if len(data2d.shape) == 4:
-            data2d = data2d.isel(time=0)
-        if len(data2d.shape) == 3:
-            if self.config_manager.get_model_dim_name('tc') in data2d.dims:
-                data2d = data2d.isel(time=0)
-            else:
-                data2d = data2d.isel(lev=0)
-        return data2d
-
-    def _get_yz_simple(self, d, name):
-        """ Create YZ slice from N-dim data field"""
-        if d is None:
-            return
-        data2d = d[name].squeeze()
-        if len(data2d.shape) == 4:
-            data2d = data2d.isel(time=0)
-        data2d = data2d.mean(dim=self.config_manager.get_model_dim_name('xc'))
-        return data2d
-
-    def _get_model_dim_name(self, source_name: str, dim_name: str):
-        try:
-            dim = self.config_manager.meta_coords[dim_name][source_name]
-            return dim
-        except KeyError:
             return None
+
+        if data2d is None:
+            return None
+
+        # Get coordinate DataArrays if dimension names were found
+        dim1_coords = data2d[dim1_name] if dim1_name and dim1_name in data2d.coords else None
+        dim2_coords = data2d[dim2_name] if dim2_name and dim2_name in data2d.coords else None
+
+        return data2d, dim1_coords, dim2_coords, field_name
+
+    def _get_xy_simple(self, data_array: xr.DataArray, time_level: int) -> xr.DataArray:
+        """ Extract XY slice from N-dim data field for simple plot"""
+        if data_array is None:
+            return None
+        data2d = data_array.squeeze()
+        # Hackish - select first time and level if they exist
+        if self.config_manager.get_model_dim_name('tc') in data2d.dims:
+             if data2d[self.config_manager.get_model_dim_name('tc')].size > time_level:
+                data2d = data2d.isel({self.config_manager.get_model_dim_name('tc'): time_level})
+             else:
+                 self.logger.warning(f"Time level {time_level} out of bounds for {data_array.name}")
+                 if data2d[self.config_manager.get_model_dim_name('tc')].size > 0:
+                     data2d = data2d.isel({self.config_manager.get_model_dim_name('tc'): 0})
+                 else:
+                     self.logger.warning(f"No time dimension found for {data_array.name}")
+
+        if self.config_manager.get_model_dim_name('zc') in data2d.dims:
+             if data2d[self.config_manager.get_model_dim_name('zc')].size > 0:
+                data2d = data2d.isel({self.config_manager.get_model_dim_name('zc'): 0})
+             else:
+                 self.logger.warning(f"No vertical dimension found for {data_array.name}")
+
+        return data2d
+
+    def _get_yz_simple(self, data_array: xr.DataArray) -> xr.DataArray:
+        """ Create YZ slice from N-dim data field for simple plot"""
+        if data_array is None:
+            return None
+        data2d = data_array.squeeze()
+        # Hackish - select first time if it exists
+        if self.config_manager.get_model_dim_name('tc') in data2d.dims:
+             if data2d[self.config_manager.get_model_dim_name('tc')].size > 0:
+                data2d = data2d.isel({self.config_manager.get_model_dim_name('tc'): 0})
+             else:
+                 self.logger.warning(f"No time dimension found for {data_array.name}")
+
+        # Compute zonal mean if longitude dimension exists
+        xc_dim = self.config_manager.get_model_dim_name('xc')
+        if xc_dim and xc_dim in data2d.dims:
+            data2d = data2d.mean(dim=xc_dim)
+        else:
+            self.logger.warning(f"Could not find longitude dimension '{xc_dim}' for zonal mean in {data_array.name}")
+
+        return data2d
+
+    # Removed _get_model_dim_name method - use config_manager.get_model_dim_name
+
 
     # SINGLE PLOTS METHODS (using SPECS file)
     #--------------------------------------------------------------------------
     def _single_plots(self, plotter):
         """Generate single plots for each source and field according to configuration."""
-        for source_idx, source_name in enumerate(self.config_manager.source_names):
-            # self.config_manager.config.ds_index = source_idx
-            self._process_source_fields(source_name, plotter)
+        self.logger.info("Generating single plots")
 
-        if self.config_manager.make_gif:
-            pu.create_gif(self.config_manager.config)
+        # Access data sources via the pipeline
+        all_data_sources = self.config_manager.pipeline.get_all_data_sources()
+        if not all_data_sources:
+            self.logger.error("No data sources available for single plotting.")
+            return
 
-    def _process_source_fields(self, source_name, plotter):
-        """Process all fields for a given source."""
-        field_num = 0
-        for param_key, param_config in self.config_manager.map_params.items():
-            if param_config['source_name'] != source_name:
+        # Iterate through map_params to generate plots
+        # Access map_params via config_manager
+        for idx, params in self.config_manager.map_params.items():
+            field_name = params.get('field')
+            if not field_name:
                 continue
 
-            field_name = param_config['field']
-            filename = param_config['filename']
+            filename = params.get('filename')
+            data_source = self.config_manager.pipeline.get_data_source(filename)
 
-            # Load source data
-            source_data = self._load_source_data(source_name, filename)
-            # if not source_data:
-            #     return
+            if not data_source or not hasattr(data_source, 'dataset') or data_source.dataset is None:
+                self.logger.warning(f"No data source or dataset found in pipeline for {filename}")
+                continue
 
-            # Update configuration
-            self.config_manager.findex = field_num
-            self.config_manager.pindex = field_num
-            self.config_manager.axindex = 0
+            if field_name not in data_source.dataset:
+                self.logger.warning(f"Field {field_name} not found in dataset for {filename}")
+                continue
 
-            for plot_type in param_config['to_plot']:
-                self._process_plot(source_data, field_name, field_num, plot_type, plotter)
+            # Update config_manager state variables before plotting
+            self.config_manager.findex = idx # Assuming idx corresponds to file index in map_params
+            self.config_manager.pindex = idx # Assuming idx corresponds to plot index
+            self.config_manager.axindex = 0 # Reset axis index for each plot
 
-            field_num += 1
+            field_data_array = data_source.dataset[field_name]
+            plot_type = params.get('to_plot', ['xy'])[0] # Default to 'xy' if not specified
 
-    def _process_plot(self, source_data, field_name, field_num, plot_type, plotter):
+            self._process_plot(field_data_array, field_name, idx, plot_type, plotter)
+
+        if self.config_manager.make_gif:
+            pu.create_gif(self.config_manager.config) # Still needs config object? Check pu.create_gif
+
+    # Removed _process_source_fields - logic moved into _single_plots
+
+    def _process_plot(self, data_array: xr.DataArray, field_name: str, file_index: int, plot_type: str, plotter):
         """Process a single plot type for a given field."""
         self.logger.info(f"Plotting {field_name}, {plot_type} plot")
-        figure = Figure.create_eviz_figure(self.config_manager, plot_type)  
+        figure = Figure.create_eviz_figure(self.config_manager, plot_type)
         self.config_manager.ax_opts = figure.init_ax_opts(field_name)
 
         if 'xy' in plot_type or 'po' in plot_type:
-            self._process_xy_plot(source_data, field_name, field_num, plot_type,
+            self._process_xy_plot(data_array, field_name, file_index, plot_type,
                                   figure, plotter)
         else:
-            self._process_other_plot(source_data, field_name, field_num, plot_type,
+            self._process_other_plot(data_array, field_name, file_index, plot_type,
                                      figure, plotter)
 
-    def _process_xy_plot(self, source_data, field_name, field_num, plot_type, figure, plotter):
+    def _process_xy_plot(self, data_array: xr.DataArray, field_name: str, file_index: int, plot_type: str, figure, plotter):
         """Process xy or polar plot types."""
         # Get vertical levels to process
         levels = self.config_manager.get_levels(field_name, plot_type + 'plot')
-        do_zsum = self.config_manager.ax_opts['zsum']
+        do_zsum = self.config_manager.ax_opts.get('zsum', False) # Use .get with default
+
         # Get time levels to process
-        time_level = self.config_manager.ax_opts['time_lev']
-        num_times = 1 if time_level != 'all' else np.size(source_data['vars'][field_name].time)
-        time_levels = range(num_times)
+        time_level_config = self.config_manager.ax_opts.get('time_lev', 0) # Default to 0
+        tc_dim = self.config_manager.get_model_dim_name('tc') or 'time' # Default to 'time'
+        num_times = data_array[tc_dim].size if tc_dim in data_array.dims else 1
+        time_levels = range(num_times) if time_level_config == 'all' else [time_level_config]
 
         if not levels and not do_zsum:
             self.logger.warning(f' -> No levels specified for {field_name}')
             return
 
         if levels:
-            self._process_level_plots(source_data, field_name, field_num, plot_type,
+            self._process_level_plots(data_array, field_name, file_index, plot_type,
                                       figure, time_levels, levels, plotter)
         else:
-            self._process_zsum_plots(source_data, field_name, field_num, plot_type,
+            self._process_zsum_plots(data_array, field_name, file_index, plot_type,
                                      figure, time_levels, plotter)
 
-    def _process_level_plots(self, source_data, field_name, field_num, plot_type, figure,
-                             time_levels, levels, plotter):
+    def _process_level_plots(self, data_array: xr.DataArray, field_name: str, file_index: int, plot_type: str, figure,
+                            time_levels: list, levels: dict, plotter):
         """Process plots for specific vertical levels."""
         self.logger.info(f' -> Processing {len(time_levels)} time levels')
-        for level in levels.keys():
-            self.config_manager.level = level
+        zc_dim = self.config_manager.get_model_dim_name('zc') or 'lev' # Default to 'lev'
+        tc_dim = self.config_manager.get_model_dim_name('tc') or 'time' # Default to 'time'
+
+        # Check if the vertical dimension exists in the data
+        has_vertical_dim = zc_dim and zc_dim in data_array.dims
+        
+        for level_val in levels.keys(): # Iterate through level values
+            self.config_manager.level = level_val
             for t in time_levels:
-                self._set_time_config(t, source_data['vars'][field_name])
- 
+                # Select time level
+                if tc_dim in data_array.dims:
+                    data_at_time = data_array.isel({tc_dim: t})
+                else:
+                    data_at_time = data_array.squeeze() # Assume single time if no time dim
+
+                self._set_time_config(t, data_at_time)
+
                 # Create a new figure for each level to avoid reusing axes
+                # Pass config_manager to Figure
                 figure = Figure.create_eviz_figure(self.config_manager, plot_type)
                 self.config_manager.ax_opts = figure.init_ax_opts(field_name)
 
                 ax = figure.get_axes()
-                field_to_plot = self._get_field_to_plot(ax, source_data, field_name,
-                                                        field_num, plot_type, figure, t,
-                                                        level=level)
+                
+                # If the data doesn't have a vertical dimension, we can't select a level
+                # In this case, we'll just use the data as is
+                if not has_vertical_dim:
+                    self.logger.warning(f"Data for {field_name} doesn't have a vertical dimension. Using data as is.")
+                    field_to_plot = self._get_field_to_plot(ax, data_at_time, field_name,
+                                                        file_index, plot_type, figure, t)
+                else:
+                    # Pass the data array slice and level value
+                    field_to_plot = self._get_field_to_plot(ax, data_at_time, field_name,
+                                                        file_index, plot_type, figure, t,
+                                                        level=level_val)
 
-                plotter.single_plots(self.config_manager, field_to_plot=field_to_plot,
-                                     level=level)
+                if field_to_plot:
+                    plotter.single_plots(self.config_manager, field_to_plot=field_to_plot,
+                                        level=level_val)
 
-                pu.print_map(self.config_manager, plot_type, self.config_manager.findex, figure,
-                             level=level)
+                    pu.print_map(self.config_manager, plot_type, self.config_manager.findex, figure,
+                                level=level_val)
 
-    def _process_zsum_plots(self, source_data, field_name, field_num, plot_type, figure,
-                            time_levels, plotter):
-        """Process plots with vertical summation."""
-        self.config_manager.level = None
-        for t in time_levels:
-            self._set_time_config(t, source_data['vars'][field_name])
-            field_to_plot = self._get_field_to_plot(source_data, field_name, field_num,
-                                                    plot_type, figure, t)
-            plotter.single_plots(self.config_manager, field_to_plot=field_to_plot)
-            pu.print_map(self.config_manager, plot_type, self.config_manager.findex, figure)
-
-    def _process_other_plot(self, source_data, field_name, field_num, plot_type, figure,
+    def _process_other_plot(self, data_array: xr.DataArray, field_name: str, file_index: int, plot_type: str, figure,
                             plotter):
         """Process non-xy and non-po plot types."""
         self.config_manager.level = None
         # Get time levels to process
-        time_level = self.config_manager.ax_opts['time_lev']
- 
-        # TODO: Handle yx_plot Gifs
-        num_times = 1 if time_level != 'all' else np.size(source_data['vars'][field_name].time)
-        time_levels = range(num_times)
+        time_level_config = self.config_manager.ax_opts.get('time_lev', 0) # Default to 0
+        tc_dim = self.config_manager.get_model_dim_name('tc') or 'time' # Default to 'time'
+        
+        # Check if time dimension exists
+        if tc_dim in data_array.dims:
+            num_times = data_array[tc_dim].size
+            # TODO: Handle yx_plot Gifs
+            time_levels = range(num_times) if time_level_config == 'all' else [time_level_config]
+        else:
+            self.logger.warning(f"No time dimension found in data for {field_name}. Using single time level.")
+            time_levels = [0]
 
         ax = figure.get_axes()
-        field_to_plot = self._get_field_to_plot(ax, source_data, field_name, field_num,
-                                                plot_type, figure, time_level=time_level)
-        plotter.single_plots(self.config_manager, field_to_plot=field_to_plot)
-        pu.print_map(self.config_manager, plot_type, self.config_manager.findex, figure)
+        # Assuming these plot types (xt, tx) might not need time slicing here,
+        # or slicing is handled within _get_field_to_plot
+        # Pass the full data_array and let _get_field_to_plot handle slicing if needed
+        field_to_plot = self._get_field_to_plot(ax, data_array, field_name, file_index,
+                                                plot_type, figure, time_level=time_level_config)
+        if field_to_plot:
+            plotter.single_plots(self.config_manager, field_to_plot=field_to_plot)
+            pu.print_map(self.config_manager, plot_type, self.config_manager.findex, figure)
 
-    def _get_field_to_plot(self, ax, source_data, field_name, file_index, 
-                        plot_type, figure, time_level, level=None) -> tuple:
-        # Try to get the field from source_data
-        if source_data and 'vars' in source_data and field_name in source_data['vars']:
-            # Use existing data
-            dim1, dim2 = self.config_manager.get_dim_names(plot_type)
-            data2d = None
-            if 'yz' in plot_type:
-                data2d = self._get_yz(source_data, field_name, time_lev=time_level)
-            elif 'xt' in plot_type:
-                data2d = self._get_xt(source_data, field_name, time_lev=time_level)
-            elif 'tx' in plot_type:
-                data2d = self._get_tx(source_data, field_name, level=None, time_lev=time_level)
-            elif 'xy' in plot_type or 'polar' in plot_type:
-                data2d = self._get_xy(source_data, field_name, level=level, time_lev=time_level)
+
+    def _process_zsum_plots(self, data_array: xr.DataArray, field_name: str, file_index: int, plot_type: str, figure,
+                            time_levels: list, plotter):
+        """Process plots with vertical summation."""
+        self.config_manager.level = None
+        tc_dim = self.config_manager.get_model_dim_name('tc') or 'time' # Default to 'time'
+        zc_dim = self.config_manager.get_model_dim_name('zc') or 'lev' # Default to 'lev'
+
+        # Check if vertical dimension exists
+        if not zc_dim or zc_dim not in data_array.dims:
+            self.logger.warning(f"Cannot perform vertical summation: no vertical dimension found in data for {field_name}")
+            # Just use the data as is
+            data_array = data_array.squeeze()
+        
+        for t in time_levels:
+            # Select time level if time dimension exists
+            if tc_dim in data_array.dims:
+                data_at_time = data_array.isel({tc_dim: t})
             else:
-                pass
+                self.logger.warning(f"No time dimension found in data for {field_name}. Using data as is.")
+                data_at_time = data_array.squeeze() # Assume single time if no time dim
+
+            self._set_time_config(t, data_at_time)
+            field_to_plot = self._get_field_to_plot(None, data_at_time, field_name, # Pass None for ax initially
+                                                    file_index, plot_type, figure, t)
+            if field_to_plot:
+                plotter.single_plots(self.config_manager, field_to_plot=field_to_plot)
+                pu.print_map(self.config_manager, plot_type, self.config_manager.findex, figure)
+
+    def _get_field_to_plot(self, ax, data_array: xr.DataArray, field_name: str,
+                        file_index: int, plot_type: str, figure, time_level, level=None) -> tuple:
+        """Prepare the data array and coordinates for plotting."""
+        if data_array is None:
+            self.logger.error(f"No data array provided for field {field_name}")
+            return None
+
+        dim1_name, dim2_name = self.config_manager.get_dim_names(plot_type)
+        data2d = None
+
+        # Apply slicing and processing based on plot type
+        if 'yz' in plot_type:
+            data2d = self._get_yz(data_array, time_lev=time_level)
+        elif 'xt' in plot_type:
+            data2d = self._get_xt(data_array, time_lev=time_level)
+        elif 'tx' in plot_type:
+            data2d = self._get_tx(data_array, level=level, time_lev=time_level)
+        elif 'xy' in plot_type or 'polar' in plot_type:
+            data2d = self._get_xy(data_array, level=level, time_lev=time_level)
         else:
-            # Try to get the field from any available source using the integrator
-            self.logger.info(f"Field {field_name} not found in primary data source. Trying other sources...")
-            source_name = self.config_manager.source_names[self.config_manager.ds_index]
-            data_array = self.config_manager.integrator.get_variable_from_any_source(source_name, field_name)
-            
-            if data_array is not None:
-                # Process the data array based on plot type
-                dim1, dim2 = self.config_manager.get_dim_names(plot_type)
-                data2d = data_array
-                
-                # Further processing based on plot type...
-                if 'yz' in plot_type:
-                    data2d = data_array.mean(dim=self.config_manager.get_model_dim_name('xc'))
-                elif 'xt' in plot_type:
-                    # Process for xt plot
-                    pass
-                elif 'tx' in plot_type:
-                    # Process for tx plot
-                    pass
-                elif 'xy' in plot_type or 'polar' in plot_type:
-                    # Process for xy or polar plot
-                    if level is not None:
-                        data2d = data_array.sel(lev=level)
-                
-                # Apply any necessary conversions
-                data2d = self._apply_conversions(data2d, field_name)
-            else:
-                self.logger.error(f"Field {field_name} not found in any data source")
-                return None
-        
+            self.logger.warning(f"Unsupported plot type for _get_field_to_plot: {plot_type}")
+            return None
+
+        if data2d is None:
+            self.logger.error(f"Failed to prepare 2D data for field {field_name}, plot type {plot_type}")
+            return None
+
+        x_values = None
+        y_values = None
         if 'xt' in plot_type or 'tx' in plot_type:
-            return data2d, None, None, field_name, plot_type, file_index, figure, ax
-        
-        # Check if the standard dimension names (lon, lat) exist in the dataset
-        # If not, try to use the actual coordinate names in the dataset
-        try:
-            x_values = data2d[dim1].values
-            y_values = data2d[dim2].values
-        except KeyError:
-            # Try to find the actual coordinate names in the dataset
-            self.logger.info(f"Dimension names {dim1} and/or {dim2} not found in dataset. Trying to find actual coordinate names.")
-            
-            # Get all coordinate names
-            coord_names = list(data2d.coords.keys())
-            self.logger.info(f"Available coordinates: {coord_names}")
-            
-            # Try to find x and y coordinates
-            x_coord = None
-            y_coord = None
-            
-            # Look for common x coordinate names
-            for name in ['xc', 'lon', 'longitude', 'x']:
-                if name in coord_names:
-                    x_coord = name
-                    break
-            
-            # Look for common y coordinate names
-            for name in ['yc', 'lat', 'latitude', 'y']:
-                if name in coord_names:
-                    y_coord = name
-                    break
-            
-            if x_coord and y_coord:
-                self.logger.info(f"Using coordinates {x_coord} and {y_coord} instead of {dim1} and {dim2}")
-                x_values = data2d[x_coord].values
-                y_values = data2d[y_coord].values
-            else:
-                self.logger.error(f"Could not find suitable coordinates in dataset")
-                # Fall back to using the first two dimensions as x and y
+            # For time-series or Hovmoller plots, coordinates are handled differently
+            # The plotter functions for these types will need to extract them from data2d
+            pass
+        else:
+            # For 2D spatial plots (xy, yz, polar, sc), get the coordinate DataArrays
+            try:
+                # Use the determined dimension names
+                if dim1_name and dim1_name in data2d.coords:
+                    x_values = data2d[dim1_name]
+                else:
+                    self.logger.warning(f"Dimension '{dim1_name}' not found in data coordinates for {field_name}")
+
+                if dim2_name and dim2_name in data2d.coords:
+                    y_values = data2d[dim2_name]
+                else:
+                    self.logger.warning(f"Dimension '{dim2_name}' not found in data coordinates for {field_name}")
+
+            except KeyError as e:
+                self.logger.error(f"Error getting coordinates for {field_name}: {e}")
+                # Fallback: try to use the first two dimensions as coordinates
                 dims = list(data2d.dims)
                 if len(dims) >= 2:
-                    self.logger.info(f"Falling back to using dimensions {dims[0]} and {dims[1]}")
-                    x_values = data2d[dims[0]].values
-                    y_values = data2d[dims[1]].values
+                    self.logger.warning(f"Falling back to using dimensions {dims[0]} and {dims[1]} as coordinates")
+                    x_values = data2d[dims[0]]
+                    y_values = data2d[dims[1]]
                 else:
-                    self.logger.error(f"Dataset has fewer than 2 dimensions, cannot plot")
+                    self.logger.error("Dataset has fewer than 2 dimensions, cannot plot spatial data")
                     return None
-        
+                    
+            # check for and handle NaN values
+            if np.isnan(data2d.values).all():
+                self.logger.error(f"All values are NaN for {field_name}. Using original data.")
+                data2d = data_array.squeeze()
+            elif np.isnan(data2d.values).any():
+                self.logger.warning(f"Some NaN values present ({np.sum(np.isnan(data2d.values))} NaNs). Filling with zeros.")
+                data2d = data2d.fillna(0)
+
+        # Return the prepared data and coordinates in the expected tuple format
         return data2d, x_values, y_values, field_name, plot_type, file_index, figure, ax
 
     # COMPARE_DIFF METHODS (always need SPECS file)
     #--------------------------------------------------------------------------
     def _comparison_plots(self, plotter):
         """Generate comparison plots for paired data sources according to configuration."""
+        self.logger.info("Generating comparison plots")
         current_field_index = 0
+
+        # Access data sources via the pipeline
+        all_data_sources = self.config_manager.pipeline.get_all_data_sources()
+        if not all_data_sources:
+            self.logger.error("No data sources available for comparison plotting.")
+            return
 
         # map1 and map2 are indices, not maps
         for idx1, idx2 in zip(self.config_manager.a_list, self.config_manager.b_list):
             # Get map parameters for these indices
-            map1 = self.config_manager.config.map_params[idx1]
-            map2 = self.config_manager.config.map_params[idx2]
+            map1_params = self.config_manager.map_params.get(idx1)
+            map2_params = self.config_manager.map_params.get(idx2)
 
-            # Load data from both sources
-            source_data_pair = self._load_comparison_data(map1, map2)
-            if not source_data_pair:
+            if not map1_params or not map2_params:
+                self.logger.warning(f"Could not find map parameters for indices {idx1} or {idx2}. Skipping comparison.")
                 continue
 
-            sdat1, sdat2 = source_data_pair
-            sdat = (sdat1, sdat2)
+            # Get data sources from the pipeline
+            filename1 = map1_params.get('filename')
+            filename2 = map2_params.get('filename')
 
-            # Determine file indices
-            source_name1, source_name2 = map1['source_name'], map2['source_name']
-            filename1, filename2 = map1['filename'], map2['filename']
-            file_indices = self._get_file_indices_compare(source_name1, source_name2, filename1,
-                                                filename2)
+            data_source1 = self.config_manager.pipeline.get_data_source(filename1)
+            data_source2 = self.config_manager.pipeline.get_data_source(filename2)
+
+            if not data_source1 or not data_source2:
+                self.logger.warning(f"Could not find data sources for {filename1} or {filename2}. Skipping comparison.")
+                continue
+
+            # Get the actual datasets
+            sdat1_dataset = data_source1.dataset if hasattr(data_source1, 'dataset') else None
+            sdat2_dataset = data_source2.dataset if hasattr(data_source2, 'dataset') else None
+
+            if sdat1_dataset is None or sdat2_dataset is None:
+                 self.logger.warning(f"Datasets not loaded for {filename1} or {filename2}. Skipping comparison.")
+                 continue
+
+            # Determine file indices (these are the indices in app_data.inputs)
+            # The config_manager already provides a_list and b_list which are these indices
+            file_indices = (idx1, idx2)
+
             # Process each plot type
-            field_name1, field_name2 = map1['field'], map2['field']
+            field_name1 = map1_params.get('field')
+            field_name2 = map2_params.get('field')
+
+            if not field_name1 or not field_name2:
+                self.logger.warning(f"Field names not specified for comparison indices {idx1} or {idx2}. Skipping.")
+                continue
+
             self.field_names = (field_name1, field_name2)
 
-            for pt1, pt2 in zip(map1['to_plot'], map2['to_plot']):
-                plot_type = pt1  # Using the first plot type
+            # Assuming plot types are the same for comparison
+            plot_types = map1_params.get('to_plot', ['xy'])
+            for plot_type in plot_types:
                 self.logger.info(
                     f"Plotting {field_name1} vs {field_name2}, {plot_type} plot")
-                self.data2d_list = []
+                self.data2d_list = [] # Reset for each plot type
 
+                # Pass the datasets to the processing method
                 if 'xy' in plot_type or 'po' in plot_type:
                     self._process_xy_comparison_plots(plotter, file_indices,
                                                     current_field_index,
                                                     field_name1, field_name2, plot_type,
-                                                    sdat1, sdat2, sdat)
+                                                    sdat1_dataset, sdat2_dataset)
                 else:
                     self._process_other_comparison_plots(plotter, file_indices,
-                                                    current_field_index,
-                                                    field_name1, field_name2,
-                                                    plot_type, sdat1, sdat2, sdat)
+                                                    current_field_index,\
+                                                    field_name1, field_name2,\
+                                                    plot_type, sdat1_dataset, sdat2_dataset)
 
             current_field_index += 1
 
-    def _load_comparison_data(self, map1, map2):
-        """Load data from both sources for comparison."""
-        source_name1, source_name2 = map1['source_name'], map2['source_name']
-        filename1, filename2 = map1['filename'], map2['filename']
+    # Removed _load_comparison_data - data is accessed from the pipeline
+    # Removed _get_file_indices_compare - indices are provided by config_manager.a_list and b_list
 
-        # Read data from files to be compared using appropriate readers
-        reader1 = self.config_manager.get_reader_for_file(source_name1, filename1)
-        reader2 = self.config_manager.get_reader_for_file(source_name2, filename2)
-        
-        if not reader1 or not reader2:
-            self.logger.error("No suitable readers found")
-            sys.exit()
-        
-        # Load data from the first reader
-        sdat1 = None
-        try:
-            # Try the new data source interface first (load_data)
-            if hasattr(reader1, 'load_data'):
-                self.logger.debug(f"Using load_data method for {filename1}")
-                reader1.load_data(filename1)
-                if hasattr(reader1, 'dataset'):
-                    sdat1 = {'vars': reader1.dataset}
-            
-            # Fall back to the old reader interface (read_data)
-            if not sdat1 and hasattr(reader1, 'read_data'):
-                self.logger.debug(f"Using read_data method for {filename1}")
-                sdat1 = reader1.read_data(filename1)
-        except Exception as e:
-            self.logger.error(f"Error loading data from {filename1}: {e}")
-        
-        # Load data from the second reader
-        sdat2 = None
-        try:
-            # Try the new data source interface first (load_data)
-            if hasattr(reader2, 'load_data'):
-                self.logger.debug(f"Using load_data method for {filename2}")
-                reader2.load_data(filename2)
-                if hasattr(reader2, 'dataset'):
-                    sdat2 = {'vars': reader2.dataset}
-            
-            # Fall back to the old reader interface (read_data)
-            if not sdat2 and hasattr(reader2, 'read_data'):
-                self.logger.debug(f"Using read_data method for {filename2}")
-                sdat2 = reader2.read_data(filename2)
-        except Exception as e:
-            self.logger.error(f"Error loading data from {filename2}: {e}")
-
-        if not sdat1 or not sdat2:
-            self.logger.error("Cannot continue - failed to load data from one or both sources")
-            sys.exit()
-
-        return sdat1, sdat2
-    
-    def _get_file_indices_compare(self, source_name1, source_name2, filename1, filename2):
-        """Determine file indices for comparison."""
-        if source_name1 == source_name2:
-            return 0, 1  # Same data source
-        else:
-            # Change from self.config.get_comp_file_index to self.config_manager.get_file_index or similar
-            file_index1 = self.config_manager.get_file_index(filename1)
-            file_index2 = self.config_manager.get_file_index(filename2)
-            return file_index1, file_index2
-        
-    def _process_xy_comparison_plots(self, plotter, file_indices, current_field_index,
-                                     field_name1, field_name2, plot_type, sdat1, sdat2,
-                                     sdat):
+    def _process_xy_comparison_plots(self, plotter, file_indices: tuple, current_field_index: int,\
+                                     field_name1: str, field_name2: str, plot_type: str,\
+                                     sdat1_dataset: xr.Dataset, sdat2_dataset: xr.Dataset):
         """Process comparison plots for xy or polar plot types."""
         file_index1, file_index2 = file_indices
         nrows, ncols = self.config_manager.input_config._comp_panels
 
-        # Get levels for the plots
+        # Get levels for the plots (assuming levels are the same for both fields in comparison)
         levels = self.config_manager.get_levels(field_name1, plot_type + 'plot')
         if not levels:
             self.logger.warning(f' -> No levels specified for {field_name1}')
             return
 
-        for level in levels:
-            figure = Figure.create_eviz_figure(self.config_manager, plot_type, nrows=nrows, ncols=ncols)  
-            # ax = figure.get_axes()
-            ax = figure.get_fig_ax()
-            axes_shape = figure.get_gs_geometry()
-            self.config_manager.level = level
+        for level_val in levels.keys(): # Iterate through level values
+            # Create a figure with appropriate subplots
+            figure = Figure.create_eviz_figure(self.config_manager, plot_type, nrows=nrows, ncols=ncols)
+            ax = figure.get_fig_ax() # Get the figure and axes array
+            axes_shape = figure.get_gs_geometry() # Get the grid spec geometry
+            self.config_manager.level = level_val
 
+            # Pass the datasets and level value to the creation methods
             if axes_shape == (3, 1):
                 self._create_3x1_comparison_plot(plotter, file_indices,
                                                  current_field_index,
                                                  field_name1, field_name2, figure, ax,
-                                                 plot_type, sdat1, sdat2, sdat, level)
+                                                 plot_type, sdat1_dataset, sdat2_dataset, level_val)
             elif axes_shape == (2, 2):
                 self._create_2x2_comparison_plot(plotter, file_indices,
                                                  current_field_index,
-                                                 field_name1, field_name2, figure,
-                                                 plot_type, sdat1, sdat2, sdat, level)
+                                                 field_name1, field_name2, figure, ax, # Pass ax here
+                                                 plot_type, sdat1_dataset, sdat2_dataset, level_val)
 
-            # # Set findex to file_index1 before calling print_map
-            # self.config_manager.config._findex = file_index1
-            # pu.print_map(self.config_manager, plot_type, self.config_manager.config._findex, figure, level=level)
-            self.comparison_plot = False
+            # Save the plot
+            # Set findex to file_index1 before calling print_map
+            self.config_manager.findex = file_index1
+            pu.print_map(self.config_manager, plot_type, self.config_manager.findex, figure, level=level_val)
+            self.comparison_plot = False # Reset comparison flag
 
-    def _process_other_comparison_plots(self, plotter, file_indices, current_field_index,
-                                        field_name1, field_name2, plot_type, sdat1, sdat2,
-                                        sdat):
+
+    def _process_other_comparison_plots(self, plotter, file_indices: tuple, current_field_index: int,
+                                        field_name1: str, field_name2: str, plot_type: str,
+                                        sdat1_dataset: xr.Dataset, sdat2_dataset: xr.Dataset):
         """Process comparison plots for other plot types."""
         file_index1, file_index2 = file_indices
         nrows, ncols = self.config_manager.input_config._comp_panels
 
         figure = Figure.create_eviz_figure(self.config_manager, plot_type, nrows=nrows, ncols=ncols)  
-        axes_shape = figure.subplots
-        ax = figure.get_axes()
+        ax = figure.get_fig_ax()
+        axes_shape = figure.get_gs_geometry()
         self.config_manager.level = None
 
         if axes_shape == (3, 1):
             self._create_3x1_comparison_plot(plotter, file_indices, current_field_index,
-                                             field_name1, field_name2, figure, ax,
-                                             plot_type, sdat1, sdat2, sdat)
+                                            field_name1, field_name2, figure, ax,
+                                            plot_type, sdat1_dataset, sdat2_dataset)
         elif axes_shape == (2, 2):
             self._create_2x2_comparison_plot(plotter, file_indices, current_field_index,
-                                             field_name1, field_name2, figure,
-                                             plot_type, sdat1, sdat2, sdat)
+                                            field_name1, field_name2, figure, ax,
+                                            plot_type, sdat1_dataset, sdat2_dataset)
+
+        # Save the plot
+        # Set findex to file_index1 before calling print_map
+        self.config_manager.findex = file_index1
+        pu.print_map(self.config_manager, plot_type, self.config_manager.findex, figure)
+        self.comparison_plot = False # Reset comparison flag
 
 
     def _create_3x1_comparison_plot(self, plotter, file_indices, current_field_index,
                                     field_name1, field_name2, figure, ax,
-                                    plot_type, sdat1, sdat2, sdat, level=None):
+                                    plot_type, sdat1_dataset, sdat2_dataset, level=None):
         """Create a 3x1 comparison plot."""
         file_index1, file_index2 = file_indices
 
         # Plot the first dataset
         self._process_comparison_plot(plotter, file_index1, current_field_index,
-                                      field_name1,
-                                      figure, ax, 0, sdat1, plot_type, level=level)
+                                    field_name1, figure, ax, 0, 
+                                    sdat1_dataset[field_name1], plot_type, level=level)
 
         # Plot the second dataset
         self._process_comparison_plot(plotter, file_index2, current_field_index,
-                                      field_name2,
-                                      figure, ax, 1, sdat2, plot_type, level=level)
+                                    field_name2, figure, ax, 1, 
+                                    sdat2_dataset[field_name2], plot_type, level=level)
 
-        # Plot the comparison
+        # Plot the comparison (difference)
         self.comparison_plot = True
+        # For the comparison, we need to pass both datasets
+        # The _process_comparison_plot method will need to handle this special case
         self._process_comparison_plot(plotter, file_index1, current_field_index,
-                                      field_name1,
-                                      figure, ax, 2, sdat, plot_type, level=level)
+                                    field_name1, figure, ax, 2, 
+                                    (sdat1_dataset[field_name1], sdat2_dataset[field_name2]), 
+                                    plot_type, level=level)
+
 
     def _create_2x2_comparison_plot(self, plotter, file_indices, current_field_index,
-                                    field_name1, field_name2, figure,
-                                    plot_type, sdat1, sdat2, sdat, level=None):
+                                    field_name1, field_name2, figure, ax,
+                                    plot_type, sdat1_dataset, sdat2_dataset, level=None):
         """Create a 2x2 comparison plot."""
         file_index1, file_index2 = file_indices
 
         # Plot the first dataset in the top-left
         self._process_comparison_plot_2x2(plotter, file_index1, current_field_index,
-                                          field_name1,
-                                          figure, [0, 0], 0, sdat1, plot_type,
-                                          level=level)
+                                        field_name1, figure, [0, 0], 0, 
+                                        sdat1_dataset[field_name1], plot_type,
+                                        level=level)
 
         # Plot the second dataset in the top-right
         self._process_comparison_plot_2x2(plotter, file_index2, current_field_index,
-                                          field_name2,
-                                          figure, [0, 1], 1, sdat2, plot_type,
-                                          level=level)
+                                        field_name2, figure, [0, 1], 1, 
+                                        sdat2_dataset[field_name2], plot_type,
+                                        level=level)
 
         # Plot comparison in the bottom row
         self.comparison_plot = True
+        # For the comparison, we need to pass both datasets
         self._process_comparison_plot_2x2(plotter, file_index1, current_field_index,
-                                          field_name1,
-                                          figure, [1, 0], 2, sdat, plot_type, level=level)
-        self._process_comparison_plot_2x2(plotter, file_index1, current_field_index,
-                                          field_name1,
-                                          figure, [1, 1], 2, sdat, plot_type, level=level)
+                                        field_name1, figure, [1, 0], 2, 
+                                        (sdat1_dataset[field_name1], sdat2_dataset[field_name2]), 
+                                        plot_type, level=level)
+        
+        # If extra field type is enabled, plot another comparison view
+        if self.config_manager.ax_opts.get('add_extra_field_type', False):
+            self._process_comparison_plot_2x2(plotter, file_index1, current_field_index,
+                                            field_name1, figure, [1, 1], 3, 
+                                            (sdat1_dataset[field_name1], sdat2_dataset[field_name2]), 
+                                            plot_type, level=level)
 
-    def _process_comparison_plot(self, plotter, file_index, current_field_index, field_name, figure, ax, ax_index,
-                           source_data, pt, level=None):
+
+    def _process_comparison_plot(self, plotter, file_index, current_field_index, field_name, 
+                            figure, ax, ax_index, data_array, plot_type, level=None):
         """Process a comparison plot."""
-        # Set findex on the config object instead of directly on config_manager
-        self.config_manager.config.findex = file_index
+        # Set state variables on config_manager
+        self.config_manager.findex = file_index
         self.config_manager.pindex = current_field_index
         self.config_manager.axindex = ax_index
         self.config_manager.ax_opts = figure.init_ax_opts(field_name)
-        figure.set_ax_opts_diff_field(ax[ax_index])
         
-        # Handle source_data differently based on its type
-        if isinstance(source_data, tuple):
-            # If source_data is a tuple (from comparison plots), use it directly
-            field_to_plot = self._get_field_to_plot_compare(source_data, field_name, file_index,
-                                                        pt, figure, level=level)
+        # Set difference field flag if this is the comparison panel
+        if ax_index == 2:  # Third panel in 3x1 layout is the difference
+            self.config_manager.ax_opts['is_diff_field'] = True
+        
+        # Set up the axis
+        if isinstance(ax, tuple):
+            fig, axes = ax
+            current_ax = axes[ax_index]
         else:
-            # Check if we have the field in the source data
-            if source_data and 'vars' in source_data and field_name in source_data['vars']:
-                field_to_plot = self._get_field_to_plot_compare(source_data, field_name, file_index,
-                                                            pt, figure, level=level)
-            else:
-                # Try to integrate data from multiple sources
-                source_name = self.config_manager.file_list[file_index].get('source_name')
-                if source_name:
-                    integrated_data = self._integrate_datasets(source_name, field_name)
-                    if integrated_data:
-                        source_data = {'vars': integrated_data}
-                        field_to_plot = self._get_field_to_plot_compare(source_data, field_name, file_index,
-                                                                    pt, figure, level=level)
-                    else:
-                        self.logger.error(f"Failed to load integrated data for {field_name}")
-                        return
-                else:
-                    self.logger.error(f"No source name found for file index {file_index}")
-                    return
+            current_ax = ax[ax_index]
         
-        plotter.comparison_plots(self.config_manager, field_to_plot, level=level)
-        pu.print_map(self.config_manager, pt, file_index, figure, level=level)
+        figure.set_ax_opts_diff_field(current_ax)
+        
+        # Handle data_array differently based on its type
+        if isinstance(data_array, tuple):
+            # If data_array is a tuple (from comparison plots), it contains both datasets
+            # We need to prepare the difference field
+            data1, data2 = data_array
+            
+            # Prepare each field individually first
+            field_to_plot1 = self._get_field_to_plot_compare(data1, field_name, file_index,
+                                                        plot_type, figure, level=level)
+            field_to_plot2 = self._get_field_to_plot_compare(data2, field_name, file_index,
+                                                        plot_type, figure, level=level)
+            
+            # Now compute the difference
+            # This assumes _get_field_to_plot_compare returns a tuple where the first element is the data array
+            if field_to_plot1 and field_to_plot2:
+                data2d1, x1, y1 = field_to_plot1[0], field_to_plot1[1], field_to_plot1[2]
+                data2d2, x2, y2 = field_to_plot2[0], field_to_plot2[1], field_to_plot2[2]
+                
+                # Store both data arrays for potential regridding
+                self.data2d_list = [data2d1, data2d2]
+                
+                # Create the field_to_plot tuple for the difference
+                # The Interp class will handle regridding if needed
+                proc = Interp(self.config_manager, self.data2d_list)
+                diff_data, diff_x, diff_y = proc.regrid(plot_type)
+                
+                field_to_plot = (diff_data, diff_x, diff_y, field_name, plot_type, 
+                                file_index, figure, current_ax)
+            else:
+                self.logger.error(f"Could not prepare data for comparison plot")
+                return
+        else:
+            # Regular single dataset case
+            field_to_plot = self._get_field_to_plot_compare(data_array, field_name, file_index,
+                                                        plot_type, figure, ax=current_ax, level=level)
+            # Store the data for potential later use in difference calculation
+            if field_to_plot:
+                self.data2d_list.append(field_to_plot[0])
+        
+        # Call the plotter with the prepared data
+        if field_to_plot:
+            plotter.comparison_plots(self.config_manager, field_to_plot, level=level)
 
-    def _process_comparison_plot_2x2(self, plotter, file_index, current_field_index, field_name, figure, gsi, ax_index,
-                                     source_data, pt, level=None):
+
+    def _process_comparison_plot_2x2(self, plotter, file_index, current_field_index, field_name, 
+                                figure, gsi, ax_index, data_array, plot_type, level=None):
+        """Process a comparison plot for 2x2 layout."""
         # Ensure figure and axes are properly initialized
         fig, axes = figure.get_fig_ax()
-        ax1 = axes[gsi[0], gsi[1]] if isinstance(axes, list) else plt.subplot(figure.gs[gsi[0], gsi[1]])
-        figure.set_ax_opts_diff_field(ax1)
-        # Set findex on the config object instead of directly on config_manager
-        self.config_manager.config._findex = file_index
-        field_to_plot = self._get_field_to_plot_compare(source_data, field_name, file_index,
-                                                        pt, figure, level=level)
-        plotter.comparison_plots(self.config_manager, field_to_plot, level=level)
-
-    def _get_field_to_plot_compare(self, source_data,
-                                   field_name, file_index, plot_type, figure, ax=None, level=None) -> tuple:
-        if ax is None:
-            # ax = figure.get_axes()
-            ax = figure.get_fig_ax()
-        dim1, dim2 = self.config_manager.get_dim_names(plot_type)
-        data2d = None
-        if self.config_manager.ax_opts['is_diff_field']:
-            proc = Interp(self.config_manager, self.data2d_list)
-            data2d, xx, yy = proc.regrid(plot_type)
-            return data2d, xx, yy, self.field_names[0], plot_type, file_index, figure, ax
+        
+        # Get the correct axis based on grid spec indices
+        if isinstance(axes, np.ndarray):
+            current_ax = axes[gsi[0], gsi[1]]
         else:
-            if 'yz' in plot_type:
-                data2d = self._get_yz(source_data, field_name, time_lev=self.config_manager.ax_opts['time_lev'])
-            elif 'xt' in plot_type:
-                data2d = self._get_xt(source_data, field_name, time_lev=self.config_manager.ax_opts['time_lev'])
-            elif 'tx' in plot_type:
-                data2d = self._get_tx(source_data, field_name, level=None, time_lev=self.config_manager.ax_opts['time_lev'])
-            elif 'xy' in plot_type or 'polar' in plot_type:
-                data2d = self._get_xy(source_data, field_name, level=level, time_lev=self.config_manager.ax_opts['time_lev'])
+            # Fall back to using subplot if axes is not a 2D array
+            current_ax = plt.subplot(figure.gs[gsi[0], gsi[1]])
+        
+        # Set difference field flag if this is a comparison panel (bottom row)
+        if gsi[0] == 1:  # Bottom row in 2x2 layout is for differences
+            self.config_manager.ax_opts['is_diff_field'] = True
+            # Set extra field type flag for the bottom-right panel
+            if gsi[1] == 1:
+                self.config_manager.ax_opts['add_extra_field_type'] = True
+        
+        figure.set_ax_opts_diff_field(current_ax)
+        
+        # Set state variables on config_manager
+        self.config_manager.findex = file_index
+        self.config_manager.pindex = current_field_index
+        self.config_manager.axindex = ax_index
+        
+        # Handle data_array differently based on its type
+        if isinstance(data_array, tuple):
+            # If data_array is a tuple (from comparison plots), it contains both datasets
+            # We need to prepare the difference field
+            data1, data2 = data_array
+            
+            # Prepare each field individually first
+            field_to_plot1 = self._get_field_to_plot_compare(data1, field_name, file_index,
+                                                        plot_type, figure, level=level)
+            field_to_plot2 = self._get_field_to_plot_compare(data2, field_name, file_index,
+                                                        plot_type, figure, level=level)
+            
+            # Now compute the difference
+            if field_to_plot1 and field_to_plot2:
+                data2d1, x1, y1 = field_to_plot1[0], field_to_plot1[1], field_to_plot1[2]
+                data2d2, x2, y2 = field_to_plot2[0], field_to_plot2[1], field_to_plot2[2]
+                
+                # Store both data arrays for potential regridding
+                self.data2d_list = [data2d1, data2d2]
+                
+                # Create the field_to_plot tuple for the difference
+                proc = Interp(self.config_manager, self.data2d_list)
+                diff_data, diff_x, diff_y = proc.regrid(plot_type)
+                
+                field_to_plot = (diff_data, diff_x, diff_y, field_name, plot_type, 
+                                file_index, figure, current_ax)
             else:
-                pass
+                self.logger.error(f"Could not prepare data for comparison plot")
+                return
+        else:
+            # Regular single dataset case
+            field_to_plot = self._get_field_to_plot_compare(data_array, field_name, file_index,
+                                                        plot_type, figure, ax=current_ax, level=level)
+            # Store the data for potential later use in difference calculation
+            if field_to_plot:
+                self.data2d_list.append(field_to_plot[0])
+        
+        # Call the plotter with the prepared data
+        if field_to_plot:
+            plotter.comparison_plots(self.config_manager, field_to_plot, level=level)
 
+
+    def _get_field_to_plot_compare(self, data_array, field_name, file_index, 
+                                plot_type, figure, ax=None, level=None) -> tuple:
+        """Prepare data for comparison plots."""
+        if ax is None:
+            ax = figure.get_fig_ax()
+        
+        dim1_name, dim2_name = self.config_manager.get_dim_names(plot_type)
+        data2d = None
+        
+        # Check if this is a difference field calculation
+        if self.config_manager.ax_opts.get('is_diff_field', False) and len(self.data2d_list) >= 2:
+            # If we already have two data arrays stored, use Interp to regrid and compute difference
+            proc = Interp(self.config_manager, self.data2d_list)
+            data2d, x_values, y_values = proc.regrid(plot_type)
+            return data2d, x_values, y_values, self.field_names[0], plot_type, file_index, figure, ax
+        else:
+            # Regular data preparation based on plot type
+            if 'yz' in plot_type:
+                data2d = self._get_yz(data_array, time_lev=self.config_manager.ax_opts.get('time_lev', 0))
+            elif 'xt' in plot_type:
+                data2d = self._get_xt(data_array, time_lev=self.config_manager.ax_opts.get('time_lev', 0))
+            elif 'tx' in plot_type:
+                data2d = self._get_tx(data_array, level=level, time_lev=self.config_manager.ax_opts.get('time_lev', 0))
+            elif 'xy' in plot_type or 'polar' in plot_type:
+                data2d = self._get_xy(data_array, level=level, time_lev=self.config_manager.ax_opts.get('time_lev', 0))
+            else:
+                self.logger.warning(f"Unsupported plot type for _get_field_to_plot_compare: {plot_type}")
+                return None
+        
+        # Store the processed data for potential difference calculation
         self.data2d_list.append(data2d)
+        
+        # For time series plots, coordinates are handled differently
         if 'xt' in plot_type or 'tx' in plot_type:
             return data2d, None, None, field_name, plot_type, file_index, figure, ax
-        return data2d, data2d[dim1].values, data2d[dim2].values, field_name, plot_type, file_index, figure, ax
+        
+        # For spatial plots, get the coordinate arrays
+        try:
+            x_values = data2d[dim1_name].values if dim1_name in data2d.coords else None
+            y_values = data2d[dim2_name].values if dim2_name in data2d.coords else None
+            return data2d, x_values, y_values, field_name, plot_type, file_index, figure, ax
+        except KeyError as e:
+            self.logger.error(f"Error getting coordinates for {field_name}: {e}")
+            # Fallback to using the first two dimensions
+            dims = list(data2d.dims)
+            if len(dims) >= 2:
+                x_values = data2d[dims[0]].values
+                y_values = data2d[dims[1]].values
+                return data2d, x_values, y_values, field_name, plot_type, file_index, figure, ax
+            else:
+                self.logger.error(f"Dataset has fewer than 2 dimensions, cannot plot")
+                return None
+
 
     # DATA SLICE PROCESSING METHODS
-    #--------------------------------------------------------------------------
-    def _get_yz(self, source_data, field_name, time_lev):
+    #--------------------------------------------------------------------------    
+    def _get_yz(self, data_array, time_lev):
         """ Extract YZ slice (zonal mean) from a DataArray
 
         Note:
             Assume input DataArray is at most 4-dimensional (time, lev, lon, lat)
             and return a 2D (lat, lev) slice
         """
-        d_temp = source_data['vars'][field_name]
-        if d_temp is None:
-            return
+        if data_array is None:
+            return None
 
-        # Compute zonal mean
-        zonal_mean = d_temp.mean(dim=self.config_manager.get_model_dim_name('xc'))
-        zonal_mean.attrs = d_temp.attrs.copy()
+        # Get dimension names from config_manager
+        xc_dim = self.config_manager.get_model_dim_name('xc')
+        tc_dim = self.config_manager.get_model_dim_name('tc')
+        zc_dim = self.config_manager.get_model_dim_name('zc')
 
-        # Do we have multiple time levels and if so do we want to average?
-        if self.config_manager.get_model_dim_name('tc') in zonal_mean.dims:
-            num_times = np.size(zonal_mean.time)
-            if self.config_manager.ax_opts['tave'] and num_times > 1:
-                self.logger.debug(f"Averaging over {num_times} time levels.")
-                zonal_mean = apply_mean(self.config_manager.config, zonal_mean)
-            else:
-                zonal_mean = zonal_mean.isel(time=time_lev)
+        # Check if vertical dimension exists
+        if not zc_dim or zc_dim not in data_array.dims:
+            self.logger.error(f"Cannot create YZ plot: no vertical dimension found in data for {data_array.name}")
+            return None
+
+        # Compute zonal mean if longitude dimension exists
+        if xc_dim and xc_dim in data_array.dims:
+            zonal_mean = data_array.mean(dim=xc_dim)
         else:
-            # single time level
+            self.logger.error(f"Could not find any longitude dimension for zonal mean in {data_array.name}")
+            return None
+
+        # Copy attributes
+        zonal_mean.attrs = data_array.attrs.copy()
+
+        # Handle time dimension
+        if tc_dim and tc_dim in zonal_mean.dims:
+            num_times = zonal_mean[tc_dim].size
+            if self.config_manager.ax_opts.get('tave', False) and num_times > 1:
+                self.logger.debug(f"Averaging over {num_times} time levels.")
+                zonal_mean = apply_mean(self.config_manager, zonal_mean)
+            else:
+                # Select the specified time level
+                if isinstance(time_lev, int) and time_lev < num_times:
+                    zonal_mean = zonal_mean.isel({tc_dim: time_lev})
+                else:
+                    self.logger.warning(f"Time level {time_lev} out of bounds, using first time level")
+                    zonal_mean = zonal_mean.isel({tc_dim: 0})
+        else:
+            # No time dimension, just squeeze
             zonal_mean = zonal_mean.squeeze()
 
-        zonal_mean = self._select_yrange(zonal_mean, field_name)
-        return apply_conversion(self.config_manager.config, zonal_mean, field_name)
+        # Apply y-range selection if specified
+        zonal_mean = self._select_yrange(zonal_mean, data_array.name)
+        
+        return apply_conversion(self.config_manager, zonal_mean, data_array.name)
 
-    def _get_xy(self, source_data, field_name, level, time_lev):
+    def _get_xy(self, data_array, level, time_lev):
         """ Extract XY slice (latlon) from a DataArray
 
         Note:
             Assume input DataArray is at most 4-dimensional (time, lev, lon, lat)
             and return a 2D (lon, lat) slice
         """
-        d_temp = source_data['vars'][field_name]
-        if d_temp is None:
-            return
+        if data_array is None:
+            return None
 
-        if level:
-            level = int(level)
-        d_temp = d_temp.isel(time=time_lev)
+        # Get dimension names from config_manager
+        tc_dim = self.config_manager.get_model_dim_name('tc')
+        zc_dim = self.config_manager.get_model_dim_name('zc')
+        self.logger.debug(f"Dimension names: tc_dim={tc_dim}, zc_dim={zc_dim}")
+
+        # Make a copy to avoid modifying the original
+        d_temp = data_array.copy()
+
+        # Handle time dimension
+        if tc_dim and tc_dim in d_temp.dims:
+            num_tc = d_temp[tc_dim].size
+            if isinstance(time_lev, int) and time_lev < num_tc:
+                d_temp = d_temp.isel({tc_dim: time_lev})
+            else:
+                self.logger.warning(f"Time level {time_lev} out of bounds, using first time level")
+                d_temp = d_temp.isel({tc_dim: 0})
+
+        # Squeeze to remove singleton dimensions
         data2d = d_temp.squeeze()
 
-        # Do we have multiple time levels and if so do we want to average?
-        if self.config_manager.get_model_dim_name('tc') in d_temp.dims:
-            num_tc = np.size(d_temp.time)
-            if self.config_manager.ax_opts['tave'] and num_tc > 1:
+        # Handle time averaging if requested
+        if tc_dim and tc_dim in data2d.dims and self.config_manager.ax_opts.get('tave', False):
+            num_tc = data2d[tc_dim].size
+            if num_tc > 1:
                 self.logger.debug(f"Averaging over {num_tc} time levels.")
-                data2d = apply_mean(self.config_manager.config, data2d, level)
-                return apply_conversion(self.config_manager.config, data2d, field_name)
-            else:  # just select the specified time level
-                if num_tc > 1:
-                    data2d = d_temp.isel(time=time_lev)
+                data2d = apply_mean(self.config_manager, data2d, level)
+                return apply_conversion(self.config_manager, data2d, data_array.name)
 
-        # Do we have multiple vertical levels and if so do we want to average?
-        if self.config_manager.ax_opts['zave']:
+        # Handle vertical averaging if requested
+        if self.config_manager.ax_opts.get('zave', False):
             self.logger.debug(f"Averaging over vertical levels.")
-            data2d = apply_mean(self.config_manager.config, data2d, level='all')
-            return apply_conversion(self.config_manager.config, data2d, field_name)
+            data2d = apply_mean(self.config_manager, data2d, level='all')
+            return apply_conversion(self.config_manager, data2d, data_array.name)
 
-        # Add total column
-        if self.config_manager.ax_opts['zsum']:
+        # Handle vertical summation if requested
+        if self.config_manager.ax_opts.get('zsum', False):
             self.logger.debug(f"Summing over vertical levels.")
-            data2d_zsum = apply_zsum(self.config_manager.config, data2d)
-            self.logger.debug(f"Min: {data2d_zsum.min()}, Max: {data2d_zsum.max()}")
-            return apply_conversion(self.config_manager.config, data2d_zsum, field_name)
+            data2d_zsum = apply_zsum(self.config_manager, data2d)
+            self.logger.debug(f"Min: {data2d_zsum.min().values}, Max: {data2d_zsum.max().values}")
+            return apply_conversion(self.config_manager, data2d_zsum, data_array.name)
 
-        num_zc = 0
-        if self.config_manager.get_model_dim_name('zc') in d_temp.dims:
-            num_zc = np.size(data2d.lev)
-        if level and num_zc > 1:
-            lev_to_plot = int(np.where(data2d.coords[self.config_manager.get_model_dim_name('zc')].values == level)[0])
-            data2d = data2d.isel(lev=lev_to_plot)
-        return apply_conversion(self.config_manager.config, data2d, field_name)
+        # Handle level selection if vertical dimension exists
+        if level is not None and zc_dim and zc_dim in data2d.dims:
+            original_data = data2d.copy()
+            # Try to find the level in the vertical coordinate
+            try:
+                # First try exact matching
+                if level in data2d[zc_dim].values:
+                    lev_idx = np.where(data2d[zc_dim].values == level)[0][0]
+                    data2d = data2d.isel({zc_dim: lev_idx})
+                else:
+                    # Try nearest neighbor
+                    lev_idx = np.abs(data2d[zc_dim].values - level).argmin()
+                    self.logger.warning(f"Level {level} not found exactly, using nearest level {data2d[zc_dim].values[lev_idx]}")
+                    data2d = data2d.isel({zc_dim: lev_idx})
+            except Exception as e:
+                self.logger.error(f"Error selecting level {level}: {e}")
+                data2d = original_data  # Reset to original data if selection fails
+                # If level selection fails, use the first level
+                if data2d[zc_dim].size > 0:
+                    data2d = data2d.isel({zc_dim: 0})
+        elif level is not None and (not zc_dim or zc_dim not in data2d.dims):
+            # If level is specified but there's no vertical dimension, log a warning
+            self.logger.warning(f"Level {level} specified but no vertical dimension found in data. Using data as is.")
 
-    def _get_xt(self, d, name, time_lev):
+        # Check for NaN values
+        if np.isnan(data2d.values).any():
+            self.logger.warning(f"Output contains NaN values: {np.sum(np.isnan(data2d.values))} NaNs")
+
+        return apply_conversion(self.config_manager, data2d, data_array.name)
+
+
+    def _get_xt(self, data_array, time_lev):
         """ Extract time-series from a DataArray
 
         Note:
             Assume input DataArray is at most 4-dimensional (time, lev, lon, lat)
             and return a 1D (time) series
         """
-        d_temp = d['vars'][name]
-        if d_temp is None:
-            return
+        if data_array is None:
+            return None
             
         # Get time dimension safely
-        time_dim = 'time'
-        tc_dim = self.config_manager.get_model_dim_name('tc')
-        if tc_dim:
-            time_dim = tc_dim
+        tc_dim = self.config_manager.get_model_dim_name('tc') or 'time'
         
         # Try to get the number of time steps safely
         try:
-            if time_dim in d_temp.dims:
-                num_times = d_temp[time_dim].size
+            if tc_dim in data_array.dims:
+                num_times = data_array[tc_dim].size
             else:
                 # Fall back to 'time' if tc_dim not found in dimensions
-                num_times = d_temp.time.size
+                num_times = data_array.time.size
         except (AttributeError, KeyError):
             # If all else fails, try to infer
-            if hasattr(d_temp, 'shape') and len(d_temp.shape) > 0:
-                num_times = d_temp.shape[0]  # Assume time is the first dimension
+            if hasattr(data_array, 'shape') and len(data_array.shape) > 0:
+                num_times = data_array.shape[0]  # Assume time is the first dimension
             else:
-                self.logger.error(f"Cannot determine time dimension for {name}")
+                self.logger.error(f"Cannot determine time dimension for {data_array.name}")
                 return None
         
-        self.logger.info(f"'{name}' field has {num_times} time levels")
+        self.logger.info(f"'{data_array.name}' field has {num_times} time levels")
 
+        # Handle time range selection
         if isinstance(time_lev, list):
             self.logger.info(f"Computing time series on {time_lev} time range")
             try:
-                if time_dim in d_temp.dims:
-                    data2d = d_temp.isel({time_dim: slice(time_lev)})
+                if tc_dim in data_array.dims:
+                    data2d = data_array.isel({tc_dim: slice(time_lev)})
                 else:
-                    data2d = d_temp.isel(time=slice(time_lev))
+                    data2d = data_array.isel(time=slice(time_lev))
             except (AttributeError, KeyError):
-                self.logger.error(f"Error slicing time dimension for {name}")
+                self.logger.error(f"Error slicing time dimension for {data_array.name}")
                 return None
         else:
-            data2d = d_temp.squeeze()
+            data2d = data_array.squeeze()
 
-        if 'mean_type' in self.config_manager.spec_data[name]['xtplot']:
-            mean_type = self.config_manager.spec_data[name]['xtplot']['mean_type']
-            self.logger.info(f"Averaging method: {mean_type}")
-            # annual:
-            if mean_type == 'point_sel':
-                xc = self.config_manager.spec_data[name]['xtplot']['point_sel'][0]
-                yc = self.config_manager.spec_data[name]['xtplot']['point_sel'][1]
-                data2d = data2d.sel(lon=xc, lat=yc, method='nearest')
-            elif mean_type == 'area_sel':
-                x1 = self.config_manager.spec_data[name]['xtplot']['area_sel'][0]
-                x2 = self.config_manager.spec_data[name]['xtplot']['area_sel'][1]
-                y1 = self.config_manager.spec_data[name]['xtplot']['area_sel'][2]
-                y2 = self.config_manager.spec_data[name]['xtplot']['area_sel'][3]
-                data2d = data2d.sel(lon=np.arange(x1, x2, 0.5), lat=np.arange(y1, y2, 0.5), method='nearest')
+        # Apply averaging or selection based on specs
+        if self.config_manager.spec_data and data_array.name in self.config_manager.spec_data:
+            spec = self.config_manager.spec_data[data_array.name]
+            if 'xtplot' in spec and 'mean_type' in spec['xtplot']:
+                mean_type = spec['xtplot']['mean_type']
+                self.logger.info(f"Averaging method: {mean_type}")
                 
-                # Get dimension names safely
-                xc_dim = self.config_manager.get_model_dim_name('xc') or 'lon'
-                yc_dim = self.config_manager.get_model_dim_name('yc') or 'lat'
-                
-                try:
-                    data2d = data2d.mean(dim=(xc_dim, yc_dim))
-                except (ValueError, KeyError):
-                    # Fall back to literal 'lon' and 'lat' if the above fails
+                if mean_type == 'point_sel':
+                    # Select a single point
+                    xc = spec['xtplot']['point_sel'][0]
+                    yc = spec['xtplot']['point_sel'][1]
+                    data2d = data2d.sel(lon=xc, lat=yc, method='nearest')
+                elif mean_type == 'area_sel':
+                    # Select an area and compute mean
+                    x1 = spec['xtplot']['area_sel'][0]
+                    x2 = spec['xtplot']['area_sel'][1]
+                    y1 = spec['xtplot']['area_sel'][2]
+                    y2 = spec['xtplot']['area_sel'][3]
+                    
+                    # Get dimension names safely
+                    xc_dim = self.config_manager.get_model_dim_name('xc') or 'lon'
+                    yc_dim = self.config_manager.get_model_dim_name('yc') or 'lat'
+                    
                     try:
-                        data2d = data2d.mean(dim=('lon', 'lat'))
-                    except (ValueError, KeyError):
-                        self.logger.error(f"Cannot compute area mean for {name}")
-                        return None
-                        
-            elif mean_type in ['year', 'season', 'month']:
-                # Safe handling of time grouping
-                try:
-                    time_attr = f"{time_dim}.{mean_type}"
-                    data2d = data2d.groupby(time_attr).mean(dim=time_dim, keep_attrs=True)
-                except (AttributeError, KeyError):
-                    try:
-                        time_attr = f"time.{mean_type}"
-                        data2d = data2d.groupby(time_attr).mean(dim='time', keep_attrs=True)
-                    except (AttributeError, KeyError):
-                        self.logger.error(f"Cannot group by {mean_type} for {name}")
-                        return None
-            else:
-                # Safe handling of general mean
-                try:
-                    data2d = data2d.groupby(time_dim).mean(dim=xr.ALL_DIMS, keep_attrs=True)
-                except (AttributeError, KeyError):
-                    try:
-                        data2d = data2d.groupby('time').mean(dim=xr.ALL_DIMS, keep_attrs=True)
-                    except (AttributeError, KeyError):
-                        self.logger.error(f"Cannot compute general mean for {name}")
-                        return None
-                        
-                if 'mean_type' in self.config_manager.spec_data[name]['xtplot']:
-                    if self.config_manager.spec_data[name]['xtplot']['mean_type'] == 'rolling':
-                        window_size = 5
-                        if 'window_size' in self.config_manager.spec_data[name]['xtplot']:
-                            window_size = self.config_manager.spec_data[name]['xtplot']['window_size']
-                        self.logger.info(f" -- smoothing window size: {window_size}")
-                        kernel = np.ones(window_size) / window_size
-                        convolved_data = np.convolve(data2d, kernel, mode="same")
-                        
-                        # Create a new DataArray with the convolved data
+                        # Select the area
+                        data2d = data2d.sel({
+                            xc_dim: slice(x1, x2),
+                            yc_dim: slice(y1, y2)
+                        })
+                        # Compute mean over spatial dimensions
+                        data2d = data2d.mean(dim=(xc_dim, yc_dim))
+                    except (ValueError, KeyError) as e:
+                        self.logger.error(f"Error computing area mean: {e}")
+                        # Try with literal 'lon' and 'lat'
                         try:
-                            if time_dim in data2d.coords:
-                                data2d = xr.DataArray(convolved_data, dims=time_dim, coords=data2d.coords)
-                            else:
-                                data2d = xr.DataArray(convolved_data, dims='time', coords=data2d.coords)
-                        except (AttributeError, KeyError):
-                            self.logger.error(f"Error creating DataArray for convolved data for {name}")
+                            data2d = data2d.sel(lon=slice(x1, x2), lat=slice(y1, y2))
+                            data2d = data2d.mean(dim=('lon', 'lat'))
+                        except (ValueError, KeyError):
+                            self.logger.error(f"Cannot compute area mean for {data_array.name}")
                             return None
+                elif mean_type in ['year', 'season', 'month']:
+                    # Group by time period
+                    try:
+                        time_attr = f"{tc_dim}.{mean_type}"
+                        data2d = data2d.groupby(time_attr).mean(dim=tc_dim, keep_attrs=True)
+                    except (AttributeError, KeyError):
+                        try:
+                            time_attr = f"time.{mean_type}"
+                            data2d = data2d.groupby(time_attr).mean(dim='time', keep_attrs=True)
+                        except (AttributeError, KeyError):
+                            self.logger.error(f"Cannot group by {mean_type} for {data_array.name}")
+                            return None
+                elif mean_type == 'rolling':
+                    # Apply rolling mean
+                    window_size = spec['xtplot'].get('window_size', 5)
+                    self.logger.info(f" -- smoothing window size: {window_size}")
+                    
+                    # Apply rolling mean using xarray's rolling method
+                    try:
+                        data2d = data2d.rolling({tc_dim: window_size}, center=True).mean()
+                    except (AttributeError, KeyError):
+                        try:
+                            data2d = data2d.rolling(time=window_size, center=True).mean()
+                        except (AttributeError, KeyError):
+                            self.logger.error(f"Cannot apply rolling mean for {data_array.name}")
+                            return None
+                else:
+                    # General mean over all dimensions except time
+                    try:
+                        # Get all dimensions except time
+                        non_time_dims = [dim for dim in data2d.dims if dim != tc_dim]
+                        if non_time_dims:
+                            data2d = data2d.mean(dim=non_time_dims)
+                    except (AttributeError, KeyError):
+                        self.logger.error(f"Cannot compute general mean for {data_array.name}")
+                        return None
 
-        else:
-            # Safe handling of default time mean
-            try:
-                data2d = data2d.groupby(time_dim).mean(dim=xr.ALL_DIMS, keep_attrs=True)
-            except (AttributeError, KeyError):
-                try:
-                    data2d = data2d.groupby('time').mean(dim=xr.ALL_DIMS, keep_attrs=True)
-                except (AttributeError, KeyError):
-                    self.logger.error(f"Cannot compute default time mean for {name}")
-                    return None
-
-        if 'level' in self.config_manager.spec_data[name]['xtplot']:
-            level = int(self.config_manager.spec_data[name]['xtplot']['level'])
-            
-            # Get vertical dimension safely
-            zc_dim = self.config_manager.get_model_dim_name('zc')
-            if zc_dim:
-                try:
-                    if zc_dim in data2d.coords:
-                        lev_values = data2d.coords[zc_dim].values
-                        lev_to_plot = int(np.where(lev_values == level)[0])
-                        data2d = data2d.isel({zc_dim: lev_to_plot}).squeeze()
-                    else:
-                        # Fall back to 'lev' if zc_dim not found in coordinates
-                        lev_values = data2d.coords['lev'].values
-                        lev_to_plot = int(np.where(lev_values == level)[0])
-                        data2d = data2d.isel(lev=lev_to_plot).squeeze()
-                except (AttributeError, KeyError, IndexError):
-                    self.logger.error(f"Cannot select level {level} for {name}")
-                    pass  # Continue with full data if level selection fails
+            # Handle level selection if specified
+            if 'xtplot' in spec and 'level' in spec['xtplot']:
+                level = int(spec['xtplot']['level'])
+                
+                # Get vertical dimension safely
+                zc_dim = self.config_manager.get_model_dim_name('zc') or 'lev'
+                
+                if zc_dim in data2d.dims:
+                    try:
+                        # Try exact matching
+                        if level in data2d[zc_dim].values:
+                            lev_idx = np.where(data2d[zc_dim].values == level)[0][0]
+                            data2d = data2d.isel({zc_dim: lev_idx}).squeeze()
+                        else:
+                            # Try nearest neighbor
+                            lev_idx = np.abs(data2d[zc_dim].values - level).argmin()
+                            self.logger.warning(f"Level {level} not found exactly, using nearest level {data2d[zc_dim].values[lev_idx]}")
+                            data2d = data2d.isel({zc_dim: lev_idx}).squeeze()
+                    except (AttributeError, KeyError, IndexError) as e:
+                        self.logger.error(f"Error selecting level {level}: {e}")
+                        # If level selection fails, use the first level
+                        if data2d[zc_dim].size > 0:
+                            data2d = data2d.isel({zc_dim: 0}).squeeze()
 
         return data2d  # Already converted to appropriate units through DataReader
 
-    def _get_tx(self, source_data, field_name, level=None, time_lev=0):
+
+    def _get_tx(self, data_array, level=None, time_lev=0):
         """ Extract a time-series map from a DataArray
 
         Note:
             Assume input DataArray is at most 4-dimensional (time, lev, lon, lat)
             and return a 2D Hovmoller plot field where time is plotted on one axis (default y-axis)
             and the spatial dimension (either lon or lat)) is plotted on the other axis  (default x-axis)
-
         """
-        d_temp = source_data['vars'][field_name]
-        if d_temp is None:
-            return
+        if data_array is None:
+            return None
 
-        data2d = d_temp.squeeze()
+        # Make a copy to avoid modifying the original
+        data2d = data_array.squeeze()
         
-        # Get the vertical coordinate dimension name
-        zc = self.config_manager.get_model_dim_name('zc')
+        # Get dimension names from config_manager
+        tc_dim = self.config_manager.get_model_dim_name('tc') or 'time'
+        zc_dim = self.config_manager.get_model_dim_name('zc') or 'lev'
+        xc_dim = self.config_manager.get_model_dim_name('xc') or 'lon'
+        yc_dim = self.config_manager.get_model_dim_name('yc') or 'lat'
         
-        # Check if the vertical dimension exists in the data
-        if zc and zc in d_temp.dims:
-            if 'level' in self.config_manager.spec_data[field_name]['txplot']:
-                lev_to_plot = self.config_manager.spec_data[field_name]['txplot']['level']
-                lev_index = int(np.where(data2d.coords['lev'].values == lev_to_plot)[0])
-                data2d = data2d.isel(lev=lev_index)
+        # Handle level selection if vertical dimension exists
+        if zc_dim in data2d.dims:
+            if level is not None:
+                # Try to select the specified level
+                try:
+                    if level in data2d[zc_dim].values:
+                        lev_idx = np.where(data2d[zc_dim].values == level)[0][0]
+                        data2d = data2d.isel({zc_dim: lev_idx})
+                    else:
+                        # Try nearest neighbor
+                        lev_idx = np.abs(data2d[zc_dim].values - level).argmin()
+                        self.logger.warning(f"Level {level} not found exactly, using nearest level {data2d[zc_dim].values[lev_idx]}")
+                        data2d = data2d.isel({zc_dim: lev_idx})
+                except Exception as e:
+                    self.logger.error(f"Error selecting level {level}: {e}")
+                    # If level selection fails, use the first level
+                    if data2d[zc_dim].size > 0:
+                        data2d = data2d.isel({zc_dim: 0})
             else:
-                data2d = d_temp.isel(lev=0)
+                # No level specified, use the first level
+                if data2d[zc_dim].size > 0:
+                    data2d = data2d.isel({zc_dim: 0})
 
-        if 'trange' in self.config_manager.spec_data[field_name]['txplot']:
-            start_time = self.config_manager.spec_data[field_name]['txplot']['trange'][0]
-            end_time = self.config_manager.spec_data[field_name]['txplot']['trange'][1]
-            data2d = data2d.sel(time=slice(start_time, end_time))
-        if 'yrange' in self.config_manager.spec_data[field_name]['txplot']:
-            lats0 = self.config_manager.spec_data[field_name]['txplot']['yrange'][0]
-            lats1 = self.config_manager.spec_data[field_name]['txplot']['yrange'][1]
-            data2d = data2d.sel(lat=slice(lats0, lats1))
-        if 'xrange' in self.config_manager.spec_data[field_name]['txplot']:
-            lons0 = self.config_manager.spec_data[field_name]['txplot']['xrange'][0]
-            lons1 = self.config_manager.spec_data[field_name]['txplot']['xrange'][1]
-            data2d = data2d.sel(lon=slice(lons0, lons1))
-        weights = np.cos(np.deg2rad(data2d.lat.values))
+        # Apply any range selections from the specs
+        if self.config_manager.spec_data and data_array.name in self.config_manager.spec_data:
+            spec = self.config_manager.spec_data[data_array.name]
+            if 'txplot' in spec:
+                # Apply time range selection if specified
+                if 'trange' in spec['txplot']:
+                    start_time = spec['txplot']['trange'][0]
+                    end_time = spec['txplot']['trange'][1]
+                    data2d = data2d.sel({tc_dim: slice(start_time, end_time)})
+                
+                # Apply latitude range selection if specified
+                if 'yrange' in spec['txplot']:
+                    lat_min = spec['txplot']['yrange'][0]
+                    lat_max = spec['txplot']['yrange'][1]
+                    data2d = data2d.sel({yc_dim: slice(lat_min, lat_max)})
+                
+                # Apply longitude range selection if specified
+                if 'xrange' in spec['txplot']:
+                    lon_min = spec['txplot']['xrange'][0]
+                    lon_max = spec['txplot']['xrange'][1]
+                    data2d = data2d.sel({xc_dim: slice(lon_min, lon_max)})
 
-        d1 = data2d * weights[None, :, None]
-        d2 = d1.sum(dim='lat')
-        d3 = d2 / np.sum(weights)
-        return apply_conversion(self.config_manager, d3, field_name)
+        # Compute weighted mean over latitude
+        if yc_dim in data2d.dims:
+            # Get latitude weights (cosine of latitude in radians)
+            weights = np.cos(np.deg2rad(data2d[yc_dim].values))
+            
+            # Apply weights to the data
+            weighted_data = data2d * weights
+            
+            # Sum over latitude and normalize by the sum of weights
+            data2d = weighted_data.sum(dim=yc_dim) / weights.sum()
+
+        return apply_conversion(self.config_manager, data2d, data_array.name)
+
 
     def _select_yrange(self, data2d, name):
         """ Select a range of vertical levels"""
@@ -975,7 +1237,7 @@ class Generic(Root):
             hi_z = self.config_manager.spec_data[name]['yzplot']['zrange'][1]
             if hi_z >= lo_z:
                 self.logger.error(f"Upper level value ({hi_z}) must be less than low level value ({lo_z})")
-                return
+                return data2d
             lev = self.config_manager.get_model_dim_name('zc')
             min_index, max_index = 0, len(data2d.coords[lev].values) - 1
             for k, v in enumerate(data2d.coords[lev]):
@@ -991,9 +1253,38 @@ class Generic(Root):
     def _set_time_config(self, time_index, data_var):
         """Set time-related configuration values."""
         self.config_manager.time_level = time_index
-        real_time = data_var.time.isel(time=time_index).values
-        real_time_readable = pd.to_datetime(real_time).strftime('%Y-%m-%d %H')
-        self.config_manager.real_time = real_time_readable
+        
+        # Try to get the time coordinate safely
+        try:
+            # Check if 'time' is a coordinate in the DataArray
+            if 'time' in data_var.coords:
+                # Get the time value at the specified index
+                if isinstance(time_index, int) and time_index < len(data_var.coords['time']):
+                    real_time = data_var.coords['time'].values[time_index]
+                    real_time_readable = pd.to_datetime(real_time).strftime('%Y-%m-%d %H')
+                    self.config_manager.real_time = real_time_readable
+                else:
+                    self.logger.warning(f"Time index {time_index} out of bounds for time coordinate")
+                    self.config_manager.real_time = f"Time level {time_index}"
+            else:
+                # If 'time' is not a coordinate, try to find a time-like coordinate
+                time_coords = [coord for coord in data_var.coords if 'time' in coord.lower()]
+                if time_coords:
+                    time_coord = time_coords[0]
+                    if isinstance(time_index, int) and time_index < len(data_var.coords[time_coord]):
+                        real_time = data_var.coords[time_coord].values[time_index]
+                        real_time_readable = pd.to_datetime(real_time).strftime('%Y-%m-%d %H')
+                        self.config_manager.real_time = real_time_readable
+                    else:
+                        self.logger.warning(f"Time index {time_index} out of bounds for {time_coord} coordinate")
+                        self.config_manager.real_time = f"Time level {time_index}"
+                else:
+                    # If no time-like coordinate is found, use a generic label
+                    self.logger.warning("No time coordinate found in data")
+                    self.config_manager.real_time = f"Time level {time_index}"
+        except Exception as e:
+            self.logger.warning(f"Error setting time config: {e}")
+            self.config_manager.real_time = f"Time level {time_index}"
 
     def _side_by_side_plots(self, plotter):
         """
@@ -1005,27 +1296,48 @@ class Generic(Root):
         # Process each pair of indices from the comparison configuration
         for idx1, idx2 in zip(self.config_manager.a_list, self.config_manager.b_list):
             # Get map parameters for these indices
-            map1 = self.config_manager.config.map_params[idx1]
-            map2 = self.config_manager.config.map_params[idx2]
+            map1_params = self.config_manager.map_params.get(idx1)
+            map2_params = self.config_manager.map_params.get(idx2)
 
-            # Load data from both sources
-            source_data_pair = self._load_comparison_data(map1, map2)
-            if not source_data_pair:
+            if not map1_params or not map2_params:
+                self.logger.warning(f"Could not find map parameters for indices {idx1} or {idx2}. Skipping comparison.")
                 continue
 
-            sdat1, sdat2 = source_data_pair
-            
+            # Get data sources from the pipeline
+            filename1 = map1_params.get('filename')
+            filename2 = map2_params.get('filename')
+
+            data_source1 = self.config_manager.pipeline.get_data_source(filename1)
+            data_source2 = self.config_manager.pipeline.get_data_source(filename2)
+
+            if not data_source1 or not data_source2:
+                self.logger.warning(f"Could not find data sources for {filename1} or {filename2}. Skipping comparison.")
+                continue
+
+            # Get the actual datasets
+            sdat1_dataset = data_source1.dataset if hasattr(data_source1, 'dataset') else None
+            sdat2_dataset = data_source2.dataset if hasattr(data_source2, 'dataset') else None
+
+            if sdat1_dataset is None or sdat2_dataset is None:
+                self.logger.warning(f"Datasets not loaded for {filename1} or {filename2}. Skipping comparison.")
+                continue
+
             # Determine file indices
-            source_name1, source_name2 = map1['source_name'], map2['source_name']
-            filename1, filename2 = map1['filename'], map2['filename']
-            file_indices = self._get_file_indices_compare(source_name1, source_name2, filename1, filename2)
+            file_indices = (idx1, idx2)
 
             # Process each plot type
-            field_name1, field_name2 = map1['field'], map2['field']
+            field_name1 = map1_params.get('field')
+            field_name2 = map2_params.get('field')
+
+            if not field_name1 or not field_name2:
+                self.logger.warning(f"Field names not specified for comparison indices {idx1} or {idx2}. Skipping.")
+                continue
+
             self.field_names = (field_name1, field_name2)
 
-            for pt1, pt2 in zip(map1['to_plot'], map2['to_plot']):
-                plot_type = pt1  # Using the first plot type
+            # Assuming plot types are the same for comparison
+            plot_types = map1_params.get('to_plot', ['xy'])
+            for plot_type in plot_types:
                 self.logger.info(f"Plotting {field_name1} vs {field_name2} side by side, {plot_type} plot")
                 self.data2d_list = []  # Reset for each plot type
 
@@ -1033,50 +1345,50 @@ class Generic(Root):
                     self._process_xy_side_by_side_plots(plotter, file_indices,
                                                     current_field_index,
                                                     field_name1, field_name2, plot_type,
-                                                    sdat1, sdat2)
+                                                    sdat1_dataset, sdat2_dataset)
                 else:
                     self._process_other_side_by_side_plots(plotter, file_indices,
                                                         current_field_index,
                                                         field_name1, field_name2,
-                                                        plot_type, sdat1, sdat2)
+                                                        plot_type, sdat1_dataset, sdat2_dataset)
 
             current_field_index += 1
 
     def _process_xy_side_by_side_plots(self, plotter, file_indices, current_field_index,
-                                    field_name1, field_name2, plot_type, sdat1, sdat2):
+                                    field_name1, field_name2, plot_type, sdat1_dataset, sdat2_dataset):
         """Process side-by-side comparison plots for xy or polar plot types."""
         file_index1, file_index2 = file_indices
         nrows, ncols = self.config_manager.input_config._comp_panels
-       
+    
         # Get levels for the plots
         levels = self.config_manager.get_levels(field_name1, plot_type + 'plot')
         if not levels:
             self.logger.warning(f' -> No levels specified for {field_name1}')
             return
         
-        for level in levels:
+        for level_val in levels.keys():
             # Create a figure with 2x1 subplots (side by side)
-            figure = Figure(self.config_manager, plot_type, nrows=nrows, ncols=ncols)
+            figure = Figure.create_eviz_figure(self.config_manager, plot_type, nrows=nrows, ncols=ncols)
             ax = figure.get_axes()
-            self.config_manager.level = level
+            self.config_manager.level = level_val
             
             # Create the 2x1 side-by-side comparison plot
             self._create_2x1_side_by_side_plot(plotter, file_indices,
                                             current_field_index,
                                             field_name1, field_name2, figure, ax,
-                                            plot_type, sdat1, sdat2, level)
+                                            plot_type, sdat1_dataset, sdat2_dataset, level_val)
             
             # Save the plot
-            pu.print_map(self.config_manager, plot_type, self.config_manager.findex, figure, level=level)
+            pu.print_map(self.config_manager, plot_type, self.config_manager.findex, figure, level=level_val)
 
     def _process_other_side_by_side_plots(self, plotter, file_indices, current_field_index,
-                                        field_name1, field_name2, plot_type, sdat1, sdat2):
+                                        field_name1, field_name2, plot_type, sdat1_dataset, sdat2_dataset):
         """Process side-by-side comparison plots for other plot types."""
         file_index1, file_index2 = file_indices
         nrows, ncols = self.config_manager.input_config._comp_panels
         
         # Create a figure with 2x1 subplots (side by side)
-        figure = Figure.create_eviz_figure(self.config_manager, plot_type, nrows=nrows, ncols=ncols)  
+        figure = Figure.create_eviz_figure(self.config_manager, plot_type, nrows=nrows, ncols=ncols)
         axes_shape = figure.subplots
         ax = figure.get_axes()
         self.config_manager.level = None
@@ -1084,14 +1396,14 @@ class Generic(Root):
         # Create the nx1 side-by-side comparison plot
         self._create_nx1_side_by_side_plot(plotter, file_indices, current_field_index,
                                         field_name1, field_name2, figure, ax,
-                                        plot_type, sdat1, sdat2)
+                                        plot_type, sdat1_dataset, sdat2_dataset)
         
         # Save the plot
         pu.print_map(self.config_manager, plot_type, self.config_manager.findex, figure)
 
     def _create_nx1_side_by_side_plot(self, plotter, file_indices, current_field_index,
                                     field_name1, field_name2, figure, ax,
-                                    plot_type, sdat1, sdat2, level=None):
+                                    plot_type, sdat1_dataset, sdat2_dataset, level=None):
         """
         Create a nx1 side-by-side comparison plot for the given data.
         
@@ -1107,15 +1419,15 @@ class Generic(Root):
         # TODO: add loop for n in range(3)...
         self._process_side_by_side_plot(plotter, file_index1, current_field_index,
                                     field_name1,
-                                    figure, ax, 0, sdat1, plot_type, level=level)
+                                    figure, ax, 0, sdat1_dataset[field_name1], plot_type, level=level)
         
         # Plot the second dataset in the right subplot
         self._process_side_by_side_plot(plotter, file_index2, current_field_index,
                                     field_name2,
-                                    figure, ax, 1, sdat2, plot_type, level=level)
+                                    figure, ax, 1, sdat2_dataset[field_name2], plot_type, level=level)
 
     def _process_side_by_side_plot(self, plotter, file_index, current_field_index, field_name, 
-                                figure, ax, ax_index, source_data, plot_type, level=None):
+                                figure, ax, ax_index, data_array, plot_type, level=None):
         self.config_manager.findex = file_index
         self.config_manager.pindex = current_field_index
         self.config_manager.axindex = ax_index
@@ -1128,7 +1440,7 @@ class Generic(Root):
             current_ax = ax
         
         # Get field to plot
-        field_to_plot = self._get_field_to_plot_compare(source_data, field_name, file_index,
+        field_to_plot = self._get_field_to_plot_compare(data_array, field_name, file_index,
                                                         plot_type, figure, ax=current_ax, level=level)
         
         # Check which type of plotter we're using and call the appropriate method
@@ -1145,76 +1457,3 @@ class Generic(Root):
                 plotter.plot(self.config_manager, field_to_plot, level=level)
             else:
                 self.logger.error(f"Plotter {type(plotter).__name__} has no plot method.")
-
-
-    def _get_field_to_plot_side_by_side(self, source_data, field_name, file_index, 
-                                    plot_type, figure, ax=None, level=None):
-        """Get field data for side-by-side plots with WRF-specific handling."""
-        if ax is None:
-            ax = figure.get_axes()
-        
-        # Get source name safely
-        source_name = self._get_source_name_for_file_index(file_index)
-        
-        # Set source_data for dimension handling
-        self.source_data = source_data
-        
-        # Get dimension names
-        dim1, dim2 = self.coord_names(source_name, source_data, field_name, plot_type)
-        
-        # Get time level
-        time_level = self.config_manager.ax_opts['time_lev']
-        if isinstance(time_level, str) and time_level == 'all':
-            time_level = 0  # Default to first time level for comparison
-        
-        # Extract data based on plot type
-        d = source_data['vars'][field_name]
-        
-        # Process data based on plot type
-        if 'yz' in plot_type:
-            data2d = self._get_yz(d, field_name, time_lev=time_level)
-        elif 'xy' in plot_type or 'polar' in plot_type:
-            data2d = self._get_xy(d, field_name, level=level, time_lev=time_level)
-        else:
-            # Other plot types (xt, tx)
-            self.logger.warning(f"Plot type {plot_type} not fully supported for side-by-side comparison")
-            return None
-        
-        # Process coordinates
-        if 'xt' in plot_type or 'tx' in plot_type:
-            return data2d, None, None, field_name, plot_type, file_index, figure, ax
-        elif 'yz' in plot_type:
-            # For YZ plots, use latitude and pressure levels
-            xs = np.array(self._get_field(dim1[0], d)[0, :][:, 0])
-            ys = self.levs  # Pressure levels
-            return data2d, xs, ys, field_name, plot_type, file_index, figure, ax
-        else:
-            # For XY plots, use longitude and latitude
-            xs = np.array(self._get_field(dim1[0], data2d)[0, :])
-            ys = np.array(self._get_field(dim2[0], data2d)[:, 0])
-            return data2d, xs, ys, field_name, plot_type, file_index, figure, ax
-
-    def get_field_dim_name(self, source_data: dict, dim_name: str, field_name: str):
-        d = source_data['vars'][field_name]
-        field_dims = list(d.dims)
-        names = self.get_model_dim_name(self.source_name, dim_name).split(',')
-        common = list(set(names).intersection(field_dims))
-        dim = list(common)[0] if common else None
-        return dim
-
-    def _get_source_name_for_file_index(self, file_index):
-        """
-        Get the source name for a given file index.
-        This handles the case where multiple files come from the same source.
-        """
-        # Try to get source name from file_list
-        if hasattr(self.config_manager, 'file_list') and file_index in self.config_manager.file_list:
-            return self.config_manager.file_list[file_index].get('source_name', 'generic')
-        
-        # Try to get source name from map_params
-        if hasattr(self.config_manager, 'map_params'):
-            for param_key, param_config in self.config_manager.map_params.items():
-                if param_key == file_index or param_config.get('file_index') == file_index:
-                    return param_config.get('source_name', 'generic')
-        
-        return 'generic'

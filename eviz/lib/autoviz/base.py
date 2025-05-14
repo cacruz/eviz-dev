@@ -138,8 +138,9 @@ class Autoviz:
             self.logger.info("Processing configuration using adapter")
             self.config_adapter.process_configuration()
             
-            # Check if any data sources were loaded - use the shared data sources
-            if not self._config_manager.data_sources:
+            # Check if any data sources were loaded - use the pipeline instead of direct access
+            all_data_sources = self._config_manager.pipeline.get_all_data_sources()
+            if not all_data_sources:
                 self.logger.error("No data sources were loaded. Check if the input files exist and are accessible.")
                 print("No data sources were loaded. Check if the input files exist and are accessible.")
                 print("Input files specified in the configuration:")
@@ -158,18 +159,14 @@ class Autoviz:
                     self.logger.info(f"Creating composite field: {field1} {operation} {field2}")
                     for factory in self.factory_sources:
                         model = factory.create_root_instance(self._config_manager)
-                        # Pass data sources to the model - use the shared data sources from config_manager
-                        for file_path, data_source in self._config_manager.data_sources.items():
-                            model.add_data_source(file_path, data_source)
+                        # No need to add data sources to the model - they're accessed via the pipeline
                         model.plot_composite_field(field1, field2, operation)
                     return
             
             # Normal plotting
             for factory in self.factory_sources:
                 model = factory.create_root_instance(self._config_manager)
-                # Pass data sources to the model - use the shared data sources from config_manager
-                for file_path, data_source in self._config_manager.data_sources.items():
-                    model.add_data_source(file_path, data_source)
+                # No need to add data sources to the model - they're accessed via the pipeline
                 
                 # Ensure map_params are available to the model
                 if hasattr(model, 'set_map_params') and self._config_manager.map_params:
@@ -182,7 +179,7 @@ class Autoviz:
                 
         finally:
             self.config_adapter.close()
-    
+ 
     def _apply_model_extensions(self):
         """Apply model-specific extensions to data sources."""
         for source_name in self.source_names:
