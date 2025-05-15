@@ -35,10 +35,11 @@ class DataPipeline:
         self.data_sources = {}
         self.dataset = None
         self.config_manager = config_manager
-    
+
     def process_file(self, file_path: str, model_name: Optional[str] = None,
                     process: bool = True, transform: bool = False,
-                    transform_params: Optional[Dict[str, Any]] = None) -> DataSource:
+                    transform_params: Optional[Dict[str, Any]] = None,
+                    metadata: Optional[Dict[str, Any]] = None) -> DataSource:
         """Process a single file through the pipeline.
         
         Args:
@@ -47,6 +48,7 @@ class DataPipeline:
             process: Whether to apply data processing
             transform: Whether to apply data transformation
             transform_params: Parameters for data transformation
+            metadata: Optional metadata to attach to the data source
             
         Returns:
             A processed data source
@@ -54,6 +56,11 @@ class DataPipeline:
         self.logger.debug(f"Processing file: {file_path}")
         
         data_source = self.reader.read_file(file_path, model_name)
+
+        # Attach metadata if provided
+        if metadata and hasattr(data_source, 'metadata'):
+            data_source.metadata.update(metadata)
+
         if process:
             data_source = self.processor.process_data_source(data_source)
         if transform and transform_params:

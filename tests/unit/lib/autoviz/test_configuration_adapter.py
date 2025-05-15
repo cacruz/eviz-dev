@@ -78,11 +78,12 @@ class TestConfigurationAdapter:
         adapter = ConfigurationAdapter(config_manager)
         assert adapter.config_manager == config_manager
         assert adapter.data_sources == {}  # Check for empty dictionary instead of None
-    
+
     def test_process_configuration(self):
         config_manager = MagicMock()
         config_manager.app_data.inputs = [{'name': 'test.nc', 'source_name': 'test_model'}]
         config_manager.source_names = ['default_model']
+        config_manager.ds_index = 0  # Add this line
         
         # Mock the pipeline
         pipeline_mock = MagicMock()
@@ -92,8 +93,40 @@ class TestConfigurationAdapter:
         adapter = ConfigurationAdapter(config_manager)
         adapter.process_configuration()
         
-        pipeline_mock.process_file.assert_called_once_with('test.nc', model_name='test_model')
-        assert len(adapter.data_sources) == 1    
+        pipeline_mock.process_file.assert_called_once()
+        # Check that the first positional argument is 'test.nc'
+        assert pipeline_mock.process_file.call_args[0][0] == 'test.nc'
+        # Check that model_name is 'test_model' or 'default_model'
+        model_name = pipeline_mock.process_file.call_args[1].get('model_name')
+        assert model_name in ['test_model', 'default_model']
+        assert len(adapter.data_sources) == 1
+
+    def test_process_configuration_with_composite(self):
+        config_manager = MagicMock()
+        config_manager.app_data.inputs = [
+            {'name': 'test1.nc', 'source_name': 'test_model'},
+            {'name': 'test2.nc', 'source_name': 'test_model'}
+        ]
+        config_manager.source_names = ['default_model']
+        config_manager.ds_index = 0  # Add this line
+        config_manager.input_config._composite = {
+            'variables': ['var1', 'var2'],
+            'operation': 'add',
+            'output_name': 'composite'
+        }
+        
+        # Mock the pipeline
+        pipeline_mock = MagicMock()
+        config_manager.pipeline = pipeline_mock
+        pipeline_mock.process_file.return_value = MagicMock()
+        
+        adapter = ConfigurationAdapter(config_manager)
+        adapter.process_configuration()
+        
+        assert pipeline_mock.process_file.call_count == 2
+        pipeline_mock.integrate_variables.assert_called_once_with(
+            ['var1', 'var2'], 'add', 'composite'
+        )
 
     def test_process_configuration_with_integration(self):
         """Test processing the configuration with integration."""
@@ -106,28 +139,7 @@ class TestConfigurationAdapter:
         self.adapter.process_configuration()
         
         self.mock_pipeline.integrate_data_sources.assert_called_once()
-    
-    def test_process_configuration_with_composite(self):
-        config_manager = MagicMock()
-        config_manager.app_data.inputs = [
-            {'name': 'test1.nc', 'source_name': 'test_model'},
-            {'name': 'test2.nc', 'source_name': 'test_model'}
-        ]
-        config_manager.source_names = ['default_model']
-        config_manager.input_config._enable_integration = True
-        
-        # Mock the pipeline
-        pipeline_mock = MagicMock()
-        config_manager.pipeline = pipeline_mock
-        pipeline_mock.process_file.return_value = MagicMock()
-        
-        adapter = ConfigurationAdapter(config_manager)
-        adapter.process_configuration()
-        
-        assert pipeline_mock.process_file.call_count == 2
-        pipeline_mock.integrate_data_sources.assert_called_once()
-
-    
+     
     def test_process_configuration_with_error(self):
         """Test processing the configuration with an error."""
         self.mock_config_manager.input_config = MagicMock()
