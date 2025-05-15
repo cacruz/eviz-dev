@@ -371,7 +371,7 @@ def _plot_xy_data(config, ax, data2d, x, y, field_name, fig, ax_opts, level,
                   plot_type, findex):
     """Helper function to plot YZ data on a single axes."""
     source_name = config.source_names[config.ds_index]
-    if ax_opts['extent']:
+    if ax_opts.get('extent'):
         if ax_opts['extent'] == 'conus':
             extent = [-140, -40, 15, 65]  # [lonW, lonE, latS, latN]
         else:
@@ -383,13 +383,19 @@ def _plot_xy_data(config, ax, data2d, x, y, field_name, fig, ax_opts, level,
         fill_value = config.spec_data[field_name]['xyplot']['fill_value']
         data2d = data2d.where(data2d != fill_value, np.nan)
 
-    if fig.use_cartopy:
-        # TODO: Fix this:
-        # ax = fig.set_cartopy_latlon_opts(ax, extent)
-        # ax.set_extent(extent, crs=ccrs.PlateCarree())
-        # ax = fig.set_cartopy_features(ax)
+    # Check if we're using Cartopy and if the axis is a GeoAxes
+    is_cartopy_axis = False
+    try:
+        from cartopy.mpl.geoaxes import GeoAxes
+        is_cartopy_axis = isinstance(ax, GeoAxes)
+    except ImportError:
+        pass
+
+    if fig.use_cartopy and is_cartopy_axis:
+        # Only pass transform if using Cartopy GeoAxes
         cfilled = _filled_contours(config, field_name, ax, x, y, data2d, transform=ccrs.PlateCarree())
     else:
+        # Don't pass transform for regular Matplotlib axes
         cfilled = _filled_contours(config, field_name, ax, x, y, data2d)
 
     if np.all(np.diff(config.ax_opts['clevs']) > 0):
@@ -1501,14 +1507,20 @@ def _create_clevs(field_name, ax_opts, data2d):
     ax_opts['clevs_prec'] = precision
     logger.debug(f"range_val: {range_val}, precision: {precision}")
 
-    if ax_opts['create_clevs']:
-        clevs = np.around(np.linspace(dmin, dmax, ax_opts['num_clevs']), decimals=precision)
-        # Ensure contour levels are strictly increasing:
+    # Initialize clevs with default values if not creating new ones
+    if not ax_opts.get('create_clevs', True):
+        # Use a reasonable default number of levels
+        clevs = np.around(np.linspace(dmin, dmax, 10), decimals=precision)
+    else:
+        clevs = np.around(np.linspace(dmin, dmax, ax_opts.get('num_clevs', 10)), decimals=precision)
+        # Ensure contour levels are strictly increasing
         clevs = np.unique(clevs)
         # If there are fewer than 2 levels, expand them to cover the range
         if len(clevs) < 2:
-            clevs = np.linspace(dmin, dmax, ax_opts['num_clevs'])
-        ax_opts['clevs'] = clevs
+            clevs = np.linspace(dmin, dmax, ax_opts.get('num_clevs', 10))
+    
+    # Set the clevs in ax_opts
+    ax_opts['clevs'] = clevs
     logger.debug(f'Created contour levels for {field_name}: {ax_opts["clevs"]}')
 
     # Check if the first contour level is zero
@@ -1526,8 +1538,21 @@ def _filled_contours(config, field_name, ax, x, y, data2d, transform=None):
     else:
         cmap_str = config.ax_opts['use_cmap']
 
+    # Check if transform is valid for this axis
+    if transform is not None:
+        try:
+            from cartopy.mpl.geoaxes import GeoAxes
+            if not isinstance(ax, GeoAxes):
+                # If not a GeoAxes, don't use the transform
+                transform = None
+                logger.warning("Transform provided but axis is not a GeoAxes. Ignoring transform.")
+        except ImportError:
+            # If Cartopy is not available, don't use the transform
+            transform = None
+
     try:
         if np.all(np.diff(config.ax_opts['clevs']) > 0):
+            # If transform is None, it will be ignored
             cfilled = ax.contourf(x, y, data2d,
                                   robust=True,
                                   levels=config.ax_opts['clevs'],
@@ -1545,7 +1570,15 @@ def _filled_contours(config, field_name, ax, x, y, data2d, transform=None):
     except ValueError as e:
         logger.error(f"Error: {e}")
         # Handle the case of a constant field
-        cfilled = ax.contourf(x, y, data2d, extend='both', transform=transform)
+        # Only pass transform if it's valid for this axis
+        if transform is not None:
+            try:
+                cfilled = ax.contourf(x, y, data2d, extend='both', transform=transform)
+            except Exception as e2:
+                logger.error(f"Error with transform: {e2}. Trying without transform.")
+                cfilled = ax.contourf(x, y, data2d, extend='both')
+        else:
+            cfilled = ax.contourf(x, y, data2d, extend='both')
         return cfilled
 
 

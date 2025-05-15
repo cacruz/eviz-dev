@@ -13,7 +13,6 @@ from eviz.lib.autoviz.configuration_adapter import ConfigurationAdapter
 
 class TestConfigurationAdapter:
     """Test cases for the ConfigurationAdapter class."""
-    
     def setup_method(self):
         """Set up test fixtures before each test method."""
         self.mock_config_manager = MagicMock(spec=ConfigManager)
@@ -39,11 +38,6 @@ class TestConfigurationAdapter:
         ]
         
         self.mock_pipeline = MagicMock(spec=DataPipeline)
-        
-        # Add data_sources and pipeline attributes to the mock config manager
-        self.mock_config_manager.data_sources = {}
-        self.mock_config_manager.pipeline = self.mock_pipeline
-        
         self.mock_data_source = MagicMock(spec=DataSource)
         self.mock_data_source.dataset = xr.Dataset(
             data_vars={
@@ -69,10 +63,11 @@ class TestConfigurationAdapter:
         )
         
         self.mock_pipeline.process_file.return_value = self.mock_data_source
-        self.adapter = ConfigurationAdapter(self.mock_config_manager)
-        # with patch('eviz.lib.autoviz.configuration_adapter.DataPipeline', return_value=self.mock_pipeline):
-        #     self.adapter = ConfigurationAdapter(self.mock_config_manager)
-    
+        
+        # Patch the DataPipeline class to return our mock
+        with patch('eviz.lib.autoviz.configuration_adapter.DataPipeline', return_value=self.mock_pipeline):
+            self.adapter = ConfigurationAdapter(self.mock_config_manager)
+            
     def test_init(self):
         config_manager = MagicMock()
         adapter = ConfigurationAdapter(config_manager)
@@ -83,15 +78,16 @@ class TestConfigurationAdapter:
         config_manager = MagicMock()
         config_manager.app_data.inputs = [{'name': 'test.nc', 'source_name': 'test_model'}]
         config_manager.source_names = ['default_model']
-        config_manager.ds_index = 0  # Add this line
+        config_manager.ds_index = 0
         
-        # Mock the pipeline
-        pipeline_mock = MagicMock()
-        config_manager.pipeline = pipeline_mock
+        # Create a mock pipeline
+        pipeline_mock = MagicMock(spec=DataPipeline)
         pipeline_mock.process_file.return_value = MagicMock()
         
-        adapter = ConfigurationAdapter(config_manager)
-        adapter.process_configuration()
+        # Patch the DataPipeline class to return our mock
+        with patch('eviz.lib.autoviz.configuration_adapter.DataPipeline', return_value=pipeline_mock):
+            adapter = ConfigurationAdapter(config_manager)
+            adapter.process_configuration()
         
         pipeline_mock.process_file.assert_called_once()
         # Check that the first positional argument is 'test.nc'
@@ -108,20 +104,21 @@ class TestConfigurationAdapter:
             {'name': 'test2.nc', 'source_name': 'test_model'}
         ]
         config_manager.source_names = ['default_model']
-        config_manager.ds_index = 0  # Add this line
+        config_manager.ds_index = 0
         config_manager.input_config._composite = {
             'variables': ['var1', 'var2'],
             'operation': 'add',
             'output_name': 'composite'
         }
         
-        # Mock the pipeline
-        pipeline_mock = MagicMock()
-        config_manager.pipeline = pipeline_mock
+        # Create a mock pipeline
+        pipeline_mock = MagicMock(spec=DataPipeline)
         pipeline_mock.process_file.return_value = MagicMock()
         
-        adapter = ConfigurationAdapter(config_manager)
-        adapter.process_configuration()
+        # Patch the DataPipeline class to return our mock
+        with patch('eviz.lib.autoviz.configuration_adapter.DataPipeline', return_value=pipeline_mock):
+            adapter = ConfigurationAdapter(config_manager)
+            adapter.process_configuration()
         
         assert pipeline_mock.process_file.call_count == 2
         pipeline_mock.integrate_variables.assert_called_once_with(
@@ -139,7 +136,7 @@ class TestConfigurationAdapter:
         self.adapter.process_configuration()
         
         self.mock_pipeline.integrate_data_sources.assert_called_once()
-     
+
     def test_process_configuration_with_error(self):
         """Test processing the configuration with an error."""
         self.mock_config_manager.input_config = MagicMock()
@@ -157,7 +154,21 @@ class TestConfigurationAdapter:
         # Verify that only the second data source was stored
         assert '/test/path/test_file.nc' not in self.adapter.data_sources
         assert '/test/path/test_file2.nc' in self.adapter.data_sources
-    
+
+    def test_get_dataset(self):
+        """Test getting the dataset."""
+        mock_dataset = xr.Dataset()
+        self.mock_pipeline.get_dataset.return_value = mock_dataset
+        
+        result = self.adapter.get_dataset()
+        assert result is mock_dataset
+        self.mock_pipeline.get_dataset.assert_called_once()
+
+    def test_close(self):
+        """Test closing the adapter."""
+        self.adapter.close()
+        self.mock_pipeline.close.assert_called_once()
+                
     def test_get_data_source(self):
         """Test getting a data source."""
         # Set up the data sources
@@ -187,16 +198,3 @@ class TestConfigurationAdapter:
         assert result['/test/path/test_file.nc'] == self.mock_data_source
         assert result['/test/path/test_file2.nc'] == self.mock_data_source
     
-    def test_get_dataset(self):
-        """Test getting the dataset."""
-        mock_dataset = xr.Dataset()
-        self.mock_pipeline.get_dataset.return_value = mock_dataset
-        
-        result = self.adapter.get_dataset()
-        assert result is mock_dataset
-        self.mock_pipeline.get_dataset.assert_called_once()
-    
-    def test_close(self):
-        """Test closing the adapter."""
-        self.adapter.close()
-        self.mock_pipeline.close.assert_called_once()

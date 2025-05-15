@@ -623,12 +623,12 @@ class Generic(Root):
         file_index1, file_index2 = file_indices
 
         # Plot the first dataset
-        self._process_comparison_plot(plotter, file_index1, current_field_index,
+        self._process_3x1_comparison_plot(plotter, file_index1, current_field_index,
                                     field_name1, figure, ax, 0, 
                                     sdat1_dataset[field_name1], plot_type, level=level)
 
         # Plot the second dataset
-        self._process_comparison_plot(plotter, file_index2, current_field_index,
+        self._process_3x1_comparison_plot(plotter, file_index2, current_field_index,
                                     field_name2, figure, ax, 1, 
                                     sdat2_dataset[field_name2], plot_type, level=level)
 
@@ -645,7 +645,7 @@ class Generic(Root):
         self.comparison_plot = True
         # For the comparison, we need to pass both datasets
         # The _process_comparison_plot method will need to handle this special case
-        self._process_comparison_plot(plotter, file_index1, current_field_index,
+        self._process_3x1_comparison_plot(plotter, file_index1, current_field_index,
                                 field_name1, figure, ax, 2, 
                                 (sdat1_dataset[field_name1], sdat2_dataset[field_name2]), 
                                 plot_type, level=level)
@@ -658,13 +658,13 @@ class Generic(Root):
         file_index1, file_index2 = file_indices
 
         # Plot the first dataset in the top-left
-        self._process_comparison_plot_2x2(plotter, file_index1, current_field_index,
+        self._process_2x2_comparison_plot(plotter, file_index1, current_field_index,
                                         field_name1, figure, [0, 0], 0, 
                                         sdat1_dataset[field_name1], plot_type,
                                         level=level)
 
         # Plot the second dataset in the top-right
-        self._process_comparison_plot_2x2(plotter, file_index2, current_field_index,
+        self._process_2x2_comparison_plot(plotter, file_index2, current_field_index,
                                         field_name2, figure, [0, 1], 1, 
                                         sdat2_dataset[field_name2], plot_type,
                                         level=level)
@@ -672,20 +672,20 @@ class Generic(Root):
         # Plot comparison in the bottom row
         self.comparison_plot = True
         # For the comparison, we need to pass both datasets
-        self._process_comparison_plot_2x2(plotter, file_index1, current_field_index,
+        self._process_2x2_comparison_plot(plotter, file_index1, current_field_index,
                                         field_name1, figure, [1, 0], 2, 
                                         (sdat1_dataset[field_name1], sdat2_dataset[field_name2]), 
                                         plot_type, level=level)
         
         # If extra field type is enabled, plot another comparison view
         if self.config_manager.ax_opts.get('add_extra_field_type', False):
-            self._process_comparison_plot_2x2(plotter, file_index1, current_field_index,
+            self._process_2x2_comparison_plot(plotter, file_index1, current_field_index,
                                             field_name1, figure, [1, 1], 3, 
                                             (sdat1_dataset[field_name1], sdat2_dataset[field_name2]), 
                                             plot_type, level=level)
 
 
-    def _process_comparison_plot(self, plotter, file_index, current_field_index, field_name, 
+    def _process_3x1_comparison_plot(self, plotter, file_index, current_field_index, field_name, 
                             figure, ax, ax_index, data_array, plot_type, level=None):
         """Process a comparison plot."""
         # Set state variables on config_manager
@@ -728,9 +728,6 @@ class Generic(Root):
                 data2d1, x1, y1 = field_to_plot1[0], field_to_plot1[1], field_to_plot1[2]
                 data2d2, x2, y2 = field_to_plot2[0], field_to_plot2[1], field_to_plot2[2]
                 
-                # Store both data arrays for potential regridding
-                self.data2d_list = [data2d1, data2d2]
-                
                 # Debug logging for difference calculation
                 self.logger.info("Calculating difference between data arrays")
                 
@@ -757,9 +754,6 @@ class Generic(Root):
                         self.logger.error("Both data arrays are None, cannot create difference plot")
                         return
                     
-                    # Update the data2d_list with the fixed arrays
-                    self.data2d_list = [data2d1, data2d2]
-                
                 proc = DataProcessor(self.config_manager) 
                 proc.data2d_list = [data2d1, data2d2] 
                 dim1_name, dim2_name = self.config_manager.get_dim_names(plot_type)
@@ -798,9 +792,8 @@ class Generic(Root):
             plotter.comparison_plots(self.config_manager, field_to_plot, level=level)
 
 
-    def _process_comparison_plot_2x2(self, plotter, file_index, current_field_index, field_name, 
-                                figure, gsi, ax_index, data_array, plot_type, level=None):
-        """Process a comparison plot for 2x2 layout."""
+    def _process_2x2_comparison_plot(self, plotter, file_index, current_field_index, field_name, 
+                            figure, gsi, ax_index, data_array, plot_type, level=None):
         # Get the axes array
         axes = figure.get_axes()
         
@@ -811,6 +804,14 @@ class Generic(Root):
             # Fall back to using subplot if axes is not a 2D array
             current_ax = plt.subplot(figure.gs[gsi[0], gsi[1]])
         
+        # Set state variables on config_manager
+        self.config_manager.findex = file_index
+        self.config_manager.pindex = current_field_index
+        self.config_manager.axindex = ax_index
+        
+        # Initialize ax_opts BEFORE setting flags
+        self.config_manager.ax_opts = figure.init_ax_opts(field_name)
+        
         # Set difference field flag if this is a comparison panel (bottom row)
         if gsi[0] == 1:  # Bottom row in 2x2 layout is for differences
             self.config_manager.ax_opts['is_diff_field'] = True
@@ -819,11 +820,6 @@ class Generic(Root):
                 self.config_manager.ax_opts['add_extra_field_type'] = True
         
         figure.set_ax_opts_diff_field(current_ax)
-        
-        # Set state variables on config_manager
-        self.config_manager.findex = file_index
-        self.config_manager.pindex = current_field_index
-        self.config_manager.axindex = ax_index
         
         # Handle data_array differently based on its type
         if isinstance(data_array, tuple):
@@ -842,10 +838,6 @@ class Generic(Root):
                 data2d1, x1, y1 = field_to_plot1[0], field_to_plot1[1], field_to_plot1[2]
                 data2d2, x2, y2 = field_to_plot2[0], field_to_plot2[1], field_to_plot2[2]
                 
-                # Store both data arrays for potential regridding
-                self.data2d_list = [data2d1, data2d2]
-
-
                 proc = DataProcessor(self.config_manager) 
                 proc.data2d_list = [data2d1, data2d2] 
                 dim1_name, dim2_name = self.config_manager.get_dim_names(plot_type)
@@ -937,6 +929,228 @@ class Generic(Root):
                 self.logger.error(f"Dataset has fewer than 2 dimensions, cannot plot")
                 return None
 
+    # SIDE-BY-SIDE COMPARE METHODS (always need SPECS file)
+    #--------------------------------------------------------------------------
+    def _side_by_side_plots(self, plotter):
+        """
+        Generate side-by-side comparison plots (2x1 subplots) without difference.
+        """
+        current_field_index = 0
+        self.data2d_list = []  # Initialize list to store data for comparison
+
+        # Process each pair of indices from the comparison configuration
+        for idx1, idx2 in zip(self.config_manager.a_list, self.config_manager.b_list):
+            # Get map parameters for these indices
+            map1_params = self.config_manager.map_params.get(idx1)
+            map2_params = self.config_manager.map_params.get(idx2)
+
+            if not map1_params or not map2_params:
+                self.logger.warning(f"Could not find map parameters for indices {idx1} or {idx2}. Skipping comparison.")
+                continue
+
+            # Get data sources from the pipeline
+            filename1 = map1_params.get('filename')
+            filename2 = map2_params.get('filename')
+
+            data_source1 = self.config_manager.pipeline.get_data_source(filename1)
+            data_source2 = self.config_manager.pipeline.get_data_source(filename2)
+
+            if not data_source1 or not data_source2:
+                self.logger.warning(f"Could not find data sources for {filename1} or {filename2}. Skipping comparison.")
+                continue
+
+            # Get the actual datasets
+            sdat1_dataset = data_source1.dataset if hasattr(data_source1, 'dataset') else None
+            sdat2_dataset = data_source2.dataset if hasattr(data_source2, 'dataset') else None
+
+            if sdat1_dataset is None or sdat2_dataset is None:
+                self.logger.warning(f"Datasets not loaded for {filename1} or {filename2}. Skipping comparison.")
+                continue
+
+            # Determine file indices
+            file_indices = (idx1, idx2)
+
+            # Process each plot type
+            field_name1 = map1_params.get('field')
+            field_name2 = map2_params.get('field')
+
+            if not field_name1 or not field_name2:
+                self.logger.warning(f"Field names not specified for comparison indices {idx1} or {idx2}. Skipping.")
+                continue
+
+            self.field_names = (field_name1, field_name2)
+
+            # Assuming plot types are the same for comparison
+            plot_types = map1_params.get('to_plot', ['xy'])
+            for plot_type in plot_types:
+                self.logger.info(f"Plotting {field_name1} vs {field_name2} side by side, {plot_type} plot")
+                self.data2d_list = []  # Reset for each plot type
+
+                if 'xy' in plot_type or 'polar' in plot_type:
+                    self._process_xy_side_by_side_plots(plotter, file_indices,
+                                                    current_field_index,
+                                                    field_name1, field_name2, plot_type,
+                                                    sdat1_dataset, sdat2_dataset)
+                else:
+                    self._process_other_side_by_side_plots(plotter, file_indices,
+                                                        current_field_index,
+                                                        field_name1, field_name2,
+                                                        plot_type, sdat1_dataset, sdat2_dataset)
+
+            current_field_index += 1
+
+    def _process_xy_side_by_side_plots(self, plotter, file_indices, current_field_index,
+                                    field_name1, field_name2, plot_type, sdat1_dataset, sdat2_dataset):
+        """Process side-by-side comparison plots for xy or polar plot types."""
+        file_index1, file_index2 = file_indices
+        
+        # Get the number of plots from compare_exp_ids
+        num_plots = len(self.config_manager.compare_exp_ids)
+        
+        # Set up the panel layout
+        nrows = 1
+        ncols = num_plots  # This will be 3 for three variables
+        
+        # Get levels for the plots
+        levels = self.config_manager.get_levels(field_name1, plot_type + 'plot')
+        if not levels:
+            self.logger.warning(f' -> No levels specified for {field_name1}')
+            return
+        
+        for level_val in levels.keys():
+            # Create a figure with 1xN subplots
+            figure = Figure.create_eviz_figure(self.config_manager, plot_type, nrows=nrows, ncols=ncols)
+            ax = figure.get_axes()
+            self.config_manager.level = level_val
+            
+            # Create the side-by-side comparison plot
+            self._create_xy_side_by_side_plot(plotter, file_indices,
+                                        current_field_index,
+                                        field_name1, field_name2, figure, ax,
+                                        plot_type, sdat1_dataset, sdat2_dataset, level_val)
+            
+            # Save the plot
+            pu.print_map(self.config_manager, plot_type, self.config_manager.findex, figure, level=level_val)
+
+    def _create_xy_side_by_side_plot(self, plotter, file_indices, current_field_index,
+                                field_name1, field_name2, figure, ax,
+                                plot_type, sdat1_dataset, sdat2_dataset, level=None):
+        """
+        Create a side-by-side comparison plot for the given data.
+        
+        The layout is:
+        - Left subplot: First dataset
+        - Middle subplot: Second dataset
+        - Right subplot: Third dataset (if present)
+        """
+        file_index1, file_index2 = file_indices
+        
+        # Ensure ax is a list with enough elements for all plots
+        if not isinstance(ax, list):
+            ax = [ax]
+        num_plots = len(self.config_manager.compare_exp_ids)
+        if len(ax) < num_plots:
+            self.logger.warning(f"Not enough axes for {num_plots}-way comparison. Using the first axis.")
+            ax = [ax[0]] * num_plots
+        
+        # Plot each dataset in its respective subplot
+        self.comparison_plot = False
+        
+        # Plot first dataset (from a_list)
+        if self.config_manager.a_list:
+            self._process_side_by_side_plot(plotter, self.config_manager.a_list[0],
+                                        current_field_index,
+                                        field_name1, figure, ax, 0,
+                                        sdat1_dataset[field_name1], plot_type, level=level)
+        
+        # Plot remaining datasets (from b_list)
+        for i, file_idx in enumerate(self.config_manager.b_list, start=1):
+            if i < num_plots:  # Only plot if we have a corresponding axis
+                self._process_side_by_side_plot(plotter, file_idx,
+                                            current_field_index,
+                                            field_name2, figure, ax, i,
+                                            sdat2_dataset[field_name2], plot_type, level=level)
+
+    def _process_other_side_by_side_plots(self, plotter, file_indices, current_field_index,
+                                        field_name1, field_name2, plot_type, sdat1_dataset, sdat2_dataset):
+        """Process side-by-side comparison plots for other plot types."""
+        file_index1, file_index2 = file_indices
+        nrows, ncols = self.config_manager.input_config._comp_panels
+        
+        # Create a figure with 2x1 subplots (side by side)
+        figure = Figure.create_eviz_figure(self.config_manager, plot_type, nrows=nrows, ncols=ncols)
+        axes_shape = figure.subplots
+        ax = figure.get_axes()
+        self.config_manager.level = None
+        
+        # Create the nx1 side-by-side comparison plot
+        self._create_other_side_by_side_plot(plotter, file_indices, current_field_index,
+                                        field_name1, field_name2, figure, ax,
+                                        plot_type, sdat1_dataset, sdat2_dataset)
+        
+        # Save the plot
+        pu.print_map(self.config_manager, plot_type, self.config_manager.findex, figure)
+
+    def _create_other_side_by_side_plot(self, plotter, file_indices, current_field_index,
+                                    field_name1, field_name2, figure, ax,
+                                    plot_type, sdat1_dataset, sdat2_dataset, level=None):
+        """
+        Create a nx1 side-by-side comparison plot for the given data.
+        
+        The layout is:
+        - Left subplot: First dataset
+        - Right subplot: Second dataset
+        - etc... up to 3x1
+        """
+        file_index1, file_index2 = file_indices
+        
+        # Plot the first dataset in the left subplot
+        self.comparison_plot = False
+        # TODO: add loop for n in range(3)...
+        self._process_side_by_side_plot(plotter, file_index1, current_field_index,
+                                    field_name1,
+                                    figure, ax, 0, sdat1_dataset[field_name1], plot_type, level=level)
+        
+        # Plot the second dataset in the right subplot
+        self._process_side_by_side_plot(plotter, file_index2, current_field_index,
+                                    field_name2,
+                                    figure, ax, 1, sdat2_dataset[field_name2], plot_type, level=level)
+
+    def _process_side_by_side_plot(self, plotter, file_index, current_field_index, field_name, 
+                                figure, ax, ax_index, data_array, plot_type, level=None):
+        """Process a single plot for side-by-side comparison."""
+        self.config_manager.findex = file_index
+        self.config_manager.pindex = current_field_index
+        self.config_manager.axindex = ax_index
+        self.config_manager.ax_opts = figure.init_ax_opts(field_name)
+        
+        # Set up the axis
+        if isinstance(ax, list) and len(ax) > ax_index:
+            current_ax = ax[ax_index]
+        else:
+            self.logger.warning(f"Axis index {ax_index} out of range. Using the first axis.")
+            current_ax = ax[0] if isinstance(ax, list) and len(ax) > 0 else ax
+        
+        # Get field to plot
+        field_to_plot = self._get_field_to_plot_compare(data_array, field_name, file_index,
+                                                    plot_type, figure, ax=current_ax, level=level)
+        
+        # Store the data for potential later use
+        if field_to_plot and field_to_plot[0] is not None:
+            self.data2d_list.append(field_to_plot[0])
+        
+        # Call the plotter with the prepared data
+        if field_to_plot:
+            if hasattr(plotter, 'single_plots'):
+                plotter.single_plots(self.config_manager, field_to_plot, level=level)
+            elif hasattr(plotter, 'comparison_plots'):
+                plotter.comparison_plots(self.config_manager, field_to_plot, level=level)
+            else:
+                self.logger.warning(f"Unknown plotter type: {type(plotter).__name__}. Trying to call plot method.")
+                if hasattr(plotter, 'plot'):
+                    plotter.plot(self.config_manager, field_to_plot, level=level)
+                else:
+                    self.logger.error(f"Plotter {type(plotter).__name__} has no plot method.")
 
     # DATA SLICE PROCESSING METHODS
     #--------------------------------------------------------------------------    
@@ -1654,223 +1868,3 @@ class Generic(Root):
             self.logger.warning(f"Error setting time config: {e}")
             self.config_manager.real_time = f"Time level {time_index}"
 
-    def _side_by_side_plots(self, plotter):
-        """
-        Generate side-by-side comparison plots (2x1 subplots) without difference.
-        """
-        current_field_index = 0
-        self.data2d_list = []  # Initialize list to store data for comparison
-
-        # Process each pair of indices from the comparison configuration
-        for idx1, idx2 in zip(self.config_manager.a_list, self.config_manager.b_list):
-            # Get map parameters for these indices
-            map1_params = self.config_manager.map_params.get(idx1)
-            map2_params = self.config_manager.map_params.get(idx2)
-
-            if not map1_params or not map2_params:
-                self.logger.warning(f"Could not find map parameters for indices {idx1} or {idx2}. Skipping comparison.")
-                continue
-
-            # Get data sources from the pipeline
-            filename1 = map1_params.get('filename')
-            filename2 = map2_params.get('filename')
-
-            data_source1 = self.config_manager.pipeline.get_data_source(filename1)
-            data_source2 = self.config_manager.pipeline.get_data_source(filename2)
-
-            if not data_source1 or not data_source2:
-                self.logger.warning(f"Could not find data sources for {filename1} or {filename2}. Skipping comparison.")
-                continue
-
-            # Get the actual datasets
-            sdat1_dataset = data_source1.dataset if hasattr(data_source1, 'dataset') else None
-            sdat2_dataset = data_source2.dataset if hasattr(data_source2, 'dataset') else None
-
-            if sdat1_dataset is None or sdat2_dataset is None:
-                self.logger.warning(f"Datasets not loaded for {filename1} or {filename2}. Skipping comparison.")
-                continue
-
-            # Determine file indices
-            file_indices = (idx1, idx2)
-
-            # Process each plot type
-            field_name1 = map1_params.get('field')
-            field_name2 = map2_params.get('field')
-
-            if not field_name1 or not field_name2:
-                self.logger.warning(f"Field names not specified for comparison indices {idx1} or {idx2}. Skipping.")
-                continue
-
-            self.field_names = (field_name1, field_name2)
-
-            # Assuming plot types are the same for comparison
-            plot_types = map1_params.get('to_plot', ['xy'])
-            for plot_type in plot_types:
-                self.logger.info(f"Plotting {field_name1} vs {field_name2} side by side, {plot_type} plot")
-                self.data2d_list = []  # Reset for each plot type
-
-                if 'xy' in plot_type or 'polar' in plot_type:
-                    self._process_xy_side_by_side_plots(plotter, file_indices,
-                                                    current_field_index,
-                                                    field_name1, field_name2, plot_type,
-                                                    sdat1_dataset, sdat2_dataset)
-                else:
-                    self._process_other_side_by_side_plots(plotter, file_indices,
-                                                        current_field_index,
-                                                        field_name1, field_name2,
-                                                        plot_type, sdat1_dataset, sdat2_dataset)
-
-            current_field_index += 1
-
-    def _process_xy_side_by_side_plots(self, plotter, file_indices, current_field_index,
-                                    field_name1, field_name2, plot_type, sdat1_dataset, sdat2_dataset):
-        """Process side-by-side comparison plots for xy or polar plot types."""
-        file_index1, file_index2 = file_indices
-        
-        # Get the number of plots from compare_exp_ids
-        num_plots = len(self.config_manager.compare_exp_ids)
-        
-        # Set up the panel layout
-        nrows = 1
-        ncols = num_plots  # This will be 3 for three variables
-        
-        # Get levels for the plots
-        levels = self.config_manager.get_levels(field_name1, plot_type + 'plot')
-        if not levels:
-            self.logger.warning(f' -> No levels specified for {field_name1}')
-            return
-        
-        for level_val in levels.keys():
-            # Create a figure with 1xN subplots
-            figure = Figure.create_eviz_figure(self.config_manager, plot_type, nrows=nrows, ncols=ncols)
-            ax = figure.get_axes()
-            self.config_manager.level = level_val
-            
-            # Create the side-by-side comparison plot
-            self._create_side_by_side_plot(plotter, file_indices,
-                                        current_field_index,
-                                        field_name1, field_name2, figure, ax,
-                                        plot_type, sdat1_dataset, sdat2_dataset, level_val)
-            
-            # Save the plot
-            pu.print_map(self.config_manager, plot_type, self.config_manager.findex, figure, level=level_val)
-
-    def _create_side_by_side_plot(self, plotter, file_indices, current_field_index,
-                                field_name1, field_name2, figure, ax,
-                                plot_type, sdat1_dataset, sdat2_dataset, level=None):
-        """
-        Create a side-by-side comparison plot for the given data.
-        
-        The layout is:
-        - Left subplot: First dataset
-        - Middle subplot: Second dataset
-        - Right subplot: Third dataset (if present)
-        """
-        file_index1, file_index2 = file_indices
-        
-        # Ensure ax is a list with enough elements for all plots
-        if not isinstance(ax, list):
-            ax = [ax]
-        num_plots = len(self.config_manager.compare_exp_ids)
-        if len(ax) < num_plots:
-            self.logger.warning(f"Not enough axes for {num_plots}-way comparison. Using the first axis.")
-            ax = [ax[0]] * num_plots
-        
-        # Plot each dataset in its respective subplot
-        self.comparison_plot = False
-        
-        # Plot first dataset (from a_list)
-        if self.config_manager.a_list:
-            self._process_side_by_side_plot(plotter, self.config_manager.a_list[0],
-                                        current_field_index,
-                                        field_name1, figure, ax, 0,
-                                        sdat1_dataset[field_name1], plot_type, level=level)
-        
-        # Plot remaining datasets (from b_list)
-        for i, file_idx in enumerate(self.config_manager.b_list, start=1):
-            if i < num_plots:  # Only plot if we have a corresponding axis
-                self._process_side_by_side_plot(plotter, file_idx,
-                                            current_field_index,
-                                            field_name2, figure, ax, i,
-                                            sdat2_dataset[field_name2], plot_type, level=level)
-
-    def _process_other_side_by_side_plots(self, plotter, file_indices, current_field_index,
-                                        field_name1, field_name2, plot_type, sdat1_dataset, sdat2_dataset):
-        """Process side-by-side comparison plots for other plot types."""
-        file_index1, file_index2 = file_indices
-        nrows, ncols = self.config_manager.input_config._comp_panels
-        
-        # Create a figure with 2x1 subplots (side by side)
-        figure = Figure.create_eviz_figure(self.config_manager, plot_type, nrows=nrows, ncols=ncols)
-        axes_shape = figure.subplots
-        ax = figure.get_axes()
-        self.config_manager.level = None
-        
-        # Create the nx1 side-by-side comparison plot
-        self._create_nx1_side_by_side_plot(plotter, file_indices, current_field_index,
-                                        field_name1, field_name2, figure, ax,
-                                        plot_type, sdat1_dataset, sdat2_dataset)
-        
-        # Save the plot
-        pu.print_map(self.config_manager, plot_type, self.config_manager.findex, figure)
-
-    def _create_nx1_side_by_side_plot(self, plotter, file_indices, current_field_index,
-                                    field_name1, field_name2, figure, ax,
-                                    plot_type, sdat1_dataset, sdat2_dataset, level=None):
-        """
-        Create a nx1 side-by-side comparison plot for the given data.
-        
-        The layout is:
-        - Left subplot: First dataset
-        - Right subplot: Second dataset
-        - etc... up to 3x1
-        """
-        file_index1, file_index2 = file_indices
-        
-        # Plot the first dataset in the left subplot
-        self.comparison_plot = False
-        # TODO: add loop for n in range(3)...
-        self._process_side_by_side_plot(plotter, file_index1, current_field_index,
-                                    field_name1,
-                                    figure, ax, 0, sdat1_dataset[field_name1], plot_type, level=level)
-        
-        # Plot the second dataset in the right subplot
-        self._process_side_by_side_plot(plotter, file_index2, current_field_index,
-                                    field_name2,
-                                    figure, ax, 1, sdat2_dataset[field_name2], plot_type, level=level)
-
-    def _process_side_by_side_plot(self, plotter, file_index, current_field_index, field_name, 
-                                figure, ax, ax_index, data_array, plot_type, level=None):
-        """Process a single plot for side-by-side comparison."""
-        self.config_manager.findex = file_index
-        self.config_manager.pindex = current_field_index
-        self.config_manager.axindex = ax_index
-        self.config_manager.ax_opts = figure.init_ax_opts(field_name)
-        
-        # Set up the axis
-        if isinstance(ax, list) and len(ax) > ax_index:
-            current_ax = ax[ax_index]
-        else:
-            self.logger.warning(f"Axis index {ax_index} out of range. Using the first axis.")
-            current_ax = ax[0] if isinstance(ax, list) and len(ax) > 0 else ax
-        
-        # Get field to plot
-        field_to_plot = self._get_field_to_plot_compare(data_array, field_name, file_index,
-                                                    plot_type, figure, ax=current_ax, level=level)
-        
-        # Store the data for potential later use
-        if field_to_plot and field_to_plot[0] is not None:
-            self.data2d_list.append(field_to_plot[0])
-        
-        # Call the plotter with the prepared data
-        if field_to_plot:
-            if hasattr(plotter, 'single_plots'):
-                plotter.single_plots(self.config_manager, field_to_plot, level=level)
-            elif hasattr(plotter, 'comparison_plots'):
-                plotter.comparison_plots(self.config_manager, field_to_plot, level=level)
-            else:
-                self.logger.warning(f"Unknown plotter type: {type(plotter).__name__}. Trying to call plot method.")
-                if hasattr(plotter, 'plot'):
-                    plotter.plot(self.config_manager, field_to_plot, level=level)
-                else:
-                    self.logger.error(f"Plotter {type(plotter).__name__} has no plot method.")
