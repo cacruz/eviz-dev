@@ -3,23 +3,47 @@ Data processing stage of the pipeline.
 """
 
 import logging
-from typing import Dict, List, Optional, Union, Any
 
-import xarray as xr
+from dataclasses import dataclass, field
+
+from typing import Dict, List, Optional, Union, Any, Tuple
 import numpy as np
+from scipy.interpolate import interp1d
+import xarray as xr
+from xarray import DataArray
 
+from typing import TYPE_CHECKING
+if TYPE_CHECKING:
+    from eviz.lib.autoviz.config_manager import ConfigManager
+from eviz.lib.xarray_utils import get_dst_attribute
+from eviz.lib import const as constants
+from eviz.lib.data.data_utils import apply_conversion
 from eviz.lib.data.sources import DataSource
 
+logger = logging.getLogger(__name__)
 
+@dataclass
 class DataProcessor:
     """Data processing stage of the pipeline.
     
-    This class handles processing data from data sources.
+    This class handles all data processing operations including:
+    - Basic data validation and standardization
+    - Coordinate standardization
+    - Missing value handling
+    - Unit conversions
+    - Overlays (tropopause height, specific humidity)
+    - Data interpolation and regridding
     """
-    
-    def __init__(self):
-        """Initialize a new DataProcessor."""
-        self.logger = logging.getLogger(__name__)
+    config_manager: Optional['ConfigManager'] = None
+    data2d_list: List = field(default_factory=list, init=False)
+
+    @property
+    def logger(self) -> logging.Logger:
+        return logging.getLogger(__name__)
+
+    def __post_init__(self):
+        """Post-initialization setup."""
+        self.logger.info("Start init")
     
     def process_data_source(self, data_source: DataSource) -> DataSource:
         """Process a data source.
@@ -35,7 +59,13 @@ class DataProcessor:
         if not data_source.validate_data():
             self.logger.error("Data validation failed")
             return data_source
+
+        # Basic processing
         data_source.dataset = self._process_dataset(data_source.dataset)
+        
+        # Apply advanced processing if config_manager is available
+        if self.config_manager:
+            data_source = self._apply_advanced_processing(data_source)
         
         return data_source
     
@@ -92,7 +122,6 @@ class DataProcessor:
             lat_values = dataset.coords['lat'].values
             if np.any(lat_values > 90) or np.any(lat_values < -90):
                 self.logger.warning("Latitude values outside the range [-90, 90]")
-                # Attempt to fix by normalizing to [-90, 90]
                 lat_values = np.clip(lat_values, -90, 90)
                 dataset = dataset.assign_coords(lat=lat_values)
                 self.logger.debug("Normalized latitude values to the range [-90, 90]")
@@ -102,7 +131,6 @@ class DataProcessor:
             lon_values = dataset.coords['lon'].values
             if np.any(lon_values > 360) or np.any(lon_values < -180):
                 self.logger.warning("Longitude values outside the range [-180, 180] or [0, 360]")
-                # Attempt to fix by normalizing to [-180, 180]
                 lon_values = ((lon_values + 180) % 360) - 180
                 dataset = dataset.assign_coords(lon=lon_values)
                 self.logger.debug("Normalized longitude values to the range [-180, 180]")
@@ -164,3 +192,266 @@ class DataProcessor:
                 self.logger.debug(f"Converted pressure from hPa to Pa for variable {var_name}")
         
         return dataset
+
+    def _apply_advanced_processing(self, data_source: DataSource) -> DataSource:
+        """Apply advanced processing operations if config_manager is available.
+        
+        Args:
+            data_source: The data source to process
+            
+        Returns:
+            The processed data source
+        """
+        if not self.config_manager:
+            return data_source
+
+        # Apply tropopause height processing if configured
+        if hasattr(self.config_manager, 'use_trop_height') and self.config_manager.use_trop_height:
+            data_source = self._apply_tropopause_height(data_source)
+
+        # Apply specific humidity conversion if configured
+        if hasattr(self.config_manager, 'use_sphum_conv') and self.config_manager.use_sphum_conv:
+            data_source = self._apply_sphum_conversion(data_source)
+
+        return data_source
+
+    def _apply_tropopause_height(self, data_source: DataSource) -> DataSource:
+        """Apply tropopause height processing.
+        
+        Args:
+            data_source: The data source to process
+            
+        Returns:
+            The processed data source
+        """
+        if not hasattr(self.config_manager, 'trop_height_file_list'):
+            return data_source
+
+        findex = getattr(self.config_manager, 'findex', 0)
+        if findex not in self.config_manager.trop_height_file_list:
+            return data_source
+
+        try:
+            # Get tropopause configuration
+            trop_config = self.config_manager.trop_height_file_list[findex]
+            exp_id = trop_config['exp_id']
+            field_exp_id = self.config_manager.file_list[findex]['exp_id']
+            
+            if exp_id != field_exp_id:
+                return data_source
+
+            # Process tropopause data
+            trop_filename = trop_config['filename']
+            self.logger.debug(f"Processing {trop_filename}...")
+
+            with xr.open_dataset(trop_filename) as f:
+                trop_field = trop_config['trop_field_name']
+                tropp = f.data_vars.get(trop_field)
+                if tropp is None:
+                    return data_source
+
+                # Select first time step (TODO: make this configurable)
+                tropp = tropp.isel(time=0)
+
+                # Handle units conversion
+                units = get_dst_attribute(tropp, 'units')
+                conversion_factor = 1.0
+                if units == 'Pa':
+                    conversion_factor = 1 / 100.0
+                elif units == 'hPa':
+                    conversion_factor = 1.0
+
+                # Add processed tropopause data to dataset
+                data_source.dataset['tropopause'] = tropp * conversion_factor
+
+        except Exception as e:
+            self.logger.error(f"Error processing tropopause height: {e}")
+
+        return data_source
+
+    def _apply_sphum_conversion(self, data_source: DataSource) -> DataSource:
+        """Apply specific humidity conversion.
+        
+        Args:
+            data_source: The data source to process
+            
+        Returns:
+            The processed data source
+        """
+        radionuclides = ['Be10', 'Be10s', 'Be7', 'Be7s', 'Pb210', 'Rn222']
+        to_convert = set(self.config_manager.to_plot).intersection(set(radionuclides))
+        
+        if not to_convert:
+            return data_source
+
+        ds_index = getattr(self.config_manager, 'ds_index', 0)
+        ds_meta = getattr(self.config_manager, 'data_source', {})
+
+        if not ds_meta.get('sphum_conv_meta'):
+            return data_source
+
+        try:
+            # Get specific humidity data
+            sphum_meta = ds_meta['sphum_conv_meta'][ds_index]
+            if sphum_meta['exp_name'] != ds_meta['exp_name']:
+                return data_source
+
+            sphum_filename = sphum_meta['filename']
+            self.logger.debug(f"Processing {sphum_filename}...")
+
+            with xr.open_dataset(sphum_filename) as f:
+                sphum_field = sphum_meta['sphum_field_name']
+                specific_hum = f.data_vars.get(sphum_field)
+                if specific_hum is None:
+                    specific_hum = 0.0  # assume dry air conditions
+                else:
+                    specific_hum = specific_hum.isel(time=0)
+
+            # Convert each radionuclide
+            for species_name in to_convert:
+                self._convert_radionuclide_units(data_source, species_name, specific_hum, 'mol mol-1')
+
+        except Exception as e:
+            self.logger.error(f"Error processing specific humidity: {e}")
+            
+        return data_source
+
+    def _convert_radionuclide_units(self, data_source: DataSource, species_name: str, 
+                                  specific_hum: xr.DataArray, target_units: str) -> None:
+        """Convert radionuclide units using specific humidity.
+        
+        Args:
+            data_source: The data source containing the species data
+            species_name: Name of the species to convert
+            specific_hum: Specific humidity data
+            target_units: Target units for conversion
+        """
+        try:
+            ds_index = self.config_manager.data_source.get_ds_index()
+            
+            # Skip if already in target units
+            if self.config_manager.data_source.data_unit_is_mol_per_mol(
+                self.config_manager.data_source.datasets[ds_index]['vars'][species_name]):
+                return
+
+            self.logger.debug(f"Converting {species_name} units to {target_units}")
+
+            # Get molecular weight
+            if species_name not in self.config_manager.species_db:
+                self.logger.error(f"Species {species_name} not found in species database")
+                return
+                
+            mw_g = self.config_manager.species_db[species_name].get("MW_g")
+            if not mw_g:
+                self.logger.error(f"Molecular weight not found for species {species_name}")
+                return
+
+            # Perform conversion
+            mw_air = constants.MW_AIR_g  # g/mole
+            rn_arr = self.config_manager.datasets[ds_index]['vars'][species_name]
+            
+            # Convert using specific humidity
+            data = (rn_arr / (1. - specific_hum)) * (mw_air / mw_g)
+
+            # Create new DataArray with converted data
+            rn_new = xr.DataArray(
+                data, name=rn_arr.name, coords=rn_arr.coords, 
+                dims=rn_arr.dims, attrs=rn_arr.attrs
+            )
+            rn_new.attrs["units"] = target_units
+
+            # Update the dataset
+            self.config_manager.data_source.datasets[ds_index]['ptr'][rn_arr.name] = rn_new
+
+        except Exception as e:
+            self.logger.error(f"Error converting {species_name}: {e}")
+
+    def regrid(self, data1: xr.DataArray, data2: xr.DataArray, 
+               dim1_name: str, dim2_name: str) -> Tuple[xr.DataArray, xr.DataArray]:
+        """Regrid two data arrays to a common grid.
+        
+        Args:
+            data1: First data array
+            data2: Second data array
+            dim1_name: Name of first dimension
+            dim2_name: Name of second dimension
+            
+        Returns:
+            Tuple of regridded data arrays
+        """
+        # Determine target grid (use the coarser grid)
+        if data1.size < data2.size:
+            target = data1
+            to_regrid = data2
+        else:
+            target = data2
+            to_regrid = data1
+
+        # Regrid along first dimension
+        regridded = self._regrid(to_regrid, target, dim1_name, dim2_name, regrid_dims=(1, 0))
+        
+        # Regrid along second dimension
+        regridded = self._regrid(regridded, target, dim1_name, dim2_name, regrid_dims=(0, 1))
+
+        return (target, regridded) if data1.size < data2.size else (regridded, target)
+
+    def _regrid(self, ref_arr: xr.DataArray, target: xr.DataArray, 
+                dim1_name: str, dim2_name: str, regrid_dims: Tuple[int, int]) -> xr.DataArray:
+        """Regrid a data array to match a target grid along specified dimensions.
+        
+        Args:
+            ref_arr: Array to regrid
+            target: Target grid
+            dim1_name: Name of first dimension
+            dim2_name: Name of second dimension
+            regrid_dims: Tuple indicating which dimensions to regrid
+            
+        Returns:
+            Regridded data array
+        """
+        new_arr = ref_arr
+
+        if regrid_dims[0]:
+            new_arr = xr.apply_ufunc(
+                self._interp, new_arr,
+                input_core_dims=[[dim2_name]],
+                output_core_dims=[[dim2_name]],
+                exclude_dims={dim2_name},
+                kwargs={'x_src': ref_arr[dim2_name],
+                       'x_dest': target.coords[dim2_name].values,
+                       'fill_value': "extrapolate"},
+                dask='allowed', 
+                vectorize=True
+            )
+            new_arr.coords[dim2_name] = target.coords[dim2_name]
+
+        elif regrid_dims[1]:
+            new_arr = xr.apply_ufunc(
+                self._interp, new_arr,
+                input_core_dims=[[dim1_name]],
+                output_core_dims=[[dim1_name]],
+                exclude_dims={dim1_name},
+                kwargs={'x_src': ref_arr[dim1_name],
+                       'x_dest': target.coords[dim1_name].values,
+                       'fill_value': "extrapolate"},
+                dask='allowed', 
+                vectorize=True
+            )
+            new_arr.coords[dim1_name] = target.coords[dim1_name]
+
+        return new_arr
+
+    @staticmethod
+    def _interp(y_src: np.ndarray, x_src: np.ndarray, x_dest: np.ndarray, **kwargs) -> np.ndarray:
+        """Interpolate data to new coordinates.
+        
+        Args:
+            y_src: Source data values
+            x_src: Source coordinates
+            x_dest: Target coordinates
+            **kwargs: Additional arguments for interp1d
+            
+        Returns:
+            Interpolated data
+        """
+        return interp1d(x_src, y_src, **kwargs)(x_dest)

@@ -9,7 +9,7 @@ import xarray as xr
 from matplotlib import pyplot as plt
 from collections.abc import Iterable
 
-from eviz.lib.data.processor import Interp
+from eviz.lib.data.pipeline.processor import DataProcessor
 from eviz.models.root import Root
 from eviz.lib.data.data_utils import apply_conversion, apply_mean, apply_zsum
 import eviz.lib.autoviz.plot_utils as pu
@@ -732,7 +732,7 @@ class Generic(Root):
                 self.data2d_list = [data2d1, data2d2]
                 
                 # Debug logging for difference calculation
-                self.logger.info(f"Calculating difference between data arrays")
+                self.logger.info("Calculating difference between data arrays")
                 
                 # Check if data arrays are valid before accessing attributes
                 if data2d1 is not None and data2d2 is not None:
@@ -760,12 +760,11 @@ class Generic(Root):
                     # Update the data2d_list with the fixed arrays
                     self.data2d_list = [data2d1, data2d2]
                 
-                # Create the field_to_plot tuple for the difference
-                # The Interp class will handle regridding if needed
-                proc = Interp(self.config_manager, self.data2d_list)
-                diff_result = proc.regrid(plot_type)
+                proc = DataProcessor(self.config_manager) 
+                proc.data2d_list = [data2d1, data2d2] 
+                dim1_name, dim2_name = self.config_manager.get_dim_names(plot_type)
+                diff_result = proc.regrid(data2d1, data2d2, dim1_name, dim2_name)
                 
-                # Check if regridding was successful
                 if diff_result is None or diff_result[0] is None:
                     self.logger.error("Regridding failed, cannot create difference plot")
                     # Create a dummy field_to_plot with zeros
@@ -774,12 +773,17 @@ class Generic(Root):
                                     file_index, figure, current_ax)
                     return
                 
-                diff_data, diff_x, diff_y = diff_result
-                
+                target, regridded = diff_result
+                # Compute the difference
+                diff_data = target - regridded
+                # Get the coordinates from the target grid
+                diff_x = target[dim1_name].values if dim1_name in target.coords else None
+                diff_y = target[dim2_name].values if dim2_name in target.coords else None
+
                 field_to_plot = (diff_data, diff_x, diff_y, field_name, plot_type, 
                                 file_index, figure, current_ax)
             else:
-                self.logger.error(f"Could not prepare data for comparison plot")
+                self.logger.error("Could not prepare data for comparison plot")
                 return
         else:
             # Regular single dataset case
@@ -840,12 +844,13 @@ class Generic(Root):
                 
                 # Store both data arrays for potential regridding
                 self.data2d_list = [data2d1, data2d2]
+
+
+                proc = DataProcessor(self.config_manager) 
+                proc.data2d_list = [data2d1, data2d2] 
+                dim1_name, dim2_name = self.config_manager.get_dim_names(plot_type)
+                diff_result = proc.regrid(data2d1, data2d2, dim1_name, dim2_name)
                 
-                # Create the field_to_plot tuple for the difference
-                proc = Interp(self.config_manager, self.data2d_list)
-                diff_result = proc.regrid(plot_type)
-                
-                # Check if regridding was successful
                 if diff_result is None or diff_result[0] is None:
                     self.logger.error("Regridding failed, cannot create difference plot")
                     # Create a dummy field_to_plot with zeros
@@ -854,12 +859,17 @@ class Generic(Root):
                                     file_index, figure, current_ax)
                     return
                 
-                diff_data, diff_x, diff_y = diff_result
-                
+                target, regridded = diff_result
+                # Compute the difference
+                diff_data = target - regridded
+                # Get the coordinates from the target grid
+                diff_x = target[dim1_name].values if dim1_name in target.coords else None
+                diff_y = target[dim2_name].values if dim2_name in target.coords else None
+                                
                 field_to_plot = (diff_data, diff_x, diff_y, field_name, plot_type, 
                                 file_index, figure, current_ax)
             else:
-                self.logger.error(f"Could not prepare data for comparison plot")
+                self.logger.error("Could not prepare data for comparison plot")
                 return
         else:
             # Regular single dataset case
@@ -886,7 +896,7 @@ class Generic(Root):
         # Check if this is a difference field calculation
         if self.config_manager.ax_opts.get('is_diff_field', False) and len(self.data2d_list) >= 2:
             # If we already have two data arrays stored, use Interp to regrid and compute difference
-            proc = Interp(self.config_manager, self.data2d_list)
+            proc = DataProcessor(self.config_manager)
             data2d, x_values, y_values = proc.regrid(plot_type)
             return data2d, x_values, y_values, self.field_names[0], plot_type, file_index, figure, ax
         else:

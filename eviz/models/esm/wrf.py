@@ -11,6 +11,8 @@ from eviz.lib.data.data_utils import apply_conversion
 from eviz.lib.autoviz.figure import Figure
 from eviz.lib.autoviz.plot_utils import print_map, create_gif
 from eviz.models.esm.nuwrf import NuWrf
+from eviz.lib.data.pipeline.processor import DataProcessor
+
 
 warnings.filterwarnings("ignore")
 
@@ -772,8 +774,7 @@ class Wrf(NuWrf):
         
         # For difference field
         if self.comparison_plot and self.config_manager.ax_opts['is_diff_field']:
-            from eviz.lib.data.processor import Interp
-            proc = Interp(self.config_manager, self.data2d_list)
+            proc = DataProcessor(self.config_manager, self.data2d_list)
             data2d, xx, yy = proc.regrid(plot_type)
             return data2d, xx, yy, self.field_names[0], plot_type, file_index, figure, ax
         

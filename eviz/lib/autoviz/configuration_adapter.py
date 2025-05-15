@@ -25,6 +25,8 @@ class ConfigurationAdapter:
         self.config_manager = config_manager
         # For backward compatibility with tests
         self.data_sources = {}
+        # Initialize the pipeline directly
+        self.config_manager._pipeline = DataPipeline(self.config_manager)
 
     @property
     def logger(self):
@@ -56,8 +58,9 @@ class ConfigurationAdapter:
             
             # Use the pipeline to process the file
             try:
+                # Access the pipeline through the _pipeline attribute directly
                 # This will create a DataSource and store it in the pipeline's data_sources dict
-                data_source = self.config_manager.pipeline.process_file(
+                data_source = self.config_manager._pipeline.process_file(
                     file_path, 
                     model_name=source_name,
                     metadata=exp_metadata  # Pass experiment metadata
@@ -78,7 +81,7 @@ class ConfigurationAdapter:
             self.logger.debug("Integrating datasets")
             try:
                 # Use the pipeline's integrator to integrate the datasets
-                integrated_dataset = self.config_manager.pipeline.integrate_data_sources()
+                integrated_dataset = self.config_manager._pipeline.integrate_data_sources()
                 if integrated_dataset is not None:
                     self.logger.debug("Successfully integrated datasets")
                 else:
@@ -96,7 +99,7 @@ class ConfigurationAdapter:
                 operation = composite_config.get('operation', 'add')
                 output_name = composite_config.get('output_name', 'composite')
                 
-                self.config_manager.pipeline.integrate_variables(variables, operation, output_name)
+                self.config_manager._pipeline.integrate_variables(variables, operation, output_name)
                 self.logger.debug(f"Successfully created composite field {output_name}")
             except Exception as e:
                 self.logger.error(f"Error creating composite field: {e}")
@@ -146,11 +149,13 @@ class ConfigurationAdapter:
             The integrated dataset, or None if not available
         """
         # Delegate to the pipeline
-        return self.config_manager.pipeline.get_dataset()
+        if hasattr(self.config_manager, '_pipeline') and self.config_manager._pipeline:
+            return self.config_manager._pipeline.get_dataset()
+        return None
     
     def close(self) -> None:
         """Close resources used by the adapter."""
         self.logger.debug("Closing ConfigurationAdapter resources")
         # Close the pipeline, which will close all data sources
-        if hasattr(self.config_manager, 'pipeline'):
-            self.config_manager.pipeline.close()
+        if hasattr(self.config_manager, '_pipeline') and self.config_manager._pipeline:
+            self.config_manager._pipeline.close()

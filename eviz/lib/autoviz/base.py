@@ -120,7 +120,6 @@ class Autoviz:
         # TODO: Associate each model with its corresponding data directory
         #  Note that data can be in local disk or even in a remote locations
         # TODO: enable processing of S3 buckets
-
     def run(self):
         """ Create plots """
         _start_time = time.time()
@@ -138,8 +137,16 @@ class Autoviz:
             self.logger.info("Processing configuration using adapter")
             self.config_adapter.process_configuration()
             
-            # Check if any data sources were loaded - use the pipeline instead of direct access
-            all_data_sources = self._config_manager.pipeline.get_all_data_sources()
+            # Check if any data sources were loaded - use the _pipeline attribute directly with careful error handling
+            all_data_sources = {}
+            try:
+                if hasattr(self._config_manager, '_pipeline') and self._config_manager._pipeline is not None:
+                    all_data_sources = self._config_manager._pipeline.get_all_data_sources()
+                else:
+                    self.logger.error("Pipeline not initialized properly")
+            except Exception as e:
+                self.logger.error(f"Error accessing pipeline: {e}")
+                
             if not all_data_sources:
                 self.logger.error("No data sources were loaded. Check if the input files exist and are accessible.")
                 print("No data sources were loaded. Check if the input files exist and are accessible.")
