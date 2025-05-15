@@ -43,18 +43,17 @@ class NetCDFDataSource(DataSource):
         Returns:
             An Xarray dataset containing the loaded data
         """
-        self.logger.info(f"Loading NetCDF data from {file_path}")
-        
+        self.logger.debug(f"Loading NetCDF data from {file_path}")    
         try:
             if "*" in file_path:
                 # Handle multiple files using a glob pattern
                 self._setup_dask_client()
                 dataset = xr.open_mfdataset(file_path, decode_cf=True, combine="by_coords")
-                self.logger.info(f"Loaded multiple NetCDF files matching pattern: {file_path}")
+                self.logger.debug(f"Loaded multiple NetCDF files matching pattern: {file_path}")
             else:
                 # Handle a single file
                 dataset = xr.open_dataset(file_path, decode_cf=True)
-                self.logger.info(f"Loaded single NetCDF file: {file_path}")
+                self.logger.debug(f"Loaded single NetCDF file: {file_path}")
             
             # Standardize dimension names
             dataset = self._rename_dims(dataset)
