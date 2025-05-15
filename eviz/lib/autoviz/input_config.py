@@ -308,15 +308,24 @@ class InputConfig:
         self._parse_for_inputs(for_inputs)
         
         if self._compare_diff:
-            self._extra_diff_plot = for_inputs.get('compare_diff', {}).get('_extra_diff_plot', False)
+            # Check for extra_diff in both places
+            extra_diff = (
+                for_inputs.get('extra_diff') or  # Check top level first
+                for_inputs.get('compare_diff', {}).get('_extra_diff_plot') or  # Then check under compare_diff
+                for_inputs.get('compare_diff', {}).get('extra_diff', False)  # Also check without underscore
+            )
+            self._extra_diff_plot = extra_diff
             self._profile = for_inputs.get('compare_diff', {}).get('profile', False)
             self._cmap = for_inputs.get('compare_diff', {}).get('cmap', 'rainbow')
             self._comp_panels = (2, 2) if self._extra_diff_plot else (3, 1)
-
+            
         if self._compare:
             self._profile = for_inputs.get('compare', {}).get('profile', False)
             self._cmap = for_inputs.get('compare', {}).get('cmap', 'rainbow')
             self._comp_panels = get_subplot_shape(len(self._compare_exp_ids))
+
+        # Log the configuration for debugging
+        self.logger.debug(f"Compare diff settings: extra_diff={extra_diff}, comp_panels={self._comp_panels}")
 
         self._use_trop_height = 'trop_height' in for_inputs
         if self._use_trop_height:
