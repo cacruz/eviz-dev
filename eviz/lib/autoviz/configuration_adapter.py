@@ -21,11 +21,16 @@ class ConfigurationAdapter:
         Args:
             config_manager: The configuration manager
         """
-        self.logger = logging.getLogger(__name__)
+        self.logger.info("Start init")
         self.config_manager = config_manager
         # For backward compatibility with tests
         self.data_sources = {}
-        
+
+    @property
+    def logger(self):
+        """Return the logger for this class."""
+        return logging.getLogger(__name__)
+
     def process_configuration(self):
         """Process the configuration and load data."""
         self.logger.info("Processing configuration")

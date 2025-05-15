@@ -16,7 +16,7 @@ class ConfigManager:
     """Centralized manager for all configuration objects."""
     def __init__(self, input_config: InputConfig, output_config: OutputConfig,
                  system_config: SystemConfig, history_config: HistoryConfig, config: Config):
-        self.logger.info("Initializing ConfigManager")
+        self.logger.info("Start init")
         self.input_config = input_config
         self.output_config = output_config
         self.system_config = system_config
@@ -50,7 +50,12 @@ class ConfigManager:
     def units(self):
         """Lazy initialization of Units."""
         if self._units is None:
-            self._units = Units(self)
+            try:
+                from eviz.lib.data.units import Units
+                self._units = Units(self)
+            except Exception as e:
+                self.logger.error(f"Error initializing Units: {e}")
+                self._units = None
         return self._units
 
     @property

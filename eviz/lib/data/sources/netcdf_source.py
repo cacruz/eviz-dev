@@ -26,10 +26,8 @@ class NetCDFDataSource(DataSource):
             model_name: Name of the model this data source belongs to
             config_manager: Configuration manager instance
         """
-        self.logger.info(f"model name: {model_name}")
         super().__init__(model_name, config_manager)
         self.datasets = {}  # Dictionary to store datasets by file name
-        self.logger.info(f"model name: {self.model_name}")
 
     @property
     def logger(self) -> logging.Logger:
@@ -135,8 +133,6 @@ class NetCDFDataSource(DataSource):
         Returns:
             xarray Dataset with standardized dimension names
         """
-        self.logger.info(f"model name: {self.model_name}")
-
         if self.model_name in ['wrf', 'lis']:
             # Skip renaming for these special models
             return ds

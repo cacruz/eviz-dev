@@ -26,7 +26,6 @@ class DataSource(ABC):
         self.dataset = None
         self.metadata = {}
         self.config_manager = config_manager
-        self.logger.info(f"model name: {self.model_name}")
     
     @property
     def logger(self) -> logging.Logger:
@@ -207,14 +206,12 @@ class DataSource(ABC):
             self.logger.warning(f"No mapping found for dimension '{generic_dim_name}'")
             return None
             
-        self.logger.info(f"model: {self.model_name}")
         # Get the mapping for this model
         if not self.model_name or self.model_name not in meta_coords[generic_dim_name]:
             self.logger.warning(f"No mapping found for model '{self.model_name}' and dimension '{generic_dim_name}'")
             return None
             
         coords = meta_coords[generic_dim_name][self.model_name]
-        print(coords)
         # Handle comma-separated list of possible dimension names
         if ',' in coords:
             coord_candidates = coords.split(',')

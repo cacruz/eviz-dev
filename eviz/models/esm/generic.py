@@ -463,8 +463,8 @@ class Generic(Root):
                 self.logger.error(f"All values are NaN for {field_name}. Using original data.")
                 data2d = data_array.squeeze()
             elif np.isnan(data2d.values).any():
-                self.logger.warning(f"Some NaN values present ({np.sum(np.isnan(data2d.values))} NaNs). Filling with zeros.")
-                data2d = data2d.fillna(0)
+                self.logger.warning(f"Note: Some NaN values present ({np.sum(np.isnan(data2d.values))} NaNs).")
+                # data2d = data2d.fillna(0)
 
         # Return the prepared data and coordinates in the expected tuple format
         return data2d, x_values, y_values, field_name, plot_type, file_index, figure, ax
@@ -929,10 +929,16 @@ class Generic(Root):
         if data_array is None:
             return None
 
+        # Debug: Log input data stats
+        self.logger.info(f"_get_xy input: shape={data_array.shape}, dims={data_array.dims}")
+        self.logger.info(f"_get_xy input stats: min={data_array.min().values}, max={data_array.max().values}")
+
         # Get dimension names from config_manager
         tc_dim = self.config_manager.get_model_dim_name('tc')
         zc_dim = self.config_manager.get_model_dim_name('zc')
-        self.logger.debug(f"Dimension names: tc_dim={tc_dim}, zc_dim={zc_dim}")
+
+        # Debug: Log dimension names
+        self.logger.info(f"Dimension names: tc_dim={tc_dim}, zc_dim={zc_dim}")
 
         # Make a copy to avoid modifying the original
         d_temp = data_array.copy()
@@ -940,14 +946,96 @@ class Generic(Root):
         # Handle time dimension
         if tc_dim and tc_dim in d_temp.dims:
             num_tc = d_temp[tc_dim].size
+            self.logger.info(f"Time dimension found: {tc_dim}, size={num_tc}")
             if isinstance(time_lev, int) and time_lev < num_tc:
                 d_temp = d_temp.isel({tc_dim: time_lev})
+                self.logger.info(f"Selected time level {time_lev}")
             else:
                 self.logger.warning(f"Time level {time_lev} out of bounds, using first time level")
                 d_temp = d_temp.isel({tc_dim: 0})
+        else:
+            self.logger.info(f"No time dimension found matching {tc_dim}")
+
+        # Handle vertical dimension
+        has_vertical_dim = zc_dim and zc_dim in d_temp.dims
+        if has_vertical_dim:
+            self.logger.info(f"Vertical dimension found: {zc_dim}, size={d_temp[zc_dim].size}")
+            
+            # Handle level selection
+            if level is not None:
+                # Try to find the level in the vertical coordinate
+                try:
+                    # First try exact matching
+                    if level in d_temp[zc_dim].values:
+                        lev_idx = np.where(d_temp[zc_dim].values == level)[0][0]
+                        d_temp = d_temp.isel({zc_dim: lev_idx})
+                        self.logger.info(f"Selected exact level {level} at index {lev_idx}")
+                    else:
+                        # Try nearest neighbor
+                        lev_idx = np.abs(d_temp[zc_dim].values - level).argmin()
+                        self.logger.warning(f"Level {level} not found exactly, using nearest level {d_temp[zc_dim].values[lev_idx]}")
+                        d_temp = d_temp.isel({zc_dim: lev_idx})
+                except Exception as e:
+                    self.logger.error(f"Error selecting level {level}: {e}")
+                    # If level selection fails, use the first level
+                    if d_temp[zc_dim].size > 0:
+                        d_temp = d_temp.isel({zc_dim: 0})
+                        self.logger.info("Falling back to first level")
+            else:
+                # No level specified, use the first level
+                if d_temp[zc_dim].size > 0:
+                    d_temp = d_temp.isel({zc_dim: 0})
+                    self.logger.info("No level specified, using first level")
+        elif level is not None:
+            # If level is specified but there's no vertical dimension, log a warning
+            self.logger.warning(f"Level {level} specified but no vertical dimension found in data. Using data as is.")
 
         # Squeeze to remove singleton dimensions
         data2d = d_temp.squeeze()
+        self.logger.info(f"After squeeze: shape={data2d.shape}, dims={data2d.dims}")
+
+        # Check if we still have more than 2 dimensions
+        if len(data2d.dims) > 2:
+            self.logger.warning(f"Data still has {len(data2d.dims)} dimensions after processing. Attempting to reduce to 2D.")
+            
+            # Try to identify the most likely 2D slice to use
+            # Typically, we want lon-lat for xy plots
+            xc_dim = self.config_manager.get_model_dim_name('xc') or 'lon'
+            yc_dim = self.config_manager.get_model_dim_name('yc') or 'lat'
+            
+            # Check if we have both lon and lat dimensions
+            if xc_dim in data2d.dims and yc_dim in data2d.dims:
+                # For each remaining dimension that's not lon or lat, take the first index
+                for dim in data2d.dims:
+                    if dim != xc_dim and dim != yc_dim:
+                        self.logger.info(f"Selecting first index of extra dimension: {dim}")
+                        data2d = data2d.isel({dim: 0})
+            else:
+                # If we don't have both lon and lat, take the first two dimensions
+                dims = list(data2d.dims)
+                self.logger.warning(f"Could not identify lon-lat dimensions. Using first two dimensions: {dims[:2]}")
+                
+                # For each dimension beyond the first two, take the first index
+                for dim in dims[2:]:
+                    self.logger.info(f"Selecting first index of extra dimension: {dim}")
+                    data2d = data2d.isel({dim: 0})
+            
+            # Squeeze again to remove any singleton dimensions
+            data2d = data2d.squeeze()
+            self.logger.info(f"After dimension reduction: shape={data2d.shape}, dims={data2d.dims}")
+            
+            # Final check - if we still have more than 2 dimensions, we need to reshape
+            if len(data2d.dims) > 2:
+                self.logger.warning(f"Data still has {len(data2d.dims)} dimensions. Reshaping to 2D.")
+                # Get the first two dimensions
+                dims = list(data2d.dims)
+                dim1, dim2 = dims[0], dims[1]
+                
+                # Reshape by taking the mean over all other dimensions
+                for dim in dims[2:]:
+                    data2d = data2d.mean(dim=dim)
+                
+                self.logger.info(f"After reshaping: shape={data2d.shape}, dims={data2d.dims}")
 
         # Handle time averaging if requested
         if tc_dim and tc_dim in data2d.dims and self.config_manager.ax_opts.get('tave', False):
@@ -970,36 +1058,15 @@ class Generic(Root):
             self.logger.debug(f"Min: {data2d_zsum.min().values}, Max: {data2d_zsum.max().values}")
             return apply_conversion(self.config_manager, data2d_zsum, data_array.name)
 
-        # Handle level selection if vertical dimension exists
-        if level is not None and zc_dim and zc_dim in data2d.dims:
-            original_data = data2d.copy()
-            # Try to find the level in the vertical coordinate
-            try:
-                # First try exact matching
-                if level in data2d[zc_dim].values:
-                    lev_idx = np.where(data2d[zc_dim].values == level)[0][0]
-                    data2d = data2d.isel({zc_dim: lev_idx})
-                else:
-                    # Try nearest neighbor
-                    lev_idx = np.abs(data2d[zc_dim].values - level).argmin()
-                    self.logger.warning(f"Level {level} not found exactly, using nearest level {data2d[zc_dim].values[lev_idx]}")
-                    data2d = data2d.isel({zc_dim: lev_idx})
-            except Exception as e:
-                self.logger.error(f"Error selecting level {level}: {e}")
-                data2d = original_data  # Reset to original data if selection fails
-                # If level selection fails, use the first level
-                if data2d[zc_dim].size > 0:
-                    data2d = data2d.isel({zc_dim: 0})
-        elif level is not None and (not zc_dim or zc_dim not in data2d.dims):
-            # If level is specified but there's no vertical dimension, log a warning
-            self.logger.warning(f"Level {level} specified but no vertical dimension found in data. Using data as is.")
+        # Debug: Log final data stats
+        self.logger.info(f"_get_xy output: shape={data2d.shape}, dims={data2d.dims}")
+        self.logger.info(f"_get_xy output stats: min={data2d.min().values}, max={data2d.max().values}")
 
         # Check for NaN values
         if np.isnan(data2d.values).any():
             self.logger.warning(f"Output contains NaN values: {np.sum(np.isnan(data2d.values))} NaNs")
 
         return apply_conversion(self.config_manager, data2d, data_array.name)
-
 
     def _get_xt(self, data_array, time_lev):
         """ Extract time-series from a DataArray
@@ -1010,40 +1077,78 @@ class Generic(Root):
         """
         if data_array is None:
             return None
-            
+                
+        # Debug: Log input data stats
+        self.logger.info(f"_get_xt input: shape={data_array.shape}, dims={data_array.dims}")
+        self.logger.info(f"_get_xt input stats: min={data_array.min().values}, max={data_array.max().values}")
+        
         # Get time dimension safely
         tc_dim = self.config_manager.get_model_dim_name('tc') or 'time'
+        zc_dim = self.config_manager.get_model_dim_name('zc') or 'lev'
+        xc_dim = self.config_manager.get_model_dim_name('xc') or 'lon'
+        yc_dim = self.config_manager.get_model_dim_name('yc') or 'lat'
+        
+        # Debug: Log dimension names
+        self.logger.info(f"Dimension names: tc_dim={tc_dim}, zc_dim={zc_dim}, xc_dim={xc_dim}, yc_dim={yc_dim}")
         
         # Try to get the number of time steps safely
         try:
             if tc_dim in data_array.dims:
                 num_times = data_array[tc_dim].size
+                self.logger.info(f"Found time dimension '{tc_dim}' with {num_times} steps")
             else:
                 # Fall back to 'time' if tc_dim not found in dimensions
-                num_times = data_array.time.size
-        except (AttributeError, KeyError):
+                if 'time' in data_array.dims:
+                    num_times = data_array.time.size
+                    tc_dim = 'time'
+                    self.logger.info(f"Using fallback time dimension 'time' with {num_times} steps")
+                else:
+                    # Try to find any time-like dimension
+                    time_dims = [dim for dim in data_array.dims if 'time' in dim.lower()]
+                    if time_dims:
+                        tc_dim = time_dims[0]
+                        num_times = data_array[tc_dim].size
+                        self.logger.info(f"Using inferred time dimension '{tc_dim}' with {num_times} steps")
+                    else:
+                        # If all else fails, try to infer
+                        if hasattr(data_array, 'shape') and len(data_array.shape) > 0:
+                            num_times = data_array.shape[0]  # Assume time is the first dimension
+                            self.logger.warning(f"No time dimension found, assuming first dimension with {num_times} steps")
+                        else:
+                            self.logger.error(f"Cannot determine time dimension for {data_array.name}")
+                            return None
+        except (AttributeError, KeyError) as e:
+            self.logger.error(f"Error determining time dimension: {e}")
             # If all else fails, try to infer
             if hasattr(data_array, 'shape') and len(data_array.shape) > 0:
                 num_times = data_array.shape[0]  # Assume time is the first dimension
+                self.logger.warning(f"Error with time dimension, assuming first dimension with {num_times} steps")
             else:
                 self.logger.error(f"Cannot determine time dimension for {data_array.name}")
                 return None
         
         self.logger.info(f"'{data_array.name}' field has {num_times} time levels")
 
+        # Make a copy to avoid modifying the original
+        data2d = data_array.copy()
+
         # Handle time range selection
         if isinstance(time_lev, list):
             self.logger.info(f"Computing time series on {time_lev} time range")
             try:
-                if tc_dim in data_array.dims:
-                    data2d = data_array.isel({tc_dim: slice(time_lev)})
+                if tc_dim in data2d.dims:
+                    data2d = data2d.isel({tc_dim: slice(*time_lev)})
+                    self.logger.info(f"Selected time range {time_lev} from dimension {tc_dim}")
                 else:
-                    data2d = data_array.isel(time=slice(time_lev))
-            except (AttributeError, KeyError):
-                self.logger.error(f"Error slicing time dimension for {data_array.name}")
-                return None
-        else:
-            data2d = data_array.squeeze()
+                    self.logger.warning(f"Time dimension {tc_dim} not found for slicing")
+                    # Try with literal 'time'
+                    if 'time' in data2d.dims:
+                        data2d = data2d.isel(time=slice(*time_lev))
+                        self.logger.info(f"Selected time range {time_lev} from dimension 'time'")
+            except (AttributeError, KeyError, IndexError) as e:
+                self.logger.error(f"Error slicing time dimension: {e}")
+                # Just use the data as is
+                self.logger.warning("Using data without time slicing")
 
         # Apply averaging or selection based on specs
         if self.config_manager.spec_data and data_array.name in self.config_manager.spec_data:
@@ -1054,87 +1159,130 @@ class Generic(Root):
                 
                 if mean_type == 'point_sel':
                     # Select a single point
-                    xc = spec['xtplot']['point_sel'][0]
-                    yc = spec['xtplot']['point_sel'][1]
-                    data2d = data2d.sel(lon=xc, lat=yc, method='nearest')
+                    try:
+                        xc = spec['xtplot']['point_sel'][0]
+                        yc = spec['xtplot']['point_sel'][1]
+                        
+                        # Try with model-specific dimension names first
+                        if xc_dim in data2d.coords and yc_dim in data2d.coords:
+                            data2d = data2d.sel({xc_dim: xc, yc_dim: yc}, method='nearest')
+                            self.logger.info(f"Selected point ({xc}, {yc}) using dimensions {xc_dim}, {yc_dim}")
+                        else:
+                            # Try with literal 'lon' and 'lat'
+                            if 'lon' in data2d.coords and 'lat' in data2d.coords:
+                                data2d = data2d.sel(lon=xc, lat=yc, method='nearest')
+                                self.logger.info(f"Selected point ({xc}, {yc}) using dimensions 'lon', 'lat'")
+                            else:
+                                self.logger.error(f"Could not find coordinates for point selection")
+                    except (KeyError, ValueError) as e:
+                        self.logger.error(f"Error in point selection: {e}")
+                        
                 elif mean_type == 'area_sel':
                     # Select an area and compute mean
-                    x1 = spec['xtplot']['area_sel'][0]
-                    x2 = spec['xtplot']['area_sel'][1]
-                    y1 = spec['xtplot']['area_sel'][2]
-                    y2 = spec['xtplot']['area_sel'][3]
-                    
-                    # Get dimension names safely
-                    xc_dim = self.config_manager.get_model_dim_name('xc') or 'lon'
-                    yc_dim = self.config_manager.get_model_dim_name('yc') or 'lat'
-                    
                     try:
-                        # Select the area
-                        data2d = data2d.sel({
-                            xc_dim: slice(x1, x2),
-                            yc_dim: slice(y1, y2)
-                        })
-                        # Compute mean over spatial dimensions
-                        data2d = data2d.mean(dim=(xc_dim, yc_dim))
-                    except (ValueError, KeyError) as e:
-                        self.logger.error(f"Error computing area mean: {e}")
-                        # Try with literal 'lon' and 'lat'
-                        try:
-                            data2d = data2d.sel(lon=slice(x1, x2), lat=slice(y1, y2))
-                            data2d = data2d.mean(dim=('lon', 'lat'))
-                        except (ValueError, KeyError):
-                            self.logger.error(f"Cannot compute area mean for {data_array.name}")
-                            return None
+                        x1 = spec['xtplot']['area_sel'][0]
+                        x2 = spec['xtplot']['area_sel'][1]
+                        y1 = spec['xtplot']['area_sel'][2]
+                        y2 = spec['xtplot']['area_sel'][3]
+                        
+                        # Try with model-specific dimension names first
+                        if xc_dim in data2d.coords and yc_dim in data2d.coords:
+                            data2d = data2d.sel({
+                                xc_dim: slice(x1, x2),
+                                yc_dim: slice(y1, y2)
+                            })
+                            self.logger.info(f"Selected area ({x1}, {y1}) to ({x2}, {y2}) using dimensions {xc_dim}, {yc_dim}")
+                            
+                            # Compute mean over spatial dimensions
+                            if xc_dim in data2d.dims and yc_dim in data2d.dims:
+                                data2d = data2d.mean(dim=(xc_dim, yc_dim))
+                                self.logger.info(f"Computed mean over dimensions {xc_dim}, {yc_dim}")
+                        else:
+                            # Try with literal 'lon' and 'lat'
+                            if 'lon' in data2d.coords and 'lat' in data2d.coords:
+                                data2d = data2d.sel(lon=slice(x1, x2), lat=slice(y1, y2))
+                                self.logger.info(f"Selected area ({x1}, {y1}) to ({x2}, {y2}) using dimensions 'lon', 'lat'")
+                                
+                                # Compute mean over spatial dimensions
+                                if 'lon' in data2d.dims and 'lat' in data2d.dims:
+                                    data2d = data2d.mean(dim=('lon', 'lat'))
+                                    self.logger.info(f"Computed mean over dimensions 'lon', 'lat'")
+                            else:
+                                self.logger.error(f"Could not find coordinates for area selection")
+                    except (KeyError, ValueError) as e:
+                        self.logger.error(f"Error in area selection: {e}")
+                        
                 elif mean_type in ['year', 'season', 'month']:
                     # Group by time period
                     try:
-                        time_attr = f"{tc_dim}.{mean_type}"
-                        data2d = data2d.groupby(time_attr).mean(dim=tc_dim, keep_attrs=True)
-                    except (AttributeError, KeyError):
-                        try:
-                            time_attr = f"time.{mean_type}"
-                            data2d = data2d.groupby(time_attr).mean(dim='time', keep_attrs=True)
-                        except (AttributeError, KeyError):
-                            self.logger.error(f"Cannot group by {mean_type} for {data_array.name}")
-                            return None
+                        if tc_dim in data2d.dims:
+                            time_attr = f"{tc_dim}.{mean_type}"
+                            data2d = data2d.groupby(time_attr).mean(dim=tc_dim, keep_attrs=True)
+                            self.logger.info(f"Grouped by {mean_type} using dimension {tc_dim}")
+                        else:
+                            # Try with literal 'time'
+                            if 'time' in data2d.dims:
+                                time_attr = f"time.{mean_type}"
+                                data2d = data2d.groupby(time_attr).mean(dim='time', keep_attrs=True)
+                                self.logger.info(f"Grouped by {mean_type} using dimension 'time'")
+                            else:
+                                self.logger.error(f"Could not find time dimension for grouping")
+                    except (AttributeError, KeyError) as e:
+                        self.logger.error(f"Error in time grouping: {e}")
+                        
                 elif mean_type == 'rolling':
                     # Apply rolling mean
-                    window_size = spec['xtplot'].get('window_size', 5)
-                    self.logger.info(f" -- smoothing window size: {window_size}")
-                    
-                    # Apply rolling mean using xarray's rolling method
                     try:
-                        data2d = data2d.rolling({tc_dim: window_size}, center=True).mean()
-                    except (AttributeError, KeyError):
-                        try:
-                            data2d = data2d.rolling(time=window_size, center=True).mean()
-                        except (AttributeError, KeyError):
-                            self.logger.error(f"Cannot apply rolling mean for {data_array.name}")
-                            return None
+                        window_size = spec['xtplot'].get('window_size', 5)
+                        self.logger.info(f" -- smoothing window size: {window_size}")
+                        
+                        if tc_dim in data2d.dims:
+                            data2d = data2d.rolling({tc_dim: window_size}, center=True).mean()
+                            self.logger.info(f"Applied rolling mean with window size {window_size} on dimension {tc_dim}")
+                        else:
+                            # Try with literal 'time'
+                            if 'time' in data2d.dims:
+                                data2d = data2d.rolling(time=window_size, center=True).mean()
+                                self.logger.info(f"Applied rolling mean with window size {window_size} on dimension 'time'")
+                            else:
+                                self.logger.error(f"Could not find time dimension for rolling mean")
+                    except (AttributeError, KeyError) as e:
+                        self.logger.error(f"Error in rolling mean: {e}")
+                        
                 else:
                     # General mean over all dimensions except time
                     try:
                         # Get all dimensions except time
-                        non_time_dims = [dim for dim in data2d.dims if dim != tc_dim]
-                        if non_time_dims:
-                            data2d = data2d.mean(dim=non_time_dims)
-                    except (AttributeError, KeyError):
-                        self.logger.error(f"Cannot compute general mean for {data_array.name}")
-                        return None
+                        if tc_dim in data2d.dims:
+                            non_time_dims = [dim for dim in data2d.dims if dim != tc_dim]
+                            if non_time_dims:
+                                data2d = data2d.mean(dim=non_time_dims)
+                                self.logger.info(f"Computed mean over all non-time dimensions: {non_time_dims}")
+                        else:
+                            # Try with literal 'time'
+                            if 'time' in data2d.dims:
+                                non_time_dims = [dim for dim in data2d.dims if dim != 'time']
+                                if non_time_dims:
+                                    data2d = data2d.mean(dim=non_time_dims)
+                                    self.logger.info(f"Computed mean over all non-time dimensions: {non_time_dims}")
+                            else:
+                                self.logger.error(f"Could not find time dimension for general mean")
+                    except (AttributeError, KeyError) as e:
+                        self.logger.error(f"Error in general mean: {e}")
 
             # Handle level selection if specified
             if 'xtplot' in spec and 'level' in spec['xtplot']:
                 level = int(spec['xtplot']['level'])
+                self.logger.info(f"Selecting level {level}")
                 
                 # Get vertical dimension safely
-                zc_dim = self.config_manager.get_model_dim_name('zc') or 'lev'
-                
-                if zc_dim in data2d.dims:
+                if zc_dim and zc_dim in data2d.dims:
                     try:
                         # Try exact matching
                         if level in data2d[zc_dim].values:
                             lev_idx = np.where(data2d[zc_dim].values == level)[0][0]
                             data2d = data2d.isel({zc_dim: lev_idx}).squeeze()
+                            self.logger.info(f"Selected exact level {level} at index {lev_idx}")
                         else:
                             # Try nearest neighbor
                             lev_idx = np.abs(data2d[zc_dim].values - level).argmin()
@@ -1145,9 +1293,71 @@ class Generic(Root):
                         # If level selection fails, use the first level
                         if data2d[zc_dim].size > 0:
                             data2d = data2d.isel({zc_dim: 0}).squeeze()
+                            self.logger.info("Falling back to first level")
+                else:
+                    # Try with literal 'lev' or 'level'
+                    for lev_name in ['lev', 'level', 'plev']:
+                        if lev_name in data2d.dims:
+                            try:
+                                if level in data2d[lev_name].values:
+                                    lev_idx = np.where(data2d[lev_name].values == level)[0][0]
+                                    data2d = data2d.isel({lev_name: lev_idx}).squeeze()
+                                    self.logger.info(f"Selected exact level {level} at index {lev_idx} from dimension {lev_name}")
+                                    break
+                                else:
+                                    # Try nearest neighbor
+                                    lev_idx = np.abs(data2d[lev_name].values - level).argmin()
+                                    self.logger.warning(f"Level {level} not found exactly, using nearest level {data2d[lev_name].values[lev_idx]}")
+                                    data2d = data2d.isel({lev_name: lev_idx}).squeeze()
+                                    break
+                            except (AttributeError, KeyError, IndexError) as e:
+                                self.logger.error(f"Error selecting level {level} from dimension {lev_name}: {e}")
+                                # If level selection fails, use the first level
+                                if data2d[lev_name].size > 0:
+                                    data2d = data2d.isel({lev_name: 0}).squeeze()
+                                    self.logger.info(f"Falling back to first level from dimension {lev_name}")
+                                    break
+                    else:
+                        self.logger.warning(f"Level {level} specified but no vertical dimension found")
 
-        return data2d  # Already converted to appropriate units through DataReader
+        # Check if we still have more than 1 dimension (excluding time)
+        dims = list(data2d.dims)
+        if len(dims) > 1:
+            self.logger.warning(f"Data still has {len(dims)} dimensions after processing. Attempting to reduce to 1D time series.")
+            
+            # Find the time dimension
+            time_dim = None
+            for dim in dims:
+                if dim == tc_dim or 'time' in dim.lower():
+                    time_dim = dim
+                    break
+            
+            if time_dim:
+                # Average over all non-time dimensions
+                non_time_dims = [dim for dim in dims if dim != time_dim]
+                if non_time_dims:
+                    self.logger.info(f"Averaging over non-time dimensions: {non_time_dims}")
+                    data2d = data2d.mean(dim=non_time_dims)
+            else:
+                # If we can't identify the time dimension, use the first dimension and average over the rest
+                self.logger.warning(f"Could not identify time dimension. Using first dimension: {dims[0]}")
+                other_dims = dims[1:]
+                if other_dims:
+                    self.logger.info(f"Averaging over dimensions: {other_dims}")
+                    data2d = data2d.mean(dim=other_dims)
 
+        # Squeeze to remove any singleton dimensions
+        data2d = data2d.squeeze()
+        
+        # Debug: Log final data stats
+        self.logger.info(f"_get_xt output: shape={data2d.shape}, dims={data2d.dims}")
+        self.logger.info(f"_get_xt output stats: min={data2d.min().values}, max={data2d.max().values}")
+
+        # Check for NaN values
+        if np.isnan(data2d.values).any():
+            self.logger.warning(f"Output contains NaN values: {np.sum(np.isnan(data2d.values))} NaNs")
+
+        return apply_conversion(self.config_manager, data2d, data_array.name)
 
     def _get_tx(self, data_array, level=None, time_lev=0):
         """ Extract a time-series map from a DataArray
@@ -1160,6 +1370,10 @@ class Generic(Root):
         if data_array is None:
             return None
 
+        # Debug: Log input data stats
+        self.logger.info(f"_get_tx input: shape={data_array.shape}, dims={data_array.dims}")
+        self.logger.info(f"_get_tx input stats: min={data_array.min().values}, max={data_array.max().values}")
+
         # Make a copy to avoid modifying the original
         data2d = data_array.squeeze()
         
@@ -1169,14 +1383,19 @@ class Generic(Root):
         xc_dim = self.config_manager.get_model_dim_name('xc') or 'lon'
         yc_dim = self.config_manager.get_model_dim_name('yc') or 'lat'
         
+        # Debug: Log dimension names
+        self.logger.info(f"Dimension names: tc_dim={tc_dim}, zc_dim={zc_dim}, xc_dim={xc_dim}, yc_dim={yc_dim}")
+        
         # Handle level selection if vertical dimension exists
         if zc_dim in data2d.dims:
+            self.logger.info(f"Vertical dimension found: {zc_dim}, size={data2d[zc_dim].size}")
             if level is not None:
                 # Try to select the specified level
                 try:
                     if level in data2d[zc_dim].values:
                         lev_idx = np.where(data2d[zc_dim].values == level)[0][0]
                         data2d = data2d.isel({zc_dim: lev_idx})
+                        self.logger.info(f"Selected exact level {level} at index {lev_idx}")
                     else:
                         # Try nearest neighbor
                         lev_idx = np.abs(data2d[zc_dim].values - level).argmin()
@@ -1187,10 +1406,15 @@ class Generic(Root):
                     # If level selection fails, use the first level
                     if data2d[zc_dim].size > 0:
                         data2d = data2d.isel({zc_dim: 0})
+                        self.logger.info("Falling back to first level")
             else:
                 # No level specified, use the first level
                 if data2d[zc_dim].size > 0:
                     data2d = data2d.isel({zc_dim: 0})
+                    self.logger.info("No level specified, using first level")
+        elif level is not None:
+            # If level is specified but there's no vertical dimension, log a warning
+            self.logger.warning(f"Level {level} specified but no vertical dimension found in data. Using data as is.")
 
         # Apply any range selections from the specs
         if self.config_manager.spec_data and data_array.name in self.config_manager.spec_data:
@@ -1200,33 +1424,104 @@ class Generic(Root):
                 if 'trange' in spec['txplot']:
                     start_time = spec['txplot']['trange'][0]
                     end_time = spec['txplot']['trange'][1]
-                    data2d = data2d.sel({tc_dim: slice(start_time, end_time)})
+                    try:
+                        data2d = data2d.sel({tc_dim: slice(start_time, end_time)})
+                        self.logger.info(f"Applied time range selection: {start_time} to {end_time}")
+                    except Exception as e:
+                        self.logger.error(f"Error applying time range selection: {e}")
                 
                 # Apply latitude range selection if specified
                 if 'yrange' in spec['txplot']:
                     lat_min = spec['txplot']['yrange'][0]
                     lat_max = spec['txplot']['yrange'][1]
-                    data2d = data2d.sel({yc_dim: slice(lat_min, lat_max)})
+                    try:
+                        data2d = data2d.sel({yc_dim: slice(lat_min, lat_max)})
+                        self.logger.info(f"Applied latitude range selection: {lat_min} to {lat_max}")
+                    except Exception as e:
+                        self.logger.error(f"Error applying latitude range selection: {e}")
                 
                 # Apply longitude range selection if specified
                 if 'xrange' in spec['txplot']:
                     lon_min = spec['txplot']['xrange'][0]
                     lon_max = spec['txplot']['xrange'][1]
-                    data2d = data2d.sel({xc_dim: slice(lon_min, lon_max)})
+                    try:
+                        data2d = data2d.sel({xc_dim: slice(lon_min, lon_max)})
+                        self.logger.info(f"Applied longitude range selection: {lon_min} to {lon_max}")
+                    except Exception as e:
+                        self.logger.error(f"Error applying longitude range selection: {e}")
 
-        # Compute weighted mean over latitude
+        # Squeeze again to remove any singleton dimensions
+        data2d = data2d.squeeze()
+        self.logger.info(f"After selections and squeeze: shape={data2d.shape}, dims={data2d.dims}")
+
+        # Check if we still have more than 2 dimensions
+        if len(data2d.dims) > 2:
+            self.logger.warning(f"Data still has {len(data2d.dims)} dimensions. Attempting to reduce to 2D.")
+            
+            # For Hovmoller plots, we typically want time and longitude
+            dims = list(data2d.dims)
+            
+            # Try to identify time and longitude dimensions
+            time_dim = None
+            lon_dim = None
+            
+            for dim in dims:
+                if dim == tc_dim or 'time' in dim.lower():
+                    time_dim = dim
+                elif dim == xc_dim or 'lon' in dim.lower():
+                    lon_dim = dim
+            
+            if time_dim and lon_dim:
+                # We found time and longitude dimensions, average over other dimensions
+                for dim in dims:
+                    if dim != time_dim and dim != lon_dim:
+                        self.logger.info(f"Averaging over dimension: {dim}")
+                        data2d = data2d.mean(dim=dim)
+            else:
+                # If we can't identify time and longitude, use the first two dimensions
+                self.logger.warning(f"Could not identify time and longitude dimensions. Using first two dimensions: {dims[:2]}")
+                
+                # For each dimension beyond the first two, take the mean
+                for dim in dims[2:]:
+                    self.logger.info(f"Averaging over dimension: {dim}")
+                    data2d = data2d.mean(dim=dim)
+            
+            # Squeeze again to remove any singleton dimensions
+            data2d = data2d.squeeze()
+            self.logger.info(f"After dimension reduction: shape={data2d.shape}, dims={data2d.dims}")
+
+        # Compute weighted mean over latitude if latitude dimension exists
         if yc_dim in data2d.dims:
-            # Get latitude weights (cosine of latitude in radians)
-            weights = np.cos(np.deg2rad(data2d[yc_dim].values))
-            
-            # Apply weights to the data
-            weighted_data = data2d * weights
-            
-            # Sum over latitude and normalize by the sum of weights
-            data2d = weighted_data.sum(dim=yc_dim) / weights.sum()
+            try:
+                # Get latitude weights (cosine of latitude in radians)
+                weights = np.cos(np.deg2rad(data2d[yc_dim].values))
+                
+                # Make sure weights have the right shape for broadcasting
+                # Create a weights array with the same shape as the data
+                weight_array = xr.ones_like(data2d)
+                
+                # Apply weights along the latitude dimension
+                weighted_data = data2d * weight_array * weights
+                
+                # Sum over latitude and normalize by the sum of weights
+                data2d = weighted_data.sum(dim=yc_dim) / weights.sum()
+                
+                self.logger.info(f"Applied latitude weighting. New shape: {data2d.shape}")
+            except Exception as e:
+                self.logger.error(f"Error applying latitude weighting: {e}")
+                self.logger.warning("Falling back to simple mean over latitude")
+                if yc_dim in data2d.dims:
+                    data2d = data2d.mean(dim=yc_dim)
+
+        # Debug: Log final data stats
+        self.logger.info(f"_get_tx output: shape={data2d.shape}, dims={data2d.dims}")
+        self.logger.info(f"_get_tx output stats: min={data2d.min().values}, max={data2d.max().values}")
+
+        # Check for NaN values
+        if np.isnan(data2d.values).any():
+            self.logger.warning(f"Output contains NaN values: {np.sum(np.isnan(data2d.values))} NaNs")
 
         return apply_conversion(self.config_manager, data2d, data_array.name)
-
 
     def _select_yrange(self, data2d, name):
         """ Select a range of vertical levels"""
