@@ -167,20 +167,27 @@ class Figure(mfigure.Figure):
         self._init_frame()
         self._set_axes()
 
-
     def _init_frame(self):
-        """ Set shape and size for pre-defined figure frames """
+        """Set shape and size for pre-defined figure frames."""
         self._set_compare_diff_subplots()
-        # TODO: clean up
         _frame_params = {}
         rindex = 0
         _frame_params[rindex] = list()
-        if self.config_manager.compare_diff:
+        
+        if self.config_manager.compare and not self.config_manager.compare_diff:
+            # Side-by-side comparison
+            if self._subplots[1] == 3:
+                _frame_params[rindex] = [1, 3, 18, 6]  # [nrows, ncols, width, height] - wider for 3 columns
+            else:
+                _frame_params[rindex] = [1, 2, 12, 6]  # Original 2-column layout
+        elif self.config_manager.compare_diff:
+            # Comparison with difference
             if self._subplots == (3, 1):
-                _frame_params[rindex] = [3, 1, 8, 12]  # nrows, ncols, width, height
+                _frame_params[rindex] = [3, 1, 8, 12]
             elif self._subplots == (2, 2):
                 _frame_params[rindex] = [2, 2, 12, 8]
         else:
+            # Single plots - keep original logic
             if self._subplots == (1, 1):
                 _frame_params[rindex] = [1, 1, None, None]
             elif self._subplots == (2, 1):
@@ -191,24 +198,37 @@ class Figure(mfigure.Figure):
                 _frame_params[rindex] = [2, 2, 14, 10]
             elif self._subplots == (3, 4):
                 _frame_params[rindex] = [3, 4, 12, 16]
+                
         self._frame_params = _frame_params
 
     def _set_compare_diff_subplots(self):
-        """ Set subplots for  comparison plots ith compre_diff option """
+        """Set subplots for comparison plots."""
         try:
+            # Handle simple side-by-side comparison
+            if self.config_manager.compare and not self.config_manager.compare_diff:
+                # Get the number of variables to compare from the config
+                if hasattr(self.config_manager, 'compare_exp_ids'):
+                    num_vars = len(self.config_manager.compare_exp_ids)
+                    self._subplots = (1, num_vars)  # 1 row, N columns where N is number of variables
+                else:
+                    self._subplots = (1, 2)  # Default to side by side layout
+                return
+                
+            # Handle comparison with difference plots
             extra_diff_plot = self.config_manager.extra_diff_plot
             if not self.config_manager.compare_diff:
                 extra_diff_plot = False
+                
             if self.config_manager.spec_data and extra_diff_plot:
-                _subplots = (2, 2)
+                self._subplots = (2, 2)
+            elif self.config_manager.compare_diff:
+                self._subplots = (3, 1)
             else:
-                _subplots = (1, 1)  # fallback
+                self._subplots = (1, 1)  # fallback for single plots
+                
         except Exception as e:
-            self.logger.warning(f"key error: {str(e)}, returning default")
-        finally:
-            if self.config_manager.compare_diff and not self.config_manager.extra_diff_plot:
-                _subplots = (3, 1)
-        self._subplots = _subplots
+            self.logger.warning(f"Error setting subplot layout: {str(e)}, using default")
+            self._subplots = (1, 1)
 
     def _set_axes(self):
         """
@@ -271,20 +291,25 @@ class Figure(mfigure.Figure):
         return self._get_fig_ax()
 
     def get_axes(self):
-        if len(self.axes_array) == 1:
-            return self.axes_array[0]
-        else:
-            return self.axes_array
+        # Always return a list of axes, even for a single axes
+        return self.axes_array
 
     def create_subplot_grid(self):
-        """ Create a grid of subplots based on the figure frame layout 
-            Updates a gridspec layout object
-        """
+        """Create a grid of subplots based on the figure frame layout."""
         if self._frame_params[self._rindex][2] and self._frame_params[self._rindex][3]:
             figsize = (self._frame_params[self._rindex][2], self._frame_params[self._rindex][3])
             self.set_size_inches(figsize)
         
-        self.gs = gridspec.GridSpec(*self._subplots)
+        # Create GridSpec with appropriate spacing for side-by-side plots
+        if self.config_manager.compare and not self.config_manager.compare_diff:
+            # Adjust spacing based on number of columns
+            if self._subplots[1] > 2:
+                self.gs = gridspec.GridSpec(*self._subplots, wspace=0.25)  # Slightly tighter spacing for 3+ columns
+            else:
+                self.gs = gridspec.GridSpec(*self._subplots, wspace=0.3)  # Original spacing for 2 columns
+        else:
+            self.gs = gridspec.GridSpec(*self._subplots)
+            
         return self
 
     def create_subplots(self):
@@ -325,7 +350,35 @@ class Figure(mfigure.Figure):
                 ax.add_feature(cfeature.LAKES, edgecolor='black')
         return self
 
-    def create_eviz_figure(config_manager, plot_type, *args, **kwargs):
+    @staticmethod
+    def create_eviz_figure(config_manager, plot_type, nrows=None, ncols=None):
+        """
+        Factory method to create an eViz Figure instance.
+        
+        Args:
+            config_manager (ConfigManager): Configuration manager
+            plot_type (str): Type of plot
+            nrows (int, optional): Number of rows in the subplot grid
+            ncols (int, optional): Number of columns in the subplot grid
+        
+        Returns:
+            Figure: An instance of the eViz Figure class
+        """
+        # If nrows and ncols are not provided, determine them based on the configuration
+        if nrows is None or ncols is None:
+            if config_manager.compare and not config_manager.compare_diff:
+                # For side-by-side comparison, use 1x2 layout
+                nrows, ncols = 1, 2
+            elif config_manager.compare_diff:
+                # For comparison with difference, use layout from config
+                nrows, ncols = config_manager.input_config._comp_panels
+            else:
+                # For single plots, use 1x1 layout
+                nrows, ncols = 1, 1
+        
+        return Figure(config_manager, plot_type, nrows=nrows, ncols=ncols)
+
+    def create_eviz_figure2(config_manager, plot_type, *args, **kwargs):
         """
         Factory method to create an eViz Figure instance.
         

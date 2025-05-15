@@ -178,40 +178,6 @@ class ConfigManager:
             self.logger.warning(f"Could not determine file path for source '{source}' and findex {self.findex}")
             return None # Could not determine file path
 
-
-    # Removed get_reader_for_file - access readers via InputConfig if needed, but ideally pipeline handles data loading
-    # def get_reader_for_file(self, source_name: str, file_path: str):
-    #     """Get the appropriate reader for a file."""
-    #     return self.input_config.get_reader_for_file(source_name, file_path)
-
-    # Removed get_primary_reader - access readers via InputConfig if needed
-    # def get_primary_reader(self, source_name):
-    #     """
-    #     Get the primary reader for a source.
-
-    #     Args:
-    #         source_name (str): The name of the data source
-
-    #     Returns:
-    #         The primary reader or None if not found
-    #     """
-    #     # First try to get the reader directly - for backward compatibility
-    #     if source_name in self.readers and not isinstance(self.readers[source_name], dict):
-    #         return self.readers[source_name]
-
-    #     # If readers are stored in a dictionary by type
-    #     if source_name in self.readers:
-    #         readers_dict = self.readers[source_name]
-    #         # Try to get a NetCDF reader first, as it's often the most versatile
-    #         if 'NetCDF' in readers_dict:
-    #             return readers_dict['NetCDF']
-    #         elif readers_dict:
-    #             # Fall back to the first available reader
-    #             return next(iter(readers_dict.values()))
-
-    #     self.logger.warning(f"No reader found for source {source_name}")
-    #     return None
-
     def setup_comparison(self):
         """
         Set up comparison between datasets based on config settings.
@@ -225,17 +191,26 @@ class ConfigManager:
             return
 
         compare_ids = self.input_config._compare_exp_ids
-        if not compare_ids or len(compare_ids) < 2:
-            self.logger.warning(f"Need at least 2 IDs for comparison, found: {compare_ids}")
+        if not compare_ids:
+            self.logger.warning("No IDs found for comparison")
             return
 
-        id_a, id_b = compare_ids[0].strip(), compare_ids[1].strip()
-
+        # Create a mapping of exp_ids to their indices
+        exp_id_indices = {}
         for i, entry in enumerate(self.app_data.inputs):
-            if 'exp_id' in entry and entry['exp_id'] == id_a:
-                self.a_list.append(i)
-            elif 'exp_id' in entry and entry['exp_id'] == id_b:
-                self.b_list.append(i)
+            if 'exp_id' in entry:
+                exp_id_indices[entry['exp_id']] = i
+
+        # Process all comparison IDs
+        for i, exp_id in enumerate(compare_ids):
+            exp_id = exp_id.strip()
+            if exp_id in exp_id_indices:
+                if i == 0:  # First ID goes to a_list
+                    self.a_list.append(exp_id_indices[exp_id])
+                else:  # All other IDs go to b_list
+                    self.b_list.append(exp_id_indices[exp_id])
+            else:
+                self.logger.warning(f"Could not find entry for exp_id: {exp_id}")
 
         self.logger.debug(f"Comparison setup: a_list={self.a_list}, b_list={self.b_list}")
 

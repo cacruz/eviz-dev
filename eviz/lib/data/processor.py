@@ -268,28 +268,79 @@ class Interp:
         dim1, dim2 = xc, yc
         if 'yz' in pid:
             dim1, dim2 = yc, zc
+        
+        # Make sure we have exactly 2 data arrays and they are not None
+        if len(self.data) != 2:
+            self.logger.error(f"Expected 2 data arrays for comparison, got {len(self.data)}")
+            return None, None, None
+            
         d1 = self.data[0]
         d2 = self.data[1]
+        
+        # Check if either data array is None
+        if d1 is None or d2 is None:
+            self.logger.error(f"One or both data arrays are None: d1={d1 is not None}, d2={d2 is not None}")
+            return None, None, None
+        
+        # Debug logging
+        self.logger.info(f"Regridding data arrays for comparison")
+        self.logger.info(f"Data1 shape: {d1.shape}, dims: {d1.dims}")
+        self.logger.info(f"Data2 shape: {d2.shape}, dims: {d2.dims}")
+        
+        # Check if data arrays have min/max values
+        try:
+            self.logger.info(f"Data1 min/max: {d1.min().values}/{d1.max().values}")
+            self.logger.info(f"Data2 min/max: {d2.min().values}/{d2.max().values}")
+        except Exception as e:
+            self.logger.warning(f"Could not get min/max values: {e}")
 
         da1_size = d1.size
         da2_size = d2.size
         if da1_size < da2_size:
+            self.logger.info(f"Data1 size < Data2 size, regridding Data2 to match Data1")
             d2 = self._regrid(d2, d1, dim1, dim2, regrid_dims=(1, 0))
             d2 = self._regrid(d2, d1, dim1, dim2, regrid_dims=(0, 1))
         elif da1_size > da2_size:
+            self.logger.info(f"Data1 size > Data2 size, regridding Data1 to match Data2")
             d1 = self._regrid(d1, d2, dim1, dim2, regrid_dims=(1, 0))
             d1 = self._regrid(d1, d2, dim1, dim2, regrid_dims=(0, 1))
         elif da1_size == da2_size:
+            self.logger.info(f"Data1 size = Data2 size, ensuring grid alignment")
             d1 = self._regrid(d1, d2, dim1, dim2, regrid_dims=(1, 0))
             d1 = self._regrid(d1, d2, dim1, dim2, regrid_dims=(0, 1))
             d2 = self._regrid(d2, d1, dim1, dim2, regrid_dims=(1, 0))
             d2 = self._regrid(d2, d1, dim1, dim2, regrid_dims=(0, 1))
 
+        # After regridding, check for NaN values
+        self.logger.info(f"After regridding - Data1 min/max: {d1.min().values}/{d1.max().values}")
+        self.logger.info(f"After regridding - Data2 min/max: {d2.min().values}/{d2.max().values}")
+        
         if compute_diff:
-            if self.config_manager.ax_opts['add_extra_field_type']:
+            # Check if the dimensions match after regridding
+            if d1.shape != d2.shape:
+                self.logger.error(f"Shapes don't match after regridding: {d1.shape} vs {d2.shape}")
+                # Try to align dimensions if possible
+                try:
+                    common_dims = set(d1.dims).intersection(set(d2.dims))
+                    if common_dims:
+                        self.logger.info(f"Attempting to align on common dimensions: {common_dims}")
+                        d1 = d1.transpose(*common_dims)
+                        d2 = d2.transpose(*common_dims)
+                except Exception as e:
+                    self.logger.error(f"Error aligning dimensions: {e}")
+            
+            # Compute the difference
+            if self.config_manager.ax_opts.get('add_extra_field_type', False):
+                self.logger.info(f"Computing difference using extra field type")
                 data_diff = self._compute_diff_type(d1, d2).squeeze()
             else:
+                self.logger.info(f"Computing simple difference (d1 - d2)")
                 data_diff = (d1 - d2).squeeze()
+            
+            # Log the difference stats
+            self.logger.info(f"Difference min/max: {data_diff.min().values}/{data_diff.max().values}")
+            self.logger.info(f"Difference shape: {data_diff.shape}, dims: {data_diff.dims}")
+            
             coords = data_diff.coords
             return data_diff, coords[dim1].values, coords[dim2].values
         else:

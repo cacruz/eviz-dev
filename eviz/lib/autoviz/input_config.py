@@ -395,8 +395,6 @@ class InputConfig:
             
             if 'ids' in compare_config:
                 self._compare_exp_ids = compare_config['ids'].split(',')
-            elif 'exp_list' in compare_config:
-                self._compare_exp_ids = compare_config['exp_list'].split(',')
         
         elif 'compare_diff' in for_inputs:
             self._compare_diff = True
@@ -404,8 +402,6 @@ class InputConfig:
             
             if 'ids' in compare_diff_config:
                 self._compare_exp_ids = compare_diff_config['ids'].split(',')
-            elif 'exp_list' in compare_diff_config:
-                self._compare_exp_ids = compare_diff_config['exp_list'].split(',')
 
     @property
     def logger(self):
