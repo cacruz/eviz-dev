@@ -22,25 +22,28 @@ class TestDataReader:
         self.mock_data_source.dataset = xr.Dataset()
     
     def test_init(self):
-        """Test initialization of DataReader."""
-        assert isinstance(self.reader.factory, DataSourceFactory)
-        assert self.reader.data_sources == {}
+        reader = DataReader()
+        assert isinstance(reader.factory, DataSourceFactory)
+        assert reader.data_sources == {}  # Check for empty dictionary
     
     @patch('os.path.exists')
-    @patch('eviz.lib.data.factory.DataSourceFactory.create_data_source')
-    def test_read_file(self, mock_create_source, mock_exists):
-        """Test reading a file."""
+    @patch('eviz.lib.data.factory.source_factory.DataSourceFactory.create_data_source')
+    def test_read_file(self, mock_create_data_source, mock_exists):
+        # Set up mocks
         mock_exists.return_value = True
-        mock_create_source.return_value = self.mock_data_source
+        mock_data_source = MagicMock()
+        mock_create_data_source.return_value = mock_data_source
         
-        result = self.reader.read_file('test_file.nc', 'test_model')
-        assert result == self.mock_data_source
-        assert self.reader.data_sources['test_file.nc'] == self.mock_data_source
+        # Create reader and call read_file
+        reader = DataReader()
+        result = reader.read_file('file1.nc')
         
-        mock_exists.assert_called_once_with('test_file.nc')
-        mock_create_source.assert_called_once_with('test_file.nc', 'test_model')
-        self.mock_data_source.load_data.assert_called_once_with('test_file.nc')
-    
+        # Assertions
+        assert result == mock_data_source
+        mock_create_data_source.assert_called_once_with('file1.nc', None)
+        mock_data_source.load_data.assert_called_once_with('file1.nc')
+        assert reader.data_sources['file1.nc'] == mock_data_source
+
     @patch('os.path.exists')
     def test_read_file_not_found(self, mock_exists):
         """Test reading a file that doesn't exist."""
@@ -124,16 +127,18 @@ class TestDataReader:
         assert 'file3.nc' not in self.reader.data_sources
     
     def test_close(self):
-        """Test closing the reader."""
-        mock_data_source1 = MagicMock(spec=DataSource)
-        mock_data_source2 = MagicMock(spec=DataSource)
-        self.reader.data_sources = {
-            'file1.nc': mock_data_source1,
-            'file2.nc': mock_data_source2
-        }
+        # Create a reader with mock data sources
+        reader = DataReader()
+        mock_data_source1 = MagicMock()
+        mock_data_source2 = MagicMock()
+        reader.data_sources = {'file1.nc': mock_data_source1, 'file2.nc': mock_data_source2}
         
-        self.reader.close()
-        assert self.reader.data_sources == {}
+        # Call close
+        reader.close()
         
+        # Verify that close was called on each data source
         mock_data_source1.close.assert_called_once()
         mock_data_source2.close.assert_called_once()
+        
+        # Verify that data_sources was cleared
+        assert reader.data_sources == {}
