@@ -2,34 +2,30 @@
 Base DataSource class that defines the interface for all data sources.
 """
 from abc import ABC, abstractmethod
+from dataclasses import dataclass, field
+from typing import Any, Dict, Optional, List
 import logging
-from typing import Any, Dict, List, Optional
 import xarray as xr
 
 
+@dataclass
 class DataSource(ABC):
     """Abstract base class that defines the interface for all data sources.
-    
+
     All data sources are represented as Xarray datasets internally.
     Subclasses must implement the `load_data` method to populate the dataset.
     """
-    def __init__(self, model_name: str = None, config_manager=None):
-        """Initialize a new DataSource.
-        
-        Args:
-            model_name: Name of the model this data source belongs to
-            config_manager: Configuration manager instance
-        """
-        self.model_name = model_name
-        self.dataset = None
-        self.metadata = {}
-        self.config_manager = config_manager
-    
+    model_name: Optional[str] = None
+    config_manager: Optional[
+        object] = None  # Replace 'object' with actual config manager type
+    dataset: Optional[xr.Dataset] = field(default=None, init=False)
+    metadata: Dict[str, Any] = field(default_factory=dict, init=False)
+
     @property
     def logger(self) -> logging.Logger:
         """Get the logger for this class."""
         return logging.getLogger(__name__)
-    
+
     @abstractmethod
     def load_data(self, file_path: str) -> xr.Dataset:
         """Load data from the specified file path into an Xarray dataset.

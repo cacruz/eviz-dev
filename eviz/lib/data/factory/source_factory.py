@@ -2,9 +2,7 @@
 Factory for creating data source instances.
 """
 import os
-import logging
 from typing import Type, List, Optional
-
 from eviz.lib.data.sources import (
     DataSource,
     NetCDFDataSource,
@@ -13,21 +11,24 @@ from eviz.lib.data.sources import (
     GRIBDataSource
 )
 from .registry import DataSourceRegistry
+from dataclasses import dataclass, field
+import logging
 
 
+@dataclass
 class DataSourceFactory:
     """Factory for creating data source instances."""
-    
-    def __init__(self, config_manager=None):
-        """Initialize a new DataSourceFactory.
-        
-        Args:
-            config_manager: Configuration manager instance
-        """
+    config_manager: Optional[object] = None  # Replace 'object' with actual config manager type
+    registry: DataSourceRegistry = field(init=False)
+
+    def __post_init__(self):
+        """Post-initialization setup."""
         self.registry = DataSourceRegistry()
         self._register_default_data_sources()
-        self.config_manager = config_manager
-        self.logger = logging.getLogger(__name__)
+
+    @property
+    def logger(self) -> logging.Logger:
+        return logging.getLogger(__name__)
 
     def _register_default_data_sources(self) -> None:
         """Register the default data source implementations."""

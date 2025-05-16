@@ -2,25 +2,27 @@
 Data reading stage of the pipeline.
 """
 import os
-import logging
 from typing import Dict, List, Optional
+from dataclasses import dataclass, field
+import logging
 from eviz.lib.data.factory import DataSourceFactory
 from eviz.lib.data.sources import DataSource
 
 
+@dataclass
 class DataReader:
     """Data reading stage of the pipeline."""
-    def __init__(self, config_manager=None):
-        """Initialize a new DataReader.
+    config_manager: Optional[object] = None  # Replace 'object' with actual type if known
+    data_sources: Dict = field(default_factory=dict, init=False)
+    factory: object = field(init=False)  # Replace 'object' with actual type if known
 
-        Args:
-            config_manager: Configuration manager instance
-        """
-        self.factory = DataSourceFactory(config_manager)
-        self.logger = logging.getLogger(__name__)
-        # For backward compatibility with tests
-        self.data_sources = {}
-        self.config_manager = config_manager
+    def __post_init__(self):
+        """Post-initialization to set up factory and logger."""
+        self.factory = DataSourceFactory(self.config_manager)
+
+    @property
+    def logger(self) -> logging.Logger:
+        return logging.getLogger(__name__)
 
     def read_file(self, file_path: str, model_name: Optional[str] = None) -> DataSource:
         """Read data from a file."""

@@ -6,16 +6,22 @@ from typing import List
 import xarray as xr
 import numpy as np
 from eviz.lib.data.sources import DataSource
+from dataclasses import dataclass
 
 
+@dataclass()
 class DataIntegrator:
     """Data integration stage of the pipeline.
     
     This class handles integrating data from multiple data sources.
     """
-    def __init__(self):
-        """Initialize a new DataIntegrator."""
-        self.logger = logging.getLogger(__name__)
+    @property
+    def logger(self) -> logging.Logger:
+        return logging.getLogger(__name__)
+
+    def __post_init__(self):
+        """Post-initialization setup."""
+        self.logger.info("Start init")
     
     def integrate_data_sources(self, data_sources: List[DataSource], **kwargs) -> xr.Dataset:
         """Integrate multiple data sources into a single dataset.

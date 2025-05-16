@@ -5,17 +5,23 @@ import logging
 import xarray as xr
 import numpy as np
 import scipy.interpolate as interp
+from dataclasses import dataclass
 from eviz.lib.data.sources import DataSource
 
 
+@dataclass()
 class DataTransformer:
     """Data transformation stage of the pipeline.
     
     This class handles transforming data from data sources.
     """
-    def __init__(self):
-        """Initialize a new DataTransformer."""
-        self.logger = logging.getLogger(__name__)
+    @property
+    def logger(self) -> logging.Logger:
+        return logging.getLogger(__name__)
+
+    def __post_init__(self):
+        """Post-initialization setup."""
+        self.logger.info("Start init")
     
     def transform_data_source(self, data_source: DataSource, **kwargs) -> DataSource:
         """Transform a data source.
@@ -38,7 +44,7 @@ class DataTransformer:
         return data_source
     
     def _transform_dataset(self, dataset: xr.Dataset, **kwargs) -> xr.Dataset:
-        """Transform an Xarray dataset.
+        """Transform a Xarray dataset.
         
         Args:
             dataset: The dataset to transform

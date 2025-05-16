@@ -1,7 +1,6 @@
 """
 Pytest fixtures for the Eviz tests.
 """
-
 import os
 import pytest
 import numpy as np

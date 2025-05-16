@@ -1,20 +1,28 @@
 """
 Registry for data source types.
 """
-from typing import Type, List, Set
+from typing import List, Set, Dict, Type
 from eviz.lib.data.sources import DataSource
+from dataclasses import dataclass, field
+import logging
 
 
+@dataclass
 class DataSourceRegistry:
     """Registry for data source types.
-    
+
     This class maintains a mapping between file extensions and data source classes.
     """
-    
-    def __init__(self):
-        """Initialize a new DataSourceRegistry."""
-        self._registry = {}  # Maps file extensions to data source classes
-    
+    _registry: Dict[str, Type] = field(default_factory=dict, init=False)
+
+    @property
+    def logger(self) -> logging.Logger:
+        return logging.getLogger(__name__)
+
+    def __post_init__(self):
+        """Post-initialization setup."""
+        self.logger.info("Start init")
+
     def register(self, extensions: List[str], data_source_class: Type[DataSource]) -> None:
         """Register a data source class for the specified file extensions.
         

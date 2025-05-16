@@ -3,26 +3,27 @@ NetCDF data source implementation.
 """
 import os
 import logging
-from typing import Dict, Optional
 import xarray as xr
 from dask.distributed import Client
+from dataclasses import dataclass, field
+from typing import Optional, Dict
 from .base import DataSource
 
 
+@dataclass
 class NetCDFDataSource(DataSource):
     """Data source implementation for NetCDF files.
-    
+
     This class handles loading and processing data from NetCDF files.
     """
-    def __init__(self, model_name: str = None, config_manager=None):
-        """Initialize a new NetCDFDataSource.
-        
-        Args:
-            model_name: Name of the model this data source belongs to
-            config_manager: Configuration manager instance
-        """
-        super().__init__(model_name, config_manager)
-        self.datasets = {}  # Dictionary to store datasets by file name
+    model_name: Optional[str] = None
+    config_manager: Optional[
+        object] = None  # Replace 'object' with actual type if available
+    datasets: Dict = field(default_factory=dict, init=False)
+
+    def __post_init__(self):
+        """Post-initialization to ensure base class is properly initialized."""
+        super().__init__(self.model_name, self.config_manager)
 
     @property
     def logger(self) -> logging.Logger:
