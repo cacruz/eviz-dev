@@ -4,6 +4,14 @@ inputs:
      to_plot:
         sst: xy
 
+   - name: MERRA2_400.inst6_3d_ana_Np.20211123.nc4
+     location: /Users/ccruz/data/eviz/merra2
+     description: 3d,6-Hourly,Instantaneous,Pressure-Level,Analysis,Analyzed Meteorological Fields
+     to_plot:
+        SLP: xy
+        O3: xy,yz
+        T: xy,yz
+
    - name: /Users/ccruz/data/eviz/cru/cru_ts4.03.1901.1910.tmp.dat.nc
      description: CRU TS4.03 Mean Temperature. 720x360x120 (2D+time)
      to_plot:
@@ -49,16 +57,9 @@ inputs:
           TAUXWTR: xy
           TAUYWTR: xy
 
-   - name: MERRA2_400.inst6_3d_ana_Np.20211123.nc4
-     location: /Users/ccruz/data/eviz/merra2
-     description: 3d,6-Hourly,Instantaneous,Pressure-Level,Analysis,Analyzed Meteorological Fields
-     to_plot:
-        SLP: xy
-        O3: xy,yz
-        T: xy,yz
 
 outputs:
-    output_dir: /Users/ccruz/scratch/eviz/output/generic
+#    output_dir: /Users/ccruz/scratch/eviz/output/generic
     print_to_file: yes
     print_format: jpg
 

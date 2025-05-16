@@ -6,8 +6,7 @@ from dataclasses import dataclass, field
 from eviz.lib.autoviz.config import Config
 from eviz.lib.autoviz.config_manager import ConfigManager
 from eviz.lib.autoviz.configuration_adapter import ConfigurationAdapter
-from eviz.models.extensions.factory import ModelExtensionFactory
-from eviz.models.root_factory import (GenericFactory, 
+from eviz.models.root_factory import (GenericFactory,
                               WrfFactory, 
                               LisFactory,
                               AirnowFactory,
@@ -137,7 +136,6 @@ class Autoviz:
             self.logger.info("Processing configuration using adapter")
             self.config_adapter.process_configuration()
             
-            # Check if any data sources were loaded - use the _pipeline attribute directly with careful error handling
             all_data_sources = {}
             try:
                 if hasattr(self._config_manager, '_pipeline') and self._config_manager._pipeline is not None:
@@ -155,10 +153,7 @@ class Autoviz:
                     file_path = os.path.join(entry.get('location', ''), entry.get('name', ''))
                     print(f"  {i+1}. {file_path}")
                 return
-            
-            # Apply model-specific extensions to data sources
-            # self._apply_model_extensions()
-            
+
             if hasattr(self.args, 'composite') and self.args.composite:
                 composite_args = self.args.composite[0].split(',')
                 if len(composite_args) >= 3:
@@ -166,15 +161,13 @@ class Autoviz:
                     self.logger.info(f"Creating composite field: {field1} {operation} {field2}")
                     for factory in self.factory_sources:
                         model = factory.create_root_instance(self._config_manager)
-                        # No need to add data sources to the model - they're accessed via the pipeline
                         model.plot_composite_field(field1, field2, operation)
                     return
             
             # Normal plotting
             for factory in self.factory_sources:
                 model = factory.create_root_instance(self._config_manager)
-                # No need to add data sources to the model - they're accessed via the pipeline
-                
+
                 # Ensure map_params are available to the model
                 if hasattr(model, 'set_map_params') and self._config_manager.map_params:
                     self.logger.info(f"Setting map_params with {len(self._config_manager.map_params)} entries")
@@ -187,17 +180,6 @@ class Autoviz:
         finally:
             self.config_adapter.close()
  
-    def _apply_model_extensions(self):
-        """Apply model-specific extensions to data sources."""
-        for source_name in self.source_names:
-            extension = ModelExtensionFactory.create_extension(source_name, self._config_manager)
-            
-            # Apply extension to all data sources for this model - use the shared data sources
-            for file_path, data_source in self._config_manager.data_sources.items():
-                if data_source.model_name == source_name:
-                    self.logger.info(f"Applying {source_name} extension to {file_path}")
-                    extension.process_data_source(data_source)
-            
     def set_data(self, input_files):
         """ Assign model input files as specified in model config file
 

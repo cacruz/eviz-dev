@@ -148,3 +148,98 @@ ts:
         add_trend: yes
         trend_polyfit: 1
 
+
+O3:
+    unitconversion: 1000000000.0
+    units: ppb
+    yzplot:
+        cmap: coolwarm
+        zrange: [1000, 1]
+        contours: []
+        diffcontours: []
+    xyplot:
+        time_lev: 0
+        cmap: coolwarm
+        levels:
+            100: []
+        diff_100: []
+    xtplot:
+        times: all
+        grid: yes
+    txplot:
+        cmap: coolwarm
+        times: all  # default time=0, or specify range [tmin, tmax], or all
+        grid: yes   # plot grid (default is no)   # plot grid (default is no)
+        contours: [20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36]
+
+T:
+    xyplot:
+        levels:
+            500: []
+    yzplot:
+#        profile_dim: yc
+        zrange: [1000, 0.1]
+        zscale: log
+        contours: []
+
+SLP:
+    unitconversion: 0.01
+    units: mb
+    xyplot:
+        levels:
+            0: []
+    xtplot:
+        times: all
+
+
+U10M:
+    xtplot:
+        times: all
+        grid: yes
+    xyplot:
+        #time_lev: all
+        levels:
+            0: []
+RAINOCN:
+    xtplot:
+        times: all
+        grid: yes
+    txplot:   # hovmoller plot
+#        cbar_sci_notation: true
+        line_contours: false
+        times: all  # default time=0, or specify range [tmin, tmax], or all
+        #xrange: [-25, 50]
+        #yrange: [0, 40]
+        # Contour levels are OPTIONAL
+        contours: []
+        #mean_type: month
+        torder: rev   # reverse time-axis ordering (default increases bottom-to-top)
+
+TAUXWTR:
+    xyplot:
+        #time_lev: all
+        tave: yes
+        levels:
+            0: []
+    xtplot:
+        times: all
+        grid: yes
+
+TAUYWTR:
+    xyplot:
+        levels:
+            0: []
+    xtplot:
+        times: all
+        grid: yes
+
+FRSEAICE:
+    name: Sea ice cover
+    polarplot:
+        #time_lev: all
+        pole: north
+        grid: yes
+        cmap: BuPu
+        boundary: yes
+        levels:
+            0: []
