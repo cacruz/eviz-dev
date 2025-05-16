@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from eviz.lib.config.config_manager import ConfigManager
 from eviz.models.esm.crest import Crest
-from eviz.models.esm.generic import Generic
+from eviz.models.esm.grid_data import GridData
 from eviz.models.esm.geos import Geos
 from eviz.models.esm.lis import Lis
 from eviz.models.esm.wrf import Wrf
@@ -21,9 +21,9 @@ class RootFactory:
 
 
 @dataclass
-class GenericFactory(RootFactory):
+class GriddedFactory(RootFactory):
     def create_root_instance(self, config_manager: ConfigManager):
-        return Generic(config_manager)
+        return GridData(config_manager)
 
 
 @dataclass

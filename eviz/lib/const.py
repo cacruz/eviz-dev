@@ -43,7 +43,7 @@ class _const:
         setattr(self, 'default_output', output_path)
 
         # Define eViz models, plot types, supported models, and some constants
-        supported_models = ['geos', 'ccm', 'cf', 'wrf', 'lis', 'generic',
+        supported_models = ['geos', 'ccm', 'cf', 'wrf', 'lis', 'gridded',
                             'fluxnet', 'airnow', 'test', 'omi', 'landsat', 'mopitt']
         setattr(self, 'supported_models', supported_models)
 

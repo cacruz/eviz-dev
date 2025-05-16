@@ -13,7 +13,7 @@ from eviz.models.base import AbstractRoot
 
 @dataclass
 class Root(AbstractRoot):
-    """This class defines generic interfaces and plotting for all supported sources.
+    """This class defines gridded interfaces and plotting for all supported sources.
 
     Parameters
         config_manager :
@@ -63,7 +63,7 @@ class Root(AbstractRoot):
         self.plot()
 
     def plot(self):
-        """Top-level interface for generic (NetCDF) maps."""
+        """Top-level interface for gridded (NetCDF) maps."""
         self.logger.info("Generate plots.")
 
         if not self.config_manager.spec_data:

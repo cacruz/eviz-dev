@@ -1,6 +1,6 @@
 units: units
 field_name: 
-  generic: long_name
+  gridded: long_name
   geos: long_name
   ccm: long_name
   cf: long_name
@@ -8,12 +8,12 @@ field_name:
   wrf: description
   test: long_name
 xc:
-  generic: lon
+  gridded: lon
   lis: east_west
   wrf: west_east
   test: lon
 yc:
-  generic: lat
+  gridded: lat
   lis: north_south
   wrf: south_north
   test: lat

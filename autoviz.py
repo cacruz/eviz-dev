@@ -12,9 +12,9 @@ def parse_command_line() -> argparse.Namespace:
 
     Example:
 
-        >>> python autoviz.py -s generic
-        >>> python autoviz.py -s generic -c /path/to/config
-        >>> python autoviz.py -s generic -f /path/to/config/my_config.yaml
+        >>> python autoviz.py -s gridded
+        >>> python autoviz.py -s gridded -c /path/to/config
+        >>> python autoviz.py -s gridded -f /path/to/config/my_config.yaml
         >>> python autoviz.py -h
 
     Note:

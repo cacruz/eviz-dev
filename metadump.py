@@ -69,7 +69,7 @@ def json_compatible(value):
         return value
 
 
-def get_model_dim_name(dims, dim_name, meta_coords, source='generic'):
+def get_model_dim_name(dims, dim_name, meta_coords, source='gridded'):
     if dim_name not in meta_coords:
         return None  # Ensure dim_name exists in meta_coords
 
@@ -97,7 +97,7 @@ def get_model_dim_name(dims, dim_name, meta_coords, source='generic'):
 
 def metadump(filepath_1,
              filepath_2=None, app_output=None, specs_output=None,
-             json_output=None, ignore_vars=None, vars=None, source='generic'):
+             json_output=None, ignore_vars=None, vars=None, source='gridded'):
 
     dataset = xr.open_dataset(filepath_1, decode_cf=True)
     if filepath_2 is not None:
@@ -288,8 +288,8 @@ def parse_command_line() -> argparse.Namespace:
         (3) Creates specified app and specs files
         (4) Creates specified app and specs files with ignored subset
         (5) Creates specified app and specs files with specified vars
-        (6) Processes a file with a non-'generic' source metadata
-            Sources are generic (default), wrf, lis
+        (6) Processes a file with a non-'gridded' source metadata
+            Sources are gridded (default), wrf, lis
 
         Once app and specs files are created one can run autoviz as follows:
 
@@ -315,8 +315,8 @@ def parse_command_line() -> argparse.Namespace:
     parser.add_argument('--vars', nargs='*', default=None,
                         help='Variables to include when generating YAML files. If not provided, all variables are '
                              'included.')
-    parser.add_argument('--source', nargs='?', default='generic',
-                        help='source name (default is generic).')
+    parser.add_argument('--source', nargs='?', default='gridded',
+                        help='source name (default is gridded).')
     return parser.parse_args()
 
 

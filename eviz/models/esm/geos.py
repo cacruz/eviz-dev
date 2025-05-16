@@ -8,7 +8,7 @@ import numpy as np
 import xarray as xr
 
 from eviz.lib.data.pipeline import DataProcessor
-from eviz.models.esm.generic import Generic
+from eviz.models.esm.grid_data import GridData
 from eviz.lib.data.utils import apply_conversion
 from eviz.lib.data.utils import apply_mean
 
@@ -16,7 +16,7 @@ warnings.filterwarnings("ignore")
 
 
 @dataclass()
-class Geos(Generic):
+class Geos(GridData):
     """ Define GEOS-specific model data and functions.
     The GEOS-specific functionality centers around the HISTORY.rc file which contains
     information about the GEOS data sources. In Eviz, the HISTORY.rc is parsed during
@@ -220,7 +220,7 @@ class Geos(Generic):
         else:
             return data2d
 
-# TODO: Currently, Geos() is basically Generic(). Need to add HISTORY and Overlays below
+# TODO: Currently, Geos() is basically GridData(). Need to add HISTORY and Overlays below
 #  to make it into a separate Geos()
 
 
@@ -333,7 +333,7 @@ class Geos(Generic):
     def _single_plots_todo(self):
         self.logger.info(f"Creating {self.config.model_name.upper()} plots.")
         if not self.config.have_specs_yaml_file:
-            # Generic basic plots
+            # GridData basic plots
             self.basic_plot()
             return
 
@@ -472,11 +472,11 @@ class Geos(Generic):
                     return None
 
         # These can be defined for global or regional models. We let the respective model
-        # override the extents. For generic, we assume they are global extents.
+        # override the extents. For gridded, we assume they are global extents.
         ax.set_xticks([-90, -60, -30, 0, 30, 60, 90])
         ax.set_xticklabels(["90S", "60S", "30S", "EQ", "30N", "60N", "90N"])
         ax.tick_params(width=3, length=6)
-        # The vertical coordinate can have different units. For generic, we assume pressure
+        # The vertical coordinate can have different units. For gridded, we assume pressure
         # and, again, let specialized models override the definition.
         # Assume surface is the first level
         ax.set_ylim(lo_z, hi_z)

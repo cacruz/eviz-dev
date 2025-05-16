@@ -11,7 +11,7 @@ cases that allow users to quickly generate maps using **autoViz**.
 2. `Metadump: creating the configuration files`_
 3. `Visualize multiple fields field from a single netCDF file`_
 4. `Visualize fields with a SPECS file`_
-5. `Visualize with a predefined generic model`_
+5. `Visualize with a predefined gridded model`_
 6. `Visualize with a predefined GEOS model`_
 7. `Visualize NU-WRF output`_
 8. `sViz: the web-based interface for EViz`_
@@ -42,7 +42,7 @@ to **autoViz**. In addition, you have to specify the model template (or **APP**)
    
    python autoviz.py --configfile /path/to/my_config.yaml -s my_model
 
-In `EViz`, my_model can be one of the following: **generic**, **geos**, **ccm**, **cf**, **wrf** ,or **lis**. These are
+In `EViz`, my_model can be one of the following: **gridded**, **geos**, **ccm**, **cf**, **wrf** ,or **lis**. These are
 the 'supported models'. Supported models are data sources for which predefined configurations have been made available
 within **autoViz**.
 
@@ -97,8 +97,8 @@ values specified in the next line, in this case a list of elements starting with
 specified as defined in the data source metadata, and it is case-sensitive. For example if the metadata describes a
 field named SLP then you must enter SLP and not slp.
 
-Also, if one specifies only an APP file, a “generic” model is assumed. A “generic” model is a file model abstraction
-to represent a **generic netCDF data source**. In the current example, **autoViz** will attempt to generate the simplest
+Also, if one specifies only an APP file, a “gridded” model is assumed. A “gridded” model is a file model abstraction
+to represent a **gridded netCDF data source**. In the current example, **autoViz** will attempt to generate the simplest
 possible 2D map. In this simple case a “good looking” plot is not guaranteed. **Finally, note that the plot will be
 displayed in a pop-up window.**
 
@@ -236,9 +236,9 @@ the config/ directory.
 **Notes**
 
 Pre-defined SPECS files are included in the config directory and are already configure to work with sample data on the
-DISCOVER system. These can be used with the “supported” data sources that include **generic, geos, ccm, cf, lis and wrf**.
-So, for example, we can use the predefined generic model to create plots from various data sources – as long as they
-are in netCDF format (that’s what generic refers to).
+DISCOVER system. These can be used with the “supported” data sources that include **gridded, geos, ccm, cf, lis and wrf**.
+So, for example, we can use the predefined gridded model to create plots from various data sources – as long as they
+are in netCDF format (that’s what gridded refers to).
 
 
 Use your own APP/SPECS
@@ -281,12 +281,12 @@ Also, note that on DISCOVER there are sample config files that you can copy to y
     cp -r /discover/nobackup/projects/jh_tutorials/eviz/config $NOBACKUP
 
 
-Visualize with a predefined generic model
+Visualize with a predefined gridded model
 -----------------------------------------
 
-In this case, **autoViz** will use the predefined SPECS file corresponding to the **generic** APP file. These files can
-be found in the config/generic directory. The generated plots will be as specified in the generic APP and SPECS files.
-The sample generic SPECS file provided with autoViz contains settings for multiple files including: 3D data (2D+time)
+In this case, **autoViz** will use the predefined SPECS file corresponding to the **gridded** APP file. These files can
+be found in the config/gridded directory. The generated plots will be as specified in the gridded APP and SPECS files.
+The sample gridded SPECS file provided with autoViz contains settings for multiple files including: 3D data (2D+time)
 from the `Climatic Research Unit <https://crudata.uea.ac.uk/cru/data/hrg/>`_,  3D data (2D+time) from the
 `CESM <https://www.cesm.ucar.edu/>`_ model, and 4D data (3D+time) from 
 `ERA5-REAN <https://www.ecmwf.int/en/forecasts/datasets/reanalysis-datasets/era5>`_.
@@ -296,13 +296,13 @@ For this case we run **autoViz** as follows:
 
 .. code-block::
    
-   python autoviz.py --source generic
+   python autoviz.py --source gridded
 
 or
 
 .. code-block::
 
-   python autoviz.py -s generic
+   python autoviz.py -s gridded
 
 The terminal output may look something like this (depending on the options):
 
@@ -312,13 +312,13 @@ The terminal output may look something like this (depending on the options):
     INFO :: config (__post_init__:119) : Start init
     INFO :: config (_init_readers:370) : Setup NetCDF reader
     INFO :: reader (__post_init__:19) : Start init
-    INFO :: generic (__post_init__:32) : Start init
+    INFO :: gridded (__post_init__:32) : Start init
     INFO :: root (__post_init__:66) : Start init
     INFO :: root (plot:92) : Generate plots.
     INFO :: plotter (__post_init__:1193) : Start init
-    INFO :: generic (_single_plots:186) : Plotting tas, xt plot
-    INFO :: generic (_get_xt:406) : 'tas' field has 1980 time levels
-    INFO :: generic (_get_xt:416) : Averaging method: point_sel
+    INFO :: gridded (_single_plots:186) : Plotting tas, xt plot
+    INFO :: gridded (_get_xt:406) : 'tas' field has 1980 time levels
+    INFO :: gridded (_get_xt:416) : Averaging method: point_sel
     INFO :: plotter (_time_series_plot:783) : Adding trend
     INFO :: plotter (_time_series_plot:797) :  -- polynomial degree: 5
     INFO :: root (plot:124) : Output files are in /Users/ccruz/projects/EVIZ/gitlab/eviz/demo_output/single

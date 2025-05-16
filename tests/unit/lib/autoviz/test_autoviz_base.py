@@ -10,7 +10,7 @@ from eviz.lib.autoviz.base import (
     Autoviz
 )
 from eviz.models.root_factory import (
-    GenericFactory,
+    GriddedFactory,
     WrfFactory,
     LisFactory,
     AirnowFactory,
@@ -28,7 +28,7 @@ def mock_env_path():
 @pytest.fixture
 def basic_args():
     return Namespace(
-        sources=["generic"],
+        sources=["gridded"],
         compare=False,
         file=None,
         vars=None,
@@ -70,7 +70,7 @@ def mock_autoviz():
         # Patch the logging.getLogger before creating the Autoviz instance
         with patch('logging.getLogger') as mock_get_logger:
             mock_get_logger.return_value = mock_logger
-            autoviz = Autoviz(source_names=["generic"])
+            autoviz = Autoviz(source_names=["gridded"])
             
             # Don't mock _check_input_files here, we'll do it in the specific tests
             yield autoviz
@@ -88,7 +88,7 @@ def test_get_config_path_from_env_not_exists():
 
 # Tests for get_factory_from_user_input
 @pytest.mark.parametrize("input_source,expected_factory_type", [
-    (["generic"], GenericFactory),
+    (["gridded"], GriddedFactory),
     (["wrf"], WrfFactory),
     (["lis"], LisFactory),
     (["airnow"], AirnowFactory),
@@ -103,9 +103,9 @@ def test_get_factory_from_user_input_single(input_source, expected_factory_type)
     assert isinstance(factories[0], expected_factory_type)
 
 def test_get_factory_from_user_input_multiple():
-    factories = get_factory_from_user_input(["generic", "wrf", "lis"])
+    factories = get_factory_from_user_input(["gridded", "wrf", "lis"])
     assert len(factories) == 3
-    assert isinstance(factories[0], GenericFactory)
+    assert isinstance(factories[0], GriddedFactory)
     assert isinstance(factories[1], WrfFactory)
     assert isinstance(factories[2], LisFactory)
 
@@ -123,7 +123,7 @@ def test_autoviz_initialization(mock_get_factory, mock_create_config):
     mock_config = MagicMock()
     mock_create_config.return_value = mock_config
     
-    source_names = ["generic"]
+    source_names = ["gridded"]
     autoviz = Autoviz(source_names=source_names)
     
     assert autoviz.source_names == source_names
@@ -140,17 +140,17 @@ def test_autoviz_initialization_with_args(mock_get_factory, mock_create_config, 
     mock_config = MagicMock()
     mock_create_config.return_value = mock_config
     
-    autoviz = Autoviz(source_names=["generic"], args=basic_args)
+    autoviz = Autoviz(source_names=["gridded"], args=basic_args)
     
     assert autoviz.args == basic_args
-    mock_get_factory.assert_called_once_with(["generic"])
+    mock_get_factory.assert_called_once_with(["gridded"])
     assert autoviz.factory_sources == [mock_factory]
 
 @patch('eviz.lib.autoviz.base.get_factory_from_user_input')
 def test_autoviz_initialization_no_factories(mock_get_factory):
     mock_get_factory.return_value = []
     with pytest.raises(ValueError):
-        Autoviz(source_names=["generic"])
+        Autoviz(source_names=["gridded"])
 
 
 # Tests for create_config
@@ -159,7 +159,7 @@ def test_autoviz_initialization_no_factories(mock_get_factory):
 def test_create_config_with_config_file(mock_config_manager, mock_config, basic_args):
     # Setup
     basic_args.configfile = "test_config.yaml"
-    basic_args.sources = ["generic"]
+    basic_args.sources = ["gridded"]
     mock_config.return_value = MagicMock()
     
     # Execute
@@ -175,7 +175,7 @@ def test_create_config_with_config_dir(mock_config_manager, mock_config, basic_a
     # Setup
     basic_args.config = ["/test/config/dir"]
     basic_args.configfile = None
-    basic_args.sources = ["generic"]
+    basic_args.sources = ["gridded"]
     mock_config.return_value = MagicMock()
     
     # Execute
@@ -192,7 +192,7 @@ def test_create_config_with_env_path(mock_get_env_path, mock_config_manager, moc
     # Setup
     basic_args.config = None
     basic_args.configfile = None
-    basic_args.sources = ["generic"]
+    basic_args.sources = ["gridded"]
     mock_get_env_path.return_value = mock_env_path
     mock_config.return_value = MagicMock()
     
@@ -250,7 +250,7 @@ def test_autoviz_run_basic(mock_autoviz):
 def test_autoviz_run_with_composite(mock_autoviz):
     # Setup
     mock_autoviz.args = Namespace(
-        sources=["generic"],
+        sources=["gridded"],
         composite=["field1,field2,add"],
         integrate=False,
         compare=False,

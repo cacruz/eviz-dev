@@ -96,7 +96,7 @@ class ConfigManager:
         in meta_coordinates.yaml.
 
         Args:
-            dim_name (str): The generic dimension name to look up
+            dim_name (str): The dimension name to look up
 
         Returns:
             str or None: The model-specific dimension name, or None if not found
@@ -108,7 +108,7 @@ class ConfigManager:
         Get the model-specific dimension name.
 
         Args:
-            dim_name: Generic dimension name
+            dim_name: GridData dimension name
 
         Returns:
             str or None: Model-specific dimension name if available

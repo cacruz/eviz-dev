@@ -26,7 +26,7 @@ def mock_config_manager():
         'create_clevs': True,  # Add this to ensure clevs are created
         'num_clevs': 10,       # Add this to control number of levels
     }
-    mock.source_names = ['generic']
+    mock.source_names = ['gridded']
     mock.ds_index = 0
     mock.findex = 0
     mock.compare = False

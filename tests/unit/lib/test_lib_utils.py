@@ -41,7 +41,7 @@ def write_to_temp_file(string_io_obj):
             ('geos', constants.geos_yaml_path),
             ('lis', constants.lis_yaml_path),
             ('wrf', constants.wrf_yaml_path),
-            ('generic', constants.generic_yaml_path),
+            ('gridded', constants.gridded_yaml_path),
     )
 )
 def test_get_nested_key_value_1nest(model_name, expected):

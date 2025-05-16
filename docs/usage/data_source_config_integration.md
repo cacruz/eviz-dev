@@ -67,7 +67,7 @@ eviz/
     │   └── factory.py          # ModelExtensionFactory
     └── esm/
         ├── ccm_extension.py    # CCM-specific extension
-        └── generic_extension.py # Generic-specific extension
+        └── generic_extension.py # GridData-specific extension
 ```
 
 This structure keeps the library code (eviz/lib) model-independent, while allowing for model-specific processing in the models directory.

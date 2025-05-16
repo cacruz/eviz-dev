@@ -3,7 +3,7 @@
 # (1) The key values (i.e. xc, yc, ...)  represent the internal
 #     Eviz coordinate names while the model values are all the
 #     Eviz-recognized coordinate names for that particular source
-# (2)  generic model is one that generates NetCDF4 output
+# (2)  A gridded model is common model often stored in NetCDF files
 
 # x-coordinate name: model
 xc:
@@ -11,7 +11,7 @@ xc:
     ccm: lon
     cf: lon
     gmi: longitude_dim
-    generic: lon,longitude,im
+    gridded: lon,longitude,im
     airnow: Longitude
     omi: longitude,Longitude,Long,long,lon
     wrf:
@@ -33,7 +33,7 @@ yc:
     ccm: lat
     cf: lat
     gmi: latitude_dim
-    generic: lat,latitude,jm
+    gridded: lat,latitude,jm
     airnow: Latitude
     omi: Latitude,latitude,lat
     wrf:
@@ -55,7 +55,7 @@ zc:
     ccm: lev
     cf: lev
     gmi: eta_dim
-    generic: lev,level,levels,plev,lm,eta_dim
+    gridded: lev,level,levels,plev,lm,eta_dim
     airnow: NA
     omi: NA
     wrf:
@@ -72,7 +72,7 @@ tc:
     ccm: time
     cf: time
     gmi: rec_dim
-    generic: time,rec_dim,ntimemax
+    gridded: time,rec_dim,ntimemax
     airnow: time
     omi: Time
     wrf:

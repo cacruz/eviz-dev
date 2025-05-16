@@ -51,15 +51,15 @@ inputs:
      location: /Users/ccruz/data/eviz/merra2
      description: Ocean DAS
      to_plot:
-          FRSEAICE: polar
+#          FRSEAICE: polar
           RAINOCN: tx
           U10M: xy,xt
-          TAUXWTR: xy
-          TAUYWTR: xy
+          # TAUXWTR: xy
+          # TAUYWTR: xy
 
 
 outputs:
-#    output_dir: /Users/ccruz/scratch/eviz/output/generic
+#    output_dir: /Users/ccruz/scratch/eviz/output/gridded
     print_to_file: yes
     print_format: jpg
 

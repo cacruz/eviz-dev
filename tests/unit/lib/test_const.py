@@ -68,7 +68,7 @@ def test_const_attrs(value, expected):
 
 
 def test_supported_models():
-    assert constants.__getattribute__('supported_models') == ['geos', 'ccm', 'cf', 'wrf', 'lis', 'generic',
+    assert constants.__getattribute__('supported_models') == ['geos', 'ccm', 'cf', 'wrf', 'lis', 'gridded',
                                                               'fluxnet', 'airnow', 'test', 'omi', 'landsat', 'mopitt']
 
 

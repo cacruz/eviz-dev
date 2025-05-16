@@ -6,7 +6,7 @@ from dataclasses import dataclass, field
 from eviz.lib.config.config import Config
 from eviz.lib.config.config_manager import ConfigManager
 from eviz.lib.config.configuration_adapter import ConfigurationAdapter
-from eviz.models.root_factory import (GenericFactory,
+from eviz.models.root_factory import (GriddedFactory,
                               WrfFactory, 
                               LisFactory,
                               AirnowFactory,
@@ -57,13 +57,13 @@ def get_factory_from_user_input(inputs):
         existing within EVIZ_CONFIG_PATH.
     """
     mappings = {
-        "test": GenericFactory(),      # for unit tests
-        "generic": GenericFactory(),   # generic is NetCDF
-        "geos": GenericFactory(),      # use this for MERRA
-        "ccm": GenericFactory(),       # CCM and CF are "special" streams
-        "cf": GenericFactory(),        #
+        "test": GriddedFactory(),      # for unit tests
+        "gridded": GriddedFactory(),   # gridded is NetCDF
+        "geos": GriddedFactory(),      # use this for MERRA
+        "ccm": GriddedFactory(),       # CCM and CF are "special" streams
+        "cf": GriddedFactory(),        #
         # "crest": CrestFactory(),     #
-        "lis": LisFactory(),           # LIS and WRF are generic but require special
+        "lis": LisFactory(),           # LIS and WRF are gridded but require special
         "wrf": WrfFactory(),           # "treatment" due to the "regional" nature of the data
         "airnow": AirnowFactory(),     # CSV
         "fluxnet": FluxnetFactory(),   # CSV

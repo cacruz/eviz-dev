@@ -195,7 +195,7 @@ if __name__ == '__main__':
                         make_gif = True
                     else:
                         run(['python', os.path.join(u.get_project_root(), 'autoviz.py'),
-                            '-s', 'generic', '-f',
+                            '-s', 'gridded', '-f',
                             os.path.join(u.get_project_root(), autoviz_config)])
 
                     date_dir = get_time_stamped_output(

@@ -175,12 +175,12 @@ class DataSource(ABC):
                     return dim
             return None
         
-    def _get_model_dim_name(self, generic_dim_name, available_dims=None):
+    def _get_model_dim_name(self, gridded_dim_name, available_dims=None):
         """
-        Get the model-specific dimension name for a generic dimension.
+        Get the model-specific dimension name for a gridded dimension.
         
         Args:
-            generic_dim_name: Generic dimension name (e.g., 'xc', 'yc', 'zc', 'tc')
+            gridded_dim_name: GridData dimension name (e.g., 'xc', 'yc', 'zc', 'tc')
             available_dims: List of available dimensions in the dataset
             
         Returns:
@@ -195,25 +195,25 @@ class DataSource(ABC):
             return None
             
         meta_coords = self.config_manager.meta_coords
-        if generic_dim_name not in meta_coords:
-            self.logger.warning(f"No mapping found for dimension '{generic_dim_name}'")
+        if gridded_dim_name not in meta_coords:
+            self.logger.warning(f"No mapping found for dimension '{gridded_dim_name}'")
             return None
             
         model_name = self.model_name
         
-        self.logger.debug(f"Looking for model '{model_name}' in meta_coords['{generic_dim_name}']")
-        self.logger.debug(f"Available models for {generic_dim_name}: {list(meta_coords[generic_dim_name].keys())}")
+        self.logger.debug(f"Looking for model '{model_name}' in meta_coords['{gridded_dim_name}']")
+        self.logger.debug(f"Available models for {gridded_dim_name}: {list(meta_coords[gridded_dim_name].keys())}")
         
-        if not model_name or model_name not in meta_coords[generic_dim_name]:
+        if not model_name or model_name not in meta_coords[gridded_dim_name]:
             # Try to use a default model if available
-            if 'generic' in meta_coords[generic_dim_name]:
-                self.logger.debug(f"Using 'generic' mapping for model '{model_name}' and dimension '{generic_dim_name}'")
-                model_name = 'generic'
+            if 'gridded' in meta_coords[gridded_dim_name]:
+                self.logger.debug(f"Using 'gridded' mapping for model '{model_name}' and dimension '{gridded_dim_name}'")
+                model_name = 'gridded'
             else:
-                self.logger.warning(f"No mapping found for model '{model_name}' and dimension '{generic_dim_name}'")
+                self.logger.warning(f"No mapping found for model '{model_name}' and dimension '{gridded_dim_name}'")
                 return None
         
-        coords = meta_coords[generic_dim_name][model_name]
+        coords = meta_coords[gridded_dim_name][model_name]
             
         if isinstance(coords, list):
             for coord in coords:

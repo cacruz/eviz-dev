@@ -63,32 +63,32 @@ else
     exit 1
 fi
 
-echo "Basic 'generic' tests"
+echo "Basic 'gridded' tests"
 echo "---------------------"
 echo
 # Use -f option (would override EVIZ_CONFIG_PATH)
 f_option=/Users/ccruz/projects/Eviz/config/simple/simple.yaml
 echo "Using configfile -f $f_option"
-python autoviz.py -s generic -f $f_option -v 0
+python autoviz.py -s gridded -f $f_option -v 0
 echo
 
 # Use -f option (would override EVIZ_CONFIG_PATH)
 f_option=/Users/ccruz/projects/Eviz/config/simple_spec/sample.yaml
 echo "Using configfile -f $f_option"
 echo "and its associated spec file"
-python autoviz.py -s generic -f $f_option -v 0
+python autoviz.py -s gridded -f $f_option -v 0
 echo
 
 # Use -c option (would override EVIZ_CONFIG_PATH)
 c_option=/Users/ccruz/projects/Eviz/config
 echo "Using config -c $c_option"
-echo "(expects app and spec under generic)"
-python autoviz.py -s generic -c $c_option -v 0
+echo "(expects app and spec under gridded)"
+python autoviz.py -s gridded -c $c_option -v 0
 echo
 
 
 echo "Same as above, but using EVIZ_CONFIG_PATH"
-python autoviz.py -s generic -v 0
+python autoviz.py -s gridded -v 0
 echo
 
 echo "Single-plot tests"
@@ -143,8 +143,8 @@ echo "Source: wrf,lis"
 #python autoviz.py -s wrf,lis -v 0
 echo
 
-echo "Source: generic,geos,cf"
-#python autoviz.py -s generic,geos,cf -v 0
+echo "Source: gridded,geos,cf"
+#python autoviz.py -s gridded,geos,cf -v 0
 echo
 
 echo "Comparison-plot tests"
@@ -192,5 +192,5 @@ if [[ "$machine_name" == *"discover"* || "$machine_name" == *"borg"* ]]; then
     unset EVIZ_CONFIG_PATH
     echo "No config files at all (should break on MAC, OK on DISCOVER)"
     echo "Should use config files specified in config/"
-    python autoviz.py -s generic -v 0
+    python autoviz.py -s gridded -v 0
 fi

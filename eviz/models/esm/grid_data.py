@@ -16,7 +16,7 @@ warnings.filterwarnings("ignore")
 
 
 @dataclass
-class Generic(Root):
+class GridData(Root):
     """
     The GridData class provides specialized functionality for handling gridded Earth System Model (ESM) data.
 

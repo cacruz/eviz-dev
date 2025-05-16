@@ -126,13 +126,13 @@ def get_data_coords(data_array, attribute_name):
     }
 
 
-    # Check if attribute_name is a generic name present in the mapping
-    for generic, specific_list in attribute_mapping.items():
+    # Check if attribute_name is a gridded name present in the mapping
+    for gridded, specific_list in attribute_mapping.items():
         if attribute_name in specific_list:
-            attribute_name = generic
+            attribute_name = gridded
             break
 
-    # Check if we have a mapping for this generic name
+    # Check if we have a mapping for this gridded name
     if attribute_name in attribute_mapping:
         # Try each specific name in the mapping
         for specific_name in attribute_mapping[attribute_name]:
@@ -148,5 +148,5 @@ def get_data_coords(data_array, attribute_name):
         return data_array.coords[attribute_name].values
 
     # If the attribute wasn't found after all attempts, raise an error
-    raise ValueError(f"Generic name for {attribute_name} not found in attribute_mapping.")
+    raise ValueError(f"GridData name for {attribute_name} not found in attribute_mapping.")
 

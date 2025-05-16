@@ -669,11 +669,11 @@ def _set_ax_ranges(config, field_name, fig, ax, ax_opts, y, units):
                 return None
 
     # These can be defined for global or regional models. We let the respective model
-    # override the extents. For generic, we assume they are global extents.
+    # override the extents. For gridded, we assume they are global extents.
     ax.set_xticks([-90, -60, -30, 0, 30, 60, 90])
     ax.set_xticklabels(["90S", "60S", "30S", "EQ", "30N", "60N", "90N"])
     ax.tick_params(width=3, length=6)
-    # The vertical coordinate can have different units. For generic, we assume pressure
+    # The vertical coordinate can have different units. For gridded, we assume pressure
     # and, again, let specialized models override the definition.
     # Assume surface is the first level
     ax.set_ylim(lo_z, hi_z)

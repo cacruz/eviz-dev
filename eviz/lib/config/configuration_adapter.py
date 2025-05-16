@@ -33,8 +33,7 @@ class ConfigurationAdapter:
             try:
                 source_name = self.config_manager.source_names[self.config_manager.ds_index]
             except (IndexError, AttributeError):
-                # Fallback for tests: use source_name from file_entry or default to 'generic'
-                source_name = file_entry.get('source_name', 'generic')
+                source_name = file_entry.get('source_name', 'gridded')
             
             # Store exp_name or exp_id as metadata if available
             exp_metadata = {}

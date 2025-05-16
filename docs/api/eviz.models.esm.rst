@@ -4,10 +4,10 @@ eviz.models.esm package
 Submodules
 ----------
 
-eviz.models.esm.generic module
-------------------------------
+eviz.models.esm.grid_data module
+--------------------------------
 
-.. automodule:: eviz.models.esm.generic
+.. automodule:: eviz.models.esm.grid_data
    :members:
    :undoc-members:
    :show-inheritance:
