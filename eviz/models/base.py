@@ -17,7 +17,7 @@ class AbstractRoot(ABC):
         __post_init__ provides a default behavior for initialization
 
     Parameters
-        config :
+        config_manager :
             Representation of the configuration used to specify data sources and
             user choices for the map generation. The config instance is created at the
             application level.

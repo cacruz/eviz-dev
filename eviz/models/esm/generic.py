@@ -17,10 +17,31 @@ warnings.filterwarnings("ignore")
 
 @dataclass
 class Generic(Root):
-    """ The generic class contains definitions for handling generic ESM data, that is 2D, 3D, and 4D
-     field data. This is typically not the case for observational data which may be unstructured and very
-     non-standard in its internal arrangement.
-     Specific model functionality should be overridden in subclasses.
+    """
+    The GridData class provides specialized functionality for handling gridded Earth System Model (ESM) data.
+
+    This class extends the Root implementation to work specifically with structured grid data formats
+    commonly used in ESMs, including 2D (lat-lon), 3D (lat-lon-time or lat-lon-level), and 4D 
+    (lat-lon-level-time) datasets. It implements methods for extracting, processing, and visualizing
+    various slices and projections of gridded data, such as:
+
+    - Horizontal (XY) slices at specific vertical levels or times
+    - Vertical (YZ) slices (zonal means)
+    - Time series (XT) at points or averaged over regions
+    - Hovmöller diagrams (TX) showing time-longitude evolution
+
+    Unlike the observation modules which may handle both gridded and unstructured data formats,
+    this class is optimized specifically for regular grid structures with consistent coordinate
+    systems. It provides specialized grid-aware operations including:
+
+    - Vertical level selection and averaging
+    - Zonal and meridional means
+    - Grid cell area-weighted averaging
+    - Time averaging and selection
+    - Comparison and differencing between gridded datasets
+
+    This class serves as a base for more specific ESM implementations while providing
+    comprehensive functionality for the most common gridded data operations.
     """
     @property
     def logger(self) -> logging.Logger:

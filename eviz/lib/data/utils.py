@@ -1,10 +1,10 @@
 import numpy as np
 import dask
-dask.config.set({"array.slicing.split_large_chunks": False})
-
+import logging
 import eviz.lib.const as constants
 
-import logging
+dask.config.set({"array.slicing.split_large_chunks": False})
+
 
 logger = logging.getLogger(__name__)
 
