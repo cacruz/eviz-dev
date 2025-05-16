@@ -4,7 +4,7 @@ from typing import Any
 
 import pandas as pd
 
-from eviz.lib.autoviz.config import Config
+from eviz.lib.config.config import Config
 from dataclasses import dataclass, field
 
 from eviz.models.root import Root

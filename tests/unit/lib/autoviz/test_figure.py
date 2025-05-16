@@ -1,14 +1,13 @@
 """
 Unit tests for the Figure class.
 """
-import numpy as np
 import matplotlib.pyplot as plt
 import cartopy.crs as ccrs
 from unittest.mock import MagicMock, patch
 import pytest
 
 from eviz.lib.autoviz.figure import Figure
-from eviz.lib.autoviz.config_manager import ConfigManager
+from eviz.lib.config.config_manager import ConfigManager
 
 
 class TestFigure:

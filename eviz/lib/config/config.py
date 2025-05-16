@@ -4,12 +4,12 @@ import matplotlib as mpl
 from dataclasses import dataclass, field
 from typing import List, Dict, Any
 from eviz.lib.utils import log_method
-from eviz.lib.autoviz.input_config import InputConfig
-from eviz.lib.autoviz.output_config import OutputConfig
-from eviz.lib.autoviz.system_config import SystemConfig
-from eviz.lib.autoviz.history_config import HistoryConfig
-from eviz.lib.autoviz.yaml_parser import YAMLParser
-from eviz.lib.autoviz.app_data import AppData
+from eviz.lib.config.input_config import InputConfig
+from eviz.lib.config.output_config import OutputConfig
+from eviz.lib.config.system_config import SystemConfig
+from eviz.lib.config.history_config import HistoryConfig
+from eviz.lib.config.yaml_parser import YAMLParser
+from eviz.lib.config.app_data import AppData
 
 rc_matplotlib = mpl.rcParams  # PEP8 4 lyfe
 

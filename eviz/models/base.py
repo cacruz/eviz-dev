@@ -2,7 +2,7 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass
 import logging
 
-from eviz.lib.autoviz.config_manager import ConfigManager
+from eviz.lib.config.config_manager import ConfigManager
 from eviz.lib.data.sources import DataSource
 
 

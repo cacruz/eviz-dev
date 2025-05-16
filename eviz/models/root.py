@@ -10,7 +10,7 @@ from eviz.lib.autoviz.plotter import SimplePlotter, ComparisonPlotter, SinglePlo
 import eviz.lib.utils as u
 from eviz.lib import const as constants
 
-from eviz.lib.autoviz.config_manager import ConfigManager
+from eviz.lib.config.config_manager import ConfigManager
 from eviz.models.base import AbstractRoot
 # Removed import of DataSourceFactory as data loading is handled by the pipeline
 

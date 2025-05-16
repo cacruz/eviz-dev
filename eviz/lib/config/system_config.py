@@ -2,7 +2,7 @@ from dataclasses import dataclass, field
 import logging
 from time import strftime
 from eviz.lib.utils import log_method
-from eviz.lib.autoviz.app_data import AppData
+from eviz.lib.config.app_data import AppData
 
 
 @dataclass

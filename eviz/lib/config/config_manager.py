@@ -1,10 +1,10 @@
 import logging
 import os
-from eviz.lib.autoviz.config import Config
-from eviz.lib.autoviz.input_config import InputConfig
-from eviz.lib.autoviz.output_config import OutputConfig
-from eviz.lib.autoviz.system_config import SystemConfig
-from eviz.lib.autoviz.history_config import HistoryConfig
+from eviz.lib.config.config import Config
+from eviz.lib.config.input_config import InputConfig
+from eviz.lib.config.output_config import OutputConfig
+from eviz.lib.config.system_config import SystemConfig
+from eviz.lib.config.history_config import HistoryConfig
 import eviz.lib.utils as u
 from eviz.lib.data.pipeline.integrator import DataIntegrator
 from eviz.lib.data.pipeline.pipeline import DataPipeline

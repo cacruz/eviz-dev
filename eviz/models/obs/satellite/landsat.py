@@ -5,7 +5,7 @@ from typing import Any
 from matplotlib import pyplot as plt
 import xarray as xr
 
-from eviz.lib.autoviz.config import Config
+from eviz.lib.config.config import Config
 from dataclasses import dataclass, field
 
 from eviz.models.root import Root

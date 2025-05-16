@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 
-from eviz.lib.autoviz.config_manager import ConfigManager
+from eviz.lib.config.config_manager import ConfigManager
 from eviz.models.esm.crest import Crest
 from eviz.models.esm.generic import Generic
 from eviz.models.esm.geos import Geos

@@ -21,7 +21,7 @@ The `ConfigurationAdapter` class is responsible for:
 - Managing resources
 
 ```python
-from eviz.lib.autoviz.configuration_adapter import ConfigurationAdapter
+from eviz.lib.config.configuration_adapter import ConfigurationAdapter
 
 # Create a configuration adapter
 adapter = ConfigurationAdapter(config_manager)

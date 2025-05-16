@@ -5,10 +5,10 @@ import numpy as np
 import xarray as xr
 from unittest.mock import MagicMock, patch
 
-from eviz.lib.autoviz.config_manager import ConfigManager
+from eviz.lib.config.config_manager import ConfigManager
 from eviz.lib.data.pipeline import DataPipeline
 from eviz.lib.data.sources import DataSource
-from eviz.lib.autoviz.configuration_adapter import ConfigurationAdapter
+from eviz.lib.config.configuration_adapter import ConfigurationAdapter
 
 
 class TestConfigurationAdapter:
@@ -65,7 +65,7 @@ class TestConfigurationAdapter:
         self.mock_pipeline.process_file.return_value = self.mock_data_source
         
         # Patch the DataPipeline class to return our mock
-        with patch('eviz.lib.autoviz.configuration_adapter.DataPipeline', return_value=self.mock_pipeline):
+        with patch('eviz.lib.config.configuration_adapter.DataPipeline', return_value=self.mock_pipeline):
             self.adapter = ConfigurationAdapter(self.mock_config_manager)
             
     def test_init(self):
@@ -85,7 +85,7 @@ class TestConfigurationAdapter:
         pipeline_mock.process_file.return_value = MagicMock()
         
         # Patch the DataPipeline class to return our mock
-        with patch('eviz.lib.autoviz.configuration_adapter.DataPipeline', return_value=pipeline_mock):
+        with patch('eviz.lib.config.configuration_adapter.DataPipeline', return_value=pipeline_mock):
             adapter = ConfigurationAdapter(config_manager)
             adapter.process_configuration()
         
@@ -116,7 +116,7 @@ class TestConfigurationAdapter:
         pipeline_mock.process_file.return_value = MagicMock()
         
         # Patch the DataPipeline class to return our mock
-        with patch('eviz.lib.autoviz.configuration_adapter.DataPipeline', return_value=pipeline_mock):
+        with patch('eviz.lib.config.configuration_adapter.DataPipeline', return_value=pipeline_mock):
             adapter = ConfigurationAdapter(config_manager)
             adapter.process_configuration()
         

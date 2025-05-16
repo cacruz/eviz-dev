@@ -3,9 +3,9 @@ import logging
 import time
 from argparse import Namespace
 from dataclasses import dataclass, field
-from eviz.lib.autoviz.config import Config
-from eviz.lib.autoviz.config_manager import ConfigManager
-from eviz.lib.autoviz.configuration_adapter import ConfigurationAdapter
+from eviz.lib.config.config import Config
+from eviz.lib.config.config_manager import ConfigManager
+from eviz.lib.config.configuration_adapter import ConfigurationAdapter
 from eviz.models.root_factory import (GenericFactory,
                               WrfFactory, 
                               LisFactory,
