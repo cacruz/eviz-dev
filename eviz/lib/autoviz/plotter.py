@@ -1005,26 +1005,27 @@ def _single_xt_plot(config: ConfigManager, data_to_plot: tuple) -> None:
         config (Config) : configuration used to specify data sources
         data_to_plot (tuple) : dict with plotted data and specs
     """
-
     data2d, _, _, field_name, plot_type, findex, fig, ax_temp = data_to_plot
     ax_opts = config.ax_opts
-    ax = ax_temp
-    if np.shape(ax_temp) == (3,):
-        if ax_opts['is_diff_field']:
-            ax = ax_temp[2]
+    
+    # Handle different axes configurations
+    if isinstance(ax_temp, list):
+        if len(ax_temp) == 3:
+            ax = ax_temp[2] if ax_opts['is_diff_field'] else ax_temp[findex]
+        elif len(ax_temp) == 4:  # 2x2 grid
+            if ax_opts['is_diff_field']:
+                ax = ax_temp[3] if ax_opts['add_extra_field_type'] else ax_temp[2]
+            else:
+                ax = ax_temp[findex]
         else:
-            ax = ax_temp[findex]
-    elif np.shape(ax_temp) == (2, 2):
-        if ax_opts['is_diff_field']:
-            ax = ax_temp[1, 0]
-            if config.ax_opts['add_extra_field_type']:
-                ax = ax_temp[1, 1]
-        else:
-            ax = ax_temp[0, findex]
+            ax = ax_temp[0]  # Default to first axis if structure is unknown
+    else:
+        ax = ax_temp  # Single axis case
 
     logger.debug(f'Plotting {field_name}')
     if data2d is None:
         return
+        
     ax_opts = fig.update_ax_opts(field_name, ax, 'xt', level=0)
     fig.plot_text(field_name, ax, 'xt', data=data2d)
 
