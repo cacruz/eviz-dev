@@ -38,7 +38,6 @@ class ConfigManager:
     def integrator(self):
         """Lazy initialization of DataIntegrator."""
         if self._integrator is None:
-            # Pass the pipeline to the integrator so it can access data sources
             self._integrator = DataIntegrator()
         return self._integrator
 
@@ -122,7 +121,6 @@ class ConfigManager:
 
         coords = self.meta_coords[dim_name][source]
 
-        # If the mapping is a simple string, return it
         if isinstance(coords, str) and ',' not in coords:
              self.logger.debug(f"Found direct mapping for '{dim_name}' in source '{source}': '{coords}'")
              return coords
@@ -137,7 +135,6 @@ class ConfigManager:
                  file_path = os.path.join(file_entry.get('location', ''), file_entry.get('name', ''))
         except Exception as e:
             self.logger.debug(f"Could not get file path for ds_index {self.ds_index}, findex {self.findex}: {e}")
-            # Fallback: try to get the first file path for the source
             for entry in self.app_data.inputs:
                 if entry.get('source_name') == source:
                     file_path = os.path.join(entry.get('location', ''), entry.get('name', ''))
@@ -196,7 +193,7 @@ class ConfigManager:
             else:
                 self.logger.warning(f"Could not find entry for exp_id: {exp_id}")
 
-        self.logger.debug(f"Comparison setup: a_list={self.a_list}, b_list={self.b_list}")
+        self.logger.info(f"Comparison setup: a_list={self.a_list}, b_list={self.b_list}")
 
     def get_file_index(self, filename):
         """
@@ -274,10 +271,10 @@ class ConfigManager:
             if attr_name in self.meta_attrs and source in self.meta_attrs[attr_name]:
                 return self.meta_attrs[attr_name][source]
             else:
-                self.logger.warning(f"No meta_attrs mapping for attribute '{attr_name}' and source '{source}'")
+                self.logger.debug(f"No meta_attrs mapping for attribute '{attr_name}' and source '{source}'")
                 return None
         else:
-            self.logger.warning(f"ds_index {self.ds_index} out of bounds for source_names {self.source_names}")
+            self.logger.debug(f"ds_index {self.ds_index} out of bounds for source_names {self.source_names}")
             return None
 
 

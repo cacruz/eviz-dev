@@ -256,12 +256,11 @@ class InputConfig:
         Returns:
             The primary reader or None if not found
         """
-        # Try to get a NetCDF reader first, as it's often the most versatile
+        # Try to get a NetCDF reader first...
         if source_name in self.readers:
             if 'NetCDF' in self.readers[source_name]:
                 return self.readers[source_name]['NetCDF']
             elif self.readers[source_name]:
-                # Fall back to the first available reader
                 return next(iter(self.readers[source_name].values()))
         
         return None
@@ -287,7 +286,7 @@ class InputConfig:
             self.logger.error(f"Error creating data source: {e}")
             # Default to NetCDF for unrecognized extensions when WRF is involved
             if 'wrf' in source_name.lower():
-                self.logger.warning(f"Unrecognized extension '{file_extension}' for WRF source, defaulting to NetCDF reader")
+                self.logger.debug(f"Unrecognized extension '{file_extension}' for WRF source, defaulting to NetCDF reader")
                 return factory.create_data_source("dummy.nc", source_name)
             else:
                 raise ValueError(f"Unsupported file extension: {file_extension}")
@@ -317,7 +316,6 @@ class InputConfig:
             self._profile = for_inputs.get('compare_diff', {}).get('profile', False)
             self._cmap = for_inputs.get('compare_diff', {}).get('cmap', 'rainbow')
             self._comp_panels = (2, 2) if self._extra_diff_plot else (3, 1)
-            # Log the configuration for debugging
             self.logger.debug(f"Compare diff settings: extra_diff={extra_diff}, comp_panels={self._comp_panels}")
             
         if self._compare:
@@ -457,7 +455,6 @@ class InputConfig:
                     self.app_data.for_inputs['trop_height'][i]['trop_field_name']
                 self.logger.debug(self.trop_height_file_list[i])
         else:
-            self.logger.warning("The 'for_inputs' entry does not specify trop-height-containing files.")
             self._use_trop_height = False
 
     def _set_sphum_conv_file_list(self):
@@ -480,7 +477,6 @@ class InputConfig:
                         self.app_data.for_inputs['sphum_field'][i]['sphum_field_name']
                     self.logger.debug(self.sphum_conv_file_list[i])
             else:
-                self.logger.warning("The 'for_inputs' entry does not specify sphum_field-containing files.")
                 self._use_sphum_conv = False
 
     @property

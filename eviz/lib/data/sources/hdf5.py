@@ -1,6 +1,3 @@
-"""
-HDF5 data source implementation.
-"""
 import logging
 import xarray as xr
 import h5py

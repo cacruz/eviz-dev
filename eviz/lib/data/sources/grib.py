@@ -1,6 +1,3 @@
-"""
-GRIB data source implementation.
-"""
 import logging
 import xarray as xr
 import numpy as np

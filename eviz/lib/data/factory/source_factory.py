@@ -1,6 +1,3 @@
-"""
-Factory for creating data source instances.
-"""
 import os
 from typing import Type, List, Optional
 from eviz.lib.data.sources import (

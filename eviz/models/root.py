@@ -1,14 +1,12 @@
 import os
 from dataclasses import dataclass
 import logging
-
 import matplotlib
 import matplotlib.pyplot as plt
 
 from eviz.lib.autoviz.plotter import SimplePlotter, ComparisonPlotter, SinglePlotter
 import eviz.lib.utils as u
 from eviz.lib import const as constants
-
 from eviz.lib.config.config_manager import ConfigManager
 from eviz.models.base import AbstractRoot
 
@@ -41,7 +39,6 @@ class Root(AbstractRoot):
         self.ax = None
         self.fig = None
 
-        # Handle multiprocessing pool setup
         if self.use_mp_pool:
             # Set to avoid establishing a GUI in each sub-process:
             matplotlib.use('agg')

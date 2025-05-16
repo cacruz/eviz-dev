@@ -1,6 +1,3 @@
-"""
-Data integration stage of the pipeline.
-"""
 import logging
 from typing import List
 import xarray as xr

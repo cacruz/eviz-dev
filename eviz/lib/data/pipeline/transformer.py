@@ -1,6 +1,3 @@
-"""
-Data transformation stage of the pipeline.
-"""
 import logging
 import xarray as xr
 import numpy as np

@@ -1,6 +1,3 @@
-"""
-CSV data source implementation.
-"""
 import logging
 from glob import glob
 import pandas as pd

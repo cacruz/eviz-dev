@@ -1,6 +1,3 @@
-"""
-Adapter between YAML configuration and data source architecture.
-"""
 import logging
 import os
 from typing import Dict, Any, Optional
@@ -11,7 +8,7 @@ from eviz.lib.data.sources import DataSource
 
 
 class ConfigurationAdapter:
-    """Adapter for configuration management."""
+    """Adapter between YAML configuration and data source architecture."""
     def __init__(self, config_manager):
         """Initialize a new ConfigurationAdapter.
         
@@ -20,9 +17,7 @@ class ConfigurationAdapter:
         """
         self.logger.info("Start init")
         self.config_manager = config_manager
-        # For backward compatibility with tests
         self.data_sources = {}
-        # Initialize the pipeline directly
         self.config_manager._pipeline = DataPipeline(self.config_manager)
 
     @property
@@ -32,12 +27,9 @@ class ConfigurationAdapter:
 
     def process_configuration(self):
         """Process the configuration and load data."""        
-        # Load data for each input file
         for i, file_entry in enumerate(self.config_manager.app_data.inputs):
             file_path = self._get_file_path(file_entry)
             
-            # Use source_name from the command line arguments, not exp_name or exp_id from the file entry
-            # This ensures we're using the correct data source type
             try:
                 source_name = self.config_manager.source_names[self.config_manager.ds_index]
             except (IndexError, AttributeError):
@@ -53,21 +45,17 @@ class ConfigurationAdapter:
             
             self.logger.debug(f"Loading data for file {i+1}: {file_path} with source_name: {source_name}")
             
-            # Use the pipeline to process the file
             try:
-                # Access the pipeline through the _pipeline attribute directly
-                # This will create a DataSource and store it in the pipeline's data_sources dict
                 data_source = self.config_manager._pipeline.process_file(
                     file_path, 
                     model_name=source_name,
-                    metadata=exp_metadata  # Pass experiment metadata
+                    metadata=exp_metadata 
                 )
                 
                 if data_source is None:
                     self.logger.warning(f"Failed to load data from {file_path}")
                 else:
                     self.logger.debug(f"Successfully loaded data from {file_path}")
-                    # For backward compatibility with tests
                     self.data_sources[file_path] = data_source
                     
             except Exception as e:
@@ -77,7 +65,6 @@ class ConfigurationAdapter:
         if hasattr(self.config_manager.input_config, '_integrate') and self.config_manager.input_config._integrate:
             self.logger.debug("Integrating datasets")
             try:
-                # Use the pipeline's integrator to integrate the datasets
                 integrated_dataset = self.config_manager._pipeline.integrate_data_sources()
                 if integrated_dataset is not None:
                     self.logger.debug("Successfully integrated datasets")
@@ -90,7 +77,6 @@ class ConfigurationAdapter:
         if hasattr(self.config_manager.input_config, '_composite') and self.config_manager.input_config._composite:
             self.logger.debug("Creating composite field")
             try:
-                # Use the pipeline's integrator to integrate variables
                 composite_config = self.config_manager.input_config._composite
                 variables = composite_config.get('variables', [])
                 operation = composite_config.get('operation', 'add')
@@ -128,7 +114,6 @@ class ConfigurationAdapter:
         Returns:
             The data source for the file path, or None if not found
         """
-        # For backward compatibility with tests
         return self.data_sources.get(file_path)
     
     def get_all_data_sources(self) -> Dict[str, DataSource]:
@@ -137,7 +122,6 @@ class ConfigurationAdapter:
         Returns:
             A dictionary mapping file paths to data sources
         """
-        # For backward compatibility with tests
         return self.data_sources
     
     def get_dataset(self) -> Optional[xr.Dataset]:
@@ -146,7 +130,6 @@ class ConfigurationAdapter:
         Returns:
             The integrated dataset, or None if not available
         """
-        # Delegate to the pipeline
         if hasattr(self.config_manager, '_pipeline') and self.config_manager._pipeline:
             return self.config_manager._pipeline.get_dataset()
         return None
@@ -154,6 +137,5 @@ class ConfigurationAdapter:
     def close(self) -> None:
         """Close resources used by the adapter."""
         self.logger.debug("Closing ConfigurationAdapter resources")
-        # Close the pipeline, which will close all data sources
         if hasattr(self.config_manager, '_pipeline') and self.config_manager._pipeline:
             self.config_manager._pipeline.close()

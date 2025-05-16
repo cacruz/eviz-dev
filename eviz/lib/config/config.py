@@ -26,7 +26,7 @@ class Config:
         self.logger.info("Start init")
         self.yaml_parser = YAMLParser(config_files=self.config_files, source_names=self.source_names)
         self.yaml_parser.parse()
-        # We need to convert parsed app_data to AppData object
+        # Convert parsed app_data to AppData object
         self.app_data = AppData(**self.yaml_parser.app_data)  
         self.spec_data = self.yaml_parser.spec_data  
         self.map_params = self.yaml_parser.map_params

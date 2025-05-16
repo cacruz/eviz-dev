@@ -1,6 +1,3 @@
-"""
-Data reading stage of the pipeline.
-"""
 import os
 from typing import Dict, List, Optional
 from dataclasses import dataclass, field

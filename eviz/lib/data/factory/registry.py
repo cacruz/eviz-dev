@@ -1,6 +1,3 @@
-"""
-Registry for data source types.
-"""
 from typing import List, Set, Dict, Type
 from eviz.lib.data.sources import DataSource
 from dataclasses import dataclass, field

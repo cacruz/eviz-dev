@@ -132,7 +132,6 @@ class YAMLParser:
                     is_in_compare = exp_id in compare_ids
                     is_in_compare_diff = exp_id in compare_diff_ids
                     
-                    # Get IDs to compare with
                     compare_with = []
                     if is_in_compare:
                         compare_with = [cid for cid in compare_ids if cid != exp_id]
