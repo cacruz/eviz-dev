@@ -1,6 +1,3 @@
-"""
-NetCDF data source implementation.
-"""
 import os
 import logging
 import xarray as xr
@@ -17,8 +14,7 @@ class NetCDFDataSource(DataSource):
     This class handles loading and processing data from NetCDF files.
     """
     model_name: Optional[str] = None
-    config_manager: Optional[
-        object] = None  # Replace 'object' with actual type if available
+    config_manager: Optional[object] = None 
     datasets: Dict = field(default_factory=dict, init=False)
 
     def __post_init__(self):
