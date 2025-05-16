@@ -4,7 +4,7 @@ import logging
 from dataclasses import dataclass, field
 from typing import List, Dict, Any
 from eviz.lib.utils import join_file_path, log_method
-from eviz.lib.autoviz.plot_utils import get_subplot_shape
+from eviz.lib.autoviz.utils import get_subplot_shape
 from eviz.lib.autoviz.app_data import AppData
 from eviz.lib.data.factory.source_factory import DataSourceFactory
 

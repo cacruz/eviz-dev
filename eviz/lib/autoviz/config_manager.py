@@ -1,4 +1,3 @@
-# File: eviz/lib/autoviz/config_manager.py
 import logging
 import os
 from eviz.lib.autoviz.config import Config

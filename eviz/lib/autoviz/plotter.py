@@ -24,7 +24,7 @@ import networkx as nx
 from sklearn.metrics import mean_squared_error
 
 import eviz.lib.const as constants
-import eviz.lib.autoviz.plot_utils as pu
+import eviz.lib.autoviz.utils as pu
 import eviz.lib.utils as u
 from eviz.lib.autoviz.config_manager import ConfigManager
 from eviz.lib.data.pipeline import DataProcessor

@@ -9,7 +9,7 @@ from matplotlib import pyplot as plt
 from eviz.lib.data.pipeline.processor import DataProcessor
 from eviz.models.root import Root
 from eviz.lib.data.utils import apply_conversion, apply_mean, apply_zsum
-import eviz.lib.autoviz.plot_utils as pu
+import eviz.lib.autoviz.utils as pu
 from eviz.lib.autoviz.figure import Figure
 
 warnings.filterwarnings("ignore")

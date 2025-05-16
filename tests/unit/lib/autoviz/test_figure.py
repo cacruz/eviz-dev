@@ -340,7 +340,7 @@ class TestFigure:
         
     @patch('eviz.lib.autoviz.figure.Figure._init_frame')
     @patch('eviz.lib.autoviz.figure.Figure._set_axes')
-    @patch('eviz.lib.autoviz.plot_utils.get_subplot_geometry')
+    @patch('eviz.lib.autoviz.utils.get_subplot_geometry')
     def test_set_ax_opts_diff_field(self, mock_get_subplot_geometry, mock_set_axes, mock_init_frame):
         """Test setting axis options for difference fields."""
         fig = Figure(self.mock_config_manager, 'xy', nrows=3, ncols=1)

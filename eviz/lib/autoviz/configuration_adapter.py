@@ -4,7 +4,6 @@ Adapter between YAML configuration and data source architecture.
 import logging
 import os
 from typing import Dict, Any, Optional
-
 import xarray as xr
 
 from eviz.lib.data.pipeline import DataPipeline
@@ -13,7 +12,6 @@ from eviz.lib.data.sources import DataSource
 
 class ConfigurationAdapter:
     """Adapter for configuration management."""
-    
     def __init__(self, config_manager):
         """Initialize a new ConfigurationAdapter.
         
