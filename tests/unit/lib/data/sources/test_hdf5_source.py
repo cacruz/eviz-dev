@@ -1,13 +1,7 @@
-"""
-Unit tests for the HDF5DataSource class.
-"""
-
-import os
 import pytest
 import numpy as np
 import xarray as xr
 from unittest.mock import MagicMock, patch
-
 from eviz.lib.data.sources.hdf5 import HDF5DataSource
 
 

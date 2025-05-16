@@ -1,18 +1,12 @@
-"""
-Unit tests for the base DataSource class.
-"""
-
 import pytest
 import numpy as np
 import xarray as xr
 from unittest.mock import MagicMock, patch
-
 from eviz.lib.data.sources.base import DataSource
 
 
 class ConcreteDataSource(DataSource):
     """Concrete implementation of DataSource for testing."""
-    
     def load_data(self, file_path):
         """Load data from the specified file path."""
         self.dataset = xr.Dataset(

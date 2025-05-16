@@ -1,8 +1,3 @@
-"""
-Unit tests for the DataSourceFactory class.
-"""
-
-import os
 import pytest
 from unittest.mock import MagicMock, patch
 
@@ -18,7 +13,6 @@ from eviz.lib.data.sources import (
 
 class TestDataSourceFactory:
     """Test cases for the DataSourceFactory class."""
-    
     def setup_method(self):
         """Set up test fixtures before each test method."""
         self.factory = DataSourceFactory()

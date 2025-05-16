@@ -1,20 +1,14 @@
-"""
-Unit tests for the CSVDataSource class.
-"""
-
 import os
 import pytest
 import numpy as np
 import pandas as pd
 import xarray as xr
 from unittest.mock import MagicMock, patch
-
 from eviz.lib.data.sources.csv import CSVDataSource
 
 
 class TestCSVDataSource:
     """Test cases for the CSVDataSource class."""
-    
     def setup_method(self):
         """Set up test fixtures before each test method."""
         self.data_source = CSVDataSource('test_model')

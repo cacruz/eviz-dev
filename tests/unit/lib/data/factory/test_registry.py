@@ -1,17 +1,11 @@
-"""
-Unit tests for the DataSourceRegistry class.
-"""
-
 import pytest
 from unittest.mock import MagicMock
-
 from eviz.lib.data.factory.registry import DataSourceRegistry
 from eviz.lib.data.sources import DataSource
 
 
 class TestDataSourceRegistry:
     """Test cases for the DataSourceRegistry class."""
-    
     def setup_method(self):
         """Set up test fixtures before each test method."""
         self.registry = DataSourceRegistry()

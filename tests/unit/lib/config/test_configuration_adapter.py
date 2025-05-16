@@ -1,10 +1,6 @@
-"""
-Unit tests for the ConfigurationAdapter class.
-"""
 import numpy as np
 import xarray as xr
 from unittest.mock import MagicMock, patch
-
 from eviz.lib.config.config_manager import ConfigManager
 from eviz.lib.data.pipeline import DataPipeline
 from eviz.lib.data.sources import DataSource

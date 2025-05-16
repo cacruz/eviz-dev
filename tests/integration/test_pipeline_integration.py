@@ -1,15 +1,7 @@
 """
 Integration tests for the data pipeline components.
 """
-
-import os
-import pytest
-import numpy as np
-import xarray as xr
-from unittest.mock import MagicMock, patch
-
 from eviz.lib.data.pipeline.pipeline import DataPipeline
-from eviz.lib.data.sources import DataSource
 
 
 class TestPipelineIntegration:

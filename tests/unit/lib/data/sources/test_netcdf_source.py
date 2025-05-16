@@ -1,19 +1,12 @@
-"""
-Unit tests for the NetCDFDataSource class.
-"""
-
-import os
 import pytest
 import numpy as np
 import xarray as xr
 from unittest.mock import MagicMock, patch
-
 from eviz.lib.data.sources.netcdf import NetCDFDataSource
 
 
 class TestNetCDFDataSource:
     """Test cases for the NetCDFDataSource class."""
-    
     def setup_method(self):
         """Set up test fixtures before each test method."""
         self.data_source = NetCDFDataSource('test_model')

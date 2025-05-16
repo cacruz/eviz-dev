@@ -1,6 +1,3 @@
-"""
-Unit tests for the Figure class.
-"""
 import matplotlib.pyplot as plt
 import cartopy.crs as ccrs
 from unittest.mock import MagicMock, patch

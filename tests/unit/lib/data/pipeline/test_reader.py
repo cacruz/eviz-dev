@@ -1,12 +1,6 @@
-"""
-Unit tests for the DataReader class.
-"""
-
-import os
 import pytest
 import xarray as xr
 from unittest.mock import MagicMock, patch, mock_open
-
 from eviz.lib.data.pipeline.reader import DataReader
 from eviz.lib.data.sources import DataSource
 from eviz.lib.data.factory import DataSourceFactory
@@ -14,7 +8,6 @@ from eviz.lib.data.factory import DataSourceFactory
 
 class TestDataReader:
     """Test cases for the DataReader class."""
-    
     def setup_method(self):
         """Set up test fixtures before each test method."""
         self.reader = DataReader()        

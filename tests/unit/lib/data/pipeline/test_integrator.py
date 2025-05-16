@@ -1,19 +1,12 @@
-"""
-Unit tests for the DataIntegrator class.
-"""
-
-import pytest
 import numpy as np
 import xarray as xr
 from unittest.mock import MagicMock, patch
-
 from eviz.lib.data.pipeline.integrator import DataIntegrator
 from eviz.lib.data.sources import DataSource
 
 
 class TestDataIntegrator:
     """Test cases for the DataIntegrator class."""
-    
     def setup_method(self):
         """Set up test fixtures before each test method."""
         self.integrator = DataIntegrator()

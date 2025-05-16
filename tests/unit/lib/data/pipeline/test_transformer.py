@@ -1,19 +1,12 @@
-"""
-Unit tests for the DataTransformer class.
-"""
-
-import pytest
 import numpy as np
 import xarray as xr
 from unittest.mock import MagicMock, patch
-
 from eviz.lib.data.pipeline.transformer import DataTransformer
 from eviz.lib.data.sources import DataSource
 
 
 class TestDataTransformer:
     """Test cases for the DataTransformer class."""
-    
     def setup_method(self):
         """Set up test fixtures before each test method."""
         self.transformer = DataTransformer()        
