@@ -6,8 +6,8 @@ import logging
 import warnings
 from matplotlib import pyplot as plt
 
-from eviz.lib.data.data_utils import apply_mean
-from eviz.lib.data.data_utils import apply_conversion
+from eviz.lib.data.utils import apply_mean
+from eviz.lib.data.utils import apply_conversion
 from eviz.lib.autoviz.figure import Figure
 from eviz.lib.autoviz.plot_utils import print_map, create_gif
 from eviz.models.esm.nuwrf import NuWrf

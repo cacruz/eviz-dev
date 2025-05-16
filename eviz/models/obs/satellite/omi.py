@@ -5,7 +5,7 @@ from typing import Any
 from dataclasses import dataclass, field
 
 from eviz.models.root import Root
-from eviz.lib.data.data_utils import apply_conversion
+from eviz.lib.data.utils import apply_conversion
 
 warnings.filterwarnings("ignore")
 

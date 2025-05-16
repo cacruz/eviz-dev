@@ -5,7 +5,7 @@ from dataclasses import dataclass
 import pandas as pd
 
 from eviz.models.esm.generic import Generic
-from eviz.lib.data.data_utils import apply_conversion
+from eviz.lib.data.utils import apply_conversion
 
 warnings.filterwarnings("ignore")
 

@@ -9,8 +9,8 @@ import xarray as xr
 
 from eviz.lib.data.pipeline import DataProcessor
 from eviz.models.esm.generic import Generic
-from eviz.lib.data.data_utils import apply_conversion
-from eviz.lib.data.data_utils import apply_mean
+from eviz.lib.data.utils import apply_conversion
+from eviz.lib.data.utils import apply_mean
 
 warnings.filterwarnings("ignore")
 
