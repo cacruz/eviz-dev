@@ -4,7 +4,7 @@ from dataclasses import dataclass
 
 import pandas as pd
 
-from eviz.models.esm.grid_data import GridData
+from eviz.models.esm.gridded import Gridded
 from eviz.lib.data.utils import apply_conversion
 
 warnings.filterwarnings("ignore")
@@ -13,7 +13,7 @@ logger = logging.getLogger(__name__)
 
 
 @dataclass
-class NuWrf(GridData):
+class NuWrf(Gridded):
     """ Define NUWRF specific model data and functions."""
 
     @property

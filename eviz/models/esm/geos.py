@@ -8,7 +8,7 @@ import numpy as np
 import xarray as xr
 
 from eviz.lib.data.pipeline import DataProcessor
-from eviz.models.esm.grid_data import GridData
+from eviz.models.esm.gridded import Gridded
 from eviz.lib.data.utils import apply_conversion
 from eviz.lib.data.utils import apply_mean
 
@@ -16,7 +16,7 @@ warnings.filterwarnings("ignore")
 
 
 @dataclass()
-class Geos(GridData):
+class Geos(Gridded):
     """ Define GEOS-specific model data and functions.
     The GEOS-specific functionality centers around the HISTORY.rc file which contains
     information about the GEOS data sources. In Eviz, the HISTORY.rc is parsed during
@@ -220,7 +220,7 @@ class Geos(GridData):
         else:
             return data2d
 
-# TODO: Currently, Geos() is basically GridData(). Need to add HISTORY and Overlays below
+# TODO: Currently, Geos() is basically Gridded(). Need to add HISTORY and Overlays below
 #  to make it into a separate Geos()
 
 
@@ -333,7 +333,7 @@ class Geos(GridData):
     def _single_plots_todo(self):
         self.logger.info(f"Creating {self.config.model_name.upper()} plots.")
         if not self.config.have_specs_yaml_file:
-            # GridData basic plots
+            # Gridded basic plots
             self.basic_plot()
             return
 

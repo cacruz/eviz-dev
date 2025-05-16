@@ -16,9 +16,9 @@ warnings.filterwarnings("ignore")
 
 
 @dataclass
-class GridData(Root):
+class Gridded(Root):
     """
-    The GridData class provides specialized functionality for handling gridded Earth System Model (ESM) data.
+    The Gridded class provides specialized functionality for handling gridded Earth System Model (ESM) data.
 
     This class extends the Root implementation to work specifically with structured grid data formats
     commonly used in ESMs, including 2D (lat-lon), 3D (lat-lon-time or lat-lon-level), and 4D 

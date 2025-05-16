@@ -148,5 +148,5 @@ def get_data_coords(data_array, attribute_name):
         return data_array.coords[attribute_name].values
 
     # If the attribute wasn't found after all attempts, raise an error
-    raise ValueError(f"GridData name for {attribute_name} not found in attribute_mapping.")
+    raise ValueError(f"Gridded name for {attribute_name} not found in attribute_mapping.")
 

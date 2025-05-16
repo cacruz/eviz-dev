@@ -107,7 +107,7 @@ def main():
                         plt.xlabel('Longitude')
                         plt.ylabel('Latitude')
                     else:
-                        # GridData 2D data
+                        # Gridded 2D data
                         plt.pcolormesh(var.values)
                         plt.colorbar(label=f"{args.variable}")
                         plt.xlabel(var.dims[1])
@@ -128,7 +128,7 @@ def main():
                             plt.ylabel(slice_data.dims[0])
                             plt.title(f"{args.variable} at time {time_value}")
                     else:
-                        # GridData 3D data, plot the first slice
+                        # Gridded 3D data, plot the first slice
                         slice_idx = 0
                         slice_dim = var.dims[0]
                         slice_value = var[slice_dim].values[slice_idx]

@@ -108,7 +108,7 @@ class ConfigManager:
         Get the model-specific dimension name.
 
         Args:
-            dim_name: GridData dimension name
+            dim_name: Gridded dimension name
 
         Returns:
             str or None: Model-specific dimension name if available
