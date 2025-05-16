@@ -397,7 +397,7 @@ def kg_to_ppb(kg_frac, molar_mass_species):
 
     Parameters:
         kg_frac (dataarray values): mass fraction of the species (kg kg⁻¹)
-        air_column_density: air column density (molecules cm⁻²)
+        molar_mass_species: molar mass (mol/mol)
     Returns:
         concentration in parts per billion (ppb)
     """
@@ -410,7 +410,6 @@ def mol_to_ppb(mol_frac):
 
     Parameters:
         mol_frac (dataarray values): molar fraction of the species (mol mol⁻¹)
-        air_column_density: air column density (molecules cm⁻²)
     Returns:
         concentration in parts per billion (ppb)
     """

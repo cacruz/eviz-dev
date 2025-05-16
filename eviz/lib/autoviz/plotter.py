@@ -308,12 +308,12 @@ def _determine_axes_shape(fig, ax_temp):
         # If ax_temp is a list of axes, determine the shape from the list
         num_axes = len(ax_temp)
         if num_axes == 1:
-            return (1, 1)
+            return 1, 1
         else:
             return fig.get_gs_geometry()
     else:
         # If ax_temp is a single GeoAxes, assume shape is (1, 1)
-        return (1, 1)
+        return 1, 1
 
 
 def _select_axes(ax_temp, axes_shape, ax_opts, axindex):
@@ -2018,7 +2018,8 @@ class Plotter:
             plt.tight_layout()
             plt.show()
     
-    def _extract_date_from_filename(self, filename):
+    @staticmethod
+    def _extract_date_from_filename(filename):
         """
         Extract date from filename using various common patterns.
         

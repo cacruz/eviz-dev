@@ -3,7 +3,7 @@ Data processing pipeline.
 """
 
 import logging
-from typing import Dict, List, Optional, Union, Any
+from typing import Dict, List, Optional, Any
 
 import xarray as xr
 

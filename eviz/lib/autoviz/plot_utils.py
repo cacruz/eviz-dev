@@ -14,7 +14,6 @@ import time
 import matplotlib
 import matplotlib.pyplot as plt
 import numpy as np
-from mpl_toolkits.axes_grid1 import make_axes_locatable
 from matplotlib.ticker import LogFormatter
 import glob
 from PIL import Image
@@ -606,16 +605,16 @@ def get_subplot_geometry(axes):
 
 def get_subplot_shape(n):
     if n <= 3:
-        return (n, 1)
+        return n, 1
     
     # Try to make the layout as square as possible
     for cols in range(1, n + 1):
         rows = math.ceil(n / cols)
         if rows * cols >= n and abs(rows - cols) <= 1:
-            return (rows, cols)
+            return rows, cols
 
     # Fallback to 1 row if no better fit (shouldn't happen with 2 <= n <= 12)
-    return (1, n)
+    return 1, n
 
 
 # def dump_json_file(config, plot_type, findex, map_filename, fig, output_dir):
@@ -757,7 +756,7 @@ class FlexibleOOMFormatter(matplotlib.ticker.ScalarFormatter):
             exp = int(np.floor(np.log10(np.abs(value))))
             coeff = value / (10**exp)
             # return r'$%1.2f \times 10^{%d}$' % (coeff, exp)
-            return r'$%1.2f$' % (coeff)
+            return r'$%1.2f$' % coeff
         else:
             return '0'
 

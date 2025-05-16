@@ -43,7 +43,7 @@ class ConfigManager:
         """Lazy initialization of DataIntegrator."""
         if self._integrator is None:
             # Pass the pipeline to the integrator so it can access data sources
-            self._integrator = DataIntegrator(self.pipeline)
+            self._integrator = DataIntegrator()
         return self._integrator
 
     @property

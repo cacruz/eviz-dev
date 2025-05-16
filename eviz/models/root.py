@@ -1,6 +1,6 @@
 # File: eviz/models/root.py
 import os
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 import logging
 
 import matplotlib

@@ -4,7 +4,7 @@ Base DataSource class that defines the interface for all data sources.
 
 from abc import ABC, abstractmethod
 import logging
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional
 import xarray as xr
 
 

@@ -11,7 +11,6 @@ from eviz.lib.data.data_utils import apply_conversion
 from eviz.lib.autoviz.figure import Figure
 from eviz.models.esm.nuwrf import NuWrf
 from eviz.lib.autoviz.plot_utils import print_map
-from eviz.lib.data.processor import Interp
 
 warnings.filterwarnings("ignore")
 

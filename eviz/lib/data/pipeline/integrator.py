@@ -3,11 +3,10 @@ Data integration stage of the pipeline.
 """
 
 import logging
-from typing import Dict, List, Optional, Union, Any
+from typing import List
 
 import xarray as xr
 import numpy as np
-import pandas as pd
 
 from eviz.lib.data.sources import DataSource
 

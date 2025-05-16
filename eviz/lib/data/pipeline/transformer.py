@@ -3,7 +3,6 @@ Data transformation stage of the pipeline.
 """
 
 import logging
-from typing import Dict, List, Optional, Union, Any, Tuple
 
 import xarray as xr
 import numpy as np

@@ -5,7 +5,6 @@ NetCDF data source implementation.
 import os
 import logging
 from typing import Dict, Optional
-from glob import glob
 
 import xarray as xr
 from dask.distributed import Client

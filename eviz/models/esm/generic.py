@@ -2,19 +2,16 @@
 from dataclasses import dataclass
 import logging
 import warnings
-import sys
 import numpy as np
 import pandas as pd
 import xarray as xr
 from matplotlib import pyplot as plt
-from collections.abc import Iterable
 
 from eviz.lib.data.pipeline.processor import DataProcessor
 from eviz.models.root import Root
 from eviz.lib.data.data_utils import apply_conversion, apply_mean, apply_zsum
 import eviz.lib.autoviz.plot_utils as pu
 from eviz.lib.autoviz.figure import Figure
-import multiprocessing
 
 warnings.filterwarnings("ignore")
 
@@ -540,17 +537,17 @@ class Generic(Root):
                                                     sdat1_dataset, sdat2_dataset)
                 else:
                     self._process_other_comparison_plots(plotter, file_indices,
-                                                    current_field_index,\
-                                                    field_name1, field_name2,\
-                                                    plot_type, sdat1_dataset, sdat2_dataset)
+                                                    current_field_index,
+                                                         field_name1, field_name2,
+                                                         plot_type, sdat1_dataset, sdat2_dataset)
 
             current_field_index += 1
 
     # Removed _load_comparison_data - data is accessed from the pipeline
     # Removed _get_file_indices_compare - indices are provided by config_manager.a_list and b_list
 
-    def _process_xy_comparison_plots(self, plotter, file_indices: tuple, current_field_index: int,\
-                                     field_name1: str, field_name2: str, plot_type: str,\
+    def _process_xy_comparison_plots(self, plotter, file_indices: tuple, current_field_index: int,
+                                     field_name1: str, field_name2: str, plot_type: str,
                                      sdat1_dataset: xr.Dataset, sdat2_dataset: xr.Dataset):
         """Process comparison plots for xy or polar plot types."""
         file_index1, file_index2 = file_indices

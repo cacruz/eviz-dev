@@ -104,7 +104,8 @@ class ConfigurationAdapter:
             except Exception as e:
                 self.logger.error(f"Error creating composite field: {e}")
 
-    def _get_file_path(self, file_entry: Dict[str, Any]) -> str:
+    @staticmethod
+    def _get_file_path(file_entry: Dict[str, Any]) -> str:
         """Get the full file path from a file entry.
         
         Args:

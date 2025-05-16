@@ -378,22 +378,6 @@ class Figure(mfigure.Figure):
         
         return Figure(config_manager, plot_type, nrows=nrows, ncols=ncols)
 
-    def create_eviz_figure2(config_manager, plot_type, *args, **kwargs):
-        """
-        Factory method to create an eViz Figure instance.
-        
-        Args:
-            config_manager (ConfigManager): Configuration manager
-            plot_type (str): Type of plot
-            *args: Additional positional arguments for Figure
-            **kwargs: Additional keyword arguments for Figure
-        
-        Returns:
-            Figure: An instance of the eViz Figure class
-        """
-        return Figure(config_manager, plot_type, *args, **kwargs)    
-    
-
     def get_gs_geometry(self):
         if self.gs:
             return self.gs.get_geometry()

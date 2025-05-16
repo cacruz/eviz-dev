@@ -3,9 +3,7 @@ Data reading stage of the pipeline.
 """
 import os
 import logging
-from typing import Dict, List, Optional, Union, Any
-
-import xarray as xr
+from typing import Dict, List, Optional
 
 from eviz.lib.data.factory import DataSourceFactory
 from eviz.lib.data.sources import DataSource

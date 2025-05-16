@@ -38,44 +38,7 @@ class GenericExtension(ModelExtension):
         # This method is disabled to avoid conflict with NetCDFDataSource._rename_dims
         self.logger.info("Coordinate standardization is now handled by NetCDFDataSource._rename_dims")
         return
-        
-        if data_source.dataset is None:
-            return
-        
-        # Get coordinate mappings from meta_coords
-        meta_coords = getattr(self.config_manager, 'meta_coords', {})
-        if not meta_coords:
-            return
-        
-        # Get the model name
-        model_name = data_source.model_name
-        if not model_name:
-            return
-        
-        # Apply coordinate mappings
-        rename_dict = {}
-        for generic_name, model_dict in meta_coords.items():
-            if model_name in model_dict:
-                model_coords = model_dict[model_name]
-                
-                # Handle comma-separated coordinate list
-                if ',' in model_coords:
-                    coord_candidates = model_coords.split(',')
-                    for coord in coord_candidates:
-                        if coord in data_source.dataset.coords:
-                            rename_dict[coord] = generic_name
-                            break
-                elif model_coords in data_source.dataset.coords:
-                    rename_dict[model_coords] = generic_name
-        
-        # Rename coordinates
-        if rename_dict:
-            try:
-                data_source.dataset = data_source.dataset.rename(rename_dict)
-                self.logger.info(f"Renamed coordinates: {rename_dict}")
-            except Exception as e:
-                self.logger.error(f"Error renaming coordinates: {e}")
-    
+
     def _apply_unit_conversions(self, data_source: DataSource) -> None:
         """Apply unit conversions.
         

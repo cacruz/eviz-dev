@@ -19,7 +19,6 @@ def apply_conversion(config, data2d, name):
     For comparison plots, we rely on the "target" units specified in the specs file and the unit
     conversion is provided by the Units conversion module.
     """
-    logger = logging.getLogger(__name__)
     logger.debug(f"apply_conversion input for {name}: shape={data2d.shape}, dims={data2d.dims}")
     try:
         logger.debug(f"apply_conversion input stats: min={data2d.min().values}, max={data2d.max().values}")

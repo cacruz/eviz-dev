@@ -242,7 +242,8 @@ class NuWrf(Generic):
         return apply_conversion(self.config_manager, data2d, field_name)
 
     # Hook methods that can be overridden by subclasses
-    def _preprocess_data(self, d):
+    @staticmethod
+    def _preprocess_data(d):
         """Pre-process the data array. Default implementation just squeezes dimensions."""
         return d.squeeze()
 
