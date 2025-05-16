@@ -163,7 +163,7 @@ class NetCDFDataSource(DataSource):
         
         # Only rename if there's something to rename
         if rename_dict:
-            self.logger.info(f"Renaming dimensions: {rename_dict}")
+            self.logger.debug(f"Renaming dimensions: {rename_dict}")
             try:
                 ds = ds.rename(rename_dict)
             except Exception as e:

@@ -23,10 +23,8 @@ class ConfigManager:
         self._units = None  # Placeholder for Units instance
         self._integrator = None  # Placeholder for DataIntegrator instance
         self._pipeline = None  # Placeholder for DataPipeline instance
-        # Removed self.data_sources = {} - DataPipeline will store them
         self.a_list = []
         self.b_list = []
-        # Added findex and ds_index initialization as they are used later
         self.findex = 0
         self.ds_index = 0
         self.setup_comparison()
@@ -116,7 +114,6 @@ class ConfigManager:
         Returns:
             str or None: Model-specific dimension name if available
         """
-        # Use ds_index to get the current source name
         source = self.source_names[self.ds_index]
 
         if source not in self.meta_coords.get(dim_name, {}):
@@ -130,52 +127,42 @@ class ConfigManager:
              self.logger.debug(f"Found direct mapping for '{dim_name}' in source '{source}': '{coords}'")
              return coords
 
-        # Handle comma-separated list of possible dimension names or dictionary structure
         coord_candidates = coords.split(',') if isinstance(coords, str) else [coords.get('dim')] if isinstance(coords, dict) and 'dim' in coords else []
 
-        # *** New logic to get available dimensions from the loaded DataSource ***
-        # We need the file path associated with the current ds_index and findex
         file_path = None
         try:
             # Assuming app_data.inputs is a list of dictionaries
             if self.findex is not None and self.findex < len(self.app_data.inputs):
                  file_entry = self.app_data.inputs[self.findex]
-                 # Construct the full file path
                  file_path = os.path.join(file_entry.get('location', ''), file_entry.get('name', ''))
         except Exception as e:
-            self.logger.warning(f"Could not get file path for ds_index {self.ds_index}, findex {self.findex}: {e}")
+            self.logger.debug(f"Could not get file path for ds_index {self.ds_index}, findex {self.findex}: {e}")
             # Fallback: try to get the first file path for the source
             for entry in self.app_data.inputs:
                 if entry.get('source_name') == source:
                     file_path = os.path.join(entry.get('location', ''), entry.get('name', ''))
                     break
 
-
         if file_path:
-            # Get the DataSource from the pipeline
             data_source = self.pipeline.get_data_source(file_path)
 
             if data_source and hasattr(data_source, 'dataset') and data_source.dataset is not None:
                 available_dims = list(data_source.dataset.dims.keys())
                 self.logger.debug(f"Available dimensions in dataset for {file_path}: {available_dims}")
 
-                # Return first matching coordinate candidate
                 self.logger.debug(f"Coordinate candidates for '{dim_name}': {coord_candidates}")
                 for coord in coord_candidates:
                     if coord and coord in available_dims:
                         self.logger.debug(f"Found matching coordinate: {coord}")
                         return coord
-
-                self.logger.warning(f"None of the candidate dimensions {coord_candidates} found in available dimensions {available_dims} for file {file_path}")
-                return None # No matching dimension found in the dataset
+                return None
             else:
-                 self.logger.warning(f"No data source or dataset loaded for file: {file_path}")
-                 return None # No data source or dataset available
-
+                 self.logger.debug(f"No data source or dataset loaded for file: {file_path}")
+                 return None
         else:
-            self.logger.warning(f"Could not determine file path for source '{source}' and findex {self.findex}")
-            return None # Could not determine file path
-
+            self.logger.debug(f"Could not determine file path for source '{source}' and findex {self.findex}")
+            return None 
+        
     def setup_comparison(self):
         """
         Set up comparison between datasets based on config settings.
@@ -190,7 +177,6 @@ class ConfigManager:
 
         compare_ids = self.input_config._compare_exp_ids
         if not compare_ids:
-            self.logger.warning("No IDs found for comparison")
             return
 
         # Create a mapping of exp_ids to their indices
@@ -242,7 +228,6 @@ class ConfigManager:
     def get_file_description(self, file):
         """ Get user-defined file description (default: None)"""
         try:
-            # Access file_list via input_config
             return self.input_config.file_list[file]['description']
         except (KeyError, IndexError, TypeError) as e:
             self.logger.debug(f'Unable to get file description: {e}')
@@ -251,7 +236,6 @@ class ConfigManager:
     def get_file_exp_name(self, i):
         """ Get user-defined experiment name associated with the input file (default None)"""
         try:
-            # Access file_list via input_config
             return self.input_config.file_list[i]['exp_name']
         except Exception as e:
             self.logger.debug(f'key error {e}, returning default')
@@ -262,7 +246,6 @@ class ConfigManager:
         If an expid is set, then it will be used to compare with another expid, as set in compare field
         """
         try:
-            # Access file_list via input_config
             return self.input_config.file_list[i]['exp_id']
         except Exception as e:
             self.logger.debug(f'key error {e}, returning default')
@@ -286,7 +269,6 @@ class ConfigManager:
         """ Get model-specific attribute name associated with the source as defined
             in meta_attributes.yaml
         """
-        # Ensure ds_index is within bounds
         if self.ds_index < len(self.source_names):
             source = self.source_names[self.ds_index]
             if attr_name in self.meta_attrs and source in self.meta_attrs[attr_name]:

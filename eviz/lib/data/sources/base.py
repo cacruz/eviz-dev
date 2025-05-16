@@ -190,7 +190,6 @@ class DataSource(ABC):
             self.logger.warning("No config_manager available to get dimension mappings")
             return None
             
-        # Get the mapping from meta_coordinates.yaml
         if not hasattr(self.config_manager, 'meta_coords'):
             self.logger.warning("No meta_coords available in config_manager")
             return None
@@ -200,41 +199,31 @@ class DataSource(ABC):
             self.logger.warning(f"No mapping found for dimension '{generic_dim_name}'")
             return None
             
-        # Use the model_name (source_name) directly, not exp_name or exp_id
         model_name = self.model_name
         
-        # Debug: Print model name and meta_coords for this dimension
         self.logger.debug(f"Looking for model '{model_name}' in meta_coords['{generic_dim_name}']")
         self.logger.debug(f"Available models for {generic_dim_name}: {list(meta_coords[generic_dim_name].keys())}")
         
-        # Check if model name is in meta_coords
         if not model_name or model_name not in meta_coords[generic_dim_name]:
             # Try to use a default model if available
             if 'generic' in meta_coords[generic_dim_name]:
-                # Only log at debug level to avoid unnecessary warnings
                 self.logger.debug(f"Using 'generic' mapping for model '{model_name}' and dimension '{generic_dim_name}'")
                 model_name = 'generic'
             else:
                 self.logger.warning(f"No mapping found for model '{model_name}' and dimension '{generic_dim_name}'")
                 return None
         
-        # Get the coordinate mapping for this model
         coords = meta_coords[generic_dim_name][model_name]
             
-            # Handle different types of coordinate specifications
         if isinstance(coords, list):
-            # If coords is a list, check each entry against available dimensions
             for coord in coords:
                 if available_dims and coord in available_dims:
                     return coord
-            # If no match found, return the first entry
             return coords[0] if coords else None
+        
         elif isinstance(coords, dict):
-            # If coords is a dictionary, handle special cases
             if 'dim' in coords:
-                # For dimension names
                 if available_dims:
-                    # If multiple dimensions are specified (comma-separated), check each one
                     if ',' in coords['dim']:
                         dim_candidates = coords['dim'].split(',')
                         for dim in dim_candidates:
@@ -247,31 +236,21 @@ class DataSource(ABC):
             
             if 'coords' in coords:
                 # For coordinate names
-                return coords['coords']
-            
-            # If neither 'dim' nor 'coords' is present, return None
+                return coords['coords']    
             return None
+        
         elif isinstance(coords, str):
             # If coords is a string, handle comma-separated list of possible dimension names
             if ',' in coords:
                 coord_candidates = coords.split(',')
-                
-                # If available_dims is provided, check which candidate exists
                 if available_dims:
                     for coord in coord_candidates:
                         if coord in available_dims:
                             return coord
-                    
                     # No matching dimension found
-                    self.logger.warning(f"None of the candidate dimensions {coord_candidates} found in available dimensions {available_dims}")
                     return None
-                
-                # If no available_dims provided, return the first candidate
                 return coord_candidates[0]
-            
-            # Simple case: direct mapping
             return coords
         
-        # If we get here, coords is of an unexpected type
         self.logger.warning(f"Unexpected type for coords: {type(coords)}")
         return None

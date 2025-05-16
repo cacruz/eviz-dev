@@ -291,7 +291,7 @@ def _single_scat_plot(config: ConfigManager, data_to_plot: tuple) -> None:
                 try:
                     cbar_label = data_to_plot['vars'][field_name].units
                 except:
-                    logger.error(f"Please specify {field_name} units in specs file")
+                    logger.warning(f"Please specify {field_name} units in specs file")
                     cbar_label = "n.a."
         else:
             cbar_label = ax_opts['clabel']
@@ -353,7 +353,6 @@ def _single_xy_plot(config: ConfigManager, data_to_plot: tuple, level: int) -> N
     if data2d is None:
         return
     
-    logger.info(f'Plotting {field_name}')
     ax_opts = fig.update_ax_opts(field_name, ax, 'xy', level=level)
     fig.plot_text(field_name, ax, 'xy', level=level, data=data2d)
 
@@ -489,28 +488,21 @@ def _single_yz_plot(config: ConfigManager, data_to_plot: tuple) -> None:
     """
     data2d, x, y, field_name, plot_type, findex, fig, ax_temp = data_to_plot
     
-    # Get vertical coordinate safely
     zc = config.get_model_dim_name('zc')
     vertical_coord = None
     vertical_units = 'n.a.'
     
-    # Handle zc being a dictionary, list, or string
     if isinstance(zc, dict):
-        # Log the issue
-        logger.warning(f"get_model_dim_name('zc') returned a dictionary: {zc}")
-        # Try to extract a usable dimension
         for dim_name in data2d.coords:
             if 'lev' in dim_name or 'z' in dim_name or 'height' in dim_name:
                 vertical_coord = data2d.coords[dim_name]
                 break
     elif isinstance(zc, list):
-        # Try each dimension in the list
         for z in zc:
             if z in data2d.coords:
                 vertical_coord = data2d.coords[z]
                 break
     else:
-        # Handle the case where zc is a string (the expected case)
         if zc and zc in data2d.coords:
             vertical_coord = data2d.coords[zc]
         else:
@@ -524,23 +516,18 @@ def _single_yz_plot(config: ConfigManager, data_to_plot: tuple) -> None:
     if vertical_coord is not None:
         vertical_units = vertical_coord.attrs.get('units', 'n.a.')
     else:
-        # Create a dummy vertical coordinate based on the shape
-        logger.warning("Could not find vertical coordinate, creating dummy values")
         if len(data2d.shape) >= 2:
             # Assume first dimension is vertical in a YZ plot
             vertical_coord = np.arange(data2d.shape[0])
     
-    # Determine the shape of the axes
     axes_shape = _determine_axes_shape(fig, ax_temp)
 
-    # Select the appropriate axes
     ax_opts = config.ax_opts
     ax = _select_axes(ax_temp, axes_shape, ax_opts, config.axindex)
 
     if data2d is None:
         return
     
-    logger.info(f'Plotting {field_name}')
     ax_opts = fig.update_ax_opts(field_name, ax, 'yz')
     fig.plot_text(field_name, ax, 'yz', level=None, data=data2d)
     # Handle single axes or list of axes
@@ -609,26 +596,22 @@ def _plot_yz_data(config, ax, data2d, x, y, field_name, fig, ax_opts, vertical_u
         config.use_trop_height = None
 
     if config.compare and config.ax_opts['is_diff_field']:
-        # Get the field name in a way that works with the new reader structure
         try:
             if 'name' in config.spec_data[field_name]:
                 name = config.spec_data[field_name]['name']
             else:
-                # Try to get the name from the reader
                 reader = None
                 if source_name in config.readers:
                     if isinstance(config.readers[source_name], dict):
-                        # New structure - get the primary reader
                         readers_dict = config.readers[source_name]
                         if 'NetCDF' in readers_dict:
                             reader = readers_dict['NetCDF']
                         elif readers_dict:
                             reader = next(iter(readers_dict.values()))
                     else:
-                        # Old structure - direct access
+                        # direct access
                         reader = config.readers[source_name]
                 
-                # If we found a reader, try to get the field name
                 if reader and hasattr(reader, 'datasets'):
                     if findex in reader.datasets and 'vars' in reader.datasets[findex]:
                         var_attrs = reader.datasets[findex]['vars'][field_name].attrs
@@ -639,7 +622,6 @@ def _plot_yz_data(config, ax, data2d, x, y, field_name, fig, ax_opts, vertical_u
                     else:
                         name = field_name
                 else:
-                    # Try to get name from data directly
                     if hasattr(data2d, 'attrs') and 'long_name' in data2d.attrs:
                         name = data2d.attrs['long_name']
                     else:
@@ -655,7 +637,6 @@ def _plot_yz_data(config, ax, data2d, x, y, field_name, fig, ax_opts, vertical_u
 
     if config.add_logo:
         pu.add_logo(fig, fig.EVIZ_LOGO)
-
 
 def _set_ax_ranges(config, field_name, fig, ax, ax_opts, y, units):
     """ Create a sensible number of vertical levels """
@@ -793,18 +774,9 @@ def _single_polar_plot(config: ConfigManager, data_to_plot: tuple) -> None:
     data2d, x, y, field_name, plot_type, findex, fig, ax_temp = data_to_plot
     ax_opts = config.ax_opts
     
-    logger.debug(f'Plotting {field_name}')
     if data2d is None:
-        logger.error(f"No data to plot for {field_name}")
         return
     
-    # Debug: Log data shape and stats
-    logger.info(f"Polar plot data shape: {data2d.shape}, dims: {data2d.dims}")
-    logger.info(f"Polar plot data stats: min={data2d.min().values}, max={data2d.max().values}")
-    logger.info(f"Polar plot x shape: {x.shape if x is not None else None}")
-    logger.info(f"Polar plot y shape: {y.shape if y is not None else None}")
-    
-    # Determine which pole to use
     if ax_opts['use_pole'] == 'south':
         projection = ccrs.SouthPolarStereo()
         extent_lat = -60  # Southern limit for South Polar plot
@@ -812,14 +784,11 @@ def _single_polar_plot(config: ConfigManager, data_to_plot: tuple) -> None:
         projection = ccrs.NorthPolarStereo()
         extent_lat = 60   # Northern limit for North Polar plot
     
-    # Create a new figure with the polar projection
     plt.figure(figsize=(10, 10))
     ax = plt.axes(projection=projection)
     
-    # Set the extent to focus on the polar region
     ax.set_extent([-180, 180, extent_lat, 90 if ax_opts['use_pole'] == 'north' else -90], ccrs.PlateCarree())
     
-    # Create contour levels
     if 'clevs' not in ax_opts or not ax_opts['clevs']:
         vmin = np.nanmin(data2d.values)
         vmax = np.nanmax(data2d.values)
@@ -828,7 +797,6 @@ def _single_polar_plot(config: ConfigManager, data_to_plot: tuple) -> None:
     else:
         clevs = ax_opts['clevs']
     
-    # Get coordinates
     if x is None or y is None:
         # Try to get coordinates from data2d
         dims = list(data2d.dims)
@@ -836,16 +804,10 @@ def _single_polar_plot(config: ConfigManager, data_to_plot: tuple) -> None:
             try:
                 lon_name = dims[1] if 'lon' in dims[1] or 'x' in dims[1] else dims[0]
                 lat_name = dims[0] if 'lat' in dims[0] or 'y' in dims[0] else dims[1]
-                
                 lons = data2d[lon_name].values
                 lats = data2d[lat_name].values
-                
-                # Create meshgrid
                 lon_mesh, lat_mesh = np.meshgrid(lons, lats)
                 
-                logger.info(f"Created meshgrid from dimensions: {lon_name}, {lat_name}")
-                logger.info(f"Longitude range: {lons.min()} to {lons.max()}")
-                logger.info(f"Latitude range: {lats.min()} to {lats.max()}")
             except Exception as e:
                 logger.error(f"Error creating meshgrid from data2d: {e}")
                 return
@@ -855,30 +817,20 @@ def _single_polar_plot(config: ConfigManager, data_to_plot: tuple) -> None:
     else:
         # Use provided coordinates
         try:
-            # Check if coordinates are DataArrays or numpy arrays
             x_values = x.values if hasattr(x, 'values') else x
             y_values = y.values if hasattr(y, 'values') else y
-            
-            # Create meshgrid if coordinates are 1D
             if len(x_values.shape) == 1 and len(y_values.shape) == 1:
                 lon_mesh, lat_mesh = np.meshgrid(x_values, y_values)
-                logger.info(f"Created meshgrid from provided coordinates")
-                logger.info(f"Longitude range: {x_values.min()} to {x_values.max()}")
-                logger.info(f"Latitude range: {y_values.min()} to {y_values.max()}")
             else:
-                # Assume coordinates are already 2D
                 lon_mesh, lat_mesh = x_values, y_values
         except Exception as e:
             logger.error(f"Error processing provided coordinates: {e}")
             return
     
-    # Get data values
     data_values = data2d.values
     
-    # Check if data shape matches coordinate shape
     if lon_mesh.shape != data_values.shape:
         logger.warning(f"Data shape {data_values.shape} doesn't match coordinate shape {lon_mesh.shape}")
-        # Try transposing the data
         if data_values.shape == (lon_mesh.shape[1], lon_mesh.shape[0]):
             data_values = data_values.T
             logger.info("Transposed data to match coordinate shape")
@@ -886,10 +838,10 @@ def _single_polar_plot(config: ConfigManager, data_to_plot: tuple) -> None:
             logger.error(f"Cannot reconcile data shape {data_values.shape} with coordinate shape {lon_mesh.shape}")
             return
     
+    # TODO: Fix this:
     # Try different plotting methods until one works
     try:
-        # Method 1: pcolormesh (most reliable for irregular grids)
-        logger.info("Trying pcolormesh for polar plot")
+        # pcolormesh (most reliable for irregular grids)
         pcm = ax.pcolormesh(
             lon_mesh, lat_mesh, data_values,
             transform=ccrs.PlateCarree(),
@@ -901,8 +853,7 @@ def _single_polar_plot(config: ConfigManager, data_to_plot: tuple) -> None:
     except Exception as e1:
         logger.warning(f"pcolormesh failed: {e1}")
         try:
-            # Method 2: contourf
-            logger.info("Trying contourf for polar plot")
+            # contourf
             pcm = ax.contourf(
                 lon_mesh, lat_mesh, data_values,
                 levels=clevs,
@@ -914,8 +865,7 @@ def _single_polar_plot(config: ConfigManager, data_to_plot: tuple) -> None:
         except Exception as e2:
             logger.warning(f"contourf failed: {e2}")
             try:
-                # Method 3: imshow as last resort
-                logger.info("Trying imshow for polar plot")
+                # imshow as last resort
                 pcm = ax.imshow(
                     data_values,
                     extent=[-180, 180, -90 if ax_opts['use_pole'] == 'south' else 0, 
@@ -933,10 +883,8 @@ def _single_polar_plot(config: ConfigManager, data_to_plot: tuple) -> None:
         logger.error("Failed to create polar plot")
         return
     
-    # Add colorbar
     cbar = plt.colorbar(pcm, ax=ax, shrink=0.5, pad=0.05)
     
-    # Set colorbar label
     if 'units' in config.spec_data[field_name]:
         units = config.spec_data[field_name]['units']
     else:
@@ -955,25 +903,21 @@ def _single_polar_plot(config: ConfigManager, data_to_plot: tuple) -> None:
     
     cbar.set_label(label=cbar_label, size=12, weight='bold')
     
-    # Add title
     if 'name' in config.spec_data[field_name]:
         ax.set_title(config.spec_data[field_name]['name'], y=1.03, fontsize=14, weight='bold')
     else:
         ax.set_title(field_name, y=1.03, fontsize=14, weight='bold')
     
-    # Add map features
     ax.add_feature(cfeature.COASTLINE, linewidth=0.5)
     ax.add_feature(cfeature.BORDERS, linewidth=0.3)
     ax.add_feature(cfeature.LAND, color='lightgray', zorder=0)
     ax.add_feature(cfeature.OCEAN, color='lightblue', zorder=0)
     
-    # Add gridlines if requested
     if ax_opts['add_grid']:
         gl = ax.gridlines(draw_labels=True, linewidth=0.5, color='gray', alpha=0.5, linestyle='--')
         gl.top_labels = False
         gl.right_labels = False
     
-    # Set circular boundary if requested
     if ax_opts['boundary']:
         theta = np.linspace(0, 2 * np.pi, 100)
         center = [0.5, 0.5]
@@ -982,13 +926,12 @@ def _single_polar_plot(config: ConfigManager, data_to_plot: tuple) -> None:
         circle = mpath.Path(verts * radius + center)
         ax.set_boundary(circle, transform=ax.transAxes)
     
-    # Save the figure
     if config.print_to_file:
         output_dir = config.output_dir
         output_fname = f"{field_name}_polar_{ax_opts['use_pole']}.{config.print_format}"
         filename = os.path.join(output_dir, output_fname)
         plt.savefig(filename, bbox_inches='tight')
-        logger.info(f"Saved polar plot to {filename}")
+        logger.debug(f"Saved polar plot to {filename}")
     else:
         plt.tight_layout()
         plt.show()
@@ -1022,7 +965,6 @@ def _single_xt_plot(config: ConfigManager, data_to_plot: tuple) -> None:
     else:
         ax = ax_temp  # Single axis case
 
-    logger.debug(f'Plotting {field_name}')
     if data2d is None:
         return
         
@@ -1041,44 +983,34 @@ def _time_series_plot(config, ax, ax_opts, fig, data2d, field_name, findex):
         dmax = data2d.max(skipna=True).values
         logger.debug(f"dmin: {dmin}, dmax: {dmax}")
 
-        # Get time coordinates safely
         try:
-            # First try to get the time dimension from config
             tc_dim = config.get_model_dim_name('tc')
             
-            # If that fails, try common time dimension names
             if tc_dim is None or tc_dim not in data2d.coords:
-                # Try common time dimension names
                 for time_dim in ['time', 't', 'TIME', 'Time']:
                     if time_dim in data2d.coords:
                         tc_dim = time_dim
                         break
             
-            # Get the time values
             if tc_dim and tc_dim in data2d.coords:
                 time_coords = data2d.coords[tc_dim].values
             else:
-                # If we still don't have time coordinates, try to get them from the first dimension
                 if len(data2d.dims) > 0:
                     time_coords = data2d[data2d.dims[0]].values
                 else:
-                    # Last resort: create a dummy time array
-                    logger.warning("Could not find time coordinates, creating dummy time values")
                     time_coords = np.arange(len(data2d))
                     
-            # Handle cftime objects if needed
+            # Handle cftime objects
             if isinstance(time_coords[0], cftime._cftime.DatetimeNoLeap):
                 try:
-                    # Try to convert to pandas datetime
+                    # convert to pandas datetime
                     time_coords = pd.to_datetime([str(t) for t in time_coords])
                 except Exception as e:
                     logger.warning(f"Error converting cftime to pandas datetime: {e}")
-                    # Fall back to creating dummy time values
                     time_coords = np.arange(len(data2d))
                     
         except Exception as e:
             logger.warning(f"Error getting time coordinates: {e}")
-            # Fall back to creating dummy time values
             time_coords = np.arange(len(data2d))
 
         t0 = time_coords[0]
@@ -1090,20 +1022,16 @@ def _time_series_plot(config, ax, ax_opts, fig, data2d, field_name, findex):
                 if 'window_size' in config.spec_data[field_name]['xtplot']:
                     window_size = config.spec_data[field_name]['xtplot']['window_size']
                     
-        # Plot the data, safely handling indices
         if window_size > 0 and len(data2d) > 2*window_size:
-            # Only apply window if there's enough data
             end_idx = max(0, len(time_coords) - window_size - 1)
             ax.plot(time_coords[window_size:end_idx], data2d[window_size:end_idx])
         else:
-            # Otherwise plot all data
             ax.plot(time_coords, data2d)
 
         if 'add_trend' in config.spec_data[field_name]['xtplot']:
-            logger.info('Adding trend')
+            logger.debug('Adding trend')
             if config.spec_data[field_name]['xtplot']['add_trend']:
                 try:
-                    # Convert time to numeric safely
                     if isinstance(t0, (pd.Timestamp, np.datetime64)):
                         time_numeric = (time_coords - t0).astype('timedelta64[D]').astype(float)
                     else:
@@ -1120,7 +1048,7 @@ def _time_series_plot(config, ax, ax_opts, fig, data2d, field_name, findex):
                             errors.append(mse)
                             best_degree = np.argmin(errors) + 1
                         degree = best_degree
-                    logger.info(f' -- polynomial degree: {degree}')
+                    logger.debug(f' -- polynomial degree: {degree}')
                     coeffs = np.polyfit(time_numeric, data2d, degree)
                     trend_poly = np.polyval(coeffs, time_numeric)
                     ax.plot(time_coords, trend_poly, color="red", linewidth=1)
@@ -1131,25 +1059,20 @@ def _time_series_plot(config, ax, ax_opts, fig, data2d, field_name, findex):
         fig.autofmt_xdate()
         ax.set_xlim(t0, t1)
         
-        # Set y limits safely
         try:
             davg = 0.5 * (abs(dmin - dmax))
             ax.set_ylim([dmin - davg, dmax + davg])
         except Exception as e:
             logger.warning(f"Error setting y limits: {e}")
 
-        # Get units - handling the new reader structure
         try:
             source_name = config.source_names[config.ds_index]
             
-            # Try to get units from spec_data first
             if 'units' in config.spec_data[field_name]:
                 units = config.spec_data[field_name]['units']
             else:
-                # Try to get units from the data array
                 units = getattr(data2d, 'units', None)
                 
-                # If not found in data array, try to get from reader
                 if not units:
                     reader = config.get_primary_reader(source_name)
                     if reader and hasattr(reader, 'datasets'):
@@ -1240,13 +1163,10 @@ def _single_tx_plot(config: ConfigManager, data_to_plot: tuple) -> None:
     ax.append(fig.add_subplot(gs[0, 0], projection=ccrs.PlateCarree(central_longitude=180)))
     ax.append((fig.add_subplot(gs[1, 0])))
 
-    logger.info(f'Plotting {field_name}')
-
     ax_opts = fig.update_ax_opts(field_name, ax, 'tx')
 
     dmin = data2d.min(skipna=True).values
     dmax = data2d.max(skipna=True).values
-
     logger.debug(f"Field: {field_name}; Min:{dmin}; Max:{dmax}")
 
     _create_clevs(field_name, ax_opts, data2d)
@@ -1256,19 +1176,13 @@ def _single_tx_plot(config: ConfigManager, data_to_plot: tuple) -> None:
 
     norm = colors.BoundaryNorm(ax_opts['clevs'], ncolors=256, clip=False)
 
-    # Check for data alignment
     vtimes = data2d.time.values.astype('datetime64[ms]').astype('O')
-    
-    # Try to get the longitude dimension using get_model_dim_name
     lon_dim = config.get_model_dim_name('xc')
     
     try:
-        # If a valid dimension was found, use it
         if lon_dim:
             lons = get_data_coords(data2d, lon_dim)
         else:
-            # Otherwise, try to infer it from the data
-            logger.warning("Could not determine longitude dimension name. Attempting to infer from data.")
             if 'lon' in data2d.dims:
                 lons = data2d.lon.values
             elif 'longitude' in data2d.dims:
@@ -1276,118 +1190,81 @@ def _single_tx_plot(config: ConfigManager, data_to_plot: tuple) -> None:
             elif 'x' in data2d.dims:
                 lons = data2d.x.values
             else:
-                # Last resort: use the second dimension of the array
-                # (assuming time is first, lon is second)
-                logger.warning("Could not find longitude dimension. Using second dimension of data array.")
                 lons = np.arange(data2d.shape[1])
     except Exception as e:
         logger.error(f"Error getting longitude coordinates: {e}")
         lons = np.arange(data2d.shape[1])
     
-    # Check if data shape matches expected coordinates
-    logger.warning(f"Data shape {data2d.shape} vs coordinates ({len(vtimes)}, {len(lons)})")
-    
     try:
-        # Handle case where data has more dimensions than expected
         if len(data2d.shape) > 2:
-            logger.info(f"Data has {len(data2d.shape)} dimensions, reducing to 2D for Hovmoller plot")
-            
-            # Check if first dimension is time
             if data2d.shape[0] == len(vtimes):
-                # If data shape is (time, level, lon), we need to average over level
+                # data shape is (time, level, lon), we need to average over level
                 if len(data2d.shape) == 3 and data2d.shape[2] == len(lons):
-                    logger.info("Averaging over vertical levels")
-                    # Average over the middle dimension (level)
+                    # average over the middle dimension (level)
                     data2d_reduced = data2d.mean(axis=1)
                     
-                # If data shape is (time, lat, lon), we need to average over lat
+                # data shape is (time, lat, lon), we need to average over lat
                 elif len(data2d.shape) == 3 and data2d.shape[2] == len(lons):
-                    logger.info("Averaging over latitude")
-                    # Average over the middle dimension (lat)
+                    # average over the middle dimension (lat)
                     data2d_reduced = data2d.mean(axis=1)
                     
-                # Other cases - try to identify dimensions by name
                 else:
-                    # Try to find dimension names
                     dim_names = list(data2d.dims)
                     time_dim_idx = None
                     lon_dim_idx = None
                     
-                    # Find time dimension
                     for i, dim in enumerate(dim_names):
                         if dim in ['time', 't', 'TIME']:
                             time_dim_idx = i
                             break
                     
-                    # Find lon dimension
                     for i, dim in enumerate(dim_names):
                         if dim in ['lon', 'longitude', 'x']:
                             lon_dim_idx = i
                             break
                     
-                    # If we found both dimensions, reduce along other axes
                     if time_dim_idx is not None and lon_dim_idx is not None:
-                        # List of dimensions to average over
                         dims_to_avg = [i for i in range(len(dim_names)) 
                                      if i != time_dim_idx and i != lon_dim_idx]
                         
-                        # Average over these dimensions
                         data2d_reduced = data2d.copy()
                         for dim_idx in sorted(dims_to_avg, reverse=True):
                             data2d_reduced = data2d_reduced.mean(axis=dim_idx)
                             
-                        # Transpose if needed to get (time, lon) order
+                        # transpose if needed to get (time, lon) order
                         if time_dim_idx > lon_dim_idx:
                             data2d_reduced = data2d_reduced.T
                     else:
-                        # Last resort - flatten all dimensions except time
-                        logger.warning("Could not identify dimensions, using first dimension as time")
+                        # flatten all dimensions except time
                         data2d_reduced = data2d.reshape(data2d.shape[0], -1).mean(axis=1)
                         lons = np.arange(data2d_reduced.shape[1])
             else:
-                # If first dimension is not time, try to reshape
-                logger.warning("First dimension is not time, attempting to reshape")
-                # Just use the data as is and hope for the best
                 data2d_reduced = data2d
-                # Fix time dimension if needed
                 if len(vtimes) != data2d.shape[0]:
                     vtimes = np.arange(data2d.shape[0])
-                # Fix lon dimension if needed
                 if len(lons) != data2d.shape[1]:
                     lons = np.arange(data2d.shape[1])
         else:
-            # Data is already 2D
             data2d_reduced = data2d
             
-            # Fix dimensions if needed
             if data2d.shape != (len(vtimes), len(lons)):
-                logger.warning(f"Data shape {data2d.shape} doesn't match expected shape ({len(vtimes)}, {len(lons)})")
-                # If data is transposed, fix it
                 if data2d.shape == (len(lons), len(vtimes)):
-                    logger.info("Transposing data to match coordinates")
                     data2d_reduced = data2d.T
                 else:
-                    # Otherwise, just use the data as is and adjust coordinates
                     vtimes = np.arange(data2d.shape[0])
                     lons = np.arange(data2d.shape[1])
     except Exception as e:
         logger.error(f"Error processing data for Hovmoller plot: {e}")
-        # Fall back to using the data as is
         data2d_reduced = data2d
-        # Ensure coordinates match data shape
         if len(data2d.shape) >= 2:
             vtimes = np.arange(data2d.shape[0])
             lons = np.arange(data2d.shape[1])
     
-    # Make sure data shape matches coordinates for plotting
     if hasattr(data2d_reduced, 'shape') and len(data2d_reduced.shape) >= 2:
         if data2d_reduced.shape[0] != len(vtimes) or data2d_reduced.shape[1] != len(lons):
-            logger.warning(f"Final data shape {data2d_reduced.shape} doesn't match coordinates ({len(vtimes)}, {len(lons)})")
-            # Adjust coordinates to match data
             vtimes = np.arange(data2d_reduced.shape[0])
             lons = np.arange(data2d_reduced.shape[1])
 
-    # Now continue with the plotting using data2d_reduced instead of data2d
     x_tick_labels = [u'0\N{DEGREE SIGN}E', u'90\N{DEGREE SIGN}E',
                      u'180\N{DEGREE SIGN}E', u'90\N{DEGREE SIGN}W',
                      u'0\N{DEGREE SIGN}E']
@@ -1406,26 +1283,22 @@ def _single_tx_plot(config: ConfigManager, data_to_plot: tuple) -> None:
     if ax_opts['torder']:
         ax[1].invert_yaxis()  # Reverse the time order
 
-    # Plot the data
     try:
         cfilled = ax[1].contourf(lons, vtimes, data2d_reduced, ax_opts['clevs'], norm=norm,
                                 cmap=ax_opts['use_cmap'], extend=extend_value)
     except Exception as e:
         logger.error(f"Error creating contour plot: {e}")
-        # Fall back to pcolormesh which is more forgiving
         try:
             logger.info("Falling back to pcolormesh")
-            # Create meshgrid for pcolormesh
             lon_mesh, time_mesh = np.meshgrid(lons, vtimes)
             cfilled = ax[1].pcolormesh(lon_mesh, time_mesh, data2d_reduced, 
                                     norm=norm, cmap=ax_opts['use_cmap'])
         except Exception as e2:
             logger.error(f"Error creating pcolormesh plot: {e2}")
-            # Last resort - just show something
+            # just show something
             cfilled = ax[1].imshow(data2d_reduced, aspect='auto', origin='lower',
                                 norm=norm, cmap=ax_opts['use_cmap'])
 
-    # Add gridlines and labels
     ax[1].set_xlabel("Longitude")
     ax[1].set_ylabel("Time")
     ax[1].grid(linestyle='dotted', linewidth=0.5)
@@ -1445,7 +1318,6 @@ def _single_tx_plot(config: ConfigManager, data_to_plot: tuple) -> None:
     ax[1].set_xticklabels(x_tick_labels)
 
     try:
-        # Set time ticks safely
         if len(vtimes) > 8:
             step = len(vtimes) // 8
             ax[1].set_yticks(vtimes[::step])
@@ -1480,14 +1352,10 @@ def _line_contours(fig, ax, ax_opts, x, y, data2d):
     with mpl.rc_context(ax_opts['contour_linestyle']):
         contour_format = pu.contour_format_from_levels(pu.formatted_contours(ax_opts['clevs']),
                                                        scale=ax_opts['cscale'])
-        # Generate line contours
         clines = ax.contour(x, y, data2d, levels=ax_opts['clevs'], colors="black", alpha=0.5)
-        # Check if any contours were generated
         if len(clines.allsegs) == 0 or all(len(seg) == 0 for seg in clines.allsegs):
             logger.warning("No contours were generated. Skipping contour labeling.")
             return
-
-        # Add labels to the contours
         ax.clabel(clines, inline=1, fontsize=pu.contour_label_size(fig.subplots),
                   colors="black", fmt=contour_format)
 
@@ -1514,17 +1382,14 @@ def _create_clevs(field_name, ax_opts, data2d):
         clevs = np.around(np.linspace(dmin, dmax, 10), decimals=precision)
     else:
         clevs = np.around(np.linspace(dmin, dmax, ax_opts.get('num_clevs', 10)), decimals=precision)
-        # Ensure contour levels are strictly increasing
+        # Ensure contour levels are strictly increasing (avoids warnings)
         clevs = np.unique(clevs)
-        # If there are fewer than 2 levels, expand them to cover the range
         if len(clevs) < 2:
             clevs = np.linspace(dmin, dmax, ax_opts.get('num_clevs', 10))
     
-    # Set the clevs in ax_opts
     ax_opts['clevs'] = clevs
     logger.debug(f'Created contour levels for {field_name}: {ax_opts["clevs"]}')
 
-    # Check if the first contour level is zero
     if ax_opts['clevs'][0] == 0.0:
         ax_opts['extend_value'] = "max"
 
@@ -1539,7 +1404,6 @@ def _filled_contours(config, field_name, ax, x, y, data2d, transform=None):
     else:
         cmap_str = config.ax_opts['use_cmap']
 
-    # Check if transform is valid for this axis
     if transform is not None:
         try:
             from cartopy.mpl.geoaxes import GeoAxes
@@ -1553,7 +1417,6 @@ def _filled_contours(config, field_name, ax, x, y, data2d, transform=None):
 
     try:
         if np.all(np.diff(config.ax_opts['clevs']) > 0):
-            # If transform is None, it will be ignored
             cfilled = ax.contourf(x, y, data2d,
                                   robust=True,
                                   levels=config.ax_opts['clevs'],
@@ -1584,13 +1447,6 @@ def _filled_contours(config, field_name, ax, x, y, data2d, transform=None):
 
 
 def _set_colorbar(config, cfilled, fig, ax, ax_opts, findex, field_name, data2d):
-    logger.debug(f"Adding colorbar for field: {field_name}")
-    logger.debug(f"cfilled: {cfilled}")
-    logger.debug(f"ax: {ax}")
-    logger.debug(f"ax_opts: {ax_opts}")
-    logger.debug(f"clevs: {ax_opts.get('clevs', None)}")
-    logger.debug(f"orientation: {'vertical' if config.compare else 'horizontal'}")
-
     try:
         source_name = config.source_names[config.ds_index]
         if ax_opts['cbar_sci_notation']:
@@ -1618,30 +1474,24 @@ def _set_colorbar(config, cfilled, fig, ax, ax_opts, findex, field_name, data2d)
             cbar.ax.text(1.05, -0.5, r'$\times 10^{%d}$' % fmt.oom,
                            transform=cbar.ax.transAxes, va='center', ha='left', fontsize=12)
 
-        # Get units - handling the new reader structure
         try:
-            # Try to get units from spec_data first
             if field_name in config.spec_data and 'units' in config.spec_data[field_name]:
                 units = config.spec_data[field_name]['units']
             else:
-                # Try to get units from the data array
                 if hasattr(data2d, 'attrs') and 'units' in data2d.attrs:
                     units = data2d.attrs['units']
                 elif hasattr(data2d, 'units'):
                     units = data2d.units
                 else:
-                    # Try to get from reader
                     reader = None
                     if source_name in config.readers:
                         if isinstance(config.readers[source_name], dict):
-                            # New structure - get the primary reader
                             readers_dict = config.readers[source_name]
                             if 'NetCDF' in readers_dict:
                                 reader = readers_dict['NetCDF']
                             elif readers_dict:
                                 reader = next(iter(readers_dict.values()))
                         else:
-                            # Old structure - direct access
                             reader = config.readers[source_name]
                     
                     if reader and hasattr(reader, 'datasets'):
@@ -1738,11 +1588,9 @@ class Plotter:
         """
         source_name = config.source_names[0]  # Use the first source
         
-        # Get all relevant files
         file_paths = []
         for file_idx, file_entry in config.file_list.items():
             if file_entry.get('source_name') == source_name:
-                # Include all files if dates not specified
                 if start_date is None and end_date is None:
                     file_paths.append(file_entry['filename'])
                 else:
@@ -1767,27 +1615,19 @@ class Plotter:
             self.logger.error(f"No files found for time series of {field_name}")
             return
             
-        # Integrate the datasets
         integrated_data = config.integrator.integrate_datasets(source_name, file_paths)
         
         if integrated_data and field_name in integrated_data:
-            # Create the figure
             fig, ax = plt.subplots(figsize=(12, 6))
-            
-            # Plot the time series
             time_var = integrated_data['time']
             data_var = integrated_data[field_name]
-            
-            # Plot the data
             ax.plot(time_var, data_var, linewidth=1.5)
             
-            # Add title and labels
             title = f"Time Series of {field_name}"
             if start_date and end_date:
                 title += f" ({start_date} to {end_date})"
             ax.set_title(title, fontsize=14)
             
-            # Try to get units from metadata
             try:
                 units = data_var.attrs.get('units', '')
                 if units:
@@ -1798,17 +1638,14 @@ class Plotter:
             ax.set_xlabel('Time', fontsize=12)
             ax.grid(True, linestyle='--', alpha=0.7)
             
-            # Format x-axis for dates
             fig.autofmt_xdate()
             
-            # Save or display the plot
             if config.print_to_file:
                 output_dir = config.output_dir
                 if not output_name:
                     output_name = f"{field_name}_timeseries"
                 filename = os.path.join(output_dir, f"{output_name}.{config.print_format}")
                 plt.savefig(filename, bbox_inches='tight')
-                self.logger.info(f"Saved time series plot to {filename}")
             else:
                 plt.tight_layout()
                 plt.show()
@@ -1832,7 +1669,6 @@ class Plotter:
         """
         source_name = config.source_names[0]  # Use the first source
         
-        # Get the fields from any available source
         primary_data = config.integrator.get_variable_from_any_source(source_name, primary_field)
         secondary_data = config.integrator.get_variable_from_any_source(source_name, secondary_field)
         
@@ -1840,12 +1676,9 @@ class Plotter:
             self.logger.error(f"Could not find one or both of the fields: {primary_field}, {secondary_field}")
             return
         
-        # Align the data (assuming they might have different dimensions)
         try:
-            # This will broadcast the arrays to compatible shapes if possible
             primary_data, secondary_data = xr.align(primary_data, secondary_data)
             
-            # Perform the requested operation
             if operation == 'add':
                 composite_data = primary_data + secondary_data
                 op_symbol = '+'
@@ -1882,10 +1715,9 @@ class Plotter:
             except:
                 pass
             
-            # Set a name for the composite field
+            # Create a name for the composite field
             composite_data.name = f"{primary_field}_{operation}_{secondary_field}"
             
-            # Create figure and plot based on plot_type
             if plot_type == 'xy':
                 self._plot_composite_xy(config, composite_data, primary_field, secondary_field, 
                                       operation, op_symbol, level, output_name)
@@ -1901,52 +1733,33 @@ class Plotter:
     def _plot_composite_xy(self, config, data, primary_field, secondary_field, 
                           operation, op_symbol, level=None, output_name=None):
         """Plot a composite field as an xy (lat-lon) plot."""
-        # Select the appropriate level if 3D data
         if level is not None and 'lev' in data.dims:
             data = data.sel(lev=level)
         
-        # Create figure
         fig, ax = plt.subplots(figsize=(10, 8))
-        
-        # Get dimensions for plotting
         dim1, dim2 = config.get_dim_names('xy')
-        
-        # Get coordinates
         x = data[dim1].values
         y = data[dim2].values
         
-        # Create contour levels
         vmin, vmax = data.min().values, data.max().values
         levels = np.linspace(vmin, vmax, 20)
         
-        # Plot filled contours
         cs = ax.contourf(x, y, data.values, levels=levels, cmap='RdBu_r', extend='both')
-        
-        # Add contour lines
         cont = ax.contour(x, y, data.values, levels=levels, colors='k', linewidths=0.5, alpha=0.5)
         ax.clabel(cont, inline=1, fontsize=8, fmt='%.1f')
-        
-        # Add colorbar
         cbar = fig.colorbar(cs, ax=ax, orientation='vertical', pad=0.02)
         
-        # Set units on colorbar
         if 'units' in data.attrs:
             cbar.set_label(data.attrs['units'])
         
-        # Add title
         title = f"Composite: {primary_field} {op_symbol} {secondary_field}"
         if level is not None:
             title += f" (Level: {level})"
         ax.set_title(title)
-        
-        # Set labels
         ax.set_xlabel(dim1)
         ax.set_ylabel(dim2)
-        
-        # Add grid
         ax.grid(linestyle='--', alpha=0.6)
         
-        # Save or display the plot
         if config.print_to_file:
             output_dir = config.output_dir
             if not output_name:
@@ -1955,7 +1768,6 @@ class Plotter:
                     output_name += f"_level{level}"
             filename = os.path.join(output_dir, f"{output_name}.{config.print_format}")
             plt.savefig(filename, bbox_inches='tight')
-            self.logger.info(f"Saved composite plot to {filename}")
         else:
             plt.tight_layout()
             plt.show()
@@ -1963,39 +1775,24 @@ class Plotter:
     def _plot_composite_yz(self, config, data, primary_field, secondary_field, 
                           operation, op_symbol, output_name=None):
         """Plot a composite field as a yz (zonal mean) plot."""
-        # Create figure
         fig, ax = plt.subplots(figsize=(10, 8))
-        
-        # Get dimensions for plotting
         dim1, dim2 = config.get_dim_names('yz')
-        
-        # Get coordinates
         x = data[dim1].values
         y = data[dim2].values
         
-        # Create contour levels
         vmin, vmax = data.min().values, data.max().values
         levels = np.linspace(vmin, vmax, 20)
         
-        # Plot filled contours
         cs = ax.contourf(x, y, data.values, levels=levels, cmap='RdBu_r', extend='both')
-        
-        # Add contour lines
         cont = ax.contour(x, y, data.values, levels=levels, colors='k', linewidths=0.5, alpha=0.5)
         ax.clabel(cont, inline=1, fontsize=8, fmt='%.1f')
-        
-        # Add colorbar
         cbar = fig.colorbar(cs, ax=ax, orientation='vertical', pad=0.02)
         
-        # Set units on colorbar
         if 'units' in data.attrs:
             cbar.set_label(data.attrs['units'])
         
-        # Add title
         title = f"Composite: {primary_field} {op_symbol} {secondary_field} (Zonal Mean)"
         ax.set_title(title)
-        
-        # Set labels
         ax.set_xlabel(dim1)
         ax.set_ylabel(dim2)
         
@@ -2004,17 +1801,14 @@ class Plotter:
             ax.set_yscale('log')
             ax.invert_yaxis()  # Pressure decreases with height
         
-        # Add grid
         ax.grid(linestyle='--', alpha=0.6)
         
-        # Save or display the plot
         if config.print_to_file:
             output_dir = config.output_dir
             if not output_name:
                 output_name = f"composite_{primary_field}_{operation}_{secondary_field}_zonal"
             filename = os.path.join(output_dir, f"{output_name}.{config.print_format}")
             plt.savefig(filename, bbox_inches='tight')
-            self.logger.info(f"Saved composite plot to {filename}")
         else:
             plt.tight_layout()
             plt.show()
@@ -2033,10 +1827,8 @@ class Plotter:
         Raises:
             ValueError: If no date pattern could be extracted
         """
-        # Extract just the filename without path
         basename = os.path.basename(filename)
         
-        # Try various regex patterns
         # Pattern 1: YYYYMMDD
         pattern1 = r'(\d{4})(\d{2})(\d{2})'
         match = re.search(pattern1, basename)
@@ -2072,7 +1864,6 @@ class Plotter:
             year = match.group(1)
             return f"{year}-01-01"  # Default to first day of year
             
-        # If no pattern matches, raise an error
         raise ValueError(f"Could not extract date from {basename}")
 
 
@@ -2107,7 +1898,6 @@ class SimplePlotter:
         elif plot_type == 'graph':
             _simple_graph_plot(config, field_to_plot)
 
-    # Add access to the new methods
     def time_series_combined(self, config: ConfigManager, field_name: str, 
                            start_date=None, end_date=None, output_name=None):
         """Simple wrapper for plot_time_series_combined."""
@@ -2161,7 +1951,6 @@ class SinglePlotter(Plotter):
         # elif plot_type == constants.myplot:
         #     self._myplot_subplot(config, field_to_plot)
 
-    # Add access to the new methods
     def time_series_combined(self, config: ConfigManager, field_name: str, 
                            start_date=None, end_date=None, output_name=None):
         """Single plotter wrapper for plot_time_series_combined."""
@@ -2220,7 +2009,6 @@ class ComparisonPlotter:
         # elif plot_type == constants.myplot:
         #     self._myplot_subplot(config, field_to_plot)
 
-    # Add access to the new methods
     def time_series_combined(self, config: ConfigManager, field_name: str, 
                            start_date=None, end_date=None, output_name=None):
         """Comparison plotter wrapper for plot_time_series_combined."""
