@@ -8,7 +8,7 @@ import numpy as np
 import xarray as xr
 from unittest.mock import MagicMock, patch
 
-from eviz.lib.data.sources.grib_source import GRIBDataSource
+from eviz.lib.data.sources.grib import GRIBDataSource
 
 
 class TestGRIBDataSource:

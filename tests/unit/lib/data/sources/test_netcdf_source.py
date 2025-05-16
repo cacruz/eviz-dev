@@ -8,7 +8,7 @@ import numpy as np
 import xarray as xr
 from unittest.mock import MagicMock, patch
 
-from eviz.lib.data.sources.netcdf_source import NetCDFDataSource
+from eviz.lib.data.sources.netcdf import NetCDFDataSource
 
 
 class TestNetCDFDataSource:

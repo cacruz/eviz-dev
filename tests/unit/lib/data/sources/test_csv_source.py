@@ -9,7 +9,7 @@ import pandas as pd
 import xarray as xr
 from unittest.mock import MagicMock, patch
 
-from eviz.lib.data.sources.csv_source import CSVDataSource
+from eviz.lib.data.sources.csv import CSVDataSource
 
 
 class TestCSVDataSource:

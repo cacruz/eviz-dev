@@ -8,7 +8,7 @@ import numpy as np
 import xarray as xr
 from unittest.mock import MagicMock, patch
 
-from eviz.lib.data.sources.hdf5_source import HDF5DataSource
+from eviz.lib.data.sources.hdf5 import HDF5DataSource
 
 
 class TestHDF5DataSource:

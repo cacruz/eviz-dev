@@ -3,10 +3,10 @@ Data source implementations for various file formats.
 """
 
 from .base import DataSource
-from .netcdf_source import NetCDFDataSource
-from .hdf5_source import HDF5DataSource
-from .csv_source import CSVDataSource
-from .grib_source import GRIBDataSource
+from .netcdf import NetCDFDataSource
+from .hdf5 import HDF5DataSource
+from .csv import CSVDataSource
+from .grib import GRIBDataSource
 
 __all__ = [
     'DataSource',
