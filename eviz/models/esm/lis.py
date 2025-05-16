@@ -635,8 +635,8 @@ class Lis(NuWrf):
         
         # For difference field
         if self.comparison_plot and self.config_manager.ax_opts['is_diff_field']:
-            from eviz.lib.data.processor import Interp
-            proc = Interp(self.config_manager, self.data2d_list)
+            from eviz.lib.data.processor import DataProcessor
+            proc = DataProcessor(self.config_manager, self.data2d_list)
             data2d, xx, yy = proc.regrid(plot_type)
             return data2d, xx, yy, self.field_names[0], plot_type, file_index, figure, ax
         

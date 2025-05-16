@@ -88,3 +88,64 @@ class DataReader:
                 data_source.close()
         # Clear the data sources dictionary
         self.data_sources.clear()
+
+
+def get_data_coords(data_array, attribute_name):
+    """
+    Get coordinates for a data array attribute.
+
+    Args:
+        data_array: The xarray DataArray
+        attribute_name: The name of the attribute to get coordinates for
+
+    Returns:
+        The coordinates for the attribute, or a fallback if the attribute is not found
+    """
+    if attribute_name is None:
+        # If attribute_name is None, try to find an appropriate dimension
+        if hasattr(data_array, 'dims'):
+            dim_candidates = ['lon', 'longitude', 'x', 'lon_rho', 'x_rho']
+            for dim in dim_candidates:
+                if dim in data_array.dims:
+                    return data_array[dim].values
+
+            # If no candidate dimension is found, just return the first dimension
+            if data_array.dims:
+                return data_array[data_array.dims[0]].values
+
+        # If all else fails, create a dummy coordinate
+        return np.arange(data_array.shape[0])
+
+    # Original implementation for when attribute_name is provided
+    attribute_mapping = {
+        'time': ['time', 't', 'TIME'],
+        'lon': ['lon', 'longitude', 'x', 'lon_rho', 'x_rho'],
+        'lat': ['lat', 'latitude', 'y', 'lat_rho', 'y_rho'],
+        'lev': ['lev', 'level', 'z', 'altitude', 'height', 'depth', 'plev'],
+    }
+
+
+    # Check if attribute_name is a generic name present in the mapping
+    for generic, specific_list in attribute_mapping.items():
+        if attribute_name in specific_list:
+            attribute_name = generic
+            break
+
+    # Check if we have a mapping for this generic name
+    if attribute_name in attribute_mapping:
+        # Try each specific name in the mapping
+        for specific_name in attribute_mapping[attribute_name]:
+            if specific_name in data_array.dims:
+                return data_array[specific_name].values
+            elif specific_name in data_array.coords:
+                return data_array.coords[specific_name].values
+
+    # If no mapping worked, try the attribute name directly
+    if attribute_name in data_array.dims:
+        return data_array[attribute_name].values
+    elif attribute_name in data_array.coords:
+        return data_array.coords[attribute_name].values
+
+    # If the attribute wasn't found after all attempts, raise an error
+    raise ValueError(f"Generic name for {attribute_name} not found in attribute_mapping.")
+

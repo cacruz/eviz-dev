@@ -27,8 +27,8 @@ import eviz.lib.const as constants
 import eviz.lib.autoviz.plot_utils as pu
 import eviz.lib.utils as u
 from eviz.lib.autoviz.config_manager import ConfigManager
-from eviz.lib.data.processor import Overlays
-from eviz.lib.data.reader import get_data_coords
+from eviz.lib.data.pipeline import DataProcessor
+from eviz.lib.data.pipeline.reader import get_data_coords
 
 warnings.filterwarnings("ignore")
 
@@ -600,7 +600,7 @@ def _plot_yz_data(config, ax, data2d, x, y, field_name, fig, ax_opts, vertical_u
     # The following is only supported for GEOS datasets:
     if config.use_trop_height and not prof_dim:
         # TODO: move to 'model' layer so that we can easily do regridding and reset flag
-        overlay = Overlays(config, plot_type)
+        overlay = DataProcessor(config, plot_type)
         tropp = overlay.process_data()
         # This should be the only call needed here:
         if overlay.trop_ok:

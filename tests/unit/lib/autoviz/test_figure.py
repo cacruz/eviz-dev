@@ -79,7 +79,7 @@ class TestFigure:
             # Manually set _use_cartopy since we can't rely on the initialization
             # to set it correctly in the test environment
             fig._use_cartopy = True
-            assert fig._use_cartopy == True
+            assert fig._use_cartopy is True
         
     @patch('eviz.lib.autoviz.figure.Figure._init_frame')
     @patch('eviz.lib.autoviz.figure.Figure._set_axes')
@@ -101,22 +101,22 @@ class TestFigure:
         fig_xy = Figure(self.mock_config_manager, 'xy')
         # Manually set _use_cartopy based on the plot type
         fig_xy._use_cartopy = 'tx' in fig_xy.plot_type or 'sc' in fig_xy.plot_type or 'xy' in fig_xy.plot_type
-        assert fig_xy._use_cartopy == True
+        assert fig_xy._use_cartopy is True
         
         # Test tx plot - should use cartopy
         fig_tx = Figure(self.mock_config_manager, 'tx')
         fig_tx._use_cartopy = 'tx' in fig_tx.plot_type or 'sc' in fig_tx.plot_type or 'xy' in fig_tx.plot_type
-        assert fig_tx._use_cartopy == True
+        assert fig_tx._use_cartopy is True
         
         # Test sc plot - should use cartopy
         fig_sc = Figure(self.mock_config_manager, 'sc')
         fig_sc._use_cartopy = 'tx' in fig_sc.plot_type or 'sc' in fig_sc.plot_type or 'xy' in fig_sc.plot_type
-        assert fig_sc._use_cartopy == True
+        assert fig_sc._use_cartopy is True
         
         # Test non-cartopy plot
         fig_other = Figure(self.mock_config_manager, 'yz')
         fig_other._use_cartopy = 'tx' in fig_other.plot_type or 'sc' in fig_other.plot_type or 'xy' in fig_other.plot_type
-        assert fig_other._use_cartopy == False
+        assert fig_other._use_cartopy is False
         
     @patch('eviz.lib.autoviz.figure.Figure._init_frame')
     @patch('eviz.lib.autoviz.figure.Figure._set_axes')
@@ -358,7 +358,7 @@ class TestFigure:
         fig.set_ax_opts_diff_field(mock_ax)
         
         # Verify is_diff_field was set to True
-        assert fig._ax_opts['is_diff_field'] == True
+        assert fig._ax_opts['is_diff_field'] is True
         
     @patch('eviz.lib.autoviz.figure.Figure._init_frame')
     @patch('eviz.lib.autoviz.figure.Figure._set_axes')

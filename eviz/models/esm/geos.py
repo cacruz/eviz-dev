@@ -7,7 +7,7 @@ from dataclasses import dataclass
 import numpy as np
 import xarray as xr
 
-from eviz.lib.data.processor import Interp
+from eviz.lib.data.pipeline import DataProcessor
 from eviz.models.esm.generic import Generic
 from eviz.lib.data.data_utils import apply_conversion
 from eviz.lib.data.data_utils import apply_mean
@@ -61,7 +61,7 @@ class Geos(Generic):
         dim1, dim2 = self.config.get_dim_names(plot_type)
         data2d = None
         if self.config.ax_opts['is_diff_field']:
-            proc = Interp(self.config, source_data)
+            proc = DataProcessor(self.config, source_data)
             data2d, xx, yy = proc.regrid(self.field_names, ax, level, plot_type)
             return data2d, xx, yy, self.field_names[0], plot_type, file_index, figure, ax
         else:
