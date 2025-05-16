@@ -1,18 +1,15 @@
 """
 Deprecated processor module. Use eviz.lib.data.pipeline.processor instead.
 """
-
 import warnings
 from dataclasses import dataclass
-from typing import Any, List, Optional
-
+from typing import Any, List
 import logging
-import numpy as np
 import xarray as xr
-from xarray import DataArray
 
 from eviz.lib.autoviz.config_manager import ConfigManager
 from eviz.lib.data.pipeline.processor import DataProcessor as PipelineProcessor
+
 
 def _deprecation_warning(old_name: str, new_name: str) -> None:
     warnings.warn(

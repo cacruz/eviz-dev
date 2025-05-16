@@ -1,14 +1,11 @@
 """
 NetCDF data source implementation.
 """
-
 import os
 import logging
 from typing import Dict, Optional
-
 import xarray as xr
 from dask.distributed import Client
-
 from .base import DataSource
 
 
@@ -17,7 +14,6 @@ class NetCDFDataSource(DataSource):
     
     This class handles loading and processing data from NetCDF files.
     """
-    
     def __init__(self, model_name: str = None, config_manager=None):
         """Initialize a new NetCDFDataSource.
         

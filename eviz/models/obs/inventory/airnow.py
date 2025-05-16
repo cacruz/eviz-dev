@@ -5,13 +5,10 @@ from typing import Any
 import pandas as pd
 from dataclasses import dataclass, field
 
-from eviz.lib.autoviz.plotter import SimplePlotter, ComparisonPlotter, SinglePlotter
 
 from eviz.lib.autoviz.figure import Figure
 from eviz.lib.autoviz.plot_utils import print_map
 from eviz.models.root import Root
-from eviz.lib import const as constants
-import eviz.lib.utils as u
 
 warnings.filterwarnings("ignore")
 

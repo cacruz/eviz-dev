@@ -1,26 +1,22 @@
 """
 Data processing stage of the pipeline.
 """
-
 import logging
-
 from dataclasses import dataclass, field
-
-from typing import Dict, List, Optional, Union, Any, Tuple
+from typing import List, Optional, Tuple
 import numpy as np
 from scipy.interpolate import interp1d
 import xarray as xr
-from xarray import DataArray
 
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from eviz.lib.autoviz.config_manager import ConfigManager
 from eviz.lib.xarray_utils import get_dst_attribute
 from eviz.lib import const as constants
-from eviz.lib.data.data_utils import apply_conversion
 from eviz.lib.data.sources import DataSource
 
 logger = logging.getLogger(__name__)
+
 
 @dataclass
 class DataProcessor:

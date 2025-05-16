@@ -1,7 +1,7 @@
 from dataclasses import dataclass, field
-from typing import Dict, Any
 from eviz.lib.utils import log_method
 from eviz.lib.autoviz.app_data import AppData  
+
 
 @dataclass
 class HistoryConfig:

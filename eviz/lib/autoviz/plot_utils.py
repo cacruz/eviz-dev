@@ -19,7 +19,7 @@ import glob
 from PIL import Image
 
 from numpy import e
-from matplotlib.offsetbox import (OffsetImage, TextArea, AnchoredOffsetbox, VPacker, AnnotationBbox)
+from matplotlib.offsetbox import (OffsetImage, TextArea, AnchoredOffsetbox, VPacker)
 import eviz.lib.utils as u
 import eviz.lib.const as constants
 from eviz.lib.utils import timer

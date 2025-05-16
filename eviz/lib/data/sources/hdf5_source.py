@@ -1,15 +1,9 @@
 """
 HDF5 data source implementation.
 """
-
-import os
 import logging
-from typing import Dict, List, Optional, Union
-
 import xarray as xr
 import h5py
-import numpy as np
-
 from .base import DataSource
 
 
@@ -18,7 +12,6 @@ class HDF5DataSource(DataSource):
     
     This class handles loading and processing data from HDF5 files.
     """
-    
     def __init__(self, model_name: str = None, config_manager=None):
         """Initialize a new HDF5DataSource.
         

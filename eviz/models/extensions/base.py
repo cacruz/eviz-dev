@@ -3,7 +3,6 @@ Base class for model-specific extensions.
 """
 
 import logging
-from typing import Any, Optional
 
 from eviz.lib.autoviz.config_manager import ConfigManager
 from eviz.lib.data.sources import DataSource

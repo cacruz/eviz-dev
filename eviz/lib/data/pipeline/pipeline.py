@@ -1,12 +1,9 @@
 """
 Data processing pipeline.
 """
-
 import logging
 from typing import Dict, List, Optional, Any
-
 import xarray as xr
-
 from eviz.lib.data.sources import DataSource
 from eviz.lib.data.pipeline.reader import DataReader
 from eviz.lib.data.pipeline.processor import DataProcessor
@@ -20,7 +17,6 @@ class DataPipeline:
     This class provides a complete pipeline for reading, processing, transforming,
     and integrating data from various sources.
     """
-    
     def __init__(self, config_manager=None):
         """Initialize a new DataPipeline.
         

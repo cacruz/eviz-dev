@@ -1,4 +1,3 @@
-# File: eviz/models/esm/generic.py
 from dataclasses import dataclass
 import logging
 import warnings

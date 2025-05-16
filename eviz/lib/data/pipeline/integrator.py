@@ -1,13 +1,10 @@
 """
 Data integration stage of the pipeline.
 """
-
 import logging
 from typing import List
-
 import xarray as xr
 import numpy as np
-
 from eviz.lib.data.sources import DataSource
 
 
@@ -16,7 +13,6 @@ class DataIntegrator:
     
     This class handles integrating data from multiple data sources.
     """
-    
     def __init__(self):
         """Initialize a new DataIntegrator."""
         self.logger = logging.getLogger(__name__)

@@ -1,11 +1,9 @@
 """
 Factory for creating data source instances.
 """
-
-# File: eviz/lib/data/factory/source_factory.py
 import os
 import logging
-from typing import Dict, Type, List, Optional
+from typing import Type, List, Optional
 
 from eviz.lib.data.sources import (
     DataSource,
@@ -30,8 +28,7 @@ class DataSourceFactory:
         self._register_default_data_sources()
         self.config_manager = config_manager
         self.logger = logging.getLogger(__name__)
-    
-    
+
     def _register_default_data_sources(self) -> None:
         """Register the default data source implementations."""
         self.registry.register(['nc', 'nc4', 'netcdf', 'netcdf4'], NetCDFDataSource)

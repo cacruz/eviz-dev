@@ -3,11 +3,10 @@ Adapter between YAML configuration and data source architecture.
 """
 import logging
 import os
-from typing import Dict, Any, List, Optional
+from typing import Dict, Any, Optional
 
 import xarray as xr
 
-from eviz.lib.autoviz.config_manager import ConfigManager
 from eviz.lib.data.pipeline import DataPipeline
 from eviz.lib.data.sources import DataSource
 

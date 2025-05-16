@@ -7,7 +7,6 @@ from eviz.lib.autoviz.output_config import OutputConfig
 from eviz.lib.autoviz.system_config import SystemConfig
 from eviz.lib.autoviz.history_config import HistoryConfig
 import eviz.lib.utils as u
-from eviz.lib.data.units import Units
 from eviz.lib.data.pipeline.integrator import DataIntegrator
 from eviz.lib.data.pipeline.pipeline import DataPipeline
 

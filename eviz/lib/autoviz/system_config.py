@@ -1,7 +1,6 @@
 from dataclasses import dataclass, field
 import logging
 from time import strftime
-from typing import Any
 from eviz.lib.utils import log_method
 from eviz.lib.autoviz.app_data import AppData
 

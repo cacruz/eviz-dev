@@ -1,7 +1,6 @@
 """
 Base DataSource class that defines the interface for all data sources.
 """
-
 from abc import ABC, abstractmethod
 import logging
 from typing import Any, Dict, List, Optional
@@ -14,7 +13,6 @@ class DataSource(ABC):
     All data sources are represented as Xarray datasets internally.
     Subclasses must implement the `load_data` method to populate the dataset.
     """
-    
     def __init__(self, model_name: str = None, config_manager=None):
         """Initialize a new DataSource.
         

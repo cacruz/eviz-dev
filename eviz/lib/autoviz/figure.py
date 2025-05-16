@@ -1,7 +1,5 @@
 import logging
-import os
 from typing import Any, Dict
-import matplotlib
 import matplotlib.figure as mfigure
 import matplotlib.pyplot as plt
 from mpl_toolkits.axes_grid1 import make_axes_locatable
@@ -9,17 +7,15 @@ import matplotlib.gridspec as gridspec
 import cartopy.crs as ccrs
 import cartopy.feature as cfeature
 from matplotlib.ticker import MultipleLocator
-from dataclasses import dataclass, field
 
 import numpy as np
 
 import eviz.lib.utils as u
-from eviz.lib.autoviz.config import Config
 from eviz.lib.autoviz.config_manager import ConfigManager
-from eviz.lib.autoviz.plot_utils import get_subplot_geometry, subplot_title_font_size
+from eviz.lib.autoviz.plot_utils import get_subplot_geometry
 import eviz.lib.autoviz.plot_utils as pu
-import matplotlib.gridspec as mgridspec
 from cartopy.mpl.gridliner import LONGITUDE_FORMATTER, LATITUDE_FORMATTER
+
 
 class Figure(mfigure.Figure):
     """

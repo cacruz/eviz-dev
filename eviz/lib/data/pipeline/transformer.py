@@ -1,13 +1,10 @@
 """
 Data transformation stage of the pipeline.
 """
-
 import logging
-
 import xarray as xr
 import numpy as np
 import scipy.interpolate as interp
-
 from eviz.lib.data.sources import DataSource
 
 
@@ -16,7 +13,6 @@ class DataTransformer:
     
     This class handles transforming data from data sources.
     """
-    
     def __init__(self):
         """Initialize a new DataTransformer."""
         self.logger = logging.getLogger(__name__)

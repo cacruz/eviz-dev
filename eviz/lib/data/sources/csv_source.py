@@ -1,16 +1,10 @@
 """
 CSV data source implementation.
 """
-
-import os
 import logging
-from typing import Dict, List, Optional, Union
 from glob import glob
-
 import pandas as pd
 import xarray as xr
-import numpy as np
-
 from .base import DataSource
 
 
@@ -19,7 +13,6 @@ class CSVDataSource(DataSource):
     
     This class handles loading and processing data from CSV files.
     """
-    
     def __init__(self, model_name: str = None, config_manager=None):
         """Initialize a new CSVDataSource.
         
