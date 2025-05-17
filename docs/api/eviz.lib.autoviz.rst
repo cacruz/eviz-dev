@@ -27,20 +27,12 @@ eviz.lib.autoviz.base module
    :members:
    :undoc-members:
    :show-inheritance:
+   :noindex:
 
 eviz.lib.autoviz.utils module
 -----------------------------
 
 .. automodule:: eviz.lib.autoviz.utils
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-
-Module contents
----------------
-
-.. automodule:: eviz.lib.autoviz
    :members:
    :undoc-members:
    :show-inheritance:

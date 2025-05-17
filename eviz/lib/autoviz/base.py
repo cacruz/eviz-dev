@@ -1,41 +1,3 @@
-"""
-Autoviz Base Module
-
-This module provides the core functionality for the eViz automatic visualization system.
-It defines the Autoviz class, which serves as the main entry point for generating
-visualizations from Earth System Model (ESM) data and observational datasets.
-
-The module implements a factory-based architecture where different data sources
-(e.g., gridded data, WRF, LIS, satellite observations) are handled by specialized
-factory classes that create appropriate model instances. This design allows for
-extensibility while maintaining a consistent interface for visualization generation.
-
-Key components:
-- get_config_path_from_env: Retrieves configuration path from environment variables
-- create_config: Creates a ConfigManager instance from command-line arguments
-- get_factory_from_user_input: Maps user-specified source names to appropriate factory classes
-- Autoviz: Main class that orchestrates the visualization process
-
-The module supports various data sources including:
-- Gridded NetCDF data (GEOS, CCM, CF)
-- Weather Research and Forecasting (WRF) model output
-- Land Information System (LIS) data
-- Observational data (AirNow, MOPITT, OMI, Landsat, FluxNet)
-
-Typical usage:
-    from eviz.lib.autoviz.base import Autoviz
-    
-    # Create an Autoviz instance with source names
-    viz = Autoviz(['gridded'], args=args)
-    
-    # Generate visualizations
-    viz.run()
-
-Dependencies:
-    - eviz.lib.config: Configuration management
-    - eviz.models: Data model implementations
-    - eviz.lib.const: Constants and default values
-"""
 import os
 import logging
 import time
@@ -150,9 +112,6 @@ def get_factory_from_user_input(inputs):
     - 'omi': OmiFactory (for OMI HDF5 data)
     - 'mopitt': MopittFactory (for MOPITT HDF5 data)
     - 'landsat': LandsatFactory (for Landsat HDF4 data)
-    
-    Note:
-        Additional sources like MODIS, GRIB, CEDS, and EDGAR are planned for future implementation.
     """
     mappings = {
         "test": GriddedFactory(),      # for unit tests
@@ -188,6 +147,7 @@ class Autoviz:
     various data sources including gridded data, regional models, and observational datasets.
     
     Attributes:
+
         source_names (list): List of source model names to process (e.g., 'gridded', 'wrf')
         args (argparse.Namespace, optional): Command-line arguments for configuration.
             If not provided, default arguments are created.
@@ -197,12 +157,12 @@ class Autoviz:
         factory_sources (list): List of factory instances for the specified sources.
     
     Methods:
+
         run(): Execute the visualization process.
         set_data(input_files): Assign model input files as specified in model config file.
         set_output(output_dir): Assign model output directory as specified in model config file.
         _check_input_files(): Verify existence of input files and provide warnings for missing files.
-    
-    Example:
+
         # Create an Autoviz instance with gridded data source
         viz = Autoviz(['gridded'])
         
@@ -265,10 +225,12 @@ class Autoviz:
         4. Enables data integration if specified
         5. Processes the configuration to load and prepare data
         6. Creates and executes appropriate visualization based on configuration:
+
            - Composite field visualization if composite option is specified
            - Normal plotting through the appropriate factory models
         
         The method handles various plotting modes including:
+
         - Simple plots (without detailed specifications)
         - Single plots (with detailed specifications)
         - Side-by-side comparison plots

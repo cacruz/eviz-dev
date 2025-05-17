@@ -109,3 +109,5 @@ autodoc_mock_imports = [
 ]
 
 suppress_warnings = ['autosectionlabel.*']
+# Ignore duplicate object descriptions
+suppress_warnings.append('app.add_directive')

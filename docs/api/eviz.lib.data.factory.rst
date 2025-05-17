@@ -19,11 +19,3 @@ eviz.lib.data.factory.source\_factory module
    :members:
    :show-inheritance:
    :undoc-members:
-
-Module contents
----------------
-
-.. automodule:: eviz.lib.data.factory
-   :members:
-   :show-inheritance:
-   :undoc-members:

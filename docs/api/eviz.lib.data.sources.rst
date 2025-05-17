@@ -43,11 +43,3 @@ eviz.lib.data.sources.netcdf module
    :members:
    :show-inheritance:
    :undoc-members:
-
-Module contents
----------------
-
-.. automodule:: eviz.lib.data.sources
-   :members:
-   :show-inheritance:
-   :undoc-members:

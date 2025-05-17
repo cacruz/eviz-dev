@@ -43,11 +43,3 @@ eviz.lib.data.pipeline.transformer module
    :members:
    :show-inheritance:
    :undoc-members:
-
-Module contents
----------------
-
-.. automodule:: eviz.lib.data.pipeline
-   :members:
-   :show-inheritance:
-   :undoc-members:

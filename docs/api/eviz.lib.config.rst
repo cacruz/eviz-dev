@@ -75,11 +75,3 @@ eviz.lib.config.yaml\_parser module
    :members:
    :show-inheritance:
    :undoc-members:
-
-Module contents
----------------
-
-.. automodule:: eviz.lib.config
-   :members:
-   :show-inheritance:
-   :undoc-members:

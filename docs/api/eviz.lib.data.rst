@@ -29,12 +29,3 @@ eviz.lib.data.utils module
    :members:
    :undoc-members:
    :show-inheritance:
-
-
-Module contents
----------------
-
-.. automodule:: eviz.lib.data
-   :members:
-   :undoc-members:
-   :show-inheritance:

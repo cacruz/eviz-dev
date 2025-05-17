@@ -1,49 +1,3 @@
-"""
-Base Data Source Module
-
-This module defines the foundational DataSource abstract base class that serves as the
-interface for all data sources in the eViz application. It establishes a common contract
-that all concrete data source implementations must fulfill, ensuring consistent behavior
-across different data formats and structures.
-
-The DataSource class provides a unified representation of data as xarray Datasets,
-regardless of the original format (NetCDF, GRIB, HDF5, CSV, etc.). This abstraction
-allows the rest of the application to work with data in a consistent manner while
-hiding the complexities of specific file formats and data structures.
-
-Key components:
-- DataSource: Abstract base class defining the interface for all data sources
-- Common data access methods: get_field, get_metadata, get_dimensions, get_variables
-- Validation functionality: validate_data method for ensuring data integrity
-- Dimension mapping utilities: Methods for mapping between standard and model-specific dimensions
-
-The module supports various data operations including:
-- Loading data from files
-- Accessing specific fields and metadata
-- Validating data integrity
-- Mapping between different dimension naming conventions
-- Delegating attribute and item access to the underlying dataset
-
-Typical usage:
-    # This is an abstract base class, so concrete implementations are used:
-    from eviz.lib.data.sources.netcdf import NetCDFDataSource
-    
-    # Create a data source instance
-    data_source = NetCDFDataSource(model_name='gridded', config_manager=config)
-    
-    # Load data from a file
-    dataset = data_source.load_data('path/to/file.nc')
-    
-    # Access a specific field
-    temperature = data_source.get_field('temperature')
-
-Dependencies:
-    - xarray: For Dataset and DataArray representations
-    - abc: For abstract base class functionality
-    - dataclasses: For dataclass decorator and field
-    - logging: For logging functionality
-"""
-
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from typing import Any, Dict, Optional, List
@@ -90,17 +44,6 @@ class DataSource(ABC):
         _get_model_dim_name2: Alternative implementation for dimension name mapping.
         __getattr__: Delegate attribute access to the underlying dataset.
         __getitem__: Delegate item access to the underlying dataset.
-    
-    Example:
-        # This is an abstract base class, concrete implementations are used:
-        data_source = NetCDFDataSource(model_name='gridded', config_manager=config)
-        dataset = data_source.load_data('path/to/file.nc')
-        temperature = data_source.get_field('temperature')
-        dims = data_source.get_dimensions()
-        
-    Note:
-        This class is not meant to be instantiated directly. Instead, use one of the
-        concrete implementations like NetCDFDataSource, GRIBDataSource, etc.
     """
     model_name: Optional[str] = None
     config_manager: Optional[
