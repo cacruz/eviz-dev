@@ -6,14 +6,170 @@ import pytest
 import numpy as np
 import xarray as xr
 import tempfile
-from unittest.mock import MagicMock
-
+from argparse import Namespace
+import yaml
+from eviz.lib.config.config import Config
+from eviz.lib.config.config_manager import ConfigManager
+from eviz.lib.config.input_config import InputConfig
+from eviz.lib.config.output_config import OutputConfig
+from eviz.lib.config.system_config import SystemConfig
+from eviz.lib.config.history_config import HistoryConfig
 from eviz.lib.data.pipeline.pipeline import DataPipeline
 from eviz.lib.data.pipeline.reader import DataReader
 from eviz.lib.data.pipeline.processor import DataProcessor
 from eviz.lib.data.pipeline.transformer import DataTransformer
 from eviz.lib.data.pipeline.integrator import DataIntegrator
 from eviz.lib.data.sources import DataSource
+import eviz.lib.const as constants
+from tests.fixtures.mock_airmass import create_mock_airmass_dataset
+
+
+def pytest_addoption(parser):
+    """Add command-line options to pytest."""
+    parser.addoption(
+        "--run-airmass", 
+        action="store_true", 
+        default=False, 
+        help="run tests that require airmass data"
+    )
+
+
+
+@pytest.fixture
+def mock_species_db():
+    """Create a minimal species database for testing."""
+    return {
+        'O3': {
+            'Formula': 'O3',
+            'FullName': 'Ozone',
+            'MW_kg': 0.048,
+            'MW_g': 48,
+            'Unitconversion': 1E9
+        },
+        'NO2': {
+            'Formula': 'NO2',
+            'FullName': 'Nitrogen dioxide',
+            'MW_kg': 0.04601,
+            'MW_g': 46.01,
+            'Unitconversion': 1
+        }
+    }
+
+
+
+@pytest.fixture
+def config_for_units(mock_species_db, tmp_path):
+    """
+    Create a ConfigManager instance suitable for units tests.
+    
+    Args:
+        mock_species_db: The mock species database fixture
+        tmp_path: pytest's temporary directory fixture
+    
+    Returns:
+        ConfigManager: A configured instance with necessary attributes for units tests
+    """
+    # Create a minimal config structure
+    airmass_file_path = str(tmp_path / 'airmass.nc4')
+    
+    config_data = {
+        'for_inputs': {
+            'airmass_file_name': airmass_file_path,
+            'airmass_field_name': 'AIRMASS'
+        },
+        'inputs': [
+            {
+                'name': 'airmass.nc4',
+                'location': str(tmp_path),
+                'source_name': 'test',
+                'description': 'Mock airmass data for testing'
+            }
+        ]
+    }
+    
+    # Create a temporary config file
+    config_file = tmp_path / "test_config.yaml"
+    with open(config_file, 'w') as f:
+        yaml.dump(config_data, f)
+    
+    # Create the main Config instance
+    config = Config(source_names=['test'], config_files=[str(config_file)])
+    config.species_db = mock_species_db
+    
+    # Make sure app_data.inputs is a list
+    if not hasattr(config.app_data, 'inputs') or not isinstance(config.app_data.inputs, list):
+        config.app_data.inputs = config_data['inputs']
+    
+    # Create basic configs
+    input_config = InputConfig(['test'], [str(config_file)])
+    output_config = OutputConfig()
+    system_config = SystemConfig()
+    history_config = HistoryConfig()
+    
+    # Create and setup the ConfigManager
+    config_manager = ConfigManager(
+        input_config=input_config,
+        output_config=output_config,
+        system_config=system_config,
+        history_config=history_config,
+        config=config
+    )
+    
+    # Save mock airmass dataset
+    ds = create_mock_airmass_dataset()
+    ds.to_netcdf(airmass_file_path)
+    
+    # Add for_inputs directly to app_data
+    config_manager.app_data.for_inputs = config_data['for_inputs']
+    
+    return config_manager
+
+
+@pytest.fixture
+def check_airmass_availability():
+    """
+    Check if the airmass file is available either locally or via URL.
+    
+    Returns:
+        bool: True if airmass data is available, False otherwise
+    """
+    import os
+    import requests
+    from eviz.lib import const as constants
+    
+    # First check local file
+    local_path = os.path.join(os.getcwd(), 'airmass.nc4')
+    if os.path.exists(local_path):
+        return True
+        
+    # Then check URL
+    try:
+        response = requests.head(constants.AIRMASS_URL, timeout=5)
+        return response.status_code in (200, 302, 307, 443)
+    except:
+        return False
+
+
+@pytest.fixture(scope="module")
+def get_config():
+    """Fixture that provides a function to fetch a run configuration specified by its name.
+
+    Returns:
+        config (Config): a config object
+    """
+    def _get_config():
+        # File path is relative to top-level
+        args = Namespace(sources=['test'], configfile=['test.yaml'], config=constants.ROOT_FILEPATH,
+                         data_dirs=None, output_dirs=None)
+        input_sources = [s.strip() for s in args.sources[0].split(',')]
+        # if config (testing)
+        config_file = [os.path.join(constants.ROOT_FILEPATH, 'test', 'config', "test.yaml")]
+        # if not config, use this:
+        # config_file = args.configfile
+        config = Config(source_names=input_sources, config_files=config_file)
+        return config
+
+    return _get_config
 
 
 class MockDataSource(DataSource):
