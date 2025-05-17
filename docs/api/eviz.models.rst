@@ -13,6 +13,15 @@ Subpackages
 Submodules
 ----------
 
+eviz.models.base module
+-----------------------
+
+.. automodule:: eviz.models.base
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+
 eviz.models.root module
 -----------------------
 

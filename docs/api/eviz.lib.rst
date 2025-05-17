@@ -9,6 +9,7 @@ Subpackages
 
    eviz.lib.data
    eviz.lib.autoviz
+   eviz.lib.config
 
 Submodules
 ----------
@@ -21,26 +22,10 @@ eviz.lib.const module
    :undoc-members:
    :show-inheritance:
 
-eviz.lib.autoviz\_base module
------------------------------
-
-.. automodule:: eviz.lib.autoviz.base
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
 eviz.lib.utils module
 ---------------------
 
 .. automodule:: eviz.lib.utils
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-eviz.lib.xarray\_utils module
------------------------------
-
-.. automodule:: eviz.lib.xarray_utils
    :members:
    :undoc-members:
    :show-inheritance:

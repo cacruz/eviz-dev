@@ -4,10 +4,10 @@ eviz.models.esm package
 Submodules
 ----------
 
-eviz.models.esm.grid_data module
---------------------------------
+eviz.models.esm.gridded module
+------------------------------
 
-.. automodule:: eviz.models.esm.grid_data
+.. automodule:: eviz.models.esm.gridded
    :members:
    :undoc-members:
    :show-inheritance:
@@ -40,6 +40,14 @@ eviz.models.esm.wrf module
 --------------------------
 
 .. automodule:: eviz.models.esm.wrf
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+eviz.models.esm.crest module
+----------------------------
+
+.. automodule:: eviz.models.esm.crest
    :members:
    :undoc-members:
    :show-inheritance:
