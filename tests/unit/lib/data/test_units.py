@@ -2,8 +2,6 @@ import pytest
 import xarray as xr
 import numpy as np
 from unittest.mock import MagicMock, patch
-import os
-import requests
 import eviz.lib.const as constants
 
 from eviz.lib.data.units import (

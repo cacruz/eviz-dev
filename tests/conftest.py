@@ -87,12 +87,10 @@ def config_for_units(mock_species_db, tmp_path):
         ]
     }
     
-    # Create a temporary config file
     config_file = tmp_path / "test_config.yaml"
     with open(config_file, 'w') as f:
         yaml.dump(config_data, f)
     
-    # Create the main Config instance
     config = Config(source_names=['test'], config_files=[str(config_file)])
     config.species_db = mock_species_db
     
@@ -100,13 +98,11 @@ def config_for_units(mock_species_db, tmp_path):
     if not hasattr(config.app_data, 'inputs') or not isinstance(config.app_data.inputs, list):
         config.app_data.inputs = config_data['inputs']
     
-    # Create basic configs
     input_config = InputConfig(['test'], [str(config_file)])
     output_config = OutputConfig()
     system_config = SystemConfig()
     history_config = HistoryConfig()
     
-    # Create and setup the ConfigManager
     config_manager = ConfigManager(
         input_config=input_config,
         output_config=output_config,
@@ -115,11 +111,9 @@ def config_for_units(mock_species_db, tmp_path):
         config=config
     )
     
-    # Save mock airmass dataset
     ds = create_mock_airmass_dataset()
     ds.to_netcdf(airmass_file_path)
     
-    # Add for_inputs directly to app_data
     config_manager.app_data.for_inputs = config_data['for_inputs']
     
     return config_manager
@@ -148,28 +142,6 @@ def check_airmass_availability():
         return response.status_code in (200, 302, 307, 443)
     except:
         return False
-
-
-@pytest.fixture(scope="module")
-def get_config():
-    """Fixture that provides a function to fetch a run configuration specified by its name.
-
-    Returns:
-        config (Config): a config object
-    """
-    def _get_config():
-        # File path is relative to top-level
-        args = Namespace(sources=['test'], configfile=['test.yaml'], config=constants.ROOT_FILEPATH,
-                         data_dirs=None, output_dirs=None)
-        input_sources = [s.strip() for s in args.sources[0].split(',')]
-        # if config (testing)
-        config_file = [os.path.join(constants.ROOT_FILEPATH, 'test', 'config', "test.yaml")]
-        # if not config, use this:
-        # config_file = args.configfile
-        config = Config(source_names=input_sources, config_files=config_file)
-        return config
-
-    return _get_config
 
 
 class MockDataSource(DataSource):

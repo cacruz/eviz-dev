@@ -1,7 +1,7 @@
 import numpy as np
 import xarray as xr
-import os
-import eviz.lib.const as constants
+
+
 
 def create_mock_airmass_dataset():
     """
