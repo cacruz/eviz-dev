@@ -13,10 +13,42 @@ from eviz.lib.config.app_data import AppData
 
 rc_matplotlib = mpl.rcParams  # PEP8 4 lyfe
 
-
 @dataclass
 class Config:
-    """ Main configuration class that delegates responsibilities to sub-configurations. """
+    """ 
+    Main configuration class that delegates responsibilities to sub-configurations.
+    
+    This class serves as the central hub for all configuration data in the eViz application.
+    It loads and parses configuration files, initializes specialized sub-configuration objects,
+    and provides access to configuration data through a unified interface.
+    
+    The class follows a delegation pattern, where specific configuration domains are managed
+    by dedicated sub-configuration classes. This approach provides separation of concerns
+    while maintaining a cohesive configuration API.
+    
+    Attributes:
+        source_names: List of source identifiers used in configuration
+        config_files: List of YAML configuration file paths to load
+        app_data: Application-wide settings and parameters
+        spec_data: Specification data for variables and visualization
+        
+    Sub-configurations:
+        input_config: Manages data source specifications and input parameters
+        output_config: Controls visualization output settings and file generation
+        system_config: Handles system-level settings and environment configuration
+        history_config: Tracks configuration history and provides versioning
+        
+    Additional attributes (populated during initialization):
+        yaml_parser: Parser for YAML configuration files
+        map_params: Mapping parameters for visualization
+        meta_coords: Metadata for coordinate systems
+        meta_attrs: Metadata for attributes
+        species_db: Database of chemical species information
+        
+    Note:
+        The Config class automatically initializes all sub-configurations during __post_init__,
+        ensuring that the entire configuration system is ready to use after instantiation.
+    """
     source_names: List[str]
     config_files: List[str]
     app_data: AppData = field(default_factory=AppData)

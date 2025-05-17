@@ -1,34 +1,114 @@
+from dataclasses import dataclass, field
 import logging
 import os
+from typing import Optional, List
+import eviz.lib.utils as u
 from eviz.lib.config.config import Config
 from eviz.lib.config.input_config import InputConfig
 from eviz.lib.config.output_config import OutputConfig
 from eviz.lib.config.system_config import SystemConfig
 from eviz.lib.config.history_config import HistoryConfig
-import eviz.lib.utils as u
 from eviz.lib.data.pipeline.integrator import DataIntegrator
 from eviz.lib.data.pipeline.pipeline import DataPipeline
 
 
+@dataclass
 class ConfigManager:
-    """Centralized manager for all configuration objects."""
-    def __init__(self, input_config: InputConfig, output_config: OutputConfig,
-                 system_config: SystemConfig, history_config: HistoryConfig, config: Config):
+    """
+    Enhanced configuration manager for the eViz application.
+    
+    This class extends the base Config class to provide additional functionality specific
+    to the eViz application's needs. It serves as the primary interface between the application
+    and its configuration system, offering simplified access to configuration parameters and
+    adding application-specific features.
+    
+    The ConfigManager integrates with command-line arguments, manages comparison modes between
+    data sources, provides dimension name mapping, and offers runtime configuration updates.
+    It also maintains references to key application components like the data processing pipeline.
+    
+    Attributes:
+        All attributes from Config class, plus:
+        args: Command-line arguments passed to the application
+        compare: Flag indicating if comparison mode is active
+        compare_diff: Flag indicating if difference comparison mode is active
+        compare_exp_ids: List of experiment IDs for comparison
+        a_list: List of indices for the first set of comparison items
+        b_list: List of indices for the second set of comparison items
+        findex: Current file index being processed
+        pindex: Current plot index being processed
+        axindex: Current axis index being processed
+        level: Current vertical level being processed
+        time_level: Current time level being processed
+        real_time: Human-readable representation of the current time
+        pipeline: Reference to the data processing pipeline
+        
+    Methods:
+        initialize: Complete the initialization process after construction
+        get_model_dim_name: Map standard dimension names to model-specific names
+        get_dim_names: Get dimension names for a specific plot type
+        get_levels: Get level information for a specific field and plot type
+        
+    Note:
+        This class is designed to be instantiated once and used throughout the application
+        as the single source of configuration information.
+    """
+    # Required fields first
+    input_config: InputConfig
+    output_config: OutputConfig
+    system_config: SystemConfig
+    history_config: HistoryConfig
+    config: Config
+
+    # Fields with default values
+    a_list: List[int] = field(default_factory=list)
+    b_list: List[int] = field(default_factory=list)
+    _findex: int = 0  # Use underscore to avoid name conflicts
+    _ds_index: int = 0  # Use underscore to avoid name conflicts
+
+    # Fields not included in __init__
+    _units: Optional[object] = field(default=None, init=False)
+    _integrator: Optional[DataIntegrator] = field(default=None, init=False)
+    _pipeline: Optional[DataPipeline] = field(default=None, init=False)
+        
+    def __post_init__(self):
         self.logger.info("Start init")
-        self.input_config = input_config
-        self.output_config = output_config
-        self.system_config = system_config
-        self.history_config = history_config
-        self.config = config
-        self._units = None  # Placeholder for Units instance
-        self._integrator = None  # Placeholder for DataIntegrator instance
-        self._pipeline = None  # Placeholder for DataPipeline instance
-        self.a_list = []
-        self.b_list = []
-        self.findex = 0
-        self.ds_index = 0
         self.setup_comparison()
 
+    # Delegate properties to Config
+    @property
+    def app_data(self):
+        return self.config.app_data
+
+    @property
+    def spec_data(self):
+        return self.config.spec_data
+    
+    @property
+    def source_names(self):
+        return self.config.source_names
+
+    @property
+    def ds_index(self):
+        # Return the local value, not delegating to config
+        return self._ds_index
+
+    @ds_index.setter
+    def ds_index(self, value):
+        self._ds_index = value
+        # Optionally also update config if needed
+        if hasattr(self.config, '_ds_index'):
+            self.config._ds_index = value
+
+    @property
+    def findex(self):
+        return self._findex
+
+    @findex.setter
+    def findex(self, value):
+        self._findex = value
+        # Optionally also update config if needed
+        if hasattr(self.config, '_findex'):
+            self.config._findex = value    
     @property
     def logger(self):
         """Return the logger for this class."""

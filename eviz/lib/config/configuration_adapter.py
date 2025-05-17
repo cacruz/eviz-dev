@@ -8,7 +8,29 @@ from eviz.lib.data.sources import DataSource
 
 
 class ConfigurationAdapter:
-    """Adapter between YAML configuration and data source architecture."""
+    """
+    Adapter between YAML configuration and data source architecture.
+    
+    This class serves as a mediator between the configuration system and the data processing
+    pipeline. It interprets configuration settings, loads and processes data according to
+    those settings, and provides access to the resulting data sources and datasets.
+    
+    The adapter handles:
+    - Loading data from file paths specified in the configuration
+    - Associating metadata with data sources (e.g., experiment names/IDs)
+    - Managing the data pipeline for processing and transforming data
+    - Integrating multiple datasets when specified in the configuration
+    - Creating composite fields by combining variables with operations
+    - Providing access to individual data sources and the integrated dataset
+    
+    Attributes:
+        config_manager: The configuration manager containing app_data, input_config, etc.
+        data_sources: Dictionary mapping file paths to their corresponding DataSource objects
+        
+    Note:
+        The adapter initializes a DataPipeline instance and attaches it to the config_manager
+        as _pipeline. This pipeline is used for all data processing operations.
+    """
     def __init__(self, config_manager):
         """Initialize a new ConfigurationAdapter.
         

@@ -11,7 +11,6 @@ from matplotlib.ticker import MultipleLocator
 import numpy as np
 
 import eviz.lib.utils as u
-from eviz.lib.config.config_manager import ConfigManager
 from eviz.lib.autoviz.utils import get_subplot_geometry
 import eviz.lib.autoviz.utils as pu
 from cartopy.mpl.gridliner import LONGITUDE_FORMATTER, LATITUDE_FORMATTER
