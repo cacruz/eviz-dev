@@ -1,6 +1,49 @@
 """
-Base DataSource class that defines the interface for all data sources.
+Base Data Source Module
+
+This module defines the foundational DataSource abstract base class that serves as the
+interface for all data sources in the eViz application. It establishes a common contract
+that all concrete data source implementations must fulfill, ensuring consistent behavior
+across different data formats and structures.
+
+The DataSource class provides a unified representation of data as xarray Datasets,
+regardless of the original format (NetCDF, GRIB, HDF5, CSV, etc.). This abstraction
+allows the rest of the application to work with data in a consistent manner while
+hiding the complexities of specific file formats and data structures.
+
+Key components:
+- DataSource: Abstract base class defining the interface for all data sources
+- Common data access methods: get_field, get_metadata, get_dimensions, get_variables
+- Validation functionality: validate_data method for ensuring data integrity
+- Dimension mapping utilities: Methods for mapping between standard and model-specific dimensions
+
+The module supports various data operations including:
+- Loading data from files
+- Accessing specific fields and metadata
+- Validating data integrity
+- Mapping between different dimension naming conventions
+- Delegating attribute and item access to the underlying dataset
+
+Typical usage:
+    # This is an abstract base class, so concrete implementations are used:
+    from eviz.lib.data.sources.netcdf import NetCDFDataSource
+    
+    # Create a data source instance
+    data_source = NetCDFDataSource(model_name='gridded', config_manager=config)
+    
+    # Load data from a file
+    dataset = data_source.load_data('path/to/file.nc')
+    
+    # Access a specific field
+    temperature = data_source.get_field('temperature')
+
+Dependencies:
+    - xarray: For Dataset and DataArray representations
+    - abc: For abstract base class functionality
+    - dataclasses: For dataclass decorator and field
+    - logging: For logging functionality
 """
+
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from typing import Any, Dict, Optional, List
@@ -10,10 +53,54 @@ import xarray as xr
 
 @dataclass
 class DataSource(ABC):
-    """Abstract base class that defines the interface for all data sources.
-
-    All data sources are represented as Xarray datasets internally.
-    Subclasses must implement the `load_data` method to populate the dataset.
+    """
+    Abstract base class that defines the interface for all data sources.
+    
+    The DataSource class establishes a common contract for all data sources in the eViz
+    application, providing a unified representation of data as xarray Datasets regardless
+    of the original format. This abstraction allows the application to work with different
+    data formats through a consistent interface.
+    
+    All concrete data source implementations must inherit from this class and implement
+    the required abstract methods, particularly load_data. The class provides common
+    functionality for data access, validation, and dimension mapping that is shared
+    across all data sources.
+    
+    The class follows a composition pattern, encapsulating an xarray Dataset and providing
+    methods to access and manipulate it. It also implements delegation patterns to allow
+    direct access to the underlying dataset's attributes and items.
+    
+    Attributes:
+        model_name (str, optional): Name of the model or data source type.
+        config_manager (object, optional): Configuration manager providing access to settings.
+        dataset (xarray.Dataset): The loaded dataset (initialized to None).
+        metadata (dict): Dictionary containing metadata about the dataset.
+    
+    Abstract Methods:
+        load_data: Load data from a specified file path into an xarray Dataset.
+    
+    Methods:
+        validate_data: Validate the loaded data for integrity and completeness.
+        get_field: Get a specific field (variable) from the dataset.
+        get_metadata: Get metadata about the dataset.
+        get_dimensions: Get the dimensions of the dataset.
+        get_variables: Get the variables in the dataset.
+        close: Close the dataset and free resources.
+        _get_model_dim_name: Get model-specific dimension name for a standard dimension.
+        _get_model_dim_name2: Alternative implementation for dimension name mapping.
+        __getattr__: Delegate attribute access to the underlying dataset.
+        __getitem__: Delegate item access to the underlying dataset.
+    
+    Example:
+        # This is an abstract base class, concrete implementations are used:
+        data_source = NetCDFDataSource(model_name='gridded', config_manager=config)
+        dataset = data_source.load_data('path/to/file.nc')
+        temperature = data_source.get_field('temperature')
+        dims = data_source.get_dimensions()
+        
+    Note:
+        This class is not meant to be instantiated directly. Instead, use one of the
+        concrete implementations like NetCDFDataSource, GRIBDataSource, etc.
     """
     model_name: Optional[str] = None
     config_manager: Optional[
@@ -28,13 +115,27 @@ class DataSource(ABC):
 
     @abstractmethod
     def load_data(self, file_path: str) -> xr.Dataset:
-        """Load data from the specified file path into an Xarray dataset.
+        """
+        Load data from the specified file path into an xarray dataset.
         
         Args:
-            file_path: Path to the data file
+            file_path (str): Path to the data file.
             
         Returns:
-            An Xarray dataset containing the loaded data
+            xarray.Dataset: An xarray dataset containing the loaded data.
+            
+        This abstract method must be implemented by all concrete data source classes.
+        The implementation should handle opening the specified file, loading its contents
+        into an xarray Dataset, and performing any necessary preprocessing or validation.
+        
+        The method should handle format-specific details while ensuring the returned
+        dataset conforms to the expected structure for the eViz application.
+        
+        Raises:
+            NotImplementedError: If the subclass does not implement this method.
+            FileNotFoundError: If the specified file does not exist.
+            ValueError: If the file format is invalid or unsupported.
+            IOError: If there are issues reading the file.
         """
         raise NotImplementedError("Subclasses must implement the load_data method.")
     
@@ -58,6 +159,9 @@ class DataSource(ABC):
             
         Returns:
             DataArray containing the field data, or None if the field doesn't exist
+
+        Subclasses may override this method to implement more specific validation
+        logic appropriate for their data format or structure.
         """
         if self.dataset is None:
             self.logger.error("No data has been loaded")
@@ -116,6 +220,17 @@ class DataSource(ABC):
             
         Raises:
             AttributeError: If the attribute doesn't exist in the dataset
+
+        This method allows users to call xarray.Dataset methods directly on DataSource
+        objects without having to access the .dataset attribute explicitly, providing
+        a more convenient API.
+        
+        Example:
+            # Instead of:
+            result = data_source.dataset.mean()
+            
+            # You can use:
+            result = data_source.mean()
         """
         if self.dataset is None:
             raise AttributeError(f"'{self.__class__.__name__}' has no dataset loaded")
@@ -140,51 +255,46 @@ class DataSource(ABC):
         Raises:
             KeyError: If the key doesn't exist in the dataset
             TypeError: If no dataset is loaded
+            
+        This method allows users to access variables using square brackets directly
+        on DataSource objects without having to access the .dataset attribute explicitly,
+        providing a more convenient API.
+        
+        Example:
+            # Instead of:
+            temperature = data_source.dataset['temperature']
+            
+            # You can use:
+            temperature = data_source['temperature']
         """
         if self.dataset is None:
             raise TypeError(f"'{self.__class__.__name__}' has no dataset loaded")
         
         return self.dataset[key]
         
-    def _get_model_dim_name2(self, dim_name, dims):
-        # Get the list of valid values from the meta_coords dictionary
-        meta_coords = self.config_manager.meta_coords
-        if isinstance(meta_coords[dim_name][self.model_name], list):
-            for valid_value in meta_coords[dim_name][self.model_name]:
-                for dim in dims:
-                    if dim_name == 'xc' and dim in valid_value:
-                        return dim
-                    if dim_name == 'yc' and dim in valid_value:
-                        return dim
-                    if dim_name == 'zc' and dim in valid_value:
-                        return dim
-                    if dim_name == 'tc' and dim in valid_value:
-                        return dim
-                return None
-        else:
-            valid_values = meta_coords[dim_name][self.model_name].split(',')
-            # Check if any entry in the dimensions list is in the valid values list
-            for dim in dims:
-                if dim_name == 'xc' and dim in valid_values:
-                    return dim
-                if dim_name == 'yc' and dim in valid_values:
-                    return dim
-                if dim_name == 'zc' and dim in valid_values:
-                    return dim
-                if dim_name == 'tc' and dim in valid_values:
-                    return dim
-            return None
         
     def _get_model_dim_name(self, gridded_dim_name, available_dims=None):
         """
         Get the model-specific dimension name for a gridded dimension.
         
         Args:
-            gridded_dim_name: Gridded dimension name (e.g., 'xc', 'yc', 'zc', 'tc')
-            available_dims: List of available dimensions in the dataset
+            gridded_dim_name (str): Gridded dimension name (e.g., 'xc', 'yc', 'zc', 'tc')
+            available_dims (list, optional): List of available dimensions in the dataset
             
         Returns:
-            str: The model-specific dimension name if found, otherwise None
+            str or None: The model-specific dimension name if found, otherwise None
+            
+        This method maps standard dimension names ('xc', 'yc', 'zc', 'tc') to their
+        model-specific equivalents using the configuration's meta_coords mapping.
+        It handles various formats of dimension specifications including strings,
+        lists, and dictionaries.
+        
+        The method supports fallback to default mappings when model-specific mappings
+        are not available, and can filter the results based on available dimensions
+        in the dataset.
+        
+        This is a key utility for working with datasets from different models that
+        may use different naming conventions for the same conceptual dimensions.
         """
         if not hasattr(self, 'config_manager') or not self.config_manager:
             self.logger.warning("No config_manager available to get dimension mappings")

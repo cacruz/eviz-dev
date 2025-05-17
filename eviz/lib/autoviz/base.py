@@ -1,3 +1,41 @@
+"""
+Autoviz Base Module
+
+This module provides the core functionality for the eViz automatic visualization system.
+It defines the Autoviz class, which serves as the main entry point for generating
+visualizations from Earth System Model (ESM) data and observational datasets.
+
+The module implements a factory-based architecture where different data sources
+(e.g., gridded data, WRF, LIS, satellite observations) are handled by specialized
+factory classes that create appropriate model instances. This design allows for
+extensibility while maintaining a consistent interface for visualization generation.
+
+Key components:
+- get_config_path_from_env: Retrieves configuration path from environment variables
+- create_config: Creates a ConfigManager instance from command-line arguments
+- get_factory_from_user_input: Maps user-specified source names to appropriate factory classes
+- Autoviz: Main class that orchestrates the visualization process
+
+The module supports various data sources including:
+- Gridded NetCDF data (GEOS, CCM, CF)
+- Weather Research and Forecasting (WRF) model output
+- Land Information System (LIS) data
+- Observational data (AirNow, MOPITT, OMI, Landsat, FluxNet)
+
+Typical usage:
+    from eviz.lib.autoviz.base import Autoviz
+    
+    # Create an Autoviz instance with source names
+    viz = Autoviz(['gridded'], args=args)
+    
+    # Generate visualizations
+    viz.run()
+
+Dependencies:
+    - eviz.lib.config: Configuration management
+    - eviz.models: Data model implementations
+    - eviz.lib.const: Constants and default values
+"""
 import os
 import logging
 import time
@@ -19,11 +57,46 @@ import eviz.lib.const as constants
 
 
 def get_config_path_from_env():
+    """
+    Retrieve the configuration path from environment variables.
+    
+    Returns:
+        str or None: The path specified in the EVIZ_CONFIG_PATH environment variable,
+                    or None if the variable is not set.
+    
+    This function checks for the EVIZ_CONFIG_PATH environment variable, which should
+    point to the directory containing source-specific configuration files.
+    """
     env_var_name = "EVIZ_CONFIG_PATH"
     return os.environ.get(env_var_name)
 
 
 def create_config(args):
+    """
+    Create a ConfigManager instance from command-line arguments.
+    
+    Args:
+        args (argparse.Namespace): Command-line arguments containing configuration options.
+            Expected attributes include:
+            - sources: List of source names (e.g., 'gridded', 'wrf')
+            - config: Optional path to configuration directory
+            - configfile: Optional path to specific configuration file
+    
+    Returns:
+        ConfigManager: A fully initialized configuration manager with input, output,
+                      system, and history configurations.
+    
+    This function handles the configuration initialization process, including:
+    1. Parsing source names from command-line arguments
+    2. Locating configuration files (from specified paths or environment variables)
+    3. Creating a Config instance with appropriate source-specific configurations
+    4. Initializing sub-configurations (input, output, system, history)
+    5. Creating and returning a ConfigManager that encapsulates all configuration data
+    
+    If no configuration directory is specified, it attempts to use the EVIZ_CONFIG_PATH
+    environment variable. If that is not set, it falls back to the default path defined
+    in constants.config_path.
+    """
     source_names = args.sources[0].split(',')
     config_dir = args.config
     config_file = args.configfile
@@ -50,11 +123,36 @@ def create_config(args):
 
 
 def get_factory_from_user_input(inputs):
-    """ Return subclass associated with user input sources
-
-        Note:
-        An entry here associates the specified data source with a unique named configuration
-        existing within EVIZ_CONFIG_PATH.
+    """
+    Return factory classes associated with user input sources.
+    
+    Args:
+        inputs (list): List of source names (e.g., 'gridded', 'wrf', 'omi')
+    
+    Returns:
+        list: List of factory instances corresponding to the specified source names.
+    
+    This function maps source names to their corresponding factory classes, which are
+    responsible for creating appropriate model instances for data processing and visualization.
+    
+    Each source name is associated with a unique named configuration existing within
+    the EVIZ_CONFIG_PATH directory structure.
+    
+    Supported sources include:
+    - 'test': GriddedFactory (for unit tests)
+    - 'gridded': GriddedFactory (for generic NetCDF data)
+    - 'geos': GriddedFactory (for MERRA data)
+    - 'ccm', 'cf': GriddedFactory (for special streams)
+    - 'lis': LisFactory (for Land Information System data)
+    - 'wrf': WrfFactory (for Weather Research and Forecasting model data)
+    - 'airnow': AirnowFactory (for AirNow CSV data)
+    - 'fluxnet': FluxnetFactory (for FluxNet CSV data)
+    - 'omi': OmiFactory (for OMI HDF5 data)
+    - 'mopitt': MopittFactory (for MOPITT HDF5 data)
+    - 'landsat': LandsatFactory (for Landsat HDF4 data)
+    
+    Note:
+        Additional sources like MODIS, GRIB, CEDS, and EDGAR are planned for future implementation.
     """
     mappings = {
         "test": GriddedFactory(),      # for unit tests
@@ -78,13 +176,38 @@ def get_factory_from_user_input(inputs):
 
 @dataclass
 class Autoviz:
-    """ This is the Autoviz class definition. It takes in a list of (source) names and
-        creates data-reading-classes (factories) associated with each of those names.
-
-    Parameters:
-        source_names (list): source models to process
-        factory_models (list): source models to process
-        args (Namespace): source models to process
+    """
+    Main class for automatic visualization of Earth System Model and observational data.
+    
+    The Autoviz class orchestrates the entire visualization process, from configuration
+    loading to data processing and plot generation. It serves as the primary entry point
+    for the eViz visualization system.
+    
+    This class takes source names as input, creates appropriate factory instances for those
+    sources, initializes configuration, and manages the visualization workflow. It supports
+    various data sources including gridded data, regional models, and observational datasets.
+    
+    Attributes:
+        source_names (list): List of source model names to process (e.g., 'gridded', 'wrf')
+        args (argparse.Namespace, optional): Command-line arguments for configuration.
+            If not provided, default arguments are created.
+        model_info (dict): Dictionary storing information about processed models.
+        model_name (str, optional): Name of the current model being processed.
+        _config_manager (ConfigManager): Configuration manager instance.
+        factory_sources (list): List of factory instances for the specified sources.
+    
+    Methods:
+        run(): Execute the visualization process.
+        set_data(input_files): Assign model input files as specified in model config file.
+        set_output(output_dir): Assign model output directory as specified in model config file.
+        _check_input_files(): Verify existence of input files and provide warnings for missing files.
+    
+    Example:
+        # Create an Autoviz instance with gridded data source
+        viz = Autoviz(['gridded'])
+        
+        # Run the visualization process
+        viz.run()
     """
     source_names: list
     args: Namespace = None
@@ -97,6 +220,17 @@ class Autoviz:
         return logging.getLogger(__name__)
 
     def __post_init__(self):
+        """
+        Initialize the Autoviz instance after dataclass initialization.
+        
+        This method:
+        1. Sets up default arguments if none are provided
+        2. Creates factory instances for the specified sources
+        3. Initializes the configuration manager
+        
+        Raises:
+            ValueError: If no factories are found for the specified sources.
+        """
         self.logger.info("Start init")
         # Add this workaround to simplify working within a Jupyter notebook, that is, to avoid
         # having to pass a Namespace() object, we create args with the appropriate defaults
@@ -119,8 +253,30 @@ class Autoviz:
         # TODO: Associate each model with its corresponding data directory
         #  Note that data can be in local disk or even in a remote locations
         # TODO: enable processing of S3 buckets
+
     def run(self):
-        """ Create plots """
+        """
+        Execute the visualization process.
+        
+        This method:
+        1. Records the start time for performance tracking
+        2. Checks for existence of input files
+        3. Creates a ConfigurationAdapter to process the configuration
+        4. Enables data integration if specified
+        5. Processes the configuration to load and prepare data
+        6. Creates and executes appropriate visualization based on configuration:
+           - Composite field visualization if composite option is specified
+           - Normal plotting through the appropriate factory models
+        
+        The method handles various plotting modes including:
+        - Simple plots (without detailed specifications)
+        - Single plots (with detailed specifications)
+        - Side-by-side comparison plots
+        - Difference comparison plots
+        
+        It also provides informative messages about missing data sources and
+        output file locations.
+        """
         _start_time = time.time()
         self._config_manager.input_config.start_time = _start_time
         
@@ -181,16 +337,30 @@ class Autoviz:
             self.config_adapter.close()
  
     def set_data(self, input_files):
-        """ Assign model input files as specified in model config file
-
-        Parameters:
-            input_files (list): Names of input files
+        """
+        Assign model input files as specified in model config file.
+        
+        Args:
+            input_files (list): Names of input files to be processed.
+            
+        This method updates the input configuration with the specified input files,
+        allowing for dynamic modification of data sources.
         """
         config = self._config_manager.input_config
         config.set_input_files(input_files)
 
     def _check_input_files(self):
-        """Check if input files exist and provide warnings for missing files."""
+        """
+        Check if input files exist and provide warnings for missing files.
+        
+        This method verifies the existence of all input files specified in the
+        configuration and logs warnings for any files that cannot be found.
+        It provides detailed information about missing files to help users
+        troubleshoot configuration issues.
+        
+        The application will attempt to continue execution even if some files
+        are missing, but plotting operations may fail if required data is unavailable.
+        """
         if not hasattr(self._config_manager, 'app_data') or not hasattr(self._config_manager.app_data, 'inputs'):
             self.logger.warning("No input files specified in configuration.")
             return
@@ -211,10 +381,14 @@ class Autoviz:
             print("The application will attempt to continue, but plotting may fail.")
             
     def set_output(self, output_dir):
-        """ Assign model output directory as specified in model config file
-
-        Parameters:
-            output_dir (str): Name output directory
+        """
+        Assign model output directory as specified in model config file.
+        
+        Args:
+            output_dir (str): Path to the directory where output files should be saved.
+            
+        This method updates the output configuration with the specified output directory,
+        allowing for dynamic modification of the visualization output location.
         """
         config = self._config_manager.output_config
         config.set_output_dir(output_dir)

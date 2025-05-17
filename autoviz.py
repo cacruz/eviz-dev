@@ -8,21 +8,36 @@ from eviz.lib.autoviz.base import Autoviz
 
 
 def parse_command_line() -> argparse.Namespace:
-    """Parse command line arguments.
-
+    """
+    Parse command line arguments for the autoviz application.
+    
+    Returns:
+        argparse.Namespace: Object containing parsed command-line arguments.
+    
+    This function defines and processes the command-line interface for autoviz,
+    supporting various options for configuring the visualization process:
+    
+    Arguments:
+        -s, --sources: Sources of data input (e.g., 'gridded', 'wrf')
+        --compare, -m: Enable comparison mode for specified experiment names
+        --file: Path to specific file(s) to be processed
+        --vars: List of variables to be processed from the specified file(s)
+        --configfile, -f: Path to specific configuration file
+        --config, -c: Directory containing YAML configuration files
+        --verbose, -v: Set logging verbosity (0=ERROR, 1=INFO, 2=DEBUG)
+        --log, -l: Enable logging to file (Eviz.LOG)
+        --integrate: Enable data integration from multiple files
+        --composite: Create composite fields from multiple variables
+    
     Example:
-
         >>> python autoviz.py -s gridded
         >>> python autoviz.py -s gridded -c /path/to/config
         >>> python autoviz.py -s gridded -f /path/to/config/my_config.yaml
         >>> python autoviz.py -h
-
+    
     Note:
-        The first case requires that the EVIZ_CONFIG_PATH environment variable be defined.
-        Setting EVIZ_CONFIG_PATH is simply another way to specify the location of the config files.
-
-    Returns:
-        parser: populated namespace containing parsed arguments.
+        If neither --file nor --sources is provided, the function will raise an error.
+        When using the first example, the EVIZ_CONFIG_PATH environment variable must be defined.
     """
     parser = argparse.ArgumentParser(description='Arguments being passed')
 
@@ -56,7 +71,35 @@ def parse_command_line() -> argparse.Namespace:
 
 
 def main():
-    """ Main driver for the autoviz plotting tool """
+    """
+    Main driver for the autoviz plotting tool.
+    
+    This function:
+    1. Parses command-line arguments
+    2. Handles metadata extraction if --file option is used
+    3. Sets up logging with appropriate verbosity
+    4. Initializes the Autoviz instance with specified sources
+    5. Executes the visualization process
+    6. Reports the total execution time
+    
+    The function supports two main execution paths:
+    - Metadata extraction: When --file is specified, it invokes metadump.py to extract
+      metadata from the file, optionally focusing on specific variables if --vars is provided
+    - Visualization generation: Otherwise, it creates an Autoviz instance with the
+      specified sources and runs the visualization process
+    
+    Execution time is measured and reported at the end of the process.
+    
+    Example:
+        # Extract metadata from a file
+        python autoviz.py --file data.nc
+        
+        # Extract metadata for specific variables
+        python autoviz.py --file data.nc --vars temperature humidity
+        
+        # Generate visualizations for gridded data
+        python autoviz.py -s gridded
+    """
     start_time = time.time()
     args = parse_command_line()
 

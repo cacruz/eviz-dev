@@ -1,3 +1,44 @@
+"""
+Data Pipeline Module
+
+This module implements a data processing pipeline for the eViz application, providing
+a structured approach to loading, transforming, and integrating data from various sources.
+The pipeline architecture follows a modular design pattern, allowing for flexible data
+processing workflows with well-defined stages.
+
+The DataPipeline class serves as the central coordinator for data processing operations,
+managing the flow of data through reader, processor, transformer, and integrator components.
+This design enables separation of concerns while maintaining a cohesive data processing system.
+
+Key components:
+- DataPipeline: Main pipeline class that orchestrates data processing
+- Reader components: Handle loading data from various file formats
+- Processor components: Perform operations on loaded data
+- Transformer components: Convert data between different representations
+- Integrator components: Combine data from multiple sources
+
+The pipeline supports various data sources including NetCDF, GRIB, HDF5, and CSV files,
+and provides mechanisms for data transformation, integration, and composite field creation.
+
+Typical usage:
+    from eviz.lib.data.pipeline.pipeline import DataPipeline
+    
+    # Create a pipeline with configuration
+    pipeline = DataPipeline(config_manager)
+    
+    # Process a file
+    data_source = pipeline.process_file(file_path)
+    
+    # Access processed data
+    dataset = data_source.dataset
+
+Dependencies:
+    - eviz.lib.data.sources: Data source definitions
+    - eviz.lib.data.pipeline.reader: Data reading components
+    - eviz.lib.data.pipeline.processor: Data processing components
+    - eviz.lib.data.pipeline.transformer: Data transformation components
+    - eviz.lib.data.pipeline.integrator: Data integration components
+"""
 import logging
 from typing import Dict, List, Optional, Any
 import xarray as xr
@@ -9,10 +50,56 @@ from eviz.lib.data.pipeline.integrator import DataIntegrator
 
 
 class DataPipeline:
-    """Data processing pipeline.
+    """
+    Orchestrates the data processing workflow for the eViz application.
     
-    This class provides a complete pipeline for reading, processing, transforming,
-    and integrating data from various sources.
+    The DataPipeline class implements a comprehensive data processing system that handles
+    loading, processing, transforming, and integrating data from various sources. It serves
+    as the central coordinator for all data operations, managing the flow of data through
+    different processing stages while maintaining a registry of processed data sources.
+    
+    The pipeline follows a modular architecture with four main components:
+    1. Reader: Loads data from files in various formats (NetCDF, GRIB, HDF5, CSV)
+    2. Processor: Performs operations on loaded data (filtering, aggregation, etc.)
+    3. Transformer: Converts data between different representations
+    4. Integrator: Combines data from multiple sources
+    
+    This design allows for flexible data processing workflows while maintaining separation
+    of concerns between different processing stages.
+    
+    Attributes:
+        config_manager (ConfigManager): Configuration manager containing application settings
+        reader (DataReader): Component for reading data from files
+        processor (DataProcessor): Component for processing data
+        transformer (DataTransformer): Component for transforming data
+        integrator (DataIntegrator): Component for integrating data from multiple sources
+        data_sources (dict): Dictionary mapping file paths to their corresponding DataSource objects
+        logger (logging.Logger): Logger instance for this class
+    
+    Methods:
+        process_file: Process a single file and return the resulting data source
+        process_files: Process multiple files and return a list of data sources
+        get_data_source: Retrieve a data source by file path
+        get_all_data_sources: Get all registered data sources
+        create_composite_field: Create a composite field from multiple variables
+        integrate_data: Integrate data from multiple sources
+    
+    Example:
+        # Create a pipeline with configuration
+        pipeline = DataPipeline(config_manager)
+        
+        # Process a file
+        data_source = pipeline.process_file('/path/to/data.nc')
+        
+        # Access the processed dataset
+        dataset = data_source.dataset
+        
+        # Create a composite field
+        composite = pipeline.create_composite_field(
+            'composite_name',
+            [('source1', 'var1'), ('source2', 'var2')],
+            'source1 + source2'
+        )
     """
     def __init__(self, config_manager=None):
         """Initialize a new DataPipeline.
@@ -169,3 +256,73 @@ class DataPipeline:
         self.reader.close()
         self.data_sources.clear()
         self.dataset = None
+
+    def create_composite_field(self, name, source_var_pairs, expression):
+        """
+        Create a composite field from multiple variables using a mathematical expression.
+        
+        Args:
+            name (str): Name for the new composite field.
+            source_var_pairs (list): List of (source_path, variable_name) tuples
+                                   identifying the variables to be combined.
+            expression (str): Mathematical expression defining how to combine the variables.
+                            Variable references should match the source_var_pairs.
+            
+        Returns:
+            xarray.DataArray: The created composite field as a DataArray.
+            
+        This method creates a new field by combining multiple variables according to
+        a mathematical expression. It supports operations like addition, subtraction,
+        multiplication, and division between fields, as well as more complex expressions.
+        
+        The method handles:
+        1. Retrieving the specified variables from their respective data sources
+        2. Evaluating the mathematical expression using the variables
+        3. Creating a new DataArray with appropriate metadata
+        
+        Example:
+            # Create a composite temperature anomaly field
+            composite = pipeline.create_composite_field(
+                'temp_anomaly',
+                [('model.nc', 'temperature'), ('obs.nc', 'temperature')],
+                'model.nc - obs.nc'
+            )
+        
+        Note:
+            The variables being combined should have compatible dimensions and coordinates.
+            The method will attempt to align the data, but significant differences in
+            structure may lead to errors or unexpected results.
+        """
+        pass
+        
+    def integrate_data(self, integration_config):
+        """
+        Integrate data from multiple sources according to configuration.
+        
+        Args:
+            integration_config (dict): Configuration specifying how to integrate data.
+                Expected keys include:
+                - 'sources': List of source file paths to integrate
+                - 'method': Integration method to use (e.g., 'merge', 'combine')
+                - 'dim': Dimension along which to combine data (for 'combine' method)
+                - 'options': Additional options for the integration method
+            
+        Returns:
+            DataSource: A new data source containing the integrated dataset.
+            
+        This method delegates to the integrator component to combine data from
+        multiple sources into a single integrated dataset. It supports various
+        integration methods including merging datasets with different variables
+        and combining datasets along a specified dimension.
+        
+        The resulting integrated data source is registered with the pipeline
+        and can be accessed like any other data source.
+        
+        Example integration_config:
+            {
+                'sources': ['file1.nc', 'file2.nc'],
+                'method': 'merge',
+                'options': {'compat': 'override'}
+            }
+        """
+        pass    
