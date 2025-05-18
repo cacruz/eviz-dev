@@ -162,59 +162,84 @@ def create_gif(config):
         os.remove(my_file)
 
 
-def print_map(config, plot_type, findex, fig, level=None):
-    map_params = config.map_params
-    exp_id = map_params[config.pindex]['exp_id']
-    field_name = map_params[config.pindex]['field']
+def print_map(
+    config,
+    plot_type: str,
+    findex: int,
+    fig,
+    level: int = None
+) -> None:
+    """
+    Save or display a plot, handling output directory, file naming, and optional archiving.
 
-    # Get output directory from Config...
-    # Always get the output_dir value, even for compare mode
-    output_dir = u.get_nested_key_value(map_params[config.pindex], ['outputs', 'output_dir'])
-    
-    # ...or from Eviz default location
-    if not output_dir:
-        output_dir = constants.output_path
-    if not os.path.exists(output_dir):
-        os.makedirs(output_dir)
+    Args:
+        config: Configuration object with plotting and output options.
+        plot_type (str): Type of plot (e.g., 'xy', 'yz', etc.).
+        findex (int): File index for naming.
+        fig: Matplotlib figure object to save or show.
+        level (int, optional): Vertical level for the plot, if applicable.
+    """
+    def resolve_output_dir(config) -> str:
+        """Determine and create the output directory if needed."""
+        map_params = config.map_params
+        output_dir = u.get_nested_key_value(map_params[config.pindex], ['outputs', 'output_dir'])
+        if not output_dir:
+            output_dir = constants.output_path
+        if not os.path.exists(output_dir):
+            os.makedirs(output_dir)
+            logger.debug(f"Created output directory: {output_dir}")
+        return output_dir
 
-    levstr = ''
-    if level:
-        levstr = "_" + str(level)
+    def build_filename(config, plot_type: str, findex: int, level: int = None) -> str:
+        """Construct the output filename based on config and plot type."""
+        map_params = config.map_params
+        field_name = map_params[config.pindex]['field']
+        exp_id = map_params[config.pindex].get('exp_id', None)
 
-    time_level = ''
-    if hasattr(config, "time_level"):
-        time_level = config.time_level
-    if not config.compare:
-        if exp_id:
-            exp_id_suf = "_" + str(exp_id) + "_" + str(findex) + "_" + str(time_level) + "."
-        else:
-            exp_id_suf = "_" + str(findex) + "_" + str(time_level) + "."
-    else:
+        levstr = f"_{level}" if level is not None else ""
+        time_level = getattr(config, "time_level", "")
         exp_id_suf = "."
 
-    if 'xy' in plot_type:
-        fname = field_name + levstr + exp_id_suf
-    elif 'yz' in plot_type:
-        fname = field_name + "_yz" + exp_id_suf
-    else:
-        fname = field_name + "_" + plot_type + exp_id_suf
+        if not config.compare:
+            if exp_id:
+                exp_id_suf = f"_{exp_id}_{findex}_{time_level}."
+            else:
+                exp_id_suf = f"_{findex}_{time_level}."
+        # else: exp_id_suf remains "."
+
+        if 'xy' in plot_type:
+            fname = f"{field_name}{levstr}{exp_id_suf}"
+        elif 'yz' in plot_type:
+            fname = f"{field_name}_yz{exp_id_suf}"
+        else:
+            fname = f"{field_name}_{plot_type}{exp_id_suf}"
+
+        return fname
+
+    output_dir = resolve_output_dir(config)
+    fname = build_filename(config, plot_type, findex, level)
+    map_filename = f"{fname}{config.print_format}"
+    filename = os.path.join(output_dir, map_filename)
+
+    logger.info(f"Output file will be: {filename}")
 
     if config.print_to_file:
-        map_filename = fname + config.print_format
-        filename = os.path.join(output_dir, map_filename)
         fig.tight_layout()
-        # fig.fig.tight_layout()
-
-        if config.ax_opts['extent']:
+        # Save with or without bbox_inches depending on extent
+        if config.ax_opts.get('extent'):
             fig.savefig(filename, dpi=300)
-            # fig.fig.savefig(filename, dpi=300)
         else:
             fig.savefig(filename, bbox_inches='tight', dpi=300)
-            # fig.fig.savefig(filename, bbox_inches='tight', dpi=300)
 
-        if config.archive_web_results:
-            dump_json_file((fname.split('.'))[0], config, plot_type, findex,
-                           map_filename, fig, output_dir)
+        logger.debug(f"Figure saved to {filename}")
+
+        if getattr(config, "archive_web_results", False):
+            # Remove file extension from fname for JSON
+            json_fname = fname.split('.')[0]
+            dump_json_file(
+                json_fname, config, plot_type, findex, map_filename, fig, output_dir
+            )
+            logger.info(f"Archived web results for {json_fname}")
     else:
         plt.tight_layout()
         plt.show()
