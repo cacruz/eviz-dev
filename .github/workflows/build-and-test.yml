@@ -12,7 +12,7 @@ jobs:
     container: continuumio/miniconda3:latest
 
     steps:
-    - uses: actions/checkout@v4  # Updated from v3 to v4
+    - uses: actions/checkout@v4
 
     - name: Cache conda environment
       uses: actions/cache@v4
@@ -27,7 +27,9 @@ jobs:
         conda install -n base conda-libmamba-solver -q
         conda config --set solver libmamba
         conda install -n base conda-build
-        conda env create -f environment.yaml
+        if ! conda env list | grep -q "viz"; then
+          conda env create -f environment.yaml
+        fi
 
     - name: Run tests
       run: |
@@ -56,7 +58,9 @@ jobs:
           conda install -n base conda-libmamba-solver -q
           conda config --set solver libmamba
           conda install -n base conda-build
-          conda env create -f environment.yaml
+          if ! conda env list | grep -q "viz"; then
+            conda env create -f environment.yaml
+          fi
           
       - name: Build documentation
         run: |
@@ -88,13 +92,13 @@ jobs:
           path: public
           
       - name: Setup Pages
-        uses: actions/configure-pages@v4  # Updated from v3 to v4
+        uses: actions/configure-pages@v4
         
       - name: Upload Pages artifact
-        uses: actions/upload-pages-artifact@v4  # Updated from v3 to v4
+        uses: actions/upload-pages-artifact@v4
         with:
           path: public
           
       - name: Deploy to GitHub Pages
         id: deployment
-        uses: actions/deploy-pages@v4  # Updated from v3 to v4
+        uses: actions/deploy-pages@v4
