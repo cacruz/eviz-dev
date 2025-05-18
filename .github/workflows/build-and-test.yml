@@ -1,0 +1,81 @@
+name: Build and Test
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    container: continuumio/miniconda3:latest
+
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Setup environment
+      run: |
+        conda install -n base conda-libmamba-solver -q
+        conda config --set solver libmamba
+        conda install -n base conda-build
+        conda env create -f environment.yaml
+
+    - name: Run tests
+      run: |
+        eval "$(conda shell.bash hook)"
+        conda activate viz
+        pytest --color=yes tests
+
+  build-docs:
+    runs-on: ubuntu-latest
+    container: continuumio/miniconda3:latest
+    needs: test
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop'
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup environment
+        run: |
+          conda install -n base conda-libmamba-solver -q
+          conda config --set solver libmamba
+          conda install -n base conda-build
+          conda env create -f environment.yaml
+      - name: Build documentation
+        run: |
+          eval "$(conda shell.bash hook)"
+          conda activate viz
+          sphinx-build -b html docs public
+      - uses: actions/checkout@v4
+
+      - name: Upload documentation
+        uses: actions/upload-artifact@v4
+        with:
+          path: public
+
+  deploy-pages:
+    needs: build-docs
+    runs-on: ubuntu-latest  # No container
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Debug available artifacts
+        run: |
+          echo "Available artifacts:"
+          echo ${{ toJson(github.event.workflow_run.artifacts) }}
+      - name: Download documentation
+        uses: actions/download-artifact@v4
+        with:
+          path: public
+      - name: Setup Pages
+        uses: actions/configure-pages@v3
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: public
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v3
