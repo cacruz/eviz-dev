@@ -35,11 +35,11 @@ if [ $skip -eq 1 ]; then
 	    exit 1
 	fi
     fi
-    files=$(find $EVIZ_CONFIG_PATH -name \*.yaml -print)
+    files=$(find "$EVIZ_CONFIG_PATH" -name \*.yaml -print)
 
-    for f in ${files[@]}; do
-	sed -i -r 's@EVIZ_DATA_PATH@'"$EVIZ_DATA_PATH"'@' $f
-	sed -i -r 's@EVIZ_OUTPUT_PATH@'"$EVIZ_OUTPUT_PATH"'@' $f
+    for f in "${files[@]}"; do
+	sed -i -r 's@EVIZ_DATA_PATH@'"$EVIZ_DATA_PATH"'@' "$f"
+	sed -i -r 's@EVIZ_OUTPUT_PATH@'"$EVIZ_OUTPUT_PATH"'@' "$f"
     done
 
 fi

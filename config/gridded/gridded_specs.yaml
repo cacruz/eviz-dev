@@ -1,11 +1,3 @@
-U10M:
-   xtplot:
-      mean_type: area_sel
-      area_sel: [-10.5, 10.5, 5, 25]
-# or
-#      mean_type: point_sel
-#      point_sel: [-100, -21]
-
 tas:
     unitconversion: 1
     cmap: coolwarm
