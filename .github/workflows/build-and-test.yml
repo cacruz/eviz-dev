@@ -71,34 +71,36 @@ jobs:
       - name: Upload documentation
         uses: actions/upload-artifact@v4
         with:
-          name: documentation
+          name: github-pages
           path: public
           retention-days: 7
 
   deploy-pages:
     needs: build-docs
     runs-on: ubuntu-latest
+    # Grant GITHUB_TOKEN the permissions required to make a Pages deployment
     permissions:
-      pages: write
-      id-token: write
+      pages: write      # to deploy to Pages
+      id-token: write   # to verify the deployment originates from an appropriate source
+      actions: read     # to download artifacts from previous jobs
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
-      - name: Download documentation
+      - name: Download artifact
         uses: actions/download-artifact@v4
         with:
-          name: documentation
-          path: public
+          name: github-pages
+          path: ./public
           
       - name: Setup Pages
-        uses: actions/configure-pages@v4
+        uses: actions/configure-pages@v3
         
-      - name: Upload Pages artifact
-        uses: actions/upload-pages-artifact@v3
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v2
         with:
-          path: public
+          path: ./public
           
       - name: Deploy to GitHub Pages
         id: deployment
-        uses: actions/deploy-pages@v3
+        uses: actions/deploy-pages@v2
