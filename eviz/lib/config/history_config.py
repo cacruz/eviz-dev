@@ -1,5 +1,4 @@
 from dataclasses import dataclass, field
-from eviz.lib.utils import log_method
 from eviz.lib.config.app_data import AppData
 
 
@@ -9,7 +8,6 @@ class HistoryConfig:
     use_history: bool = False
     history_dir: str = None
 
-    @log_method
     def initialize(self):
         """Initialize history configuration."""
         history = self.app_data.history.get('history', {})

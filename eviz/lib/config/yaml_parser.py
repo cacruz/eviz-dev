@@ -2,7 +2,7 @@ from dataclasses import dataclass, field
 from typing import List, Dict, Any
 import os
 import logging
-from eviz.lib.utils import log_method, get_nested_key
+from eviz.lib.utils import get_nested_key
 import eviz.lib.utils as u
 
 
@@ -18,7 +18,6 @@ class YAMLParser:
     _ds_index: int = 0
     _specs_yaml_exists: bool = True
 
-    @log_method
     def parse(self):
         """Parse YAML files and populate app_data and spec_data."""
         concat = self._concatenate_yaml()

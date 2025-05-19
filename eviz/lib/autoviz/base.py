@@ -70,7 +70,7 @@ def create_config(args):
         else:
             config_dir = get_config_path_from_env()
             if not config_dir:
-                print("Warning: No configuration directory specified. Using default.")
+                # No configuration directory specified. Using eviz default.
                 config_dir = constants.config_path
             config_files = [os.path.join(config_dir, source_name, f"{source_name}.yaml") for source_name in source_names]
         config = Config(source_names=source_names, config_files=config_files)

@@ -49,11 +49,11 @@ class DataPipeline:
         Args:
             config_manager: Configuration manager instance
         """
+        self.logger = logging.getLogger(__name__)
         self.reader = DataReader(config_manager)
         self.processor = DataProcessor()
         self.transformer = DataTransformer()
         self.integrator = DataIntegrator()
-        self.logger = logging.getLogger(__name__)
         self.data_sources = {}
         self.dataset = None
         self.config_manager = config_manager

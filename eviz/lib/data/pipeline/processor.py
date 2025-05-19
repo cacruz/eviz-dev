@@ -48,14 +48,11 @@ class DataProcessor:
             
         Returns:
             The processed data source
-        """
-        self.logger.info("Processing data source")
-        
+        """        
         if not data_source.validate_data():
             self.logger.error("Data validation failed")
             return data_source
 
-        # Basic processing
         data_source.dataset = self._process_dataset(data_source.dataset)
         
         # Apply advanced processing if config_manager is available

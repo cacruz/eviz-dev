@@ -1,7 +1,6 @@
 from dataclasses import dataclass, field
 import logging
 from time import strftime
-from eviz.lib.utils import log_method
 from eviz.lib.config.app_data import AppData
 
 
@@ -13,7 +12,6 @@ class SystemConfig:
     collection: str = None
     event_stamp: str = None
 
-    @log_method
     def initialize(self):
         """Initialize system configuration."""
         system_opts = self.app_data.system_opts

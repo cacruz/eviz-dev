@@ -3,10 +3,11 @@ import os
 import logging
 from dataclasses import dataclass, field
 from typing import List, Dict, Any
-from eviz.lib.utils import join_file_path, log_method
+from eviz.lib.utils import join_file_path
 from eviz.lib.autoviz.utils import get_subplot_shape
 from eviz.lib.config.app_data import AppData
 from eviz.lib.data.factory.source_factory import DataSourceFactory
+# from eviz.lib.utils import log_method
 
 
 @dataclass
@@ -34,7 +35,7 @@ class InputConfig:
     _subplot_specs: tuple = field(default=(1, 1), init=False)
     _use_cartopy: bool = field(default=False, init=False)
 
-    @log_method
+    # @log_method
     def initialize(self):
         """Initialize input configuration."""
         self._compare = self.compare

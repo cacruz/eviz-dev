@@ -5,41 +5,8 @@ This module provides the command-line interface for the eViz automatic visualiza
 It handles command-line argument parsing, logging setup, and serves as the main entry point
 for the autoviz application.
 
-The module supports various command-line options for configuring the visualization process,
-including:
-- Data source selection
-- Comparison mode
-- File and variable specification
-- Configuration file paths
-- Verbosity control
-- Data integration options
-- Composite field creation
-
-Key components:
-- parse_command_line: Parses command-line arguments and provides help information
-- main: Main driver function that initializes the application and executes the visualization process
-- metadump integration: Support for metadata extraction from files
-
-Typical usage:
-    # Basic usage with a single data source
-    python autoviz.py -s gridded
-    
-    # Using a specific configuration directory
-    python autoviz.py -s gridded -c /path/to/config
-    
-    # Using a specific configuration file
-    python autoviz.py -s gridded -f /path/to/config/my_config.yaml
-    
-    # Extracting metadata from a file
-    python autoviz.py --file data.nc --vars temperature humidity
-
 The module integrates with the metadump.py tool for extracting metadata from files,
 automatically invoking it when the --file option is used.
-
-Dependencies:
-    - eviz.lib.utils: Utility functions for logging and timing
-    - eviz.lib.autoviz.base: Core Autoviz functionality
-    - metadump.py: Tool for extracting metadata from data files
 """
 import sys
 import time
@@ -136,15 +103,15 @@ def main():
     Execution time is measured and reported at the end of the process.
     
     Example::
-        
-        # Extract metadata from a file
-        python autoviz.py --file data.nc
-        
-        # Extract metadata for specific variables
-        python autoviz.py --file data.nc --vars temperature humidity
-        
+
         # Generate visualizations for gridded data
-        python autoviz.py -s gridded
+        >>> python autoviz.py -s gridded
+        >>> python autoviz.py -s gridded -c /path/to/config
+        >>> python autoviz.py -s gridded -f /path/to/config/my_config.yaml
+        # Extract metadata from a file
+        >>> python autoviz.py --file data.nc
+        # Extract metadata for specific variables
+        >>> python autoviz.py --file data.nc --vars temperature humidity
     """
     start_time = time.time()
     args = parse_command_line()

@@ -253,9 +253,12 @@ def log_method(func):
     @wraps(func)
     def wrapper(*args, **kwargs):
         logger = logging.getLogger(func.__module__)
-        logger.debug(f"Starting {func.__name__}")
+        # Extract the file name from the module path
+        module_parts = func.__module__.split('.')
+        file_name = module_parts[-1] + '.py'
+        logger.debug(f"Starting {func.__name__} in {file_name}")
         result = func(*args, **kwargs)
-        logger.debug(f"Finished {func.__name__}")
+        logger.debug(f"Finished {func.__name__} in {file_name}")
         return result
     return wrapper
 
