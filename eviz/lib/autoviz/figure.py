@@ -621,6 +621,7 @@ class Figure(mfigure.Figure):
         bottom, height = 0, 1.0
         right = left + width
         top = bottom + height
+        title_string = self._set_axes_title(ax, findex)
 
         if 'yz' in pid:
             if self.config_manager.print_basic_stats:
@@ -632,7 +633,7 @@ class Figure(mfigure.Figure):
             if self.config_manager.use_history:
                 ax.set_title(self.config_manager.history_expid + " (" + self.config_manager.history_expdsc + ")")
             else:
-                self._axes_title(ax, findex, fs=8)
+                ax.set_title(title_string, loc=loc, fontsize=8)
 
             ax.text(0.5 * (left + right), bottom + top + 0.1,
                     name, fontweight='bold',
@@ -656,7 +657,7 @@ class Figure(mfigure.Figure):
             if self.config_manager.use_history:
                 ax.set_title(self.config_manager.history_expid + " (" + self.config_manager.history_expdsc + ")", fontsize=10)
             else:
-                self._axes_title(ax, findex, fs=8)
+                ax.set_title(title_string, loc=loc, fontsize=8)
 
             ax.text(0.5 * (left + right), bottom + top + 0.1,
                     name + level_text, 
@@ -671,7 +672,7 @@ class Figure(mfigure.Figure):
             if self.config_manager.use_history:
                 ax.set_title(self.config_manager.history_expid + " (" + self.config_manager.history_expdsc + ")", fontsize=10)
             else:
-                self._axes_title(ax, findex, fs=kwargs.get('fontsize', 10), loc=kwargs.get('loc', 'right'))
+                ax.set_title(title_string, loc=kwargs.get('loc', 'right'), fontsize=kwargs.get('fontsize', 10))
 
             ax.text(0.5 * (left + right), bottom + top + 0.5,
                     name,
@@ -687,7 +688,7 @@ class Figure(mfigure.Figure):
             if self.config_manager.use_history:
                 ax.set_title(self.config_manager.history_expid + " (" + self.config_manager.history_expdsc + ")")
             else:
-                self._axes_title(ax, findex)
+                ax.set_title(title_string, loc=loc, fontsize=fontsize)
 
             ax.text(0.5 * (left + right), bottom + top + 0.1,
                     name,

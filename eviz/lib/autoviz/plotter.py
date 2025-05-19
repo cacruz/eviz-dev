@@ -346,13 +346,23 @@ def _single_xy_plot(config: ConfigManager, data_to_plot: tuple, level: int) -> N
     """
     data2d, x, y, field_name, plot_type, findex, fig, ax_temp = data_to_plot
 
-    # Determine the shape of the axes
-    axes_shape = _determine_axes_shape(fig, ax_temp)
-
-    # Select the appropriate axes
     ax_opts = config.ax_opts
-    ax = _select_axes(ax_temp, axes_shape, ax_opts, config.axindex)
-
+    ax = ax_temp
+    axes_shape = fig.get_gs_geometry()
+    if axes_shape == (3, 1):
+        if ax_opts['is_diff_field']:
+            ax = ax_temp[2]
+        else:
+            ax = ax_temp[config.axindex]
+    elif axes_shape == (2, 2):
+        if ax_opts['is_diff_field']:
+            ax = ax_temp[2]
+            if config.ax_opts['add_extra_field_type']:
+                ax = ax_temp[3]
+        else:
+            ax = ax_temp[config.axindex]
+    elif axes_shape == (1, 2):
+        ax = ax_temp
     if data2d is None:
         return
     
