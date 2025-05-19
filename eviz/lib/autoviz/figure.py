@@ -10,7 +10,6 @@ from matplotlib.ticker import MultipleLocator
 
 import numpy as np
 
-import eviz.lib.utils as u
 from eviz.lib.autoviz.utils import get_subplot_geometry
 import eviz.lib.autoviz.utils as pu
 from cartopy.mpl.gridliner import LONGITUDE_FORMATTER, LATITUDE_FORMATTER
@@ -31,20 +30,6 @@ class Figure(mfigure.Figure):
     - _subplots: Tuple defining subplot layout
     - _use_cartopy: Flag to indicate use of Cartopy projection
     """
-
-    def __repr__(self):
-        opts = {}
-        for attr in ("refaspect", "refwidth", "refheight", "figwidth", "figheight"):
-            value = getattr(self, "_" + attr)
-            if value is not None:
-                opts[attr] = np.round(value, 2)
-        geom = ""
-        if self.gridspec:
-            nrows, ncols = self.gridspec.get_geometry()
-            geom = f"nrows={nrows}, ncols={ncols}, "
-        opts = ", ".join(f"{key}={value!r}" for key, value in opts.items())
-        return f"Figure({geom}{opts})"
-
     def __init__(self, config_manager, plot_type, 
         *,
         nrows=None,
@@ -61,36 +46,6 @@ class Figure(mfigure.Figure):
         figheight=None,
         width=None,
         height=None,
-        journal=None,
-        sharex=None,
-        sharey=None,
-        share=None,  # used for default spaces
-        spanx=None,
-        spany=None,
-        span=None,
-        alignx=None,
-        aligny=None,
-        align=None,
-        left=None,
-        right=None,
-        top=None,
-        bottom=None,
-        wspace=None,
-        hspace=None,
-        space=None,
-        tight=None,
-        outerpad=None,
-        innerpad=None,
-        panelpad=None,
-        wpad=None,
-        hpad=None,
-        pad=None,
-        wequal=None,
-        hequal=None,
-        equal=None,
-        wgroup=None,
-        hgroup=None,
-        group=None,
         **kwargs,
     ):
         """
@@ -108,18 +63,6 @@ class Figure(mfigure.Figure):
         --------
         matplotlib.figure.Figure
         """     
-        refnum = u.not_none(refnum=refnum, ref=ref, default=1)  # never None
-        refaspect = u.not_none(refaspect=refaspect, aspect=aspect)
-        refwidth = u.not_none(refwidth=refwidth, axwidth=axwidth)
-        refheight = u.not_none(refheight=refheight, axheight=axheight)
-        figwidth = u.not_none(figwidth=figwidth, width=width)
-        figheight = u.not_none(figheight=figheight, height=height)   
-        if figwidth is not None and refwidth is not None:
-            refwidth = None
-        if figheight is not None and refheight is not None:
-            refheight = None
-        # Initialize the figure
-        # NOTE: Super labels are stored inside {axes: text} dictionaries
         self._gridspec = None
         self._panel_dict = {"left": [], "right": [], "bottom": [], "top": []}
         self._subplot_dict = {}  # subplots indexed by number
@@ -162,6 +105,10 @@ class Figure(mfigure.Figure):
         self._init_frame()
         self._set_axes()
 
+    @property
+    def logger(self) -> logging.Logger:
+        return logging.getLogger(__name__)
+
     def _init_frame(self):
         """Set shape and size for pre-defined figure frames."""
         self._set_compare_diff_subplots()
@@ -172,7 +119,8 @@ class Figure(mfigure.Figure):
         if self.config_manager.compare and not self.config_manager.compare_diff:
             # Side-by-side comparison
             if self._subplots[1] == 3:
-                _frame_params[rindex] = [1, 3, 18, 6]  # [nrows, ncols, width, height] - wider for 3 columns
+                # [nrows, ncols, width, height] - wider for 3 columns
+                _frame_params[rindex] = [1, 3, 18, 6]
             else:
                 _frame_params[rindex] = [1, 2, 12, 6]  # Original 2-column layout
         elif self.config_manager.compare_diff:
@@ -204,7 +152,7 @@ class Figure(mfigure.Figure):
                 # Get the number of variables to compare from the config
                 if hasattr(self.config_manager, 'compare_exp_ids'):
                     num_vars = len(self.config_manager.compare_exp_ids)
-                    self._subplots = (1, num_vars)  # 1 row, N columns where N is number of variables
+                    self._subplots = (1, num_vars)
                 else:
                     self._subplots = (1, 2)  # Default to side by side layout
                 return
@@ -241,8 +189,9 @@ class Figure(mfigure.Figure):
         return self
 
     def reset_axes(self, ax):
-        """Remove all plotted data, colorbars, and titles from either a Matplotlib Axes or Cartopy GeoAxes."""
-        
+        """Remove all plotted data, colorbars, and titles from either a Matplotlib Axes
+        or Cartopy GeoAxes.
+        """
         if self is None:
             raise ValueError("Figure is None! It may have been closed or deleted.")
 
@@ -262,7 +211,6 @@ class Figure(mfigure.Figure):
 
         # apply changes
         self.canvas.draw_idle()
-
 
     def _get_fig_ax(self):
         """
@@ -391,10 +339,9 @@ class Figure(mfigure.Figure):
 
     def savefig_eviz(self, *args, **kwargs):
         # Custom savefig behavior
-        result = super().savefig(*args, **kwargs)
+        super().savefig(*args, **kwargs)
         # Do more custom stuff
-        return result
-    
+
     def show_eviz(self, *args, **kwargs):
         """
         Display the figure with any custom processing.
@@ -405,13 +352,9 @@ class Figure(mfigure.Figure):
         
         # Call the parent method or use plt.show() if needed
         plt.figure(self.number)  # Make sure this figure is active
-        result = plt.show(*args, **kwargs)
-        
+        plt.show(*args, **kwargs)
         # Any custom post-show processing
-    
-        return result
-    
-    # @classmethod
+
     def get_projection(self, projection=None):
         """ Get projection parameter"""
         # TODO: Fix for the case when projection is not None!!!
@@ -440,17 +383,6 @@ class Figure(mfigure.Figure):
                    'polar': ccrs.NorthPolarStereo(central_longitude=-100),
                    'mercator': ccrs.Mercator()}
         return options[projection]
-    # def get_projection(cls, projection):
-    #     """Retrieve projection object."""
-    #     projections = {
-    #         'lambert': ccrs.LambertConformal(),
-    #         'albers': ccrs.AlbersEqualArea(),
-    #         'stereo': ccrs.Stereographic(),
-    #         'ortho': ccrs.Orthographic(),
-    #         'polar': ccrs.NorthPolarStereo(),
-    #         'mercator': ccrs.Mercator()
-    #     }
-    #     return projections.get(projection, ccrs.PlateCarree())
 
     def create_subplots_crs(self, gs):
         axes = []
@@ -475,7 +407,6 @@ class Figure(mfigure.Figure):
                 ax.add_feature(cfeature.LAKES, edgecolor='black')
         return axes
 
-
     def set_ax_opts_diff_field(self, ax):
         """ Modify axes internal state based on user-defined options
 
@@ -491,7 +422,6 @@ class Figure(mfigure.Figure):
             if geom[1:] == (0, 0, 1, 1):
                 self._ax_opts['is_diff_field'] = True
                 self._ax_opts['add_extra_field_type'] = True
-
 
     def init_ax_opts(self, field_name):
         """Initialize map options for a given field."""
@@ -515,7 +445,8 @@ class Figure(mfigure.Figure):
         self._ax_opts = {key: spec.get(key, defaults[key]) for key in defaults}
         return self._ax_opts
 
-    def add_grid(self, ax, lines=True, locations=None):
+    @staticmethod
+    def add_grid(ax, lines=True, locations=None):
         """Add a grid to the plot."""
         if lines:
             ax.grid(lines, alpha=0.5, which="minor", ls=":")
@@ -526,13 +457,6 @@ class Figure(mfigure.Figure):
             ax.xaxis.set_major_locator(MultipleLocator(locations[1]))
             ax.yaxis.set_minor_locator(MultipleLocator(locations[2]))
             ax.yaxis.set_major_locator(MultipleLocator(locations[3]))
-
-    def colorbar_foo(self, mappable):
-        """Attach a colorbar to a plot."""
-        ax = mappable.axes
-        fig = ax.figure
-        cax = fig.add_axes([ax.get_position().x1 + 0.01, ax.get_position().y0, 0.02, ax.get_position().height])
-        return fig.colorbar(mappable, cax=cax)
 
     def colorbar_eviz(self, mappable):
         """
@@ -640,11 +564,11 @@ class Figure(mfigure.Figure):
         """
         if isinstance(ax, list):  # Check if ax is a list
             for single_ax in ax:
-                self._plot_text(field_name, single_ax, pid, level, data, *args, **kwargs)
+                self._plot_text(field_name, single_ax, pid, level, data, **kwargs)
         else:
-            self._plot_text(field_name, ax, pid, level, data, *args, **kwargs)
+            self._plot_text(field_name, ax, pid, level, data, **kwargs)
 
-    def _plot_text(self, field_name, ax, pid, level=None, data=None, *args, **kwargs):
+    def _plot_text(self, field_name, ax, pid, level=None, data=None, **kwargs):
         """Add text to a single axes."""
         fontsize = kwargs.get('fontsize', pu.subplot_title_font_size(self._subplots))
         ha = kwargs.get('horizontalalignment', 'center')
@@ -694,7 +618,7 @@ class Figure(mfigure.Figure):
 
         # Non-comparison case
         level_text = self._format_level_text(level)
-        name = self._get_field_name(field_name, sname, findex, ds_index)
+        name = self._get_field_name(field_name, sname, findex)
 
         left, width = 0, 1.0
         bottom, height = 0, 1.0
@@ -807,7 +731,7 @@ class Figure(mfigure.Figure):
             return ''
         return f"@ {level} {'Pa' if level > 10000 else 'mb'}"
 
-    def _get_field_name(self, field_name, sname, findex, ds_index):
+    def _get_field_name(self, field_name, sname, findex):
         """Get the field name from the reader's dataset."""
         try:
             # First, use the field name from spec_data if available

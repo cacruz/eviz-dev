@@ -1,6 +1,5 @@
 from dataclasses import dataclass
 import os
-import re
 import cftime
 import logging
 import warnings
@@ -20,6 +19,7 @@ import matplotlib as mpl
 import cartopy.crs as ccrs
 import cartopy.feature as cfeature
 import networkx as nx
+from cartopy.mpl.geoaxes import GeoAxes
 
 from sklearn.metrics import mean_squared_error
 
@@ -378,7 +378,6 @@ def _plot_xy_data(config, ax, data2d, x, y, field_name, fig, ax_opts, level,
     # Check if we're using Cartopy and if the axis is a GeoAxes
     is_cartopy_axis = False
     try:
-        from cartopy.mpl.geoaxes import GeoAxes
         is_cartopy_axis = isinstance(ax, GeoAxes)
     except ImportError:
         pass
@@ -491,7 +490,8 @@ def _single_yz_plot(config: ConfigManager, data_to_plot: tuple) -> None:
     else:
         _plot_yz_data(config, ax, data2d, x, y, field_name, fig, ax_opts, vertical_units,
                       plot_type, findex)
-        
+
+
 def _plot_yz_data(config, ax, data2d, x, y, field_name, fig, ax_opts, vertical_units,
                   plot_type, findex):
     """Helper function to plot YZ data on a single axes."""
@@ -538,15 +538,16 @@ def _plot_yz_data(config, ax, data2d, x, y, field_name, fig, ax_opts, vertical_u
         _set_colorbar(config, cfilled, fig, ax, ax_opts, findex, field_name, data2d)
 
     # The following is only supported for GEOS datasets:
-    if config.use_trop_height and not prof_dim:
-        # TODO: move to 'model' layer so that we can easily do regridding and reset flag
-        overlay = DataProcessor(config, plot_type)
-        tropp = overlay.process_data()
-        # This should be the only call needed here:
-        if overlay.trop_ok:
-            ax.plot(x, tropp, linewidth=2, color="k", linestyle="--")
-        # The following is temporary, while the TODO above is not done.
-        config.use_trop_height = None
+    # TODO: move to 'model' layer!?
+    # print(config.use_trop_height)
+    # if config.use_trop_height and not prof_dim:
+    #     proc = DataProcessor(config)
+    #     tropp = proc.process_data_source(data2d)
+    #     # This should be the only call needed here:
+    #     if proc.trop_ok:
+    #         ax.plot(x, tropp, linewidth=2, color="k", linestyle="--")
+    #     # The following is temporary, while the TODO above is not done.
+    #     config.use_trop_height = None
 
     if config.compare and config.ax_opts['is_diff_field']:
         try:
@@ -590,6 +591,7 @@ def _plot_yz_data(config, ax, data2d, x, y, field_name, fig, ax_opts, vertical_u
 
     if config.add_logo:
         pu.add_logo(fig, fig.EVIZ_LOGO)
+
 
 def _set_ax_ranges(config, field_name, fig, ax, ax_opts, y, units):
     """ Create a sensible number of vertical levels """
@@ -1477,87 +1479,6 @@ def _set_const_colorbar(cfilled, fig, ax):
     _ = fig.colorbar(cfilled, ax=ax, shrink=0.5)
 
 
-def _set_colorbar2(config, cfilled, fig, ax, ax_opts, findex, field_name, data2d):
-    try:
-        source_name = config.source_names[config.ds_index]
-        if ax_opts['cbar_sci_notation']:
-            fmt = pu.FlexibleOOMFormatter(min_val=data2d.min().compute().item(),
-                                           max_val=data2d.max().compute().item(),
-                                           math_text=True)
-        else:
-            fmt = pu.OOMFormatter(prec=ax_opts['clevs_prec'], math_text=True)
-
-        if not fig.use_cartopy:
-            cbar = fig.colorbar(cfilled)
-        else:
-            cbar = fig.colorbar(cfilled, ax=ax,
-                                 orientation='vertical' if config.compare else 'horizontal',
-                                 extendfrac=True if config.compare else 'auto',
-                                 pad=pu.cbar_pad(fig.subplots),
-                                 fraction=pu.cbar_fraction(fig.subplots),
-                                 ticks=ax_opts.get('clevs', None),
-                                 format=fmt,
-                                 aspect=50,
-                                 shrink=pu.cbar_shrink(fig.subplots))
-            
-        # Use the following ONLY with the FlexibleOOMFormatter()
-        if ax_opts['cbar_sci_notation']:
-            cbar.ax.text(1.05, -0.5, r'$\times 10^{%d}$' % fmt.oom,
-                           transform=cbar.ax.transAxes, va='center', ha='left', fontsize=12)
-
-        try:
-            if field_name in config.spec_data and 'units' in config.spec_data[field_name]:
-                units = config.spec_data[field_name]['units']
-            else:
-                if hasattr(data2d, 'attrs') and 'units' in data2d.attrs:
-                    units = data2d.attrs['units']
-                elif hasattr(data2d, 'units'):
-                    units = data2d.units
-                else:
-                    reader = None
-                    if source_name in config.readers:
-                        if isinstance(config.readers[source_name], dict):
-                            readers_dict = config.readers[source_name]
-                            if 'NetCDF' in readers_dict:
-                                reader = readers_dict['NetCDF']
-                            elif readers_dict:
-                                reader = next(iter(readers_dict.values()))
-                        else:
-                            reader = config.readers[source_name]
-                    
-                    if reader and hasattr(reader, 'datasets'):
-                        if findex in reader.datasets and 'vars' in reader.datasets[findex]:
-                            field_var = reader.datasets[findex]['vars'].get(field_name)
-                            if field_var and hasattr(field_var, 'attrs') and 'units' in field_var.attrs:
-                                units = field_var.attrs['units']
-                            elif field_var and hasattr(field_var, 'units'):
-                                units = field_var.units
-                            else:
-                                units = "n.a."
-                        else:
-                            units = "n.a."
-                    else:
-                        units = "n.a."
-        except Exception as e:
-            logger.warning(f"Error getting units: {e}")
-            units = "n.a."
- 
-        if ax_opts['clabel'] is None:
-            cbar_label = units
-        else:
-            cbar_label = ax_opts['clabel']
-        cbar.set_label(cbar_label, size=pu.bar_font_size(fig.subplots))
-
-        # Set font size for colorbar ticks
-        for t in cbar.ax.get_xticklabels():
-            t.set_fontsize(pu.contour_tick_font_size(fig.subplots))
-        for t in cbar.ax.get_yticklabels():
-            t.set_fontsize(pu.contour_tick_font_size(fig.subplots))
-
-    except Exception as e:
-        logger.error(f"Failed to add colorbar: {e}")
-
-
 def colorbar(mappable):
     """
     Create a colorbar that works with both standard Matplotlib Axes and Cartopy GeoAxes.
@@ -1599,298 +1520,6 @@ class Plotter:
         no_specs_plotter = SimplePlotter()
         no_specs_plotter.plot(config, data_to_plot)
         pu.output_basic(config, data_to_plot[3])
-        
-    def plot_time_series_combined(self, config: ConfigManager, field_name: str, 
-                                 start_date=None, end_date=None, output_name=None):
-        """
-        Plot a time series by combining data from multiple files spanning a date range.
-        
-        Args:
-            config (ConfigManager): The configuration manager
-            field_name (str): The field name to plot
-            start_date (str, optional): Start date in 'YYYY-MM-DD' format. Defaults to None.
-            end_date (str, optional): End date in 'YYYY-MM-DD' format. Defaults to None.
-            output_name (str, optional): Output file name. Defaults to None.
-        """
-        source_name = config.source_names[0]  # Use the first source
-        
-        file_paths = []
-        for file_idx, file_entry in config.file_list.items():
-            if file_entry.get('source_name') == source_name:
-                if start_date is None and end_date is None:
-                    file_paths.append(file_entry['filename'])
-                else:
-                    # Try to extract date from filename or metadata
-                    try:
-                        file_date = self._extract_date_from_filename(file_entry['filename'])
-                        if start_date and end_date:
-                            if start_date <= file_date <= end_date:
-                                file_paths.append(file_entry['filename'])
-                        elif start_date:
-                            if start_date <= file_date:
-                                file_paths.append(file_entry['filename'])
-                        elif end_date:
-                            if file_date <= end_date:
-                                file_paths.append(file_entry['filename'])
-                    except:
-                        # If date extraction fails, include the file anyway
-                        self.logger.warning(f"Could not extract date from {file_entry['filename']}, including it anyway")
-                        file_paths.append(file_entry['filename'])
-        
-        if not file_paths:
-            self.logger.error(f"No files found for time series of {field_name}")
-            return
-            
-        integrated_data = config.integrator.integrate_datasets(source_name, file_paths)
-        
-        if integrated_data and field_name in integrated_data:
-            fig, ax = plt.subplots(figsize=(12, 6))
-            time_var = integrated_data['time']
-            data_var = integrated_data[field_name]
-            ax.plot(time_var, data_var, linewidth=1.5)
-            
-            title = f"Time Series of {field_name}"
-            if start_date and end_date:
-                title += f" ({start_date} to {end_date})"
-            ax.set_title(title, fontsize=14)
-            
-            try:
-                units = data_var.attrs.get('units', '')
-                if units:
-                    ax.set_ylabel(units, fontsize=12)
-            except:
-                pass
-                
-            ax.set_xlabel('Time', fontsize=12)
-            ax.grid(True, linestyle='--', alpha=0.7)
-            
-            fig.autofmt_xdate()
-            
-            if config.print_to_file:
-                output_dir = config.output_dir
-                if not output_name:
-                    output_name = f"{field_name}_timeseries"
-                filename = os.path.join(output_dir, f"{output_name}.{config.print_format}")
-                plt.savefig(filename, bbox_inches='tight')
-            else:
-                plt.tight_layout()
-                plt.show()
-        else:
-            self.logger.error(f"Failed to create time series for {field_name}")
-
-    def plot_composite_field(self, config: ConfigManager, primary_field: str, 
-                            secondary_field: str, operation: str = 'add',
-                            plot_type: str = 'xy', level: int = None, output_name: str = None):
-        """
-        Create and plot a composite field by combining related variables from different file types.
-        
-        Args:
-            config (ConfigManager): The configuration manager
-            primary_field (str): Name of the primary field
-            secondary_field (str): Name of the secondary field
-            operation (str): Mathematical operation to combine fields ('add', 'subtract', 'multiply', 'divide')
-            plot_type (str): Type of plot ('xy', 'yz')
-            level (int, optional): Vertical level for xy plots. Defaults to None.
-            output_name (str, optional): Output file name. Defaults to None.
-        """
-        source_name = config.source_names[0]  # Use the first source
-        
-        primary_data = config.integrator.get_variable_from_any_source(source_name, primary_field)
-        secondary_data = config.integrator.get_variable_from_any_source(source_name, secondary_field)
-        
-        if primary_data is None or secondary_data is None:
-            self.logger.error(f"Could not find one or both of the fields: {primary_field}, {secondary_field}")
-            return
-        
-        try:
-            primary_data, secondary_data = xr.align(primary_data, secondary_data)
-            
-            if operation == 'add':
-                composite_data = primary_data + secondary_data
-                op_symbol = '+'
-            elif operation == 'subtract':
-                composite_data = primary_data - secondary_data
-                op_symbol = '-'
-            elif operation == 'multiply':
-                composite_data = primary_data * secondary_data
-                op_symbol = '×'
-            elif operation == 'divide':
-                composite_data = primary_data / secondary_data
-                op_symbol = '/'
-            else:
-                self.logger.error(f"Unknown operation: {operation}")
-                return
-                
-            # Try to combine units
-            try:
-                primary_units = primary_data.attrs.get('units', '')
-                secondary_units = secondary_data.attrs.get('units', '')
-                
-                if operation in ['add', 'subtract'] and primary_units == secondary_units:
-                    composite_data.attrs['units'] = primary_units
-                elif operation == 'multiply':
-                    if primary_units and secondary_units:
-                        composite_data.attrs['units'] = f"{primary_units}·{secondary_units}"
-                    else:
-                        composite_data.attrs['units'] = primary_units or secondary_units
-                elif operation == 'divide':
-                    if primary_units and secondary_units:
-                        composite_data.attrs['units'] = f"{primary_units}/{secondary_units}"
-                    else:
-                        composite_data.attrs['units'] = primary_units or secondary_units
-            except:
-                pass
-            
-            # Create a name for the composite field
-            composite_data.name = f"{primary_field}_{operation}_{secondary_field}"
-            
-            if plot_type == 'xy':
-                self._plot_composite_xy(config, composite_data, primary_field, secondary_field, 
-                                      operation, op_symbol, level, output_name)
-            elif plot_type == 'yz':
-                self._plot_composite_yz(config, composite_data, primary_field, secondary_field,
-                                      operation, op_symbol, output_name)
-            else:
-                self.logger.error(f"Unsupported plot type: {plot_type}")
-                
-        except Exception as e:
-            self.logger.error(f"Error creating composite field: {str(e)}")
-            
-    def _plot_composite_xy(self, config, data, primary_field, secondary_field, 
-                          operation, op_symbol, level=None, output_name=None):
-        """Plot a composite field as an xy (lat-lon) plot."""
-        if level is not None and 'lev' in data.dims:
-            data = data.sel(lev=level)
-        
-        fig, ax = plt.subplots(figsize=(10, 8))
-        dim1, dim2 = config.get_dim_names('xy')
-        x = data[dim1].values
-        y = data[dim2].values
-        
-        vmin, vmax = data.min().values, data.max().values
-        levels = np.linspace(vmin, vmax, 20)
-        
-        cs = ax.contourf(x, y, data.values, levels=levels, cmap='RdBu_r', extend='both')
-        cont = ax.contour(x, y, data.values, levels=levels, colors='k', linewidths=0.5, alpha=0.5)
-        ax.clabel(cont, inline=1, fontsize=8, fmt='%.1f')
-        cbar = fig.colorbar(cs, ax=ax, orientation='vertical', pad=0.02)
-        
-        if 'units' in data.attrs:
-            cbar.set_label(data.attrs['units'])
-        
-        title = f"Composite: {primary_field} {op_symbol} {secondary_field}"
-        if level is not None:
-            title += f" (Level: {level})"
-        ax.set_title(title)
-        ax.set_xlabel(dim1)
-        ax.set_ylabel(dim2)
-        ax.grid(linestyle='--', alpha=0.6)
-        
-        if config.print_to_file:
-            output_dir = config.output_dir
-            if not output_name:
-                output_name = f"composite_{primary_field}_{operation}_{secondary_field}"
-                if level is not None:
-                    output_name += f"_level{level}"
-            filename = os.path.join(output_dir, f"{output_name}.{config.print_format}")
-            plt.savefig(filename, bbox_inches='tight')
-        else:
-            plt.tight_layout()
-            plt.show()
-            
-    def _plot_composite_yz(self, config, data, primary_field, secondary_field, 
-                          operation, op_symbol, output_name=None):
-        """Plot a composite field as a yz (zonal mean) plot."""
-        fig, ax = plt.subplots(figsize=(10, 8))
-        dim1, dim2 = config.get_dim_names('yz')
-        x = data[dim1].values
-        y = data[dim2].values
-        
-        vmin, vmax = data.min().values, data.max().values
-        levels = np.linspace(vmin, vmax, 20)
-        
-        cs = ax.contourf(x, y, data.values, levels=levels, cmap='RdBu_r', extend='both')
-        cont = ax.contour(x, y, data.values, levels=levels, colors='k', linewidths=0.5, alpha=0.5)
-        ax.clabel(cont, inline=1, fontsize=8, fmt='%.1f')
-        cbar = fig.colorbar(cs, ax=ax, orientation='vertical', pad=0.02)
-        
-        if 'units' in data.attrs:
-            cbar.set_label(data.attrs['units'])
-        
-        title = f"Composite: {primary_field} {op_symbol} {secondary_field} (Zonal Mean)"
-        ax.set_title(title)
-        ax.set_xlabel(dim1)
-        ax.set_ylabel(dim2)
-        
-        # Special handling for pressure axis if applicable
-        if 'lev' in data.dims or 'level' in data.dims:
-            ax.set_yscale('log')
-            ax.invert_yaxis()  # Pressure decreases with height
-        
-        ax.grid(linestyle='--', alpha=0.6)
-        
-        if config.print_to_file:
-            output_dir = config.output_dir
-            if not output_name:
-                output_name = f"composite_{primary_field}_{operation}_{secondary_field}_zonal"
-            filename = os.path.join(output_dir, f"{output_name}.{config.print_format}")
-            plt.savefig(filename, bbox_inches='tight')
-        else:
-            plt.tight_layout()
-            plt.show()
-    
-    @staticmethod
-    def _extract_date_from_filename(filename):
-        """
-        Extract date from filename using various common patterns.
-        
-        Args:
-            filename (str): The filename to parse
-            
-        Returns:
-            str: Date string in YYYY-MM-DD format
-            
-        Raises:
-            ValueError: If no date pattern could be extracted
-        """
-        basename = os.path.basename(filename)
-        
-        # Pattern 1: YYYYMMDD
-        pattern1 = r'(\d{4})(\d{2})(\d{2})'
-        match = re.search(pattern1, basename)
-        if match:
-            year, month, day = match.groups()
-            return f"{year}-{month}-{day}"
-            
-        # Pattern 2: YYYY_MM_DD or YYYY-MM-DD
-        pattern2 = r'(\d{4})[_-](\d{2})[_-](\d{2})'
-        match = re.search(pattern2, basename)
-        if match:
-            year, month, day = match.groups()
-            return f"{year}-{month}-{day}"
-            
-        # Pattern 3: YYYY.MM.DD
-        pattern3 = r'(\d{4})\.(\d{2})\.(\d{2})'
-        match = re.search(pattern3, basename)
-        if match:
-            year, month, day = match.groups()
-            return f"{year}-{month}-{day}"
-            
-        # Pattern 4: Try to extract just year and month: YYYYMM
-        pattern4 = r'(\d{4})(\d{2})'
-        match = re.search(pattern4, basename)
-        if match:
-            year, month = match.groups()
-            return f"{year}-{month}-01"  # Default to first day of month
-            
-        # Pattern 5: Just year: YYYY
-        pattern5 = r'(\d{4})'
-        match = re.search(pattern5, basename)
-        if match:
-            year = match.group(1)
-            return f"{year}-01-01"  # Default to first day of year
-            
-        raise ValueError(f"Could not extract date from {basename}")
 
 
 @dataclass()
@@ -1923,19 +1552,6 @@ class SimplePlotter:
             _simple_sc_plot(config, field_to_plot)
         elif plot_type == 'graph':
             _simple_graph_plot(config, field_to_plot)
-
-    def time_series_combined(self, config: ConfigManager, field_name: str, 
-                           start_date=None, end_date=None, output_name=None):
-        """Simple wrapper for plot_time_series_combined."""
-        self.plot_time_series_combined(config, field_name, start_date, end_date, output_name)
-        
-    def composite_field(self, config: ConfigManager, primary_field: str, 
-                      secondary_field: str, operation: str = 'add',
-                      plot_type: str = 'xy', level: int = None, output_name: str = None):
-        """Simple wrapper for plot_composite_field."""
-        self.plot_composite_field(config, primary_field, secondary_field, 
-                                operation, plot_type, level, output_name)
-
 
 @dataclass()
 class SinglePlotter(Plotter):
@@ -1976,19 +1592,6 @@ class SinglePlotter(Plotter):
         # TODO: for user defined functions you need to do the following:
         # elif plot_type == constants.myplot:
         #     self._myplot_subplot(config, field_to_plot)
-
-    def time_series_combined(self, config: ConfigManager, field_name: str, 
-                           start_date=None, end_date=None, output_name=None):
-        """Single plotter wrapper for plot_time_series_combined."""
-        self.plot_time_series_combined(config, field_name, start_date, end_date, output_name)
-        
-    def composite_field(self, config: ConfigManager, primary_field: str, 
-                      secondary_field: str, operation: str = 'add',
-                      plot_type: str = 'xy', level: int = None, output_name: str = None):
-        """Single plotter wrapper for plot_composite_field."""
-        self.plot_composite_field(config, primary_field, secondary_field, 
-                                operation, plot_type, level, output_name)
-
 
 @dataclass()
 class ComparisonPlotter:
@@ -2034,15 +1637,3 @@ class ComparisonPlotter:
         # TODO: for user defined functions you need to do the following:
         # elif plot_type == constants.myplot:
         #     self._myplot_subplot(config, field_to_plot)
-
-    def time_series_combined(self, config: ConfigManager, field_name: str, 
-                           start_date=None, end_date=None, output_name=None):
-        """Comparison plotter wrapper for plot_time_series_combined."""
-        self.plot_time_series_combined(config, field_name, start_date, end_date, output_name)
-        
-    def composite_field(self, config: ConfigManager, primary_field: str, 
-                      secondary_field: str, operation: str = 'add',
-                      plot_type: str = 'xy', level: int = None, output_name: str = None):
-        """Comparison plotter wrapper for plot_composite_field."""
-        self.plot_composite_field(config, primary_field, secondary_field, 
-                                operation, plot_type, level, output_name)
