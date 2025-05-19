@@ -221,8 +221,6 @@ def print_map(
     map_filename = f"{fname}{config.print_format}"
     filename = os.path.join(output_dir, map_filename)
 
-    logger.info(f"Output file will be: {filename}")
-
     if config.print_to_file:
         fig.tight_layout()
         # Save with or without bbox_inches depending on extent
@@ -324,14 +322,12 @@ def axes_label_font_size(panels=None):
 
 def cbar_pad(panels=None):
     """
-    0.05 if vertical, 0.15 if horizontal;
-    fraction of original axes between colorbar
-    and new image axes
+    Fraction of original axes between colorbar and new image axes
     """
     if panels == (1, 1):  # single image on a page
-        pad = 0.04
+        pad = 0.05
     elif panels == (3, 1):
-        pad = 0.15
+        pad = 0.03
     elif panels == (2, 2):
         pad = 0.05
     else:
@@ -340,7 +336,7 @@ def cbar_pad(panels=None):
 
 
 def cbar_fraction(panels=None):
-    """ fraction of original axes to use for colorbar """
+    """ Fraction of original axes to use for colorbar """
     if panels == (1, 1):  # single image on a page
         fraction = 0.05
     elif panels == (3, 1):

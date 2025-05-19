@@ -55,10 +55,7 @@ class Root(AbstractRoot):
         # Assuming map_params is already loaded into config_manager.map_params
         # This method might be redundant if map_params is always loaded during config initialization.
         # If it's needed to *override* map_params, the logic should update config_manager.map_params
-        self.logger.warning("set_map_params called. Assuming map_params is already in ConfigManager.")
-        # If overriding is needed:
-        # self.config_manager.map_params = map_params
-        # self.logger.info(f"Overrode map_params with {len(map_params)} entries")
+        pass
 
     def __call__(self):
         self.plot()

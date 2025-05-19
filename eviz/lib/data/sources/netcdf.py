@@ -38,12 +38,10 @@ class NetCDFDataSource(DataSource):
         self.logger.debug(f"Loading NetCDF data from {file_path}")    
         try:
             if "*" in file_path:
-                # Handle multiple files using a glob pattern
                 self._setup_dask_client()
                 dataset = xr.open_mfdataset(file_path, decode_cf=True, combine="by_coords")
                 self.logger.debug(f"Loaded multiple NetCDF files matching pattern: {file_path}")
             else:
-                # Handle a single file
                 dataset = xr.open_dataset(file_path, decode_cf=True)
                 self.logger.debug(f"Loaded single NetCDF file: {file_path}")
             
@@ -128,36 +126,28 @@ class NetCDFDataSource(DataSource):
             # Skip renaming for these special models
             return ds
         
-        # Get available dimensions
         available_dims = list(ds.dims)
         
-        # Get model-specific dimension names
         xc = self._get_model_dim_name('xc', available_dims)
         yc = self._get_model_dim_name('yc', available_dims)
         zc = self._get_model_dim_name('zc', available_dims)
         tc = self._get_model_dim_name('tc', available_dims)
         
-        # Create rename mapping
         rename_dict = {}
         
         # Add mappings only for dimensions that exist and need renaming
         if xc and xc != 'lon' and xc in available_dims:
-            print(f"Renaming {xc} to lon")
             rename_dict[xc] = 'lon'
         
         if yc and yc != 'lat' and yc in available_dims:
-            print(f"Renaming {yc} to lat")
             rename_dict[yc] = 'lat'
         
         if zc and zc != 'lev' and zc in available_dims:
-            print(f"Renaming {zc} to lev")
             rename_dict[zc] = 'lev'
         
         if tc and tc != 'time' and tc in available_dims:
-            print(f"Renaming {tc} to time") 
             rename_dict[tc] = 'time'
         
-        # Only rename if there's something to rename
         if rename_dict:
             self.logger.debug(f"Renaming dimensions: {rename_dict}")
             try:

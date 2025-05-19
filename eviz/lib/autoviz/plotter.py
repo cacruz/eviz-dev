@@ -368,15 +368,8 @@ def _single_xy_plot(config: ConfigManager, data_to_plot: tuple, level: int) -> N
 
 def _plot_xy_data(config, ax, data2d, x, y, field_name, fig, ax_opts, level,
                   plot_type, findex):
-    """Helper function to plot YZ data on a single axes."""
+    """Helper function to plot XY data on a single axes."""
     source_name = config.source_names[config.ds_index]
-    if ax_opts.get('extent'):
-        if ax_opts['extent'] == 'conus':
-            extent = [-140, -40, 15, 65]  # [lonW, lonE, latS, latN]
-        else:
-            extent = ax_opts['extent']
-    else:
-        extent = [-180, 180, -90, 90]
 
     if 'fill_value' in config.spec_data[field_name]['xyplot']:
         fill_value = config.spec_data[field_name]['xyplot']['fill_value']
@@ -394,76 +387,19 @@ def _plot_xy_data(config, ax, data2d, x, y, field_name, fig, ax_opts, level,
         # Only pass transform if using Cartopy GeoAxes
         cfilled = _filled_contours(config, field_name, ax, x, y, data2d, transform=ccrs.PlateCarree())
     else:
-        # Don't pass transform for regular Matplotlib axes
         cfilled = _filled_contours(config, field_name, ax, x, y, data2d)
 
-    if cfilled is not None:
+    if cfilled is None:
         _set_const_colorbar(cfilled, fig, ax)
     else:
-        if ax_opts['cscale'] is not None:
-            contour_format = pu.contour_format_from_levels(pu.formatted_contours(ax_opts['clevs']),
-                                                           scale=ax_opts['cscale'])
-        else:
-            contour_format = pu.contour_format_from_levels(pu.formatted_contours(ax_opts['clevs']))
         _set_colorbar(config, cfilled, fig, ax, ax_opts, findex, field_name, data2d)
         _line_contours(fig, ax, ax_opts, x, y, data2d)
 
-    # if np.all(np.diff(config.ax_opts['clevs']) > 0):
-    #     if ax_opts['cscale'] is not None:
-    #         contour_format = pu.contour_format_from_levels(pu.formatted_contours(ax_opts['clevs']),
-    #                                                        scale=ax_opts['cscale'])
-    #     else:
-    #         contour_format = pu.contour_format_from_levels(pu.formatted_contours(ax_opts['clevs']))
-    #     _set_colorbar(config, cfilled, fig, ax, ax_opts, findex, field_name, data2d)
-    #     _line_contours(fig, ax, ax_opts, x, y, data2d)
-    # else:
-    #     _set_const_colorbar(cfilled, fig, ax)
-
-
     if (config.compare or config.compare_diff) and config.ax_opts['is_diff_field']:
-        try:
-            if 'name' in config.spec_data[field_name]:
-                name = config.spec_data[field_name]['name']
-            else:
-                name = config.readers[source_name].datasets[findex]['vars'][
-                    field_name].attrs.get("long_name", None)
-                if not name:
-                    name = field_name
-                # Try to get the name from the reader
-                reader = None
-                if source_name in config.readers:
-                    if isinstance(config.readers[source_name], dict):
-                        # New structure - get the primary reader
-                        readers_dict = config.readers[source_name]
-                        if 'NetCDF' in readers_dict:
-                            reader = readers_dict['NetCDF']
-                        elif readers_dict:
-                            reader = next(iter(readers_dict.values()))
-                    else:
-                        # Old structure - direct access
-                        reader = config.readers[source_name]
-                
-                # If we found a reader, try to get the field name
-                if reader and hasattr(reader, 'datasets'):
-                    if findex in reader.datasets and 'vars' in reader.datasets[findex]:
-                        var_attrs = reader.datasets[findex]['vars'][field_name].attrs
-                        if 'long_name' in var_attrs:
-                            name = var_attrs['long_name']
-                        else:
-                            name = field_name
-                    else:
-                        name = field_name
-                else:
-                    # Try to get name from data directly
-                    if hasattr(data2d, 'attrs') and 'long_name' in data2d.attrs:
-                        name = data2d.attrs['long_name']
-                    else:
-                        name = field_name
-        except Exception as e:
-            logger.warning(f"Error getting field name: {e}")
-            name = field_name
-
-
+        name = field_name
+        if 'name' in config.spec_data[field_name]:
+            name = config.spec_data[field_name]['name']
+        
         level_text = None
         if config.ax_opts['zave']:
             level_text = ' (Column Mean)'
@@ -479,61 +415,6 @@ def _plot_xy_data(config, ax, data2d, x, y, field_name, fig, ax_opts, level,
                     else:
                         level_text = '@ ' + str(level) + ' mb'
 
- 
-    # if config.compare and config.ax_opts['is_diff_field']:
-    #     # Get the field name in a way that works with the new reader structure
-    #     try:
-    #         if 'name' in config.spec_data[field_name]:
-    #             name = config.spec_data[field_name]['name']
-    #         else:
-    #             # Try to get the name from the reader
-    #             reader = None
-    #             if source_name in config.readers:
-    #                 if isinstance(config.readers[source_name], dict):
-    #                     # New structure - get the primary reader
-    #                     readers_dict = config.readers[source_name]
-    #                     if 'NetCDF' in readers_dict:
-    #                         reader = readers_dict['NetCDF']
-    #                     elif readers_dict:
-    #                         reader = next(iter(readers_dict.values()))
-    #                 else:
-    #                     # Old structure - direct access
-    #                     reader = config.readers[source_name]
-                
-    #             # If we found a reader, try to get the field name
-    #             if reader and hasattr(reader, 'datasets'):
-    #                 if findex in reader.datasets and 'vars' in reader.datasets[findex]:
-    #                     var_attrs = reader.datasets[findex]['vars'][field_name].attrs
-    #                     if 'long_name' in var_attrs:
-    #                         name = var_attrs['long_name']
-    #                     else:
-    #                         name = field_name
-    #                 else:
-    #                     name = field_name
-    #             else:
-    #                 # Try to get name from data directly
-    #                 if hasattr(data2d, 'attrs') and 'long_name' in data2d.attrs:
-    #                     name = data2d.attrs['long_name']
-    #                 else:
-    #                     name = field_name
-    #     except Exception as e:
-    #         logger.warning(f"Error getting field name: {e}")
-    #         name = field_name
-
-        level_text = None
-        if config.ax_opts['zave']:
-            level_text = ' (Column Mean)'
-        elif config.ax_opts['zsum']:
-            level_text = ' (Total Column)'
-        else:
-            if str(level) == '0':
-                level_text = ''
-            else:
-                if level is not None:
-                    if level > 10000:
-                        level_text = '@ ' + str(level) + ' Pa'
-                    else:
-                        level_text = '@ ' + str(level) + ' mb'
         if level_text:
             name = name + level_text
         plt.suptitle(
@@ -1477,24 +1358,13 @@ def _filled_contours(config, field_name, ax, x, y, data2d, transform=None):
         cmap_str = config.ax_opts['use_cmap']
 
     # Check for constant field
-    vmin = np.nanmin(data2d)
-    vmax = np.nanmax(data2d)
+    vmin, vmax = np.nanmin(data2d), np.nanmax(data2d)
     if np.isclose(vmin, vmax):
-        # Fill with a neutral color and print text
+        print("Fill with a neutral color and print text")
         ax.set_facecolor('whitesmoke')
         ax.text(0.5, 0.5, 'zero-diff', transform=ax.transAxes,
                 ha='center', va='center', fontsize=16, color='gray', fontweight='bold')
-        # Optionally, return a dummy QuadContourSet or None
         return None
-
-    if transform is not None:
-        try:
-            from cartopy.mpl.geoaxes import GeoAxes
-            if not isinstance(ax, GeoAxes):
-                transform = None
-                logger.warning("Transform provided but axis is not a GeoAxes. Ignoring transform.")
-        except ImportError:
-            transform = None
 
     try:
         if np.all(np.diff(config.ax_opts['clevs']) > 0):
@@ -1514,19 +1384,100 @@ def _filled_contours(config, field_name, ax, x, y, data2d, transform=None):
             raise ValueError("Contour levels must be increasing")
     except ValueError as e:
         logger.error(f"Error: {e}")
-        # Handle the case of a constant field
-        if transform is not None:
-            try:
-                cfilled = ax.contourf(x, y, data2d, extend='both', transform=transform)
-            except Exception as e2:
-                logger.error(f"Error with transform: {e2}. Trying without transform.")
-                cfilled = ax.contourf(x, y, data2d, extend='both')
-        else:
+        try:
+            cfilled = ax.contourf(x, y, data2d, extend='both',
+                                  transform=transform)
+        except Exception:
             cfilled = ax.contourf(x, y, data2d, extend='both')
+
         return cfilled
 
 
 def _set_colorbar(config, cfilled, fig, ax, ax_opts, findex, field_name, data2d):
+    try:
+        source_name = config.source_names[config.ds_index]
+        if ax_opts['cbar_sci_notation']:
+            fmt = pu.FlexibleOOMFormatter(min_val=data2d.min().compute().item(),
+                                           max_val=data2d.max().compute().item(),
+                                           math_text=True)
+        else:
+            fmt = pu.OOMFormatter(prec=ax_opts['clevs_prec'], math_text=True)
+
+        if not fig.use_cartopy:
+            cbar = fig.colorbar(cfilled)
+        else:
+            cbar = fig.colorbar(cfilled, ax=ax,
+                                 orientation='vertical' if config.compare or config.compare_diff else 'horizontal',
+                                 extendfrac=True if config.compare else 'auto',
+                                 pad=pu.cbar_pad(fig.subplots),
+                                 fraction=pu.cbar_fraction(fig.subplots),
+                                 ticks=ax_opts.get('clevs', None),
+                                 format=fmt,
+                                 shrink=pu.cbar_shrink(fig.subplots))
+            
+        # Use the following ONLY with the FlexibleOOMFormatter()
+        if ax_opts['cbar_sci_notation']:
+            cbar.ax.text(1.05, -0.5, r'$\times 10^{%d}$' % fmt.oom,
+                           transform=cbar.ax.transAxes, va='center', ha='left', fontsize=12)
+
+        try:
+            if field_name in config.spec_data and 'units' in config.spec_data[field_name]:
+                units = config.spec_data[field_name]['units']
+            else:
+                if hasattr(data2d, 'attrs') and 'units' in data2d.attrs:
+                    units = data2d.attrs['units']
+                elif hasattr(data2d, 'units'):
+                    units = data2d.units
+                else:
+                    reader = None
+                    if source_name in config.readers:
+                        if isinstance(config.readers[source_name], dict):
+                            readers_dict = config.readers[source_name]
+                            if 'NetCDF' in readers_dict:
+                                reader = readers_dict['NetCDF']
+                            elif readers_dict:
+                                reader = next(iter(readers_dict.values()))
+                        else:
+                            reader = config.readers[source_name]
+                    
+                    if reader and hasattr(reader, 'datasets'):
+                        if findex in reader.datasets and 'vars' in reader.datasets[findex]:
+                            field_var = reader.datasets[findex]['vars'].get(field_name)
+                            if field_var and hasattr(field_var, 'attrs') and 'units' in field_var.attrs:
+                                units = field_var.attrs['units']
+                            elif field_var and hasattr(field_var, 'units'):
+                                units = field_var.units
+                            else:
+                                units = "n.a."
+                        else:
+                            units = "n.a."
+                    else:
+                        units = "n.a."
+        except Exception as e:
+            logger.warning(f"Error getting units: {e}")
+            units = "n.a."
+ 
+        if ax_opts['clabel'] is None:
+            cbar_label = units
+        else:
+            cbar_label = ax_opts['clabel']
+        cbar.set_label(cbar_label, size=pu.bar_font_size(fig.subplots))
+
+        # Set font size for colorbar ticks
+        for t in cbar.ax.get_xticklabels():
+            t.set_fontsize(pu.contour_tick_font_size(fig.subplots))
+        for t in cbar.ax.get_yticklabels():
+            t.set_fontsize(pu.contour_tick_font_size(fig.subplots))
+
+    except Exception as e:
+        logger.error(f"Failed to add colorbar: {e}")
+
+
+def _set_const_colorbar(cfilled, fig, ax):
+    _ = fig.colorbar(cfilled, ax=ax, shrink=0.5)
+
+
+def _set_colorbar2(config, cfilled, fig, ax, ax_opts, findex, field_name, data2d):
     try:
         source_name = config.source_names[config.ds_index]
         if ax_opts['cbar_sci_notation']:
@@ -1605,11 +1556,6 @@ def _set_colorbar(config, cfilled, fig, ax, ax_opts, findex, field_name, data2d)
 
     except Exception as e:
         logger.error(f"Failed to add colorbar: {e}")
-
-
-def _set_const_colorbar(cfilled, fig, ax):
-    if cfilled is not None:
-        _ = fig.colorbar(cfilled, ax=ax, shrink=0.5)
 
 
 def colorbar(mappable):
