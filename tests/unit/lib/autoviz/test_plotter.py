@@ -18,6 +18,8 @@ def mock_config_manager():
         'cscale': None,
         'clabel': None,
         'add_grid': True,
+        'zave': False,
+        'zsum': False,
         'time_series_plot_linestyle': {},
         'cbar_sci_notation': False,
         'clevs_prec': 1,

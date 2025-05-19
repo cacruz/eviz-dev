@@ -395,15 +395,15 @@ def _plot_xy_data(config, ax, data2d, x, y, field_name, fig, ax_opts, level,
         _set_colorbar(config, cfilled, fig, ax, ax_opts, findex, field_name, data2d)
         _line_contours(fig, ax, ax_opts, x, y, data2d)
 
-    if (config.compare or config.compare_diff) and config.ax_opts['is_diff_field']:
+    if config.compare or config.compare_diff:
         name = field_name
         if 'name' in config.spec_data[field_name]:
             name = config.spec_data[field_name]['name']
         
         level_text = None
-        if config.ax_opts['zave']:
+        if config.ax_opts.get('zave', False):
             level_text = ' (Column Mean)'
-        elif config.ax_opts['zsum']:
+        elif config.ax_opts.get('zsum', False):
             level_text = ' (Total Column)'
         else:
             if str(level) == '0':
