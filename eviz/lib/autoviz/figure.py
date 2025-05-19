@@ -573,7 +573,7 @@ class Figure(mfigure.Figure):
         fontsize = kwargs.get('fontsize', pu.subplot_title_font_size(self._subplots))
         ha = kwargs.get('horizontalalignment', 'center')
         va = kwargs.get('verticalalignment', 'center')
-        loc = kwargs.get('location', '')
+        loc = kwargs.get('location', 'left')
         transform = kwargs.get('transform', ax.transAxes)
         x_pos = kwargs.get('x_pos', 0.5)  # Default x position
         y_pos = kwargs.get('y_pos', 1.1)  # Default y position       
@@ -582,18 +582,18 @@ class Figure(mfigure.Figure):
         sname = self.config_manager.config.map_params[findex]['source_name']
         ds_index = self.config_manager.ds_index
         # ds_index = self.config_manager.config.map_params[findex]['source_index']
-        geom = pu.get_subplot_geometry(ax) if self.config_manager.compare else None
+        geom = pu.get_subplot_geometry(ax) if self.config_manager.compare or self.config_manager.compare_diff else None
 
         # Handle plot titles for comparison cases
-        if self.config_manager.compare:
+        if self.config_manager.compare or self.config_manager.compare_diff:
             if geom and geom[0] == (3, 1):  # (3,1) subplot structure
                 if geom[1:] == (0, 1, 1, 1):  # Bottom plot
-                    self._ax_opts['plot_title'] = "Difference (top - middle)"
+                    title_string = "Difference (top - middle)"
                 elif geom[1:] in [(1, 1, 0, 1), (0, 1, 0, 1)]:  # Top/Middle plots
-                    self._axes_title(ax, findex)
+                    title_string = self._set_axes_title(ax, findex)
             elif self._subplots == (2, 2):  # (2,2) subplot structure
                 if geom[1:] == (0, 1, 1, 0):
-                    self._ax_opts['plot_title'] = "Difference (left - right)"
+                    title_string = "Difference (left - right)"
                 elif geom[1:] == (0, 0, 1, 1):  # Extra diff plot
                     diff_labels = {
                         "percd": ("% Diff", "%"),
@@ -601,19 +601,16 @@ class Figure(mfigure.Figure):
                         "ratio": ("Ratio Diff", "ratio"),
                     }
                     diff_type = self.config_manager.extra_diff_plot
-                    self._ax_opts['plot_title'], self._ax_opts['clabel'] = diff_labels.get(
+                    title_string, self._ax_opts['clabel'] = diff_labels.get(
                         diff_type, ("Difference (left - right)", None))
                     self._ax_opts['line_contours'] = False
                 else:  # Default case
-                    self._axes_title(ax, findex)
+                    title_string = self._set_axes_title(ax, findex)
+            elif geom and (geom[0] == (1, 2) or geom[0] == (1, 3)):
+                title_string = self._set_axes_title(ax, findex)
             else:  # Default title for comparison
-                # TODO: need to consider cases where reader is (1) directly accesd or (2) reader is a dict
-                # plot_title = os.path.basename(
-                #     self.config_manager.readers[sname].datasets[ax.get_subplotspec().colspan.start][
-                #         'filename'])
-                plot_title = 'Placeholder'
-                ax.set_title(plot_title, fontsize=fontsize)
-            ax.set_title(self._ax_opts.get('plot_title', ""), fontsize=fontsize)
+                title_string = 'Placeholder'
+            ax.set_title(title_string, loc=loc, fontsize=fontsize)
             return
 
         # Non-comparison case
@@ -701,17 +698,16 @@ class Figure(mfigure.Figure):
                     verticalalignment=kwargs.get('va', 'center'),
                     transform=ax.transAxes)
         
-    def _axes_title(self, ax, findex, fs=10, loc='left'):
+    def _set_axes_title(self, ax, findex):
         if self.config_manager.get_file_description(findex):
-            title_string = self.config_manager.get_file_description(findex)
+            return self.config_manager.get_file_description(findex)
         elif self.config_manager.get_file_exp_name(findex):
-            title_string = self.config_manager.get_file_exp_name(findex)
+            return self.config_manager.get_file_exp_name(findex)
         else:
-            title_string = ''
             if self.config_manager.ax_opts['custom_title']:
-                title_string = self.config_manager.ax_opts['custom_title']
-        ax.set_title(title_string, loc=loc, fontsize=fs)
-
+                return self.config_manager.ax_opts['custom_title']
+        return None
+        
     @staticmethod
     def _basic_stats(data):
         """ Basic stats for a given field """

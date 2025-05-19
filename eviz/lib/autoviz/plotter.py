@@ -305,13 +305,16 @@ def _single_scat_plot(config: ConfigManager, data_to_plot: tuple) -> None:
 def _determine_axes_shape(fig, ax_temp):
     """Determine the shape of the axes."""
     if isinstance(ax_temp, list):
+        print('LIST')
         # If ax_temp is a list of axes, determine the shape from the list
         num_axes = len(ax_temp)
+        print(f"Number of axes: {num_axes}")
         if num_axes == 1:
             return 1, 1
         else:
             return fig.get_gs_geometry()
     else:
+        print('NOT LIST')
         # If ax_temp is a single GeoAxes, assume shape is (1, 1)
         return 1, 1
 
@@ -471,11 +474,24 @@ def _single_yz_plot(config: ConfigManager, data_to_plot: tuple) -> None:
         if len(data2d.shape) >= 2:
             # Assume first dimension is vertical in a YZ plot
             vertical_coord = np.arange(data2d.shape[0])
-    
-    axes_shape = _determine_axes_shape(fig, ax_temp)
 
     ax_opts = config.ax_opts
-    ax = _select_axes(ax_temp, axes_shape, ax_opts, config.axindex)
+    ax = ax_temp
+    axes_shape = fig.get_gs_geometry()
+    if axes_shape == (3, 1):
+        if ax_opts['is_diff_field']:
+            ax = ax_temp[2]
+        else:
+            ax = ax_temp[config.axindex]
+    elif axes_shape == (2, 2):
+        if ax_opts['is_diff_field']:
+            ax = ax_temp[2]
+            if config.ax_opts['add_extra_field_type']:
+                ax = ax_temp[3]
+        else:
+            ax = ax_temp[config.axindex]
+    elif axes_shape == (1, 2):
+        ax = ax_temp
 
     if data2d is None:
         return
