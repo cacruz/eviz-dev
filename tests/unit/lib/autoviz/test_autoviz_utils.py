@@ -139,3 +139,94 @@ def test_contour_label_size(panels_shape, contour_label_size_expected):
 def test_contour_levels_plot_empty():
     clevs = []
     assert len(p.contour_levels_plot(clevs)) == 0
+
+
+def test_natural_key():
+    assert p.natural_key("file10.png") == ['file', 10, '.png']
+    assert p.natural_key("abc2def3") == ['abc', 2, 'def', 3, '']
+
+
+def test_formatted_contours():
+    assert p.formatted_contours([1.0, 2.0, 3.5, 4]) == [1, 2, 3.5, 4]
+
+
+@pytest.mark.parametrize("panels,expected", [
+    ((1, 1), 12),
+    ((3, 1), 12),
+    ((2, 2), 12),
+    (None, 8),
+])
+def test_axis_tick_font_size(panels, expected):
+    assert p.axis_tick_font_size(panels) == expected
+
+
+@pytest.mark.parametrize("panels,expected", [
+    ((1, 1), 10),
+    ((3, 1), 8),
+    ((2, 2), 8),
+    (None, 8),
+])
+def test_contour_tick_font_size(panels, expected):
+    assert p.contour_tick_font_size(panels) == expected
+
+
+@pytest.mark.parametrize("panels,expected", [
+    ((1, 1), 0.05),
+    ((3, 1), 0.1),
+    ((2, 2), 0.05),
+    (None, 0.05),
+])
+def test_cbar_fraction(panels, expected):
+    assert p.cbar_fraction(panels) == expected
+
+def test_contour_levels_plot():
+    assert p.contour_levels_plot([1, 2.0, 3.0, 4.5, 5.0]) == [1, 2, 3, 4.5, 5]
+    assert p.contour_levels_plot([]) == []
+
+
+def test_fmt_two_digits():
+    assert p.fmt_two_digits(1.234, None) == '[1.23]'
+
+
+def test_fmt():
+    # Should return a string with scientific notation
+    s = p.fmt(1234, None)
+    assert r'\times 10^' in s
+
+
+def test_fmt_once():
+    s = p.fmt_once(1234, None)
+    assert s.startswith('$')
+
+
+def test_image_scaling():
+    arr = [[1, 2], [3, 4]]
+    scaled = p.image_scaling(arr, 2, 2)
+    assert scaled == [[1, 2], [3, 4]]
+
+
+def test_get_subplot_shape():
+    assert p.get_subplot_shape(1) == (1, 1)
+    assert p.get_subplot_shape(2) == (2, 1)
+    assert p.get_subplot_shape(4) == (2, 2)
+    assert p.get_subplot_shape(5) == (3, 2)
+
+
+def test_contour_format_from_levels():
+    fmt = p.contour_format_from_levels([1, 2, 3])
+    assert isinstance(fmt, str) or callable(fmt)
+
+
+def test_OOMFormatter_custom_format():
+    f = p.OOMFormatter(order=0, prec=2)
+    assert f._custom_format(1.234, 0) == '1.23'
+
+
+def test_FlexibleOOMFormatter_custom_format():
+    f = p.FlexibleOOMFormatter(order=0, min_val=1, max_val=100)
+    assert f._custom_format(10, 0).startswith('$')
+
+
+def test_FlexibleOOMFormatter_call():
+    f = p.FlexibleOOMFormatter(order=0, min_val=1, max_val=100)
+    assert isinstance(f(10), str)

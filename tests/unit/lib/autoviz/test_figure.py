@@ -2,7 +2,6 @@ import matplotlib.pyplot as plt
 import cartopy.crs as ccrs
 from unittest.mock import MagicMock, patch
 import pytest
-
 from eviz.lib.autoviz.figure import Figure
 from eviz.lib.config.config_manager import ConfigManager
 
@@ -295,45 +294,6 @@ class TestFigure:
             assert args[2] == 'xy'
             assert args[3] == 1000
         
-    # @patch('eviz.lib.autoviz.figure.Figure._init_frame')
-    # @patch('eviz.lib.autoviz.figure.Figure._set_axes')
-    # def test_colorbar_eviz(self, mock_set_axes, mock_init_frame):
-    #     """Test colorbar creation."""
-    #     fig = Figure(self.mock_config_manager, 'xy')
-        
-    #     # Create mock objects
-    #     mock_ax = MagicMock()
-    #     mock_mappable = MagicMock()
-    #     mock_mappable.axes = mock_ax
-        
-    #     # Patch make_axes_locatable and its return values
-    #     with patch('mpl_toolkits.axes_grid1.make_axes_locatable') as mock_make_axes_locatable:
-    #         mock_divider = MagicMock()
-    #         mock_make_axes_locatable.return_value = mock_divider
-            
-    #         mock_cax = MagicMock()
-    #         mock_divider.append_axes.return_value = mock_cax
-            
-    #         # Patch plt.sca to avoid actual axis setting
-    #         with patch('matplotlib.pyplot.sca') as mock_sca:
-    #             # Patch fig.colorbar to return a mock colorbar
-    #             mock_colorbar = MagicMock()
-    #             with patch.object(fig, 'colorbar', return_value=mock_colorbar):
-    #                 # Call colorbar_eviz
-    #                 cbar = fig.colorbar_eviz(mock_mappable)
-                    
-    #                 # Verify make_axes_locatable was called with the correct axis
-    #                 mock_make_axes_locatable.assert_called_once_with(mock_ax)
-                    
-    #                 # Verify append_axes was called with the correct parameters
-    #                 mock_divider.append_axes.assert_called_once_with("right", size="5%", pad=0.05)
-                    
-    #                 # Verify colorbar was called with the correct parameters
-    #                 fig.colorbar.assert_called_once_with(mock_mappable, cax=mock_cax)
-                    
-    #                 # Verify the correct colorbar was returned
-    #                 assert cbar == mock_colorbar
-        
     @patch('eviz.lib.autoviz.figure.Figure._init_frame')
     @patch('eviz.lib.autoviz.figure.Figure._set_axes')
     @patch('eviz.lib.autoviz.utils.get_subplot_geometry')
@@ -383,3 +343,34 @@ class TestFigure:
             assert args[1] == 'xy'
             assert kwargs['nrows'] == 2
             assert kwargs['ncols'] == 2
+
+
+class DummyConfig:
+    def __init__(self, compare=False, compare_diff=False, extra_diff_plot=False, comp_panels=(1,1)):
+        self.compare = compare
+        self.compare_diff = compare_diff
+        self.extra_diff_plot = extra_diff_plot
+        self.input_config = self
+        self._comp_panels = comp_panels
+        self.add_logo = False
+        self.spec_data = {}
+        self.ds_index = 0
+        self.findex = 0
+        self.readers = {}
+        self.config = self
+        self.map_params = [{}]
+        self.ax_opts = {}
+        self.yaml_parser = self
+
+@pytest.mark.parametrize("compare,compare_diff,extra_diff_plot,expected_shape", [
+    (False, False, False, (1, 1)),
+    (True, False, False, (1, 2)),
+    (True, False, True, (1, 2)),  
+    (False, True, False, (3, 1)),
+    (False, True, True, (3, 1)), 
+])
+def test_figure_axes_shape(compare, compare_diff, extra_diff_plot, expected_shape):
+    config = DummyConfig(compare=compare, compare_diff=compare_diff, extra_diff_plot=extra_diff_plot, comp_panels=expected_shape)
+    fig = Figure.create_eviz_figure(config, plot_type='xy')
+    assert fig.get_gs_geometry() == expected_shape
+
