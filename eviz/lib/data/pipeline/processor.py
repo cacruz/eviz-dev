@@ -28,7 +28,6 @@ class DataProcessor:
     - Data interpolation and regridding
     """
     config_manager: Optional['ConfigManager'] = None
-    data2d_list: List = field(default_factory=list, init=False)
 
     @property
     def logger(self) -> logging.Logger:
@@ -359,8 +358,8 @@ class DataProcessor:
         except Exception as e:
             self.logger.error(f"Error converting {species_name}: {e}")
 
-    def regrid(self, data1: xr.DataArray, data2: xr.DataArray, 
-               dim1_name: str, dim2_name: str) -> Tuple[xr.DataArray, xr.DataArray]:
+    def regrid(self, d1: xr.DataArray, d2: xr.DataArray, 
+               dim1: str, dim2: str) -> Tuple[xr.DataArray, xr.DataArray]:
         """Regrid two data arrays to a common grid.
         
         Args:
@@ -372,22 +371,31 @@ class DataProcessor:
         Returns:
             Tuple of regridded data arrays
         """
-        # Determine target grid (use the coarser grid)
-        if data1.size < data2.size:
-            target = data1
-            to_regrid = data2
+        da1_size = d1.size
+        da2_size = d2.size
+        if da1_size < da2_size:
+            d2 = self._regrid(d2, d1, dim1, dim2, regrid_dims=(1, 0))
+            d2 = self._regrid(d2, d1, dim1, dim2, regrid_dims=(0, 1))
+        elif da1_size > da2_size:
+            d1 = self._regrid(d1, d2, dim1, dim2, regrid_dims=(1, 0))
+            d1 = self._regrid(d1, d2, dim1, dim2, regrid_dims=(0, 1))
+        elif da1_size == da2_size:
+            d1 = self._regrid(d1, d2, dim1, dim2, regrid_dims=(1, 0))
+            d1 = self._regrid(d1, d2, dim1, dim2, regrid_dims=(0, 1))
+            d2 = self._regrid(d2, d1, dim1, dim2, regrid_dims=(1, 0))
+            d2 = self._regrid(d2, d1, dim1, dim2, regrid_dims=(0, 1))
+
+        compute_diff = True
+        if compute_diff:
+            if self.config_manager.ax_opts['add_extra_field_type']:
+                data_diff = self._compute_diff_type(d1, d2).squeeze()
+            else:
+                data_diff = (d1 - d2).squeeze()
+            coords = data_diff.coords
+            return data_diff, coords[dim1].values, coords[dim2].values
         else:
-            target = data2
-            to_regrid = data1
-
-        # Regrid along first dimension
-        regridded = self._regrid(to_regrid, target, dim1_name, dim2_name, regrid_dims=(1, 0))
+            return d1, d2
         
-        # Regrid along second dimension
-        regridded = self._regrid(regridded, target, dim1_name, dim2_name, regrid_dims=(0, 1))
-
-        return (target, regridded) if data1.size < data2.size else (regridded, target)
-
     def _regrid(self, ref_arr: xr.DataArray, target: xr.DataArray, 
                 dim1_name: str, dim2_name: str, regrid_dims: Tuple[int, int]) -> xr.DataArray:
         """Regrid a data array to match a target grid along specified dimensions.
@@ -433,6 +441,33 @@ class DataProcessor:
             new_arr.coords[dim1_name] = target.coords[dim1_name]
 
         return new_arr
+
+    def _compute_diff_type(self, d1, d2):
+        """ Compute difference between two fields based on specified type
+
+        Difference is specified in ``app`` file. It can be a percent difference, a percent change
+        or a ratio difference.
+
+        Parameters:
+            d1 (ndarray) : A 2D array of an ESM field
+            d2 (ndarray) : A 2D array of an ESM field
+
+        Returns:
+            Difference of the two fields
+        """
+        field_diff = None
+        if self.config_manager.extra_diff_plot == "percd":  # percent diff
+            num = abs(d1 - d2)
+            den = (d1 + d2) / 2.0
+            field_diff = (num / den) * 100.
+        elif self.config_manager.extra_diff_plot == "percc":  # percent change
+            field_diff = d1 - d2
+            field_diff = field_diff / d2
+            field_diff = field_diff * 100
+        elif self.config_manager.extra_diff_plot == "ratio":
+            field_diff = d1 / d2
+
+        return field_diff
 
     @staticmethod
     def _interp(y_src: np.ndarray, x_src: np.ndarray, x_dest: np.ndarray, **kwargs) -> np.ndarray:

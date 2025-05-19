@@ -48,7 +48,7 @@ inputs:
   #    ignore: Var_
 
 for_inputs:
-    compare:
+    compare_diff:
       ids: RefD2-JJA,RefD2-DJF
       cmap: coolwarm
 #      extra_diff: ratio

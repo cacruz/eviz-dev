@@ -397,7 +397,9 @@ def _plot_xy_data(config, ax, data2d, x, y, field_name, fig, ax_opts, level,
         # Don't pass transform for regular Matplotlib axes
         cfilled = _filled_contours(config, field_name, ax, x, y, data2d)
 
-    if np.all(np.diff(config.ax_opts['clevs']) > 0):
+    if cfilled is not None:
+        _set_const_colorbar(cfilled, fig, ax)
+    else:
         if ax_opts['cscale'] is not None:
             contour_format = pu.contour_format_from_levels(pu.formatted_contours(ax_opts['clevs']),
                                                            scale=ax_opts['cscale'])
@@ -405,15 +407,28 @@ def _plot_xy_data(config, ax, data2d, x, y, field_name, fig, ax_opts, level,
             contour_format = pu.contour_format_from_levels(pu.formatted_contours(ax_opts['clevs']))
         _set_colorbar(config, cfilled, fig, ax, ax_opts, findex, field_name, data2d)
         _line_contours(fig, ax, ax_opts, x, y, data2d)
-    else:
-        _set_const_colorbar(cfilled, fig, ax)
 
-    if config.compare and config.ax_opts['is_diff_field']:
-        # Get the field name in a way that works with the new reader structure
+    # if np.all(np.diff(config.ax_opts['clevs']) > 0):
+    #     if ax_opts['cscale'] is not None:
+    #         contour_format = pu.contour_format_from_levels(pu.formatted_contours(ax_opts['clevs']),
+    #                                                        scale=ax_opts['cscale'])
+    #     else:
+    #         contour_format = pu.contour_format_from_levels(pu.formatted_contours(ax_opts['clevs']))
+    #     _set_colorbar(config, cfilled, fig, ax, ax_opts, findex, field_name, data2d)
+    #     _line_contours(fig, ax, ax_opts, x, y, data2d)
+    # else:
+    #     _set_const_colorbar(cfilled, fig, ax)
+
+
+    if (config.compare or config.compare_diff) and config.ax_opts['is_diff_field']:
         try:
             if 'name' in config.spec_data[field_name]:
                 name = config.spec_data[field_name]['name']
             else:
+                name = config.readers[source_name].datasets[findex]['vars'][
+                    field_name].attrs.get("long_name", None)
+                if not name:
+                    name = field_name
                 # Try to get the name from the reader
                 reader = None
                 if source_name in config.readers:
@@ -447,6 +462,63 @@ def _plot_xy_data(config, ax, data2d, x, y, field_name, fig, ax_opts, level,
         except Exception as e:
             logger.warning(f"Error getting field name: {e}")
             name = field_name
+
+
+        level_text = None
+        if config.ax_opts['zave']:
+            level_text = ' (Column Mean)'
+        elif config.ax_opts['zsum']:
+            level_text = ' (Total Column)'
+        else:
+            if str(level) == '0':
+                level_text = ''
+            else:
+                if level is not None:
+                    if level > 10000:
+                        level_text = '@ ' + str(level) + ' Pa'
+                    else:
+                        level_text = '@ ' + str(level) + ' mb'
+
+ 
+    # if config.compare and config.ax_opts['is_diff_field']:
+    #     # Get the field name in a way that works with the new reader structure
+    #     try:
+    #         if 'name' in config.spec_data[field_name]:
+    #             name = config.spec_data[field_name]['name']
+    #         else:
+    #             # Try to get the name from the reader
+    #             reader = None
+    #             if source_name in config.readers:
+    #                 if isinstance(config.readers[source_name], dict):
+    #                     # New structure - get the primary reader
+    #                     readers_dict = config.readers[source_name]
+    #                     if 'NetCDF' in readers_dict:
+    #                         reader = readers_dict['NetCDF']
+    #                     elif readers_dict:
+    #                         reader = next(iter(readers_dict.values()))
+    #                 else:
+    #                     # Old structure - direct access
+    #                     reader = config.readers[source_name]
+                
+    #             # If we found a reader, try to get the field name
+    #             if reader and hasattr(reader, 'datasets'):
+    #                 if findex in reader.datasets and 'vars' in reader.datasets[findex]:
+    #                     var_attrs = reader.datasets[findex]['vars'][field_name].attrs
+    #                     if 'long_name' in var_attrs:
+    #                         name = var_attrs['long_name']
+    #                     else:
+    #                         name = field_name
+    #                 else:
+    #                     name = field_name
+    #             else:
+    #                 # Try to get name from data directly
+    #                 if hasattr(data2d, 'attrs') and 'long_name' in data2d.attrs:
+    #                     name = data2d.attrs['long_name']
+    #                 else:
+    #                     name = field_name
+    #     except Exception as e:
+    #         logger.warning(f"Error getting field name: {e}")
+    #         name = field_name
 
         level_text = None
         if config.ax_opts['zave']:
@@ -1404,15 +1476,24 @@ def _filled_contours(config, field_name, ax, x, y, data2d, transform=None):
     else:
         cmap_str = config.ax_opts['use_cmap']
 
+    # Check for constant field
+    vmin = np.nanmin(data2d)
+    vmax = np.nanmax(data2d)
+    if np.isclose(vmin, vmax):
+        # Fill with a neutral color and print text
+        ax.set_facecolor('whitesmoke')
+        ax.text(0.5, 0.5, 'zero-diff', transform=ax.transAxes,
+                ha='center', va='center', fontsize=16, color='gray', fontweight='bold')
+        # Optionally, return a dummy QuadContourSet or None
+        return None
+
     if transform is not None:
         try:
             from cartopy.mpl.geoaxes import GeoAxes
             if not isinstance(ax, GeoAxes):
-                # If not a GeoAxes, don't use the transform
                 transform = None
                 logger.warning("Transform provided but axis is not a GeoAxes. Ignoring transform.")
         except ImportError:
-            # If Cartopy is not available, don't use the transform
             transform = None
 
     try:
@@ -1434,7 +1515,6 @@ def _filled_contours(config, field_name, ax, x, y, data2d, transform=None):
     except ValueError as e:
         logger.error(f"Error: {e}")
         # Handle the case of a constant field
-        # Only pass transform if it's valid for this axis
         if transform is not None:
             try:
                 cfilled = ax.contourf(x, y, data2d, extend='both', transform=transform)
@@ -1528,8 +1608,8 @@ def _set_colorbar(config, cfilled, fig, ax, ax_opts, findex, field_name, data2d)
 
 
 def _set_const_colorbar(cfilled, fig, ax):
-    _ = fig.fig.colorbar(cfilled, ax=ax, shrink=0.5)
-
+    if cfilled is not None:
+        _ = fig.colorbar(cfilled, ax=ax, shrink=0.5)
 
 
 def colorbar(mappable):
