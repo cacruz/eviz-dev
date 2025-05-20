@@ -194,7 +194,7 @@ class ConfigManager:
             str or None: Model-specific dimension name if available
         """
         source = self.source_names[self.ds_index]
-
+        
         if source not in self.meta_coords.get(dim_name, {}):
             self.logger.debug(f"No meta_coords mapping for dimension '{dim_name}' and source '{source}'")
             return None

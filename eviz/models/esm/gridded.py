@@ -95,52 +95,26 @@ class Gridded(Root):
     # SIMPLE PLOTS METHODS (no SPECS file)
     # --------------------------------------------------------------------------
     def _simple_plots(self, plotter):
-        """Generate simple plots."""
-        self.logger.info("Generating simple plots")
         map_params = self.config_manager.map_params
         field_num = 0
-        # self.config_manager.findex = 0 # findex is set in _single_plots loop
-
-        # Access data sources via the pipeline
-        all_data_sources = self.config_manager.pipeline.get_all_data_sources()
-        if not all_data_sources:
-            self.logger.error("No data sources available for simple plotting.")
-            return
-
-        for i, params in map_params.items():
-            field_name = params.get('field')
-            if not field_name:
-                continue
-
-            filename = params.get('filename')
-            data_source = self.config_manager.pipeline.get_data_source(filename)
-
-            if not data_source or not hasattr(data_source,
-                                              'dataset') or data_source.dataset is None:
-                # No data source or dataset found in pipeline for this filename
-                continue
-
+        self.config_manager.findex = 0
+        for i in map_params.keys():
+            
+            field_name = map_params[i]['field']
+            filename = map_params[i]['filename']
+            file_index = self.config_manager.get_file_index(filename)
+            data_source =  self.config_manager.pipeline.get_data_source(filename)
             if field_name not in data_source.dataset:
-                # Field not found in dataset for this filename
                 continue
-
-            # Update config_manager state variables before plotting
-            # Use the index from map_params as findex
-            self.config_manager.findex = i
+            self.config_manager.findex = file_index
             self.config_manager.pindex = field_num
             self.config_manager.axindex = 0
-
             field_data_array = data_source.dataset[field_name]
 
-            for pt in params.get('to_plot', ['xy']):  # Default to 'xy' if not specified
-                self.logger.info(f"Plotting {field_name}, {pt} plot")
-                # Pass the DataArray directly to the helper
-                field_to_plot = self._get_field_for_simple_plot(field_data_array,
-                                                                field_name, pt)
-                if field_to_plot:
-                    # The simple_plot method in SimplePlotter expects a tuple
-                    # (data2d, dim1, dim2, field_name, plot_type)
-                    plotter.simple_plot(self.config_manager, (*field_to_plot, pt))
+            for plot_type in map_params[i]['to_plot']:
+                self.logger.info(f"Plotting {field_name}, {plot_type} plot")
+                field_to_plot = self._get_field_for_simple_plot(field_data_array, field_name, plot_type)
+                plotter.simple_plot(self.config_manager, field_to_plot)
             field_num += 1
 
     # Simple plots do not use configurations in SPECS file
@@ -149,15 +123,13 @@ class Gridded(Root):
         """Prepare data for simple plots."""
         if data_array is None:
             return None
-
         data2d = None
         dim1_name, dim2_name = None, None
 
         if 'xy' in plot_type:
             dim1_name = self.config_manager.get_model_dim_name('xc')
             dim2_name = self.config_manager.get_model_dim_name('yc')
-            data2d = self._get_xy_simple(data_array,
-                                         0)  # Assuming time_lev=0 for simple plots
+            data2d = self._get_xy_simple(data_array)
         elif 'yz' in plot_type:
             dim1_name = self.config_manager.get_model_dim_name('yc')
             dim2_name = self.config_manager.get_model_dim_name('zc')
@@ -179,62 +151,54 @@ class Gridded(Root):
         if data2d is None:
             return None
 
-        # Get coordinate DataArrays if dimension names were found
         dim1_coords = data2d[
             dim1_name] if dim1_name and dim1_name in data2d.coords else None
         dim2_coords = data2d[
             dim2_name] if dim2_name and dim2_name in data2d.coords else None
-
-        return data2d, dim1_coords, dim2_coords, field_name
-
-    def _get_xy_simple(self, data_array: xr.DataArray, time_level: int) -> xr.DataArray:
-        """ Extract XY slice from N-dim data field for simple plot"""
-        if data_array is None:
+        if dim1_coords is None or dim2_coords is None:
+            self.logger.error(
+                f"Could not find coordinates for field '{field_name}' with plot type '{plot_type}'. "
+                f"dim1: {dim1_name}, dim2: {dim2_name}, data2d.dims: {data2d.dims}"
+            )
             return None
+        
+        return data2d, dim1_coords, dim2_coords, field_name, plot_type
+
+    def _get_xy_simple(self, data_array: xr.DataArray) -> xr.DataArray:
+        """ Extract XY slice from N-dim data field"""
+        if data_array is None:
+            return
         data2d = data_array.squeeze()
-        # Hackish - select first time and level if they exist
-        if self.config_manager.get_model_dim_name('tc') in data2d.dims:
-            if data2d[self.config_manager.get_model_dim_name('tc')].size > time_level:
-                data2d = data2d.isel(
-                    {self.config_manager.get_model_dim_name('tc'): time_level})
-            else:
-                if data2d[self.config_manager.get_model_dim_name('tc')].size > 0:
-                    data2d = data2d.isel(
-                        {self.config_manager.get_model_dim_name('tc'): 0})
-                else:
-                    self.logger.debug(f"No time dimension found for {data_array.name}")
 
-        if self.config_manager.get_model_dim_name('zc') in data2d.dims:
-            if data2d[self.config_manager.get_model_dim_name('zc')].size > 0:
-                data2d = data2d.isel({self.config_manager.get_model_dim_name('zc'): 0})
+        tc_dim = self.config_manager.get_model_dim_name('tc')
+        if tc_dim and tc_dim in data2d.dims:
+            data2d = data2d.mean(dim=tc_dim)
+        
+        zc_dim = self.config_manager.get_model_dim_name('zc')
+        if zc_dim and zc_dim in data2d.dims:
+            data2d = data2d.mean(dim=zc_dim)
+        
+        if len(data2d.shape) == 4:
+            data2d = data2d.isel({tc_dim: 0})
+        if len(data2d.shape) == 3:
+            if tc_dim in data2d.dims:
+                data2d = data2d.isel({tc_dim: 0})
             else:
-                self.logger.debug(f"No vertical dimension found for {data_array.name}")
-
+                data2d = data2d.isel({zc_dim: 0})
         return data2d
 
     def _get_yz_simple(self, data_array: xr.DataArray) -> xr.DataArray:
-        """ Create YZ slice from N-dim data field for simple plot"""
         if data_array is None:
             return None
         data2d = data_array.squeeze()
-        # Hackish - select first time if it exists
-        if self.config_manager.get_model_dim_name('tc') in data2d.dims:
-            if data2d[self.config_manager.get_model_dim_name('tc')].size > 0:
-                data2d = data2d.isel({self.config_manager.get_model_dim_name('tc'): 0})
-            else:
-                self.logger.debug(f"No time dimension found for {data_array.name}")
-
-        # Compute zonal mean if longitude dimension exists
+        tc_dim = self.config_manager.get_model_dim_name('tc')
+        if tc_dim in data2d.dims and data2d[tc_dim].size > 0:
+            data2d = data2d.isel({tc_dim: 0})
         xc_dim = self.config_manager.get_model_dim_name('xc')
-        if xc_dim and xc_dim in data2d.dims:
+        if xc_dim in data2d.dims:
             data2d = data2d.mean(dim=xc_dim)
-        else:
-            self.logger.debug(
-                f"Could not find longitude dimension '{xc_dim}' for zonal mean in {data_array.name}")
-
         return data2d
 
-    # Removed _get_model_dim_name method - use config_manager.get_model_dim_name
 
     # SINGLE PLOTS METHODS (using SPECS file)
     # --------------------------------------------------------------------------
@@ -242,7 +206,6 @@ class Gridded(Root):
         """Generate single plots for each source and field according to configuration."""
         self.logger.info("Generating single plots")
 
-        # Access data sources via the pipeline
         all_data_sources = self.config_manager.pipeline.get_all_data_sources()
         if not all_data_sources:
             self.logger.error("No data sources available for single plotting.")
@@ -260,11 +223,9 @@ class Gridded(Root):
 
             if not data_source or not hasattr(data_source,
                                               'dataset') or data_source.dataset is None:
-                # No data source or dataset found in pipeline
                 continue
 
             if field_name not in data_source.dataset:
-                # Field not found in dataset
                 continue
 
             self.config_manager.findex = idx  # Assuming idx corresponds to file index in map_params
@@ -302,9 +263,8 @@ class Gridded(Root):
         levels = self.config_manager.get_levels(field_name, plot_type + 'plot')
         do_zsum = self.config_manager.ax_opts.get('zsum', False)  # Use .get with default
 
-        time_level_config = self.config_manager.ax_opts.get('time_lev', 0)  # Default to 0
-        tc_dim = self.config_manager.get_model_dim_name(
-            'tc') or 'time'  # Default to 'time'
+        time_level_config = self.config_manager.ax_opts.get('time_lev', 0)
+        tc_dim = self.config_manager.get_model_dim_name('tc') or 'time'
         num_times = data_array[tc_dim].size if tc_dim in data_array.dims else 1
         time_levels = range(num_times) if time_level_config == 'all' else [
             time_level_config]
@@ -400,15 +360,13 @@ class Gridded(Root):
                             time_levels: list, plotter):
         """Process plots with vertical summation."""
         self.config_manager.level = None
-        tc_dim = self.config_manager.get_model_dim_name(
-            'tc') or 'time'  # Default to 'time'
-        zc_dim = self.config_manager.get_model_dim_name('zc') or 'lev'  # Default to 'lev'
+        tc_dim = self.config_manager.get_model_dim_name('tc') or 'time'  
+        zc_dim = self.config_manager.get_model_dim_name('zc') or 'lev'
 
         if not zc_dim or zc_dim not in data_array.dims:
             data_array = data_array.squeeze()
 
         for t in time_levels:
-            # Select time level if time dimension exists
             if tc_dim in data_array.dims:
                 data_at_time = data_array.isel({tc_dim: t})
             else:

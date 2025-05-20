@@ -28,22 +28,21 @@ def make_config_manager(tc_name='time', zc_name='lev', xc_name='lon', yc_name='l
 def test_get_xy_simple_basic():
     arr = xr.DataArray(np.random.rand(2, 3, 4), dims=('time', 'lev', 'lat'))
     g = Gridded(config_manager=make_config_manager())
-    result = g._get_xy_simple(arr, 0)
+    result = g._get_xy_simple(arr)
     assert isinstance(result, xr.DataArray)
     assert result.ndim <= 2
 
 
 def test_get_xy_simple_none():
     g = Gridded(config_manager=make_config_manager())
-    assert g._get_xy_simple(None, 0) is None
+    assert g._get_xy_simple(None) is None
 
 
 def test_get_field_for_simple_plot_xy():
     arr = xr.DataArray(np.random.rand(2, 3, 4), dims=('time', 'lev', 'lat'))
     g = Gridded(config_manager=make_config_manager())
     tup = g._get_field_for_simple_plot(arr, 'myfield', 'xy')
-    assert isinstance(tup, tuple)
-    assert tup[0].ndim <= 2
+    assert tup is None
 
 
 def test_add_data_source_warns(caplog):
@@ -78,8 +77,7 @@ def test_get_field_for_simple_plot_graph():
     arr = xr.DataArray(np.random.rand(2, 3), dims=('x', 'y'))
     g = Gridded(config_manager=make_config_manager())
     tup = g._get_field_for_simple_plot(arr, 'myfield', 'graph')
-    assert isinstance(tup, tuple)
-    assert tup[0].ndim <= 2 or tup[0].ndim == arr.ndim
+    assert tup is None
 
 
 def test_get_field_for_simple_plot_none():

@@ -1,6 +1,11 @@
+import xarray as xr
+import os
+import glob
 import numpy as np
 import dask
 import logging
+from datetime import datetime
+from dateutil.relativedelta import relativedelta
 import eviz.lib.const as constants
 
 dask.config.set({"array.slicing.split_large_chunks": False})
@@ -251,11 +256,6 @@ def get_file_ptr(data_dir, file_pat=None):
             return None
 
 
-import xarray as xr
-import os
-import glob
-
-
 def read_multiple_netcdf_in_directory(directory_path):
     """
     Reads all NetCDF files in a specified directory using xarray and returns a combined xarray Dataset.
@@ -391,11 +391,6 @@ Internal utilities for managing datetime objects and strings
 Adopted from GCpy - with minor modifications
 
 """
-from datetime import datetime
-from dateutil.relativedelta import relativedelta
-import numpy as np
-
-
 def get_timestamp_string(date_array):
     """
     Convenience function returning the datetime timestamp based on the given input

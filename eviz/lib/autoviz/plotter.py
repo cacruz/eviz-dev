@@ -126,6 +126,21 @@ def _simple_yz_plot_regional(config: ConfigManager, data_to_plot: tuple):
             ax.plot(data2d, data2d.coords[gooddim].values)
 
 
+def _simple_sc_plot(config: ConfigManager, data_to_plot: tuple) -> None:
+    """ Create a simple scatter plot """
+    data2d, dim1, dim2, field_name, plot_type = data_to_plot
+    fig, ax = plt.subplots(nrows=1, ncols=1, subplot_kw=dict(projection=ccrs.PlateCarree()))
+    scat = ax.scatter(dim1, dim2, c=data2d,
+                      cmap='coolwarm', s=5,
+                      transform=ccrs.PlateCarree())
+    cbar = fig.colorbar(scat, ax=ax, shrink=0.5)
+    cbar.set_label("ppb")
+    ax.stock_img()
+    ax.coastlines()
+    ax.gridlines()
+    ax.set_title(f'{field_name}')
+
+
 def _simple_xy_plot(config: ConfigManager, data_to_plot: tuple) -> None:
     """ Create a simple xy (lat-lon) plot """
     source_name = config.source_names[config.ds_index]
@@ -150,6 +165,9 @@ def _simple_xy_plot(config: ConfigManager, data_to_plot: tuple) -> None:
         levels = np.around(np.linspace(dmin, dmax, 10), decimals=1)
     fig, ax = plt.subplots(nrows=1, ncols=1)
     if data2d is None:
+        return
+    if dim1 is None or dim2 is None:
+        print(f"ERROR: dim1 or dim2 is None for field {field_name}, plot type {plot_type}")
         return
     cf = ax.contourf(dim1.values, dim2.values, shift_columns(data2d), cmap=config.cmap)
     co = ax.contour(dim1.values, dim2.values, shift_columns(data2d), levels, linewidths=(1,), origin='lower')
@@ -180,21 +198,6 @@ def _simple_xy_plot(config: ConfigManager, data_to_plot: tuple) -> None:
         cbar.set_label(data2d.attrs['units'])
 
 
-def _simple_sc_plot(config: ConfigManager, data_to_plot: tuple) -> None:
-    """ Create a simple scatter plot """
-    data2d, dim1, dim2, field_name, plot_type = data_to_plot
-    fig, ax = plt.subplots(nrows=1, ncols=1, subplot_kw=dict(projection=ccrs.PlateCarree()))
-    scat = ax.scatter(dim1, dim2, c=data2d,
-                      cmap='coolwarm', s=5,
-                      transform=ccrs.PlateCarree())
-    cbar = fig.colorbar(scat, ax=ax, shrink=0.5)
-    cbar.set_label("ppb")
-    ax.stock_img()
-    ax.coastlines()
-    ax.gridlines()
-    ax.set_title(f'{field_name}')
-
-
 def _simple_yz_plot(config: ConfigManager, data_to_plot: tuple) -> None:
     """ Create a simple yz (zonal-mean) plot """
     source_name = config.source_names[0]
@@ -211,6 +214,9 @@ def _simple_yz_plot(config: ConfigManager, data_to_plot: tuple) -> None:
         levels = np.around(np.linspace(dmin, dmax, 10), decimals=1)
     fig, ax = plt.subplots(nrows=1, ncols=1)
     if data2d is None:
+        return
+    if dim1 is None or dim2 is None:
+        print(f"ERROR: dim1 or dim2 is None for field {field_name}, plot type {plot_type}")
         return
     cf = ax.contourf(dim1.values, dim2.values, data2d, cmap=config.cmap)
     co = ax.contour(dim1.values, dim2.values, data2d, levels, linewidths=(1,), origin='lower')
