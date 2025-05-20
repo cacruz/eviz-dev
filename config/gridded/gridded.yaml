@@ -1,65 +1,10 @@
 inputs:
-   - name: OST_ElNinox0.5_144x90.1979-2008avg.CMIP5PRE.nc
-     location: /Users/ccruz/data/eviz/modelE
-     to_plot:
-        sst: xy
-
-   - name: MERRA2_400.inst6_3d_ana_Np.20211123.nc4
-     location: /Users/ccruz/data/eviz/merra2
-     description: 3d,6-Hourly,Instantaneous,Pressure-Level,Analysis,Analyzed Meteorological Fields
-     to_plot:
-        SLP: xy
-        O3: xy,yz
-        T: xy,yz
-
-   - name: /Users/ccruz/data/eviz/cru/cru_ts4.03.1901.1910.tmp.dat.nc
-     description: CRU TS4.03 Mean Temperature. 720x360x120 (2D+time)
-     to_plot:
-        tmp: tx,xt
-
-   - name: tas_Amon_CESM2_historical_r1i1p1f1_gn_185001-201412.nc
-     location: /Users/ccruz/data/eviz/cesm2
-     description: CMIP6 20th century experiments (1850-2014) with CAM6. 288x192x1980 (2D+time)
-     to_plot:
-        tas: xt
-
-   - name: NOAA_20CR_dailyHeights.nc
-     location: /Users/ccruz/data/eviz/noaa
-     description: 4x Daily NOAA-CIRES 20th Century Reanalysis
-     to_plot:
-        hgt: tx
-
-   - name: air.mon.mean.nc
-     location: /Users/ccruz/data/eviz/ncep
+   - name: https://psl.noaa.gov/repository/entry/get/air.mon.mean.nc?entryid=d3422997-979a-4abb-9bf2-503a80bb647f
      description: Data from NCEP initialized reanalysis
      to_plot:
         air: xt,xy,tx
 
-   - name: pr_Amon_GISS-E2-1-G_abrupt-2xCO2_r1i1p1f2_gn_185001-194412.nc
-     location: /Users/ccruz/data/eviz/modelE
-     description: CMIP6 model data
-     to_plot:
-        pr: xt,tx
-
-   - name: ts_Amon_GISS-E2-1-G_abrupt-2xCO2_r1i1p1f2_gn_185001-194412.nc
-     location: /Users/ccruz/data/eviz/modelE
-     description: CMIP6 model data produced by GISS (abrupt doubling of CO2)
-     to_plot:
-        ts: xt
-
-   - name : d5124_m2_jan10.tavg1_2d_ocn_Nx.diurnal.202111.nc4
-     location: /Users/ccruz/data/eviz/merra2
-     description: Ocean DAS
-     to_plot:
-#          FRSEAICE: polar
-          RAINOCN: tx
-          U10M: xy,xt
-          # TAUXWTR: xy
-          # TAUYWTR: xy
-
-
 outputs:
-#    output_dir: /Users/ccruz/scratch/eviz/output/gridded
     print_to_file: yes
     print_format: jpg
 
