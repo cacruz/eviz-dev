@@ -272,10 +272,11 @@ class Gridded(Root):
             self.config_manager.axindex = 0  # Reset axis index for each plot
 
             field_data_array = data_source.dataset[field_name]
-            plot_type = params.get('to_plot', ['xy'])[
-                0]  # Default to 'xy' if not specified
-
-            self._process_plot(field_data_array, field_name, idx, plot_type, plotter)
+            plot_types = params.get('to_plot', ['xy'])
+            if isinstance(plot_types, str):
+                plot_types = [pt.strip() for pt in plot_types.split(',')]
+            for plot_type in plot_types:
+                self._process_plot(field_data_array, field_name, idx, plot_type, plotter)
 
         if self.config_manager.make_gif:
             pu.create_gif(
@@ -860,8 +861,6 @@ class Gridded(Root):
                                        field_name1, field_name2, plot_type, sdat1_dataset,
                                        sdat2_dataset):
         """Process side-by-side comparison plots for xy or polar plot types."""
-        file_index1, file_index2 = file_indices
-
         num_plots = len(self.config_manager.compare_exp_ids)
 
         nrows = 1
@@ -897,8 +896,6 @@ class Gridded(Root):
         - Middle subplot: Second dataset
         - Right subplot: Third dataset (if present)
         """
-        file_index1, file_index2 = file_indices
-
         # Ensure ax is a list with enough elements for all plots
         if not isinstance(ax, list):
             ax = [ax]
@@ -914,7 +911,7 @@ class Gridded(Root):
         if self.config_manager.a_list:
             self._process_side_by_side_plot(plotter, self.config_manager.a_list[0],
                                             current_field_index,
-                                            field_name1, figure, ax, 0,
+                                            field_name1, figure, 0,
                                             sdat1_dataset[field_name1], plot_type,
                                             level=level)
 
@@ -923,7 +920,7 @@ class Gridded(Root):
             if i < num_plots:  # Only plot if we have a corresponding axis
                 self._process_side_by_side_plot(plotter, file_idx,
                                                 current_field_index,
-                                                field_name2, figure, ax, i,
+                                                field_name2, figure, i,
                                                 sdat2_dataset[field_name2], plot_type,
                                                 level=level)
 
@@ -932,22 +929,20 @@ class Gridded(Root):
                                           field_name1, field_name2, plot_type,
                                           sdat1_dataset, sdat2_dataset):
         """Process side-by-side comparison plots for other plot types."""
-        file_index1, file_index2 = file_indices
         nrows, ncols = self.config_manager.input_config._comp_panels
 
         figure = Figure.create_eviz_figure(self.config_manager, plot_type, nrows=nrows,
                                            ncols=ncols)
-        ax = figure.get_axes()
         self.config_manager.level = None
 
         self._create_other_side_by_side_plot(plotter, file_indices, current_field_index,
-                                             field_name1, field_name2, figure, ax,
+                                             field_name1, field_name2, figure,
                                              plot_type, sdat1_dataset, sdat2_dataset)
 
         pu.print_map(self.config_manager, plot_type, self.config_manager.findex, figure)
 
     def _create_other_side_by_side_plot(self, plotter, file_indices, current_field_index,
-                                        field_name1, field_name2, figure, ax,
+                                        field_name1, field_name2, figure,
                                         plot_type, sdat1_dataset, sdat2_dataset,
                                         level=None):
         """
