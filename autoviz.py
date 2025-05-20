@@ -37,17 +37,7 @@ def parse_command_line() -> argparse.Namespace:
         --verbose, -v: Set logging verbosity (0=ERROR, 1=INFO, 2=DEBUG)
         --log, -l: Enable logging to file (Eviz.LOG)
         --integrate: Enable data integration from multiple files
-        --composite: Create composite fields from multiple variables
-    
-    Example:
-        >>> python autoviz.py -s gridded
-        >>> python autoviz.py -s gridded -c /path/to/config
-        >>> python autoviz.py -s gridded -f /path/to/config/my_config.yaml
-        >>> python autoviz.py -h
-    
-    Note:
-        If neither --file nor --sources is provided, the function will raise an error.
-        When using the first example, the EVIZ_CONFIG_PATH environment variable must be defined.
+        --composite: Create composite fields from multiple variables    
     """
     parser = argparse.ArgumentParser(description='Arguments being passed')
 
