@@ -1,5 +1,5 @@
 inputs:
-   - name: https://psl.noaa.gov/repository/entry/get/air.mon.mean.nc?entryid=d3422997-979a-4abb-9bf2-503a80bb647f
+   - name: https://psl.noaa.gov/thredds/dodsC/Datasets/ncep.reanalysis.derived/surface/air.mon.mean.nc
      description: Data from NCEP initialized reanalysis
      to_plot:
         air: xt,xy,tx
