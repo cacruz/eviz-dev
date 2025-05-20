@@ -7,6 +7,7 @@ from eviz.lib.data.sources import (
     CSVDataSource,
     GRIBDataSource
 )
+from eviz.lib.data.url_validator import is_url, is_opendap_url
 from .registry import DataSourceRegistry
 from dataclasses import dataclass, field
 import logging
@@ -29,52 +30,61 @@ class DataSourceFactory:
 
     def _register_default_data_sources(self) -> None:
         """Register the default data source implementations."""
-        self.registry.register(['nc', 'nc4', 'netcdf', 'netcdf4'], NetCDFDataSource)
+        self.registry.register(['nc', 'nc4', 'netcdf', 'netcdf4', 'opendap', 'dods', 'dap'], NetCDFDataSource)
         self.registry.register(['h5', 'hdf5', 'hdf'], HDF5DataSource)
         self.registry.register(['csv', 'dat', 'txt'], CSVDataSource)
         self.registry.register(['grib', 'grib2'], GRIBDataSource)
     
     def register_data_source(self, extensions: List[str], data_source_class: Type[DataSource]) -> None:
-        """Register a custom data source class.
-        
-        Args:
-            extensions: List of file extensions (without the dot)
-            data_source_class: The data source class to register
-        """
+        """Register a custom data source class."""
         self.registry.register(extensions, data_source_class)
     
     def create_data_source(self, file_path: str, model_name: Optional[str] = None) -> DataSource:
-        """Create a data source instance for the specified file.
+        """Create a data source instance for the specified file or URL.
         
         Args:
-            file_path: Path to the data file
+            file_path: Path to the data file or URL
             model_name: Optional name of the model this data source belongs to
             
         Returns:
             A data source instance for the specified file
             
         Raises:
-            ValueError: If the file extension is not supported
+            ValueError: If the file type is not supported
         """
-        _, ext = os.path.splitext(file_path)
+        # Check if it's an OpenDAP URL
+        if is_opendap_url(file_path):
+            return NetCDFDataSource(model_name, self.config_manager)
+            
+        # For regular URLs, try to determine the type from the path
+        if is_url(file_path):
+            path = file_path.split('?')[0]  # Remove query parameters
+            _, ext = os.path.splitext(path)
+        else:
+            _, ext = os.path.splitext(file_path)
+            
         if not ext:
-            if 'nc' in file_path.lower() or 'netcdf' in file_path.lower():
+            # Try to infer the type from the path
+            path_lower = file_path.lower()
+            if 'opendap' in path_lower or 'dods' in path_lower or 'dap' in path_lower:
+                return NetCDFDataSource(model_name, self.config_manager)
+            elif 'nc' in path_lower or 'netcdf' in path_lower:
                 ext = '.nc'
-            elif 'h5' in file_path.lower() or 'hdf5' in file_path.lower():
+            elif 'h5' in path_lower or 'hdf5' in path_lower:
                 ext = '.h5'
-            elif 'csv' in file_path.lower():
+            elif 'csv' in path_lower:
                 ext = '.csv'
-            elif 'grib' in file_path.lower():
+            elif 'grib' in path_lower:
                 ext = '.grib'
             else:
-                raise ValueError(f"Could not determine file extension for: {file_path}")
+                raise ValueError(f"Could not determine file type for: {file_path}")
         
         ext = ext[1:] if ext.startswith('.') else ext
         try:
             data_source_class = self.registry.get_data_source_class(ext)
         except ValueError:
-            self.logger.error(f"Unsupported file extension: {ext}")
-            raise ValueError(f"Unsupported file extension: {ext}")
+            self.logger.error(f"Unsupported file type: {ext}")
+            raise ValueError(f"Unsupported file type: {ext}")
         
         return data_source_class(model_name, self.config_manager)
     

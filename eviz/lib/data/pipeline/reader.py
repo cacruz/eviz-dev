@@ -6,7 +6,7 @@ import logging
 import numpy as np
 from eviz.lib.data.factory import DataSourceFactory
 from eviz.lib.data.sources import DataSource
-
+from eviz.lib.data.url_validator import is_url, is_opendap_url
 
 @dataclass
 class DataReader:
@@ -24,10 +24,14 @@ class DataReader:
         return logging.getLogger(__name__)
 
     def read_file(self, file_path: str, model_name: Optional[str] = None) -> DataSource:
-        """Read data from a file."""
+        """Read data from a file or URL."""
         self.logger.debug(f"Reading file: {file_path}")
 
-        if not os.path.exists(file_path):
+        # Check if it's a URL
+        is_remote = is_url(file_path)
+        
+        # For local files, check if they exist
+        if not is_remote and not os.path.exists(file_path):
             self.logger.error(f"File not found: {file_path}")
             raise FileNotFoundError(f"File not found: {file_path}")
 
@@ -46,6 +50,7 @@ class DataReader:
         except Exception as e:
             self.logger.error(f"Error reading file: {file_path}. Exception: {e}")
             raise
+
 
     def read_files(self, file_paths: List[str], model_name: Optional[str] = None) -> Dict[str, DataSource]:
         """Read data from multiple files."""

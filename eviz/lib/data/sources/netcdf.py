@@ -5,13 +5,14 @@ from dask.distributed import Client
 from dataclasses import dataclass, field
 from typing import Optional, Dict
 from .base import DataSource
+from eviz.lib.data.url_validator import is_url, is_opendap_url
 
 
 @dataclass
 class NetCDFDataSource(DataSource):
     """Data source implementation for NetCDF files.
 
-    This class handles loading and processing data from NetCDF files.
+    This class handles loading and processing data from NetCDF files and OpenDAP URLs.
     """
     model_name: Optional[str] = None
     config_manager: Optional[object] = None 
@@ -27,17 +28,30 @@ class NetCDFDataSource(DataSource):
         return logging.getLogger(__name__)
     
     def load_data(self, file_path: str) -> xr.Dataset:
-        """Load data from a NetCDF file into an Xarray dataset.
+        """Load data from a NetCDF file or OpenDAP URL into an Xarray dataset.
         
         Args:
-            file_path: Path to the NetCDF file or a glob pattern
+            file_path: Path to the NetCDF file, a glob pattern, or an OpenDAP URL
             
         Returns:
             An Xarray dataset containing the loaded data
         """
-        self.logger.debug(f"Loading NetCDF data from {file_path}")    
+        self.logger.debug(f"Loading NetCDF data from {file_path}")
+        
         try:
-            if "*" in file_path:
+            # Check if it's a URL
+            is_remote = is_url(file_path)
+            is_opendap = is_opendap_url(file_path)
+            
+            if is_remote:
+                self.logger.info(f"Loading remote data from URL: {file_path}")
+                if is_opendap:
+                    self.logger.info(f"Detected OpenDAP URL: {file_path}")
+                
+                # For remote files, we use open_dataset with engine='netcdf4'
+                dataset = xr.open_dataset(file_path, decode_cf=True, engine='netcdf4')
+                self.logger.debug(f"Loaded remote NetCDF data: {file_path}")
+            elif "*" in file_path:
                 self._setup_dask_client()
                 dataset = xr.open_mfdataset(file_path, decode_cf=True, combine="by_coords")
                 self.logger.debug(f"Loaded multiple NetCDF files matching pattern: {file_path}")
@@ -51,13 +65,21 @@ class NetCDFDataSource(DataSource):
             self.dataset = dataset
             self._extract_metadata(dataset)
             
-            file_name = os.path.basename(file_path)
+            # For URLs, use the last part of the path as the file name
+            if is_remote:
+                file_name = os.path.basename(file_path.split('?')[0])  # Remove query parameters
+            else:
+                file_name = os.path.basename(file_path)
+                
             self.datasets[file_name] = dataset
             
             return dataset
             
         except FileNotFoundError as exc:
             self.logger.error(f"Error loading NetCDF file: {file_path}. Exception: {exc}")
+            raise
+        except Exception as exc:
+            self.logger.error(f"Error loading NetCDF data: {file_path}. Exception: {exc}")
             raise
     
     def _setup_dask_client(self) -> None:
