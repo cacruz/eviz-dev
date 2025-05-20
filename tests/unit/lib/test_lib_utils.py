@@ -19,20 +19,6 @@ def write_to_temp_file(string_io_obj):
         return temp_file.name
 
 
-
-# def test_load_yaml_does_not_exist(get_config):
-#     with pytest.raises(SystemExit) as excinfo:
-#         u.load_yaml('does_not_exist')
-#     assert str(excinfo.value) == "YAML validation failure!"
-
-
-# def test_load_yaml_syntax_error(get_config):
-#     yaml_file = os.path.join(constants.ROOT_FILEPATH, 'test/data/test_bad.yaml')
-#     with pytest.raises(SystemExit) as excinfo:
-#         u.load_yaml(yaml_file)
-#     assert str(excinfo.value) == "YAML validation failure!"
-
-
 @pytest.mark.parametrize(
     ('model_name', 'expected'),
     (
@@ -91,26 +77,6 @@ def test_valid_yaml():
     temp_file_path = write_to_temp_file(file_content)
 
     assert u.load_yaml(temp_file_path) is not None
-
-
-# def test_invalid_yaml_missing_value():
-#     invalid_yaml = """
-#     key1:
-#     key2: value
-#     """
-#     file_content = io.StringIO(invalid_yaml)
-#     assert u.validate_yaml(file_content) is False
-#
-
-# def test_invalid_yaml_duplicate_keys():
-#     invalid_yaml = """
-#     key: value1
-#     key: value2  # Duplicate key
-#     """
-#     file_content = io.StringIO(invalid_yaml)
-#     temp_file_path = write_to_temp_file(file_content)
-#     # file_content = io.StringIO(invalid_yaml)
-#     assert u.load_yaml(temp_file_path) is None
 
 
 def test_invalid_yaml_non_scalar_key():

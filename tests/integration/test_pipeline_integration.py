@@ -1,6 +1,3 @@
-"""
-Integration tests for the data pipeline components.
-"""
 from eviz.lib.data.pipeline.pipeline import DataPipeline
 
 

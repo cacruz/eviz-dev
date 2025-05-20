@@ -15,6 +15,7 @@ ABSTRACT_FACTORIES = {
     "CrestFactory",
 }
 
+
 @pytest.mark.parametrize("factory_cls,expected_cls_name", [
     (GriddedFactory, "Gridded"),
     (GeosFactory, "Geos"),
@@ -36,6 +37,7 @@ def test_factory_creates_correct_type(factory_cls, expected_cls_name):
     else:
         instance = factory.create_root_instance(cm)
         assert instance.__class__.__name__ == expected_cls_name
+
 
 def test_root_factory_not_implemented():
     cm = MagicMock()

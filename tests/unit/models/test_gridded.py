@@ -1,6 +1,5 @@
 import numpy as np
 import xarray as xr
-import pytest
 from unittest.mock import MagicMock, patch
 from eviz.models.esm.gridded import Gridded
 

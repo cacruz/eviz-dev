@@ -6,7 +6,6 @@ import pytest
 import numpy as np
 import xarray as xr
 import tempfile
-from argparse import Namespace
 import yaml
 from eviz.lib.config.config import Config
 from eviz.lib.config.config_manager import ConfigManager
@@ -34,7 +33,6 @@ def pytest_addoption(parser):
     )
 
 
-
 @pytest.fixture
 def mock_species_db():
     """Create a minimal species database for testing."""
@@ -54,7 +52,6 @@ def mock_species_db():
             'Unitconversion': 1
         }
     }
-
 
 
 @pytest.fixture

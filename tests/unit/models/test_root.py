@@ -2,11 +2,15 @@ import pytest
 from unittest.mock import MagicMock, patch
 from eviz.models.root import Root
 
+
 # Minimal concrete subclass for testing
 class ConcreteRoot(Root):
     def add_data_source(self, *a, **kw): pass
+
     def get_data_source(self, *a, **kw): pass
+
     def load_data_sources(self, *a, **kw): pass
+
 
 def make_config_manager():
     cm = MagicMock()
@@ -25,12 +29,14 @@ def make_config_manager():
     cm.output_dir = "/tmp"
     return cm
 
+
 def test_root_init_and_logger():
     cm = make_config_manager()
     r = ConcreteRoot(config_manager=cm)
     assert hasattr(r, "logger")
     assert r.app is cm.app_data
     assert r.specs is cm.spec_data
+
 
 def test_root_call_triggers_plot(monkeypatch):
     cm = make_config_manager()
@@ -40,6 +46,7 @@ def test_root_call_triggers_plot(monkeypatch):
     r()
     assert called["plot"]
 
+
 def test_root_plot_simple(monkeypatch):
     cm = make_config_manager()
     r = ConcreteRoot(config_manager=cm)
@@ -48,6 +55,7 @@ def test_root_plot_simple(monkeypatch):
     r.config_manager.spec_data = {}
     r.plot()
     assert called["simple"]
+
 
 def test_root_plot_single(monkeypatch):
     cm = make_config_manager()
@@ -60,6 +68,7 @@ def test_root_plot_single(monkeypatch):
     r.plot()
     assert called["single"]
 
+
 def test_root_plot_comparison(monkeypatch):
     cm = make_config_manager()
     r = ConcreteRoot(config_manager=cm)
@@ -70,6 +79,7 @@ def test_root_plot_comparison(monkeypatch):
     r.config_manager.compare_diff = True
     r.plot()
     assert called["comp"]
+
 
 def test_root_plot_side_by_side(monkeypatch):
     cm = make_config_manager()
@@ -82,12 +92,14 @@ def test_root_plot_side_by_side(monkeypatch):
     r.plot()
     assert called["side"]
 
+
 def test_root_single_plots_handles_missing_map_params(caplog):
     cm = make_config_manager()
     r = ConcreteRoot(config_manager=cm)
     r.config_manager.map_params = {}
     r._single_plots(MagicMock())
     assert "No map_params available" in caplog.text
+
 
 def test_root_single_plots_handles_missing_data_sources(caplog):
     cm = make_config_manager()
@@ -96,6 +108,7 @@ def test_root_single_plots_handles_missing_data_sources(caplog):
     r.config_manager.pipeline.get_all_data_sources.return_value = []
     r._single_plots(MagicMock())
     assert "No data sources available" in caplog.text
+
 
 def test_root_plot_dest_print_to_file(monkeypatch):
     cm = make_config_manager()
