@@ -779,17 +779,6 @@ def _single_polar_plot(config: ConfigManager, data_to_plot: tuple) -> None:
     
     ax = fig.add_subplot(1, 1, 1, projection=projection)
     
-    ax.set_extent([-180, 180, extent_lat, 90 if ax_opts['use_pole'] == 'north' else -90], ccrs.PlateCarree())
-    ax.add_feature(cfeature.BORDERS, zorder=10, linewidth=0.5, edgecolor='grey')
-    ax.add_feature(cfeature.LAKES, alpha=0.9)
-    ax.add_feature(cfeature.LAND, color='silver', zorder=1, facecolor=0.9)
-    ax.add_feature(cfeature.COASTLINE, zorder=10, linewidth=0.5)      
-    ax.add_feature(cfeature.OCEAN, color='lightblue', zorder=0)
-    ax.patch.set_alpha(0)
-    ax.set_frame_on(False)
-    ax.set_xticks([])
-    ax.set_yticks([])
-
     _create_clevs(field_name, ax_opts, data2d)
     clevs = pu.formatted_contours(ax_opts['clevs'])
 
@@ -874,6 +863,13 @@ def _single_polar_plot(config: ConfigManager, data_to_plot: tuple) -> None:
         verts = np.vstack([np.sin(theta), np.cos(theta)]).T
         circle = mpath.Path(verts * radius + center)
         ax.set_boundary(circle, transform=ax.transAxes)
+
+    ax.set_extent([-180, 180, extent_lat, 90 if ax_opts['use_pole'] == 'north' else -90], ccrs.PlateCarree())
+    ax.add_feature(cfeature.BORDERS, zorder=10, linewidth=0.5, edgecolor='grey')
+    ax.add_feature(cfeature.LAKES, alpha=0.9)
+    ax.add_feature(cfeature.LAND, color='silver', zorder=1, facecolor=0.9)
+    ax.add_feature(cfeature.COASTLINE, zorder=10, linewidth=0.5)      
+    ax.add_feature(cfeature.OCEAN, color='lightblue', zorder=0)
 
  
 def _single_xt_plot(config: ConfigManager, data_to_plot: tuple) -> None:
