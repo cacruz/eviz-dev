@@ -388,8 +388,14 @@ def _single_xy_plot(config: ConfigManager, data_to_plot: tuple, level: int) -> N
 def _plot_xy_data(config, ax, data2d, x, y, field_name, fig, ax_opts, level,
                   plot_type, findex):
     """Helper function to plot XY data on a single axes."""
-    source_name = config.source_names[config.ds_index]
-
+    if ax_opts['extent']:
+        if ax_opts['extent'] == 'conus':
+            extent = [-140, -40, 15, 65]  # [lonW, lonE, latS, latN]
+        else:
+            extent = ax_opts['extent']
+    else:
+        extent = [-180, 180, -90, 90]
+        
     if 'fill_value' in config.spec_data[field_name]['xyplot']:
         fill_value = config.spec_data[field_name]['xyplot']['fill_value']
         data2d = data2d.where(data2d != fill_value, np.nan)
@@ -403,6 +409,7 @@ def _plot_xy_data(config, ax, data2d, x, y, field_name, fig, ax_opts, level,
 
     if fig.use_cartopy and is_cartopy_axis:
         # Only pass transform if using Cartopy GeoAxes
+        ax.set_extent(extent, crs=ccrs.PlateCarree())
         cfilled = _filled_contours(config, field_name, ax, x, y, data2d, transform=ccrs.PlateCarree())
     else:
         cfilled = _filled_contours(config, field_name, ax, x, y, data2d)

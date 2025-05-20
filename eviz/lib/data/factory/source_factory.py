@@ -62,7 +62,12 @@ class DataSourceFactory:
             _, ext = os.path.splitext(path)
         else:
             _, ext = os.path.splitext(file_path)
-            
+
+        # Hack to detect WRF files by name, treat as NetCDF
+        base = os.path.basename(file_path).lower()
+        if base.startswith('wrfout') or 'wrf' in base:
+            ext = 'nc'
+
         if not ext:
             # Try to infer the type from the path
             path_lower = file_path.lower()

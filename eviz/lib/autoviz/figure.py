@@ -269,7 +269,7 @@ class Figure(mfigure.Figure):
             return self
 
     def _create_subplots_crs(self):
-        # axes = []
+        """Create subplots with cartopy projections."""
         if 'projection' in self._ax_opts:
             map_projection = self.get_projection(self._ax_opts['projection'])
         else:
@@ -280,17 +280,24 @@ class Figure(mfigure.Figure):
                 ax = self.add_subplot(self.gs[i, j], projection=map_projection)
                 self.axes_array.append(ax)
 
-        for i, ax in enumerate(self.axes_array):
-                # Add gridlines
-                gl = ax.gridlines(draw_labels=True, linewidth=1, color='gray', alpha=0.5, linestyle='--')
-                gl.xlabels_top = False
-                gl.ylabels_right = False
-                gl.xformatter = LONGITUDE_FORMATTER
-                gl.yformatter = LATITUDE_FORMATTER
-                ax.coastlines()
-                ax.add_feature(cfeature.BORDERS, linestyle=':')
-                ax.add_feature(cfeature.LAND, edgecolor='black')
-                ax.add_feature(cfeature.LAKES, edgecolor='black')
+        for ax in self.axes_array:
+            gl = ax.gridlines(draw_labels=True, linewidth=1, color='gray', alpha=0.5, linestyle='--')
+            gl.xlabels_top = False
+            gl.ylabels_right = False
+            gl.xformatter = LONGITUDE_FORMATTER
+            gl.yformatter = LATITUDE_FORMATTER
+            
+            ax.coastlines()
+            ax.add_feature(cfeature.BORDERS, linestyle=':')
+            ax.add_feature(cfeature.LAND, edgecolor='black')
+            ax.add_feature(cfeature.LAKES, edgecolor='black')
+            
+            if 'extent' in self._ax_opts:
+                extent = self._ax_opts['extent']
+                if extent == 'conus':
+                    extent = [-120, -70, 24, 50.5]
+                ax.set_extent(extent, crs=ccrs.PlateCarree())
+
         return self
 
     @staticmethod
@@ -356,33 +363,50 @@ class Figure(mfigure.Figure):
         # Any custom post-show processing
 
     def get_projection(self, projection=None):
-        """ Get projection parameter"""
-        # TODO: Fix for the case when projection is not None!!!
+        """Get projection parameter."""
         if not projection:
             return ccrs.PlateCarree()
-        if 'extent' not in self._ax_opts:  # default
-            self._ax_opts['extent'] = [-140, -40, 15, 65]  # conus
-            central_lon, central_lat = -96, 37.5  # conus
-        else:
-            if self._ax_opts['extent'] == 'conus':
-                extent = [-140, -40, 15, 65]  # [-120, -70, 24, 50.5]
-                # Make sure...
-                projection = 'lambert'
-            else:
-                extent = [-180, 180, -90, 90]
-            central_lon = np.mean(extent[:2])
-            central_lat = np.mean(extent[2:])
-        options = {'lambert': ccrs.LambertConformal(central_latitude=central_lat,
-                                                    central_longitude=central_lon),
-                   'albers': ccrs.AlbersEqualArea(central_latitude=central_lat,
-                                                  central_longitude=central_lon),
-                   'stereo': ccrs.Stereographic(central_latitude=central_lat,
-                                                central_longitude=central_lon),
-                   'ortho': ccrs.Orthographic(central_latitude=central_lat,
-                                              central_longitude=central_lon),
-                   'polar': ccrs.NorthPolarStereo(central_longitude=-100),
-                   'mercator': ccrs.Mercator()}
-        return options[projection]
+            
+        if 'extent' not in self._ax_opts:
+            self._ax_opts['extent'] = [-140, -40, 15, 65]  # conus default            
+        extent = self._ax_opts['extent']
+        if extent == 'conus':
+            extent = [-120, -70, 24, 50.5]
+            
+        # Calculate central coordinates
+        central_lon = np.mean(extent[:2])
+        central_lat = np.mean(extent[2:])
+        
+        # Override with explicit values if provided
+        if 'central_lon' in self._ax_opts:
+            central_lon = self._ax_opts['central_lon']
+        if 'central_lat' in self._ax_opts:
+            central_lat = self._ax_opts['central_lat']
+            
+        options = {
+            'lambert': ccrs.LambertConformal(
+                central_longitude=central_lon,
+                central_latitude=central_lat,
+                standard_parallels=(extent[2], extent[3])
+            ),
+            'albers': ccrs.AlbersEqualArea(
+                central_longitude=central_lon,
+                central_latitude=central_lat,
+                standard_parallels=(extent[2], extent[3])
+            ),
+            'stereo': ccrs.Stereographic(
+                central_latitude=central_lat,
+                central_longitude=central_lon
+            ),
+            'ortho': ccrs.Orthographic(
+                central_latitude=central_lat,
+                central_longitude=central_lon
+            ),
+            'polar': ccrs.NorthPolarStereo(central_longitude=central_lon),
+            'mercator': ccrs.Mercator()
+        }
+        
+        return options.get(projection, ccrs.PlateCarree())
 
     def create_subplots_crs(self, gs):
         axes = []

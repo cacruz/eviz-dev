@@ -25,7 +25,7 @@ class NuWrf(Gridded):
         super().__post_init__()
         self.p_top = None
 
-    def _get_reader(self, source_name):
+    def _get_reader_old(self, source_name):
         """Get the appropriate reader for the source."""
         if source_name in self.config_manager.readers:
             if isinstance(self.config_manager.readers[source_name], dict):
@@ -41,6 +41,35 @@ class NuWrf(Gridded):
         
         self.logger.error(f"Source {source_name} not found in readers")
         return None
+
+    def _get_reader(self, source_name):
+        """Get the appropriate reader for the source.
+        
+        This method now returns a wrapper that provides the expected interface
+        while using the pipeline's data sources.
+        """
+        if not hasattr(self.config_manager, '_pipeline'):
+            self.logger.error("No pipeline available in config_manager")
+            return None
+            
+        class ReaderWrapper:
+            def __init__(self, pipeline):
+                self.pipeline = pipeline
+                
+            def read_data(self, file_path):
+                data_source = self.pipeline.get_data_source(file_path)
+                if data_source is None:
+                    return None
+                    
+                if not hasattr(data_source, 'dataset') or data_source.dataset is None:
+                    return None
+                    
+                return {
+                    'vars': data_source.dataset.data_vars,
+                    'attrs': data_source.dataset.attrs
+                }
+                
+        return ReaderWrapper(self.config_manager._pipeline)
 
     def _simple_plots(self, plotter):
         map_params = self.config_manager.map_params

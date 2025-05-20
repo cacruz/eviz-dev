@@ -225,10 +225,10 @@ class Lis(NuWrf):
         if 'xt' in plot_type or 'tx' in plot_type:
             return data2d, None, None, field_name, plot_type, file_index, figure, ax
         else:
-            lon = self._get_field('east_west', data2d)
-            lat = self._get_field('north_south', data2d)
-            xs = np.array(lon)
-            ys = np.array(lat)
+            lon = self.source_data['vars'][self.get_model_coord_name(self.source_name, 'xc')]
+            lat = self.source_data['vars'][self.get_model_coord_name(self.source_name, 'yc')]
+            xs = np.array(lon[0, :])
+            ys = np.array(lat[:, 0])
             # Some LIS coordinates are NaN. The following workaround fills out those elements
             # with reasonable values:
             idx = np.argwhere(np.isnan(xs))
@@ -341,14 +341,21 @@ class Lis(NuWrf):
             for i in idx:
                 ys[i] = ys[i - 1] + self._global_attrs["DY"] / 1000.0 / 100.0
 
-            # Set extent for the plot
             latN = max(ys[:])
             latS = min(ys[:])
             lonW = min(xs[:])
             lonE = max(xs[:])
-            self.config_manager.ax_opts['extent'] = [lonW, lonE, latS, latN]
-            self.config_manager.ax_opts['central_lon'] = np.mean(self.config_manager.ax_opts['extent'][:2])
-            self.config_manager.ax_opts['central_lat'] = np.mean(self.config_manager.ax_opts['extent'][2:])
+            
+            # Add a small buffer around the domain (1 degree)
+            buffer = 1.0
+            extent = [lonW - buffer, lonE + buffer, 
+                    latS - buffer, latN + buffer]
+            self.config_manager.ax_opts['extent'] = extent
+            self.config_manager.ax_opts['central_lon'] = np.mean([lonW, lonE])
+            self.config_manager.ax_opts['central_lat'] = np.mean([latS, latN])
+
+            # Set the projection to lambert for regional plots TODO: temporary)
+            self.config_manager.ax_opts['projection'] = 'lambert'
 
             return data2d, xs, ys, field_name, plot_type, file_index, figure, ax
 
