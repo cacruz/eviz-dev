@@ -1,7 +1,6 @@
-import os
 import pytest
 from argparse import Namespace
-from unittest.mock import patch, MagicMock, PropertyMock
+from unittest.mock import patch, MagicMock
 
 from eviz.lib.autoviz.base import (
     get_config_path_from_env,
@@ -72,10 +71,9 @@ def mock_autoviz():
             mock_get_logger.return_value = mock_logger
             autoviz = Autoviz(source_names=["gridded"])
             
-            # Don't mock _check_input_files here, we'll do it in the specific tests
+            # Don't mock _check_input_files here, done in the specific tests
             yield autoviz
 
-# Tests for get_config_path_from_env
 def test_get_config_path_from_env_exists(mock_env_path):
     with patch.dict('os.environ', {'EVIZ_CONFIG_PATH': mock_env_path}):
         result = get_config_path_from_env()
@@ -86,7 +84,6 @@ def test_get_config_path_from_env_not_exists():
         result = get_config_path_from_env()
         assert result is None
 
-# Tests for get_factory_from_user_input
 @pytest.mark.parametrize("input_source,expected_factory_type", [
     (["gridded"], GriddedFactory),
     (["wrf"], WrfFactory),
@@ -109,15 +106,16 @@ def test_get_factory_from_user_input_multiple():
     assert isinstance(factories[1], WrfFactory)
     assert isinstance(factories[2], LisFactory)
 
+
 def test_get_factory_from_user_input_invalid():
-    with pytest.raises(KeyError):
+    with pytest.raises(SystemExit):
         get_factory_from_user_input(["invalid_source"])
+
 
 # Tests for Autoviz class
 @patch('eviz.lib.autoviz.base.create_config')
 @patch('eviz.lib.autoviz.base.get_factory_from_user_input')
 def test_autoviz_initialization(mock_get_factory, mock_create_config):
-    # Setup mocks
     mock_factory = MagicMock()
     mock_get_factory.return_value = [mock_factory]
     mock_config = MagicMock()
@@ -134,7 +132,6 @@ def test_autoviz_initialization(mock_get_factory, mock_create_config):
 @patch('eviz.lib.autoviz.base.create_config')
 @patch('eviz.lib.autoviz.base.get_factory_from_user_input')
 def test_autoviz_initialization_with_args(mock_get_factory, mock_create_config, basic_args):
-    # Setup mocks
     mock_factory = MagicMock()
     mock_get_factory.return_value = [mock_factory]
     mock_config = MagicMock()
@@ -153,35 +150,28 @@ def test_autoviz_initialization_no_factories(mock_get_factory):
         Autoviz(source_names=["gridded"])
 
 
-# Tests for create_config
 @patch('eviz.lib.autoviz.base.Config')
 @patch('eviz.lib.autoviz.base.ConfigManager')
 def test_create_config_with_config_file(mock_config_manager, mock_config, basic_args):
-    # Setup
     basic_args.configfile = "test_config.yaml"
     basic_args.sources = ["gridded"]
     mock_config.return_value = MagicMock()
     
-    # Execute
     create_config(basic_args)
     
-    # Verify
     mock_config.assert_called_once()
     mock_config_manager.assert_called_once()
 
 @patch('eviz.lib.autoviz.base.Config')
 @patch('eviz.lib.autoviz.base.ConfigManager')
 def test_create_config_with_config_dir(mock_config_manager, mock_config, basic_args):
-    # Setup
     basic_args.config = ["/test/config/dir"]
     basic_args.configfile = None
     basic_args.sources = ["gridded"]
     mock_config.return_value = MagicMock()
     
-    # Execute
     create_config(basic_args)
     
-    # Verify
     mock_config.assert_called_once()
     mock_config_manager.assert_called_once()
 
@@ -189,17 +179,14 @@ def test_create_config_with_config_dir(mock_config_manager, mock_config, basic_a
 @patch('eviz.lib.autoviz.base.ConfigManager')
 @patch('eviz.lib.autoviz.base.get_config_path_from_env')
 def test_create_config_with_env_path(mock_get_env_path, mock_config_manager, mock_config, basic_args, mock_env_path):
-    # Setup
     basic_args.config = None
     basic_args.configfile = None
     basic_args.sources = ["gridded"]
     mock_get_env_path.return_value = mock_env_path
     mock_config.return_value = MagicMock()
     
-    # Execute
     create_config(basic_args)
     
-    # Verify
     mock_config.assert_called_once()
     mock_config_manager.assert_called_once()
 
@@ -226,29 +213,24 @@ def test_set_output(mock_autoviz):
 
 @pytest.mark.skip(reason="Need to fix this test")
 def test_autoviz_run_basic(mock_autoviz):
-    # Setup
     mock_autoviz.config_adapter = MagicMock()
     mock_autoviz._config_manager._pipeline = MagicMock()
     mock_autoviz._config_manager._pipeline.get_all_data_sources.return_value = {"source1": "data1"}
     # mock_autoviz._check_input_files = MagicMock()
 
-    # Create a mock model
     mock_model = MagicMock()
     mock_factory = MagicMock()
     mock_factory.create_root_instance.return_value = mock_model
     mock_autoviz.factory_sources = [mock_factory]
     
-    # Execute
     mock_autoviz.run()
     
-    # Verify
     mock_autoviz._check_input_files.assert_called_once()
     mock_autoviz.config_adapter.process_configuration.assert_called_once()
     mock_model.assert_called_once()
 
 @pytest.mark.skip(reason="Need to fix this test")
 def test_autoviz_run_with_composite(mock_autoviz):
-    # Setup
     mock_autoviz.args = Namespace(
         sources=["gridded"],
         composite=["field1,field2,add"],
@@ -267,16 +249,13 @@ def test_autoviz_run_with_composite(mock_autoviz):
     mock_autoviz._config_manager._pipeline = MagicMock()
     mock_autoviz._config_manager._pipeline.get_all_data_sources.return_value = {"source1": "data1"}
     
-    # Create a mock model
     mock_model = MagicMock()
     mock_factory = MagicMock()
     mock_factory.create_root_instance.return_value = mock_model
     mock_autoviz.factory_sources = [mock_factory]
     
-    # Execute
     mock_autoviz.run()
     
-    # Verify
     mock_autoviz._check_input_files.assert_called_once()
     mock_autoviz.config_adapter.process_configuration.assert_called_once()
     mock_model.plot_composite_field.assert_called_once_with("field1", "field2", "add")

@@ -869,7 +869,6 @@ def _single_polar_plot(config: ConfigManager, data_to_plot: tuple) -> None:
         ax.set_title(config.spec_data[field_name]['name'], y=1.03, fontsize=14, weight='bold')
     else:
         ax.set_title(source_name, y=1.03, fontsize=14, weight='bold')
-    # fig.plot_text(field_name, ax, 'polar', data=data2d)
 
  
 def _single_xt_plot(config: ConfigManager, data_to_plot: tuple) -> None:

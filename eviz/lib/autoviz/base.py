@@ -130,7 +130,14 @@ def get_factory_from_user_input(inputs):
         # Add other mappings for other subclasses
         # Need MODIS, GRIB, CEDS, EDGAR
     }
-    return [mappings[i] for i in inputs]
+    factories = []
+    for i in inputs:
+        if i not in mappings:
+            print(f"\nERROR: '{i}' is not a valid source name. Valid options are: {list(mappings.keys())}\n")
+            import sys
+            sys.exit(1)
+        factories.append(mappings[i])
+    return factories
 
 
 @dataclass

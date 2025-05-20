@@ -13,6 +13,7 @@ def test_cartopy_data_dir():
     assert constants.CARTOPY_DATA_DIR == discover_only
 
 
+@pytest.mark.skipif("EVIZ_CONFIG_PATH" in os.environ, reason="EVIZ_CONFIG_PATH is set")
 def test_eviz_config_path_default():
     default = os.path.join(constants.ROOT_FILEPATH, 'config')
     assert constants.config_path == default
