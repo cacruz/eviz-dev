@@ -753,11 +753,23 @@ def _single_polar_plot(config: ConfigManager, data_to_plot: tuple) -> None:
     """
     source_name = config.source_names[config.ds_index]
     data2d, x, y, field_name, plot_type, findex, fig, ax_temp = data_to_plot
-    ax_opts = config.ax_opts
-    
     if data2d is None:
         return
+    ax_opts = config.ax_opts
     
+    ax = ax_temp
+    axes_shape = fig.get_gs_geometry()
+    if axes_shape == (3, 1):
+        if ax_opts['is_diff_field']:
+            ax = ax_temp[2]
+        else:
+            ax = ax_temp[config.axindex]
+    elif axes_shape == (1, 2):
+        ax = ax_temp
+
+    ax_opts = fig.update_ax_opts(field_name, ax, 'polar', level=0)
+    fig.plot_text(field_name, ax, 'polar', data=data2d)
+
     if ax_opts['use_pole'] == 'south':
         projection = ccrs.SouthPolarStereo()
         extent_lat = -60  # Southern limit for South Polar plot
@@ -765,140 +777,96 @@ def _single_polar_plot(config: ConfigManager, data_to_plot: tuple) -> None:
         projection = ccrs.NorthPolarStereo()
         extent_lat = 60   # Northern limit for North Polar plot
     
-    plt.figure(figsize=(10, 10))
-    ax = plt.axes(projection=projection)
+    ax = fig.add_subplot(1, 1, 1, projection=projection)
     
     ax.set_extent([-180, 180, extent_lat, 90 if ax_opts['use_pole'] == 'north' else -90], ccrs.PlateCarree())
+    ax.add_feature(cfeature.BORDERS, zorder=10, linewidth=0.5, edgecolor='grey')
+    ax.add_feature(cfeature.LAKES, alpha=0.9)
+    ax.add_feature(cfeature.LAND, color='silver', zorder=1, facecolor=0.9)
+    ax.add_feature(cfeature.COASTLINE, zorder=10, linewidth=0.5)      
+    ax.add_feature(cfeature.OCEAN, color='lightblue', zorder=0)
+    ax.patch.set_alpha(0)
+    ax.set_frame_on(False)
+    ax.set_xticks([])
+    ax.set_yticks([])
+
+    _create_clevs(field_name, ax_opts, data2d)
+    clevs = pu.formatted_contours(ax_opts['clevs'])
+
+    extend_value = "both"
+    if ax_opts['clevs'][0] == 0:
+        extend_value = "max"
+    norm = colors.BoundaryNorm(ax_opts['clevs'], ncolors=256, clip=False)
+
+    trans = ccrs.PlateCarree()
     
-    if 'clevs' not in ax_opts or not ax_opts['clevs']:
-        vmin = np.nanmin(data2d.values)
-        vmax = np.nanmax(data2d.values)
-        clevs = np.linspace(vmin, vmax, 11)
-        ax_opts['clevs'] = clevs
-    else:
-        clevs = ax_opts['clevs']
-    
-    if x is None or y is None:
-        # Try to get coordinates from data2d
-        dims = list(data2d.dims)
-        if len(dims) >= 2:
-            try:
-                lon_name = dims[1] if 'lon' in dims[1] or 'x' in dims[1] else dims[0]
-                lat_name = dims[0] if 'lat' in dims[0] or 'y' in dims[0] else dims[1]
-                lons = data2d[lon_name].values
-                lats = data2d[lat_name].values
-                lon_mesh, lat_mesh = np.meshgrid(lons, lats)
-                
-            except Exception as e:
-                logger.error(f"Error creating meshgrid from data2d: {e}")
-                return
-        else:
-            logger.error(f"Data has fewer than 2 dimensions: {dims}")
-            return
-    else:
-        # Use provided coordinates
-        try:
-            x_values = x.values if hasattr(x, 'values') else x
-            y_values = y.values if hasattr(y, 'values') else y
-            if len(x_values.shape) == 1 and len(y_values.shape) == 1:
-                lon_mesh, lat_mesh = np.meshgrid(x_values, y_values)
-            else:
-                lon_mesh, lat_mesh = x_values, y_values
-        except Exception as e:
-            logger.error(f"Error processing provided coordinates: {e}")
-            return
-    
-    data_values = data2d.values
-    
-    if lon_mesh.shape != data_values.shape:
-        logger.warning(f"Data shape {data_values.shape} doesn't match coordinate shape {lon_mesh.shape}")
-        if data_values.shape == (lon_mesh.shape[1], lon_mesh.shape[0]):
-            data_values = data_values.T
-            logger.info("Transposed data to match coordinate shape")
-        else:
-            logger.error(f"Cannot reconcile data shape {data_values.shape} with coordinate shape {lon_mesh.shape}")
-            return
-    
-    # TODO: Fix this:
-    # Try different plotting methods until one works
     try:
-        # pcolormesh (most reliable for irregular grids)
-        pcm = ax.pcolormesh(
-            lon_mesh, lat_mesh, data_values,
-            transform=ccrs.PlateCarree(),
-            cmap=ax_opts['use_cmap'],
-            norm=colors.BoundaryNorm(clevs, ncolors=256) if len(clevs) > 1 else None,
-            shading='auto'
-        )
+        # contourf
+        pcm = ax.contourf(x, y, data2d,
+                        cmap=ax_opts['use_cmap'],
+                        levels=clevs,
+                        transform=trans,
+                        extend=extend_value,
+                        norm=norm)
+
         plot_success = True
-    except Exception as e1:
-        logger.warning(f"pcolormesh failed: {e1}")
+    except Exception as e:
+        logger.warning(f"contourf failed: {e}")
         try:
-            # contourf
-            pcm = ax.contourf(
-                lon_mesh, lat_mesh, data_values,
-                levels=clevs,
+            pcm = ax.imshow(
+                data2d,
+                extent=[-180, 180, -90 if ax_opts['use_pole'] == 'south' else 0, 
+                        0 if ax_opts['use_pole'] == 'south' else 90],
                 transform=ccrs.PlateCarree(),
                 cmap=ax_opts['use_cmap'],
-                extend='both'
+                aspect='auto'
             )
             plot_success = True
         except Exception as e2:
-            logger.warning(f"contourf failed: {e2}")
-            try:
-                # imshow as last resort
-                pcm = ax.imshow(
-                    data_values,
-                    extent=[-180, 180, -90 if ax_opts['use_pole'] == 'south' else 0, 
-                            0 if ax_opts['use_pole'] == 'south' else 90],
-                    transform=ccrs.PlateCarree(),
-                    cmap=ax_opts['use_cmap'],
-                    aspect='auto'
-                )
-                plot_success = True
-            except Exception as e3:
-                logger.error(f"All plotting methods failed: {e3}")
-                plot_success = False
-    
+            logger.error(f"All plotting methods failed: {e2}")
+            plot_success = False
+
     if not plot_success:
         logger.error("Failed to create polar plot")
         return
     
-    cbar = plt.colorbar(pcm, ax=ax, shrink=0.5, pad=0.05)
-    
+    if 'name' in config.spec_data[field_name]:
+        ax.set_title(config.spec_data[field_name]['name'], y=1.03, fontsize=14, weight='bold')
+    else:
+        ax.set_title(source_name, y=1.03, fontsize=14, weight='bold')
+
     if 'units' in config.spec_data[field_name]:
         units = config.spec_data[field_name]['units']
     else:
         try:
-            units = data2d.attrs.get('units', 'n.a.')
-        except Exception:
-            units = 'n.a.'
-    
+            units = data2d.units
+        except Exception as e:
+            logger.error(f"{e}: Please specify {field_name} units in specs file")
+            units = "n.a."
     if units == '1':
         units = '%'
-    
     if ax_opts['clabel'] is None:
         cbar_label = units
     else:
         cbar_label = ax_opts['clabel']
-    
+    cbar = plt.colorbar(pcm, ax=ax, shrink=0.5, pad=0.05)
     cbar.set_label(label=cbar_label, size=12, weight='bold')
-    
-    if 'name' in config.spec_data[field_name]:
-        ax.set_title(config.spec_data[field_name]['name'], y=1.03, fontsize=14, weight='bold')
+
+    if ax_opts['line_contours']:
+        clines = ax.contour(x, y, data2d,
+                                levels=ax_opts['clevs'], colors="black",
+                                linewidths=0.5, alpha=0.5, linestyles='solid',
+                                transform=trans)
+        ax.clabel(clines, inline=1, fontsize=8,
+                      inline_spacing=10, colors="black",
+                      rightside_up=True,  # fmt=contour_format,
+                      use_clabeltext=True)
     else:
-        ax.set_title(field_name, y=1.03, fontsize=14, weight='bold')
-    
-    ax.add_feature(cfeature.COASTLINE, linewidth=0.5)
-    ax.add_feature(cfeature.BORDERS, linewidth=0.3)
-    ax.add_feature(cfeature.LAND, color='lightgray', zorder=0)
-    ax.add_feature(cfeature.OCEAN, color='lightblue', zorder=0)
-    
+        _ = ax.contour(x, y, data2d, linewidths=0.0)
+
     if ax_opts['add_grid']:
-        gl = ax.gridlines(draw_labels=True, linewidth=0.5, color='gray', alpha=0.5, linestyle='--')
-        gl.top_labels = False
-        gl.right_labels = False
-    
+        _ = ax.gridlines(draw_labels=False, linewidth=0.5, color='gray', alpha=0.75, linestyle='--')
+
     if ax_opts['boundary']:
         theta = np.linspace(0, 2 * np.pi, 100)
         center = [0.5, 0.5]
@@ -906,18 +874,8 @@ def _single_polar_plot(config: ConfigManager, data_to_plot: tuple) -> None:
         verts = np.vstack([np.sin(theta), np.cos(theta)]).T
         circle = mpath.Path(verts * radius + center)
         ax.set_boundary(circle, transform=ax.transAxes)
-    
-    if config.print_to_file:
-        output_dir = config.output_dir
-        output_fname = f"{field_name}_polar_{ax_opts['use_pole']}.{config.print_format}"
-        filename = os.path.join(output_dir, output_fname)
-        plt.savefig(filename, bbox_inches='tight')
-        logger.debug(f"Saved polar plot to {filename}")
-    else:
-        plt.tight_layout()
-        plt.show()
 
-
+ 
 def _single_xt_plot(config: ConfigManager, data_to_plot: tuple) -> None:
     """ Create a single xt (time-series) plot using SPECS data
 
