@@ -256,19 +256,18 @@ class Wrf(NuWrf):
 
     def _get_field_to_plot_wrf(self, field_name, file_index, plot_type, figure, time_level, level=None):
         ax = figure.get_axes()
-        # self.config_manager.ax_opts = figure.init_ax_opts(field_name)
         dim1, dim2 = self.coord_names(self.source_name, self.source_data,
                                          field_name, plot_type)
         data2d = None
         d = self.source_data['vars'][field_name]
         if 'yz' in plot_type:
-            data2d = self._get_yz(d, field_name, time_lev=time_level)
+            data2d = self._get_yz(d, time_lev=time_level)
         elif 'xt' in plot_type:
             pass  # TODO!
         elif 'tx' in plot_type:
             pass  # TODO!
         elif 'xy' in plot_type or 'polar' in plot_type:
-            data2d = self._get_xy(d, field_name, level=level, time_lev=time_level)
+            data2d = self._get_xy(d, level=level, time_lev=time_level)
         else:
             pass
 
@@ -368,7 +367,8 @@ class Wrf(NuWrf):
             dim2 = dims[1]
         return dim1, dim2
 
-    def _get_xy(self, d, name, level, time_lev):
+
+    def _get_xy(self, d, level, time_lev):
         """ Extract XY slice from N-dim data field"""
         if d is None:
             return
@@ -378,7 +378,7 @@ class Wrf(NuWrf):
         self.logger.debug(f"Selecting time level: {time_lev}")
         data2d = eval(f"d.isel({self.get_model_dim_name(self.source_name, 'tc')}=time_lev)")
         data2d = data2d.squeeze()
-        zname = self.get_field_dim_name(self.source_name, self.source_data, 'zc', name)
+        zname = self.get_field_dim_name('wrf', d, 'zc')
         if zname in data2d.dims:
             # TODO: Make soil_layer configurable
             soil_layer = 0
@@ -390,9 +390,9 @@ class Wrf(NuWrf):
                 lev_to_plot = self.levs[index]
                 self.logger.debug(f'Level to plot: {lev_to_plot} at index {index}')
                 data2d = eval(f"data2d.isel({zname}=index)")
-        return apply_conversion(self.config_manager, data2d, name)
+        return apply_conversion(self.config_manager, data2d, d.name)
 
-    def _get_yz(self, d, name, time_lev=0):
+    def _get_yz(self, d, time_lev=0):
         """ Create YZ slice from N-dim data field"""
         d = d.squeeze()
         if self.get_model_dim_name(self.source_name, 'tc') in d.dims:
@@ -405,13 +405,13 @@ class Wrf(NuWrf):
         else:
             data2d = d
         # WRF specific:
-        d = self.source_data['vars'][name]
+        d = self.source_data['vars'][d.name]
         stag = d.stagger
         if stag == "X":
             data2d = data2d.mean(dim=self.get_model_dim_name(self.source_name, 'xc') + "_stag")
         else:
             data2d = data2d.mean(dim=self.get_model_dim_name(self.source_name, 'xc'))
-        return apply_conversion(self.config_manager, data2d, name)
+        return apply_conversion(self.config_manager, data2d, d.name)
 
     def _get_xt(self, d, name, time_lev, level=None):
         """ Extract time-series from a DataArray
