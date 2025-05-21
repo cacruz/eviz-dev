@@ -18,6 +18,7 @@ def mock_config_manager():
         'add_grid': True,
         'zave': False,
         'zsum': False,
+        'extent': [],
         'time_series_plot_linestyle': {},
         'cbar_sci_notation': False,
         'clevs_prec': 1,

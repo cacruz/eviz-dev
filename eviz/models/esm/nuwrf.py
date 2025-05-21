@@ -180,38 +180,9 @@ class NuWrf(Gridded):
     def _process_coordinates(self, data2d, dim1, dim2, field_name, plot_type, file_index, figure, ax):
         """
         Process coordinates for the plot.
-        
-        Args:
-            data2d: The 2D data array to plot
-            dim1, dim2: Dimension names for the plot
-            field_name: Name of the field being plotted
-            plot_type: Type of plot (xy, yz, etc.)
-            file_index: Index of the file being processed
-            figure: The figure object
-            ax: The axes object
-            
-        Returns:
-            Tuple containing processed data and metadata for plotting
         """
-        # For time series plots, no coordinate processing needed
-        if 'xt' in plot_type or 'tx' in plot_type:
-            return data2d, None, None, field_name, plot_type, file_index, figure, ax
-        
-        # For other plot types, extract coordinates but don't process them
-        # (Subclasses will override this with specific processing)
-        try:
-            # Try to get coordinates from data2d
-            if hasattr(data2d, 'coords') and dim1 in data2d.coords and dim2 in data2d.coords:
-                xs = data2d.coords[dim1].values
-                ys = data2d.coords[dim2].values
-                return data2d, xs, ys, field_name, plot_type, file_index, figure, ax
-        except Exception as e:
-            self.logger.error(f"Error processing coordinates: {e}")
-        
-        # Default fallback
-        return data2d, None, None, field_name, plot_type, file_index, figure, ax
-
-
+        pass  # Placeholder for coordinate processing logic
+    
     def _apply_vertical_level_selection(self, data2d, field_name, level):
         """
         Apply vertical level selection to the data.
@@ -240,35 +211,6 @@ class NuWrf(Gridded):
                 self.logger.warning(f"Error selecting vertical level: {e}")
         
         return data2d
-
-    def _get_xy(self, d, field_name, level, time_lev):
-        """
-        Extract XY slice from N-dim data field with common logic.
-        
-        This is a template method that defines the skeleton of the algorithm,
-        delegating model-specific steps to hook methods that subclasses can override.
-        """
-        if d is None:
-            return None
-            
-        # Convert level to int if provided
-        if level:
-            level = int(level)
-        
-        # 1. Pre-process data (squeeze dimensions, etc.)
-        data2d = self._preprocess_data(d)
-        
-        # 2. Get time dimension name (model-specific)
-        time_dim = self._get_time_dimension_name(d)
-        
-        # 3. Apply time selection or averaging (model-specific)
-        data2d = self._apply_time_selection(d, data2d, time_dim, time_lev, field_name, level)
-        
-        # 4. Apply vertical level selection (model-specific)
-        data2d = self._apply_vertical_level_selection(data2d, field_name, level)
-        
-        # 5. Apply conversion and return
-        return apply_conversion(self.config_manager, data2d, field_name)
 
     # Hook methods that can be overridden by subclasses
     @staticmethod
@@ -394,9 +336,13 @@ class NuWrf(Gridded):
                 dim2 = coords[1]
         return dim1, dim2
 
-    def get_field_dim_name(self):
-        """Hook for model-specific field-dim-name. Override in subclasses."""
-        pass
+    def get_field_dim_name(self, source_name: str, source_data: dict, dim_name: str, field_name: str):
+        d = source_data['vars'][field_name]
+        field_dims = list(d.dims)   # use dims only!?
+        names = self.get_model_dim_name(source_name, dim_name).split(',')
+        common = list(set(names).intersection(field_dims))
+        dim = list(common)[0] if common else None
+        return dim
 
     def get_model_dim_name(self, source_name: str, dim_name: str):
         try:

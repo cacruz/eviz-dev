@@ -212,7 +212,6 @@ class Gridded(Root):
             return
 
         # Iterate through map_params to generate plots
-        # Access map_params via config_manager
         for idx, params in self.config_manager.map_params.items():
             field_name = params.get('field')
             if not field_name:
@@ -228,9 +227,9 @@ class Gridded(Root):
             if field_name not in data_source.dataset:
                 continue
 
-            self.config_manager.findex = idx  # Assuming idx corresponds to file index in map_params
-            self.config_manager.pindex = idx  # Assuming idx corresponds to plot index
-            self.config_manager.axindex = 0  # Reset axis index for each plot
+            self.config_manager.findex = idx  
+            self.config_manager.pindex = idx
+            self.config_manager.axindex = 0
 
             field_data_array = data_source.dataset[field_name]
             plot_types = params.get('to_plot', ['xy'])
@@ -240,8 +239,7 @@ class Gridded(Root):
                 self._process_plot(field_data_array, field_name, idx, plot_type, plotter)
 
         if self.config_manager.make_gif:
-            pu.create_gif(
-                self.config_manager.config)  # Still needs config object? Check pu.create_gif
+            pu.create_gif(self.config_manager.config)
 
     def _process_plot(self, data_array: xr.DataArray, field_name: str, file_index: int,
                       plot_type: str, plotter):
@@ -799,6 +797,7 @@ class Gridded(Root):
             plot_types = map1_params.get('to_plot', ['xy'])
             for plot_type in plot_types:
                 self.data2d_list = []  # Reset for each plot type
+                self.logger.info(f"Plotting {field_name1} vs {field_name2} , {plot_type} plot")
 
                 if 'xy' in plot_type or 'polar' in plot_type:
                     self._process_xy_side_by_side_plots(plotter, file_indices,
@@ -816,6 +815,45 @@ class Gridded(Root):
             current_field_index += 1
 
     def _process_xy_side_by_side_plots(self, plotter, file_indices, current_field_index,
+                                    field_name1, field_name2, plot_type, sdat1_dataset,
+                                    sdat2_dataset):
+        """Process side-by-side comparison plots for xy or polar plot types."""
+        num_plots = len(self.config_manager.compare_exp_ids)
+        nrows = 1
+        ncols = num_plots
+
+        # Get levels for the plots
+        levels = self.config_manager.get_levels(field_name1, plot_type + 'plot')
+        if not levels:
+            return
+
+        for level_val in levels.keys():
+            # Create figure with appropriate number of subplots
+            figure = Figure.create_eviz_figure(self.config_manager, plot_type,
+                                            nrows=nrows, ncols=ncols)
+            ax = figure.get_axes()
+            self.config_manager.level = level_val
+
+            # Store domain information for regional plots if available
+            is_regional = hasattr(self, 'source_name') and self.source_name in ['lis', 'wrf']
+            if is_regional:
+                # For regional domains, store coordinates for consistent plotting
+                if hasattr(sdat1_dataset, 'lon') and hasattr(sdat1_dataset, 'lat'):
+                    self.lon = sdat1_dataset.lon
+                    self.lat = sdat1_dataset.lat
+
+            # Create the side-by-side plot
+            self._create_xy_side_by_side_plot(plotter, file_indices,
+                                            current_field_index,
+                                            field_name1, field_name2, figure, ax,
+                                            plot_type, sdat1_dataset, sdat2_dataset,
+                                            level_val)
+
+            # Print the map with appropriate level information
+            pu.print_map(self.config_manager, plot_type, self.config_manager.findex,
+                    figure, level=level_val)
+
+    def _process_xy_side_by_side_plots_old(self, plotter, file_indices, current_field_index,
                                        field_name1, field_name2, plot_type, sdat1_dataset,
                                        sdat2_dataset):
         """Process side-by-side comparison plots for xy or polar plot types."""
@@ -833,6 +871,10 @@ class Gridded(Root):
                                                nrows=nrows, ncols=ncols)
             ax = figure.get_axes()
             self.config_manager.level = level_val
+
+            # This is needed for regional plots later on
+            self.lon = sdat1_dataset.lon
+            self.lat = sdat1_dataset.lat
 
             self._create_xy_side_by_side_plot(plotter, file_indices,
                                               current_field_index,
@@ -957,7 +999,88 @@ class Gridded(Root):
                     self.logger.error(
                         f"Plotter {type(plotter).__name__} has no plot method.")
 
-    def _get_field_to_plot_compare(self, data_array, field_name, file_index,
+    def _get_field_to_plot_compare(self, data_array, field_name, file_index, plot_type, figure, level=None) -> tuple:
+        """Prepare data for comparison plots, handling both global and regional domains."""
+        dim1_name, dim2_name = self.config_manager.get_dim_names(plot_type)
+        data2d = None
+
+        ax = figure.get_axes()
+        # Handle comparison plots layout
+        if figure.get_gs_geometry() == (1, 2) or figure.get_gs_geometry() == (1, 3):
+            ax = ax[self.config_manager.axindex]
+
+        # Handle difference field for comparison plots
+        if self.config_manager.ax_opts.get('is_diff_field', False) and len(self.data2d_list) >= 2:
+            proc = DataProcessor(self.config_manager)
+            data2d, x, y = proc.regrid(plot_type)
+            return data2d, x, y, self.field_names[0], plot_type, file_index, figure, ax
+
+        # Process single plots based on plot type
+        if 'yz' in plot_type:
+            data2d = self._get_yz(data_array, time_lev=self.config_manager.ax_opts.get('time_lev', 0))
+        elif 'xt' in plot_type:
+            data2d = self._get_xt(data_array, time_lev=self.config_manager.ax_opts.get('time_lev', 0))
+        elif 'tx' in plot_type:
+            data2d = self._get_tx(data_array, level=level, time_lev=self.config_manager.ax_opts.get('time_lev', 0))
+        elif 'xy' in plot_type or 'polar' in plot_type:
+            data2d = self._get_xy(data_array, level=level, time_lev=self.config_manager.ax_opts.get('time_lev', 0))
+        else:
+            self.logger.warning(f"Unsupported plot type for _get_field_to_plot_compare: {plot_type}")
+            return None
+
+        # For time series plots, return without coordinates
+        if 'xt' in plot_type or 'tx' in plot_type:
+            return data2d, None, None, field_name, plot_type, file_index, figure, ax
+
+        # Process coordinates based on domain type
+        try:
+            # Determine if this is a regional domain
+            is_regional = hasattr(self, 'source_name') and self.source_name in ['lis', 'wrf']
+            if is_regional:
+                # Handle regional domain coordinates (LIS/WRF specific)
+                if hasattr(self, '_process_coordinates'):
+                    # Use model-specific coordinate processing if available
+                    return self._process_coordinates(data2d, dim1_name, dim2_name, field_name, 
+                                                plot_type, file_index, figure, ax)
+                else:
+                    # Fallback for regional domains without specific processing
+                    xs = np.array(self._get_field(dim1_name, data2d)[0, :])
+                    ys = np.array(self._get_field(dim2_name, data2d)[:, 0])
+                    
+                    # Calculate domain extent
+                    latN = max(ys[:])
+                    latS = min(ys[:])
+                    lonW = min(xs[:])
+                    lonE = max(xs[:])
+                    
+                    # Set plot extent and central coordinates
+                    self.config_manager.ax_opts['extent'] = [lonW, lonE, latS, latN]
+                    self.config_manager.ax_opts['central_lon'] = np.mean([lonW, lonE])
+                    self.config_manager.ax_opts['central_lat'] = np.mean([latS, latN])
+                    
+                    return data2d, xs, ys, field_name, plot_type, file_index, figure, ax
+            else:
+                # Handle global domain coordinates
+                x = data2d[dim1_name].values if dim1_name in data2d.coords else None
+                y = data2d[dim2_name].values if dim2_name in data2d.coords else None
+                
+                if x is None or y is None:
+                    # Fallback to using dimensions if coordinates are not available
+                    dims = list(data2d.dims)
+                    if len(dims) >= 2:
+                        x = data2d[dims[0]].values
+                        y = data2d[dims[1]].values
+                    else:
+                        self.logger.error("Dataset has fewer than 2 dimensions, cannot plot")
+                        return None
+                
+                return data2d, x, y, field_name, plot_type, file_index, figure, ax
+
+        except Exception as e:
+            self.logger.error(f"Error processing coordinates for {field_name}: {e}")
+            return None
+
+    def _get_field_to_plot_compare2(self, data_array, field_name, file_index,
                                    plot_type, figure, level=None) -> tuple:
         """Prepare data for comparison plots."""
 
@@ -972,9 +1095,8 @@ class Gridded(Root):
         if self.config_manager.ax_opts.get('is_diff_field', False) and len(
                 self.data2d_list) >= 2:
             proc = DataProcessor(self.config_manager)
-            data2d, x_values, y_values = proc.regrid(plot_type)
-            return data2d, x_values, y_values, self.field_names[
-                0], plot_type, file_index, figure, ax
+            data2d, x, y = proc.regrid(plot_type)
+            return data2d, x, y, self.field_names[0], plot_type, file_index, figure, ax
         else:  # single plots
             if 'yz' in plot_type:
                 data2d = self._get_yz(data_array,
@@ -1003,17 +1125,35 @@ class Gridded(Root):
 
         # For spatial plots, get the coordinate arrays
         try:
-            x_values = data2d[dim1_name].values if dim1_name in data2d.coords else None
-            y_values = data2d[dim2_name].values if dim2_name in data2d.coords else None
-            return data2d, x_values, y_values, field_name, plot_type, file_index, figure, ax
+
+            # if Global domains
+            # x = data2d[dim1_name].values if dim1_name in data2d.coords else None
+            # y = data2d[dim2_name].values if dim2_name in data2d.coords else None
+
+            # else (regional)
+            # LIS
+            x = np.array(self.lon[0, :])
+            y = np.array(self.lat[:, 0])
+            latN = max(y[:])
+            latS = min(y[:])
+            lonW = min(x[:])
+            lonE = max(x[:])
+            extent = [lonW, lonE, latS, latN]
+            
+            self.config_manager.ax_opts['extent'] = [lonW, lonE, latS, latN]
+            self.config_manager.ax_opts['central_lon'] = np.mean(self.config_manager.ax_opts['extent'][:2])
+            self.config_manager.ax_opts['central_lat'] = np.mean(self.config_manager.ax_opts['extent'][2:])
+            # end regional
+
+            return data2d, x, y, field_name, plot_type, file_index, figure, ax
         except KeyError as e:
             self.logger.error(f"Error getting coordinates for {field_name}: {e}")
             # Fallback to using the first two dimensions
             dims = list(data2d.dims)
             if len(dims) >= 2:
-                x_values = data2d[dims[0]].values
-                y_values = data2d[dims[1]].values
-                return data2d, x_values, y_values, field_name, plot_type, file_index, figure, ax
+                x = data2d[dims[0]].values
+                y = data2d[dims[1]].values
+                return data2d, x, y, field_name, plot_type, file_index, figure, ax
             else:
                 self.logger.error("Dataset has fewer than 2 dimensions, cannot plot")
                 return None

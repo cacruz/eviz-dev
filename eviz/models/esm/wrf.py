@@ -2,6 +2,7 @@ import sys
 from dataclasses import dataclass
 import numpy as np
 import pandas as pd
+import xarray as xr
 import logging
 import warnings
 from matplotlib import pyplot as plt
@@ -218,6 +219,40 @@ class Wrf(NuWrf):
         if self.config_manager.make_gif:
             create_gif(self.config_manager)
 
+    def _process_coordinates(self, data2d, dim1, dim2, field_name, plot_type, file_index, figure, ax):
+        """
+        Process coordinates for WRF plots
+        """
+        if plot_type == 'xy':
+            dim1 = 'XLONG'
+            dim2 = 'XLAT'
+        elif plot_type == 'yz': 
+            dim1 = 'XLAT'
+
+        if 'xt' in plot_type or 'tx' in plot_type:
+            return data2d, None, None, field_name, plot_type, file_index, figure, ax
+        elif 'yz' in plot_type:
+            # For YZ plots, use latitude and pressure levels
+            xs = np.array(self._get_field(dim1[0], data2d)[0, :][:, 0])
+            ys = self.levs  # Pressure levels   
+            latN = max(xs[:])
+            latS = min(xs[:])
+            self.config_manager.ax_opts['extent'] = [None, None, latS, latN]
+            return data2d, xs, ys, field_name, plot_type, file_index, figure, ax
+        else:
+            # For XY plots, use longitude and latitude
+            xs = np.array(self._get_field(dim1, data2d)[0, :])
+            ys = np.array(self._get_field(dim2, data2d)[:, 0])
+            latN = max(ys[:])
+            latS = min(ys[:])
+            lonW = min(xs[:])
+            lonE = max(xs[:])
+            self.config_manager.ax_opts['extent'] = [lonW, lonE, latS, latN]
+            self.config_manager.ax_opts['central_lon'] = np.mean(self.config_manager.ax_opts['extent'][:2])
+            self.config_manager.ax_opts['central_lat'] = np.mean(self.config_manager.ax_opts['extent'][2:])
+            return data2d, xs, ys, field_name, plot_type, file_index, figure, ax
+
+
     def _get_field_to_plot_wrf(self, field_name, file_index, plot_type, figure, time_level, level=None):
         ax = figure.get_axes()
         # self.config_manager.ax_opts = figure.init_ax_opts(field_name)
@@ -236,7 +271,7 @@ class Wrf(NuWrf):
         else:
             pass
 
-        xs, ys, extent, central_lon, central_lat = None, None, [], 0.0, 0.0
+        xs, ys = None, None
         if 'xt' in plot_type or 'tx' in plot_type:
             return data2d, None, None, field_name, plot_type, file_index, figure, ax
         elif 'yz' in plot_type:
@@ -291,7 +326,7 @@ class Wrf(NuWrf):
 
         """
         dims = []
-        d = self.source_data['vars'][field_name]
+        d = self.source_data[field_name]
         stag = d.stagger
         xsuf, ysuf, zsuf = "", "", ""
         if stag == "X":
@@ -332,6 +367,37 @@ class Wrf(NuWrf):
             dim2 = dims[1]
         return dim1, dim2
 
+    def _get_xy(self, d, name, level, time_lev):
+        """ Extract XY slice from N-dim data field"""
+        if d is None:
+            return
+        if level:
+            level = int(level)
+        # if self.get_model_dim_name(self.source_name, 'tc') in d.dims:
+        #     num_times = eval(f"np.size(d_temp.{self.get_model_dim_name(self.source_name, 'tc')})")
+        #     if self.config.ax_opts['tave'] and num_times > 1:
+        #         self.logger.debug(f"Averaging over {num_times} time levels.")
+        #         data2d = apply_mean(self.config, data2d, level)
+        #         return apply_conversion(self.config, data2d, name)
+        #     else:
+        #         data2d = eval(f"d_temp.isel({self.get_model_dim_name(self.source_name, 'tc')}=time_lev)")
+        # else:
+        data2d = eval(f"d.isel({self.get_model_dim_name(self.source_name, 'tc')}=time_lev)")
+        data2d = data2d.squeeze()
+        zname = self.get_field_dim_name(self.source_name, self.source_data, 'zc', name)
+        if zname in data2d.dims:
+            # TODO: Make soil_layer configurable
+            soil_layer = 0
+            if 'soil' in zname:
+                data2d = eval(f"data2d.isel({zname}=soil_layer)")
+            else:
+                difference_array = np.absolute(self.levs - level)
+                index = difference_array.argmin()
+                lev_to_plot = self.levs[index]
+                self.logger.debug(f'Level to plot: {lev_to_plot} at index {index}')
+                data2d = eval(f"data2d.isel({zname}=index)")
+        return apply_conversion(self.config_manager, data2d, name)
+
     def _get_yz(self, d, name, time_lev=0):
         """ Create YZ slice from N-dim data field"""
         d = d.squeeze()
@@ -353,6 +419,69 @@ class Wrf(NuWrf):
             data2d = data2d.mean(dim=self.get_model_dim_name(self.source_name, 'xc'))
         return apply_conversion(self.config_manager, data2d, name)
 
+    def _get_xt(self, d, name, time_lev, level=None):
+        """ Extract time-series from a DataArray
+
+        Note:
+            Assume input DataArray is at most 4-dimensional (time, lev, lon, lat)
+            and return a 1D (time) series
+        """
+        d_temp = d
+        if d_temp is None:
+            return
+        
+        xtime = d.XTIME
+        
+        num_times = xtime.size
+        self.logger.info(f"'{name}' field has {num_times} time levels")
+        print(xr.ALL_DIMS)
+        if isinstance(time_lev, list):
+            self.logger.info(f"Computing time series on {time_lev} time range")
+            data2d = eval(f"d_temp.isel({self.config.get_model_dim_name('tc')}=slice(time_lev))")
+        else:
+            data2d = d_temp.squeeze()
+
+        if 'mean_type' in self.config.spec_data[name]['xtplot']:
+            mean_type = self.config.spec_data[name]['xtplot']['mean_type']
+            self.logger.info(f"Averaging method: {mean_type}")
+            # annual:
+            if mean_type == 'point_sel':
+                xc = self.config.spec_data[name]['xtplot']['point_sel'][0]
+                yc = self.config.spec_data[name]['xtplot']['point_sel'][1]
+                data2d = data2d.sel(lon=xc, lat=yc, method='nearest')
+            elif mean_type == 'area_sel':
+                x1 = self.config.spec_data[name]['xtplot']['area_sel'][0]
+                x2 = self.config.spec_data[name]['xtplot']['area_sel'][1]
+                y1 = self.config.spec_data[name]['xtplot']['area_sel'][2]
+                y2 = self.config.spec_data[name]['xtplot']['area_sel'][3]
+                data2d = data2d.sel(lon=np.arange(x1, x2, 0.5), lat=np.arange(y1, y2, 0.5), method='nearest')
+                data2d = data2d.mean(dim=(self.config.get_model_dim_name('xc'), self.config.get_model_dim_name('yc')))
+            elif mean_type in ['year', 'season', 'month']:
+                data2d = data2d.groupby(self.config.get_model_dim_name('tc') + '.' + mean_type).mean(
+                    dim=self.config.get_model_dim_name('tc'), keep_attrs=True)
+            else:
+                data2d = data2d.groupby(self.config.get_model_dim_name('tc')).mean(dim=xr.ALL_DIMS, keep_attrs=True)
+                if 'mean_type' in self.config.spec_data[name]['xtplot']:
+                    if self.config.spec_data[name]['xtplot']['mean_type'] == 'rolling':
+                        window_size = 5
+                        if 'window_size' in self.config.spec_data[name]['xtplot']:
+                            window_size = self.config.spec_data[name]['xtplot']['window_size']
+                        self.logger.info(f" -- smoothing window size: {window_size}")
+                        kernel = np.ones(window_size) / window_size
+                        convolved_data = np.convolve(data2d, kernel, mode="same")
+                        data2d = xr.DataArray(convolved_data, dims=self.config.get_model_dim_name('tc'),
+                                              coords=data2d.coords)
+
+        else:
+            data2d = data2d.groupby(self.config.get_model_dim_name('tc')).mean(dim=xr.ALL_DIMS, keep_attrs=True)
+
+        if 'level' in self.config.spec_data[name]['xtplot']:
+            level = int(self.config.spec_data[name]['xtplot']['level'])
+            lev_to_plot = int(np.where(data2d.coords[self.config.get_model_dim_name('zc')].values == level)[0])
+            data2d = data2d[:, lev_to_plot].squeeze()
+
+        return apply_conversion(self.config, data2d, name)
+    
     def _select_yrange(self, data2d, name):
         """ Select a range of vertical levels"""
         if 'zrange' in self.config_manager.spec_data[name]['yzplot']:
@@ -457,33 +586,6 @@ class Wrf(NuWrf):
             self.logger.error('key error: %s, not found' % str(e))
             return None
 
-    def _process_coordinates(self, data2d, dim1, dim2, field_name, plot_type, file_index, figure, ax):
-        """
-        Process coordinates for WRF plots, handling staggered grids.
-        """
-        if 'xt' in plot_type or 'tx' in plot_type:
-            return data2d, None, None, field_name, plot_type, file_index, figure, ax
-        elif 'yz' in plot_type:
-            # For YZ plots, use latitude and pressure levels
-            xs = np.array(self._get_field(dim1[0], data2d)[0, :][:, 0])
-            ys = self.levs  # Pressure levels
-            latN = max(xs[:])
-            latS = min(xs[:])
-            self.config_manager.ax_opts['extent'] = [None, None, latS, latN]
-            return data2d, xs, ys, field_name, plot_type, file_index, figure, ax
-        else:
-            # For XY plots, use longitude and latitude
-            xs = np.array(self._get_field(dim1[0], data2d)[0, :])
-            ys = np.array(self._get_field(dim2[0], data2d)[:, 0])
-            latN = max(ys[:])
-            latS = min(ys[:])
-            lonW = min(xs[:])
-            lonE = max(xs[:])
-            self.config_manager.ax_opts['extent'] = [lonW, lonE, latS, latN]
-            self.config_manager.ax_opts['central_lon'] = np.mean(self.config_manager.ax_opts['extent'][:2])
-            self.config_manager.ax_opts['central_lat'] = np.mean(self.config_manager.ax_opts['extent'][2:])
-            return data2d, xs, ys, field_name, plot_type, file_index, figure, ax
-
     def _apply_vertical_level_selection(self, data2d, field_name, level):
         """
         Apply vertical level selection for WRF data, handling staggered grids and pressure levels.
@@ -521,86 +623,6 @@ class Wrf(NuWrf):
             return original_data.isel({time_dim: time_lev}).squeeze()
         return data2d
 
-
-    def _comparison_plots(self, plotter):
-        """Generate comparison plots for paired WRF data sources according to configuration."""
-        current_field_index = 0
-        self.data2d_list = []  # Initialize list to store data for comparison
-
-        # Process each pair of indices from the comparison configuration
-        for idx1, idx2 in zip(self.config_manager.a_list, self.config_manager.b_list):
-            # Get map parameters for these indices
-            map1 = self.config_manager.config.map_params[idx1]
-            map2 = self.config_manager.config.map_params[idx2]
-
-            # Load data from both sources
-            source_data_pair = self._load_comparison_data(map1, map2)
-            if not source_data_pair:
-                continue
-
-            sdat1, sdat2 = source_data_pair
-            
-            # Initialize p_top for both datasets if needed
-            self._init_domain_for_comparison(sdat1, sdat2)
-            
-            # Create a tuple of both datasets for difference calculations
-            sdat = (sdat1, sdat2)
-
-            # Determine file indices
-            source_name1, source_name2 = map1['source_name'], map2['source_name']
-            filename1, filename2 = map1['filename'], map2['filename']
-            file_indices = self._get_file_indices(source_name1, source_name2, filename1, filename2)
-
-            # Process each plot type
-            field_name1, field_name2 = map1['field'], map2['field']
-            self.field_names = (field_name1, field_name2)
-
-            for pt1, pt2 in zip(map1['to_plot'], map2['to_plot']):
-                plot_type = pt1  # Using the first plot type
-                self.logger.info(f"Plotting {field_name1} vs {field_name2}, {plot_type} plot")
-                self.data2d_list = []  # Reset for each plot type
-
-                if 'xy' in plot_type or 'polar' in plot_type:
-                    self._process_xy_comparison_plots(plotter, file_indices,
-                                                    current_field_index,
-                                                    field_name1, field_name2, plot_type,
-                                                    sdat1, sdat2, sdat)
-                else:
-                    self._process_other_comparison_plots(plotter, file_indices,
-                                                    current_field_index,
-                                                    field_name1, field_name2,
-                                                    plot_type, sdat1, sdat2, sdat)
-
-            current_field_index += 1
-
-    def _init_domain_for_comparison(self, sdat1, sdat2):
-        """Initialize domain information for both datasets in a comparison."""
-        # Save current source_data
-        original_source_data = self.source_data
-        
-        # Initialize domain for first dataset
-        self.source_data = sdat1
-        if not hasattr(self, 'p_top') or self.p_top is None:
-            try:
-                self._init_domain()
-            except Exception as e:
-                self.logger.warning(f"Could not initialize domain for first dataset: {e}")
-        
-        # Save first dataset's domain info
-        p_top1 = self.p_top
-        levs1 = self.levs.copy() if hasattr(self, 'levs') else None
-        
-        # Initialize domain for second dataset
-        self.source_data = sdat2
-        if not hasattr(self, 'p_top') or self.p_top is None:
-            try:
-                self._init_domain()
-            except Exception as e:
-                self.logger.warning(f"Could not initialize domain for second dataset: {e}")
-        
-        # Restore original source_data
-        self.source_data = original_source_data
-
     def _load_comparison_data(self, map1, map2):
         """Load data from both WRF sources for comparison."""
         source_name1, source_name2 = map1['source_name'], map2['source_name']
@@ -633,261 +655,6 @@ class Wrf(NuWrf):
             file_index2 = self.config_manager.get_file_index(filename2)
             return file_index1, file_index2
 
-    def _process_xy_comparison_plots(self, plotter, file_indices, current_field_index,
-                                    field_name1, field_name2, plot_type, sdat1, sdat2, sdat):
-        """Process comparison plots for xy or polar plot types."""
-        file_index1, file_index2 = file_indices
-
-        # Get levels for the plots
-        levels = self.config_manager.get_levels(field_name1, plot_type + 'plot')
-        if not levels:
-            self.logger.warning(f' -> No levels specified for {field_name1}')
-            return
-
-        for level in levels:
-            figure = Figure(self.config_manager, plot_type)
-            ax = figure.get_axes()
-            axes_shape = figure.get_gs_geometry()
-            self.config_manager.level = level
-
-            if axes_shape == (3, 1):
-                self._create_3x1_comparison_plot(plotter, file_indices,
-                                                current_field_index,
-                                                field_name1, field_name2, figure, ax,
-                                                plot_type, sdat1, sdat2, sdat, level)
-            elif axes_shape == (2, 2):
-                self._create_2x2_comparison_plot(plotter, file_indices,
-                                                current_field_index,
-                                                field_name1, field_name2, figure,
-                                                plot_type, sdat1, sdat2, sdat, level)
-
-            print_map(self.config_manager, plot_type, self.config_manager.findex, figure, level=level)
-            self.comparison_plot = False
-
-    def _process_other_comparison_plots(self, plotter, file_indices, current_field_index,
-                                    field_name1, field_name2, plot_type, sdat1, sdat2, sdat):
-        """Process comparison plots for other plot types."""
-        file_index1, file_index2 = file_indices
-
-        figure = Figure(self.config_manager, plot_type)
-        ax = figure.get_axes()
-        axes_shape = figure.get_gs_geometry()
-        self.config_manager.level = None
-
-        if axes_shape == (3, 1):
-            self._create_3x1_comparison_plot(plotter, file_indices, current_field_index,
-                                            field_name1, field_name2, figure, ax,
-                                            plot_type, sdat1, sdat2, sdat)
-        elif axes_shape == (2, 2):
-            self._create_2x2_comparison_plot(plotter, file_indices, current_field_index,
-                                            field_name1, field_name2, figure,
-                                            plot_type, sdat1, sdat2, sdat)
-
-        print_map(self.config_manager, plot_type, self.config_manager.findex, figure)
-
-    def _create_3x1_comparison_plot(self, plotter, file_indices, current_field_index,
-                                field_name1, field_name2, figure, ax,
-                                plot_type, sdat1, sdat2, sdat, level=None):
-        """Create a 3x1 comparison plot for WRF data."""
-        file_index1, file_index2 = file_indices
-
-        # Plot the first dataset
-        self._process_comparison_plot(plotter, file_index1, current_field_index,
-                                    field_name1,
-                                    figure, ax, 0, sdat1, plot_type, level=level)
-
-        # Plot the second dataset
-        self._process_comparison_plot(plotter, file_index2, current_field_index,
-                                    field_name2,
-                                    figure, ax, 1, sdat2, plot_type, level=level)
-
-        # Plot the comparison (difference)
-        self.comparison_plot = True
-        self._process_comparison_plot(plotter, file_index1, current_field_index,
-                                    field_name1,
-                                    figure, ax, 2, sdat, plot_type, level=level)
-
-    def _create_2x2_comparison_plot(self, plotter, file_indices, current_field_index,
-                                field_name1, field_name2, figure,
-                                plot_type, sdat1, sdat2, sdat, level=None):
-        """Create a 2x2 comparison plot for WRF data."""
-        file_index1, file_index2 = file_indices
-
-        # Plot the first dataset in the top-left
-        self._process_comparison_plot_2x2(plotter, file_index1, current_field_index,
-                                        field_name1,
-                                        figure, [0, 0], 0, sdat1, plot_type,
-                                        level=level)
-
-        # Plot the second dataset in the top-right
-        self._process_comparison_plot_2x2(plotter, file_index2, current_field_index,
-                                        field_name2,
-                                        figure, [0, 1], 1, sdat2, plot_type,
-                                        level=level)
-
-        # Plot comparison in the bottom row
-        self.comparison_plot = True
-        self._process_comparison_plot_2x2(plotter, file_index1, current_field_index,
-                                        field_name1,
-                                        figure, [1, 0], 2, sdat, plot_type, level=level)
-        self._process_comparison_plot_2x2(plotter, file_index1, current_field_index,
-                                        field_name1,
-                                        figure, [1, 1], 2, sdat, plot_type, level=level)
-
-    def _process_comparison_plot(self, plotter, file_index, current_field_index, field_name, 
-                                figure, ax, ax_index, source_data, plot_type, level=None):
-        """Process a comparison plot."""
-        self.config_manager.config._findex = file_index
-        
-        self.config_manager.pindex = current_field_index
-        self.config_manager.axindex = ax_index
-        
-        self.config_manager.ax_opts = figure.init_ax_opts(field_name)
-        figure.set_ax_opts_diff_field(ax[ax_index])
-        
-        # Get field to plot
-        field_to_plot = self._get_field_to_plot_compare(source_data, field_name, file_index,
-                                                    plot_type, figure, ax=ax[ax_index], level=level)
-        
-        # Plot the field
-        plotter.comparison_plots(self.config_manager, field_to_plot, level=level)
-
-    def _process_comparison_plot_2x2(self, plotter, file_index, current_field_index, field_name, 
-                                    figure, gsi, ax_index, source_data, plot_type, level=None):
-        """Process a 2x2 comparison plot for WRF data."""
-        fig, axes = figure.get_fig_ax()
-        ax1 = axes[gsi[0], gsi[1]] if isinstance(axes, np.ndarray) else plt.subplot(figure.gs[gsi[0], gsi[1]])
-        figure.set_ax_opts_diff_field(ax1)
-        
-        # Get field to plot
-        field_to_plot = self._get_field_to_plot_compare(source_data, field_name, file_index,
-                                                    plot_type, figure, ax=ax1, level=level)
-        
-        # Plot the field
-        plotter.comparison_plots(self.config_manager, field_to_plot, level=level)
-
-    def _get_field_to_plot_compare(self, source_data, field_name, file_index, 
-                                plot_type, figure, ax=None, level=None):
-        """Get field data for comparison plots with WRF-specific handling."""
-        if ax is None:
-            ax = figure.get_axes()
-        
-        # For difference field
-        if self.comparison_plot and self.config_manager.ax_opts['is_diff_field']:
-            proc = DataProcessor(self.config_manager, self.data2d_list)
-            data2d, xx, yy = proc.regrid(plot_type)
-            return data2d, xx, yy, self.field_names[0], plot_type, file_index, figure, ax
-        
-        # Get source name safely - don't use source_names[file_index] directly
-        source_name = self._get_source_name_for_file_index(file_index)
-        
-        # For regular fields
-        if isinstance(source_data, tuple):
-            # This is a tuple of two datasets for comparison
-            sdat1, sdat2 = source_data
-            self.source_data = sdat1  # Temporarily set source_data for dimension handling
-            
-            source_name = self._get_source_name_for_file_index(file_index)
-            dim1, dim2 = self.coord_names(source_name, source_data, field_name, plot_type)
-  
-            # Get time level
-            time_level = self.config_manager.ax_opts['time_lev']
-            if isinstance(time_level, str) and time_level == 'all':
-                time_level = 0  # Default to first time level for comparison
-            
-            # Extract data based on plot type
-            d1 = sdat1['vars'][field_name]
-            d2 = sdat2['vars'][field_name]
-            
-            # Process data based on plot type
-            if 'yz' in plot_type:
-                data2d1 = self._get_yz(d1, field_name, time_lev=time_level)
-                
-                # Temporarily switch source_data for second dataset
-                temp_source_data = self.source_data
-                self.source_data = sdat2
-                data2d2 = self._get_yz(d2, field_name, time_lev=time_level)
-                self.source_data = temp_source_data
-                
-                # Calculate difference
-                data2d = data2d1 - data2d2
-                
-            elif 'xy' in plot_type or 'polar' in plot_type:
-                data2d1 = self._get_xy(d1, field_name, level=level, time_lev=time_level)
-                
-                # Temporarily switch source_data for second dataset
-                temp_source_data = self.source_data
-                self.source_data = sdat2
-                data2d2 = self._get_xy(d2, field_name, level=level, time_lev=time_level)
-                self.source_data = temp_source_data
-                
-                # Calculate difference
-                data2d = data2d1 - data2d2
-                
-            else:
-                # Other plot types (xt, tx)
-                self.logger.warning(f"Plot type {plot_type} not fully supported for comparison")
-                return None
-            
-            # Process coordinates
-            if 'xt' in plot_type or 'tx' in plot_type:
-                return data2d, None, None, field_name, plot_type, file_index, figure, ax
-            elif 'yz' in plot_type:
-                # For YZ plots, use latitude and pressure levels
-                xs = np.array(self._get_field(dim1[0], d1)[0, :][:, 0])
-                ys = self.levs  # Pressure levels
-                return data2d, xs, ys, field_name, plot_type, file_index, figure, ax
-            else:
-                # For XY plots, use longitude and latitude
-                xs = np.array(self._get_field(dim1[0], data2d1)[0, :])
-                ys = np.array(self._get_field(dim2[0], data2d1)[:, 0])
-                
-                # Store data for difference calculation
-                self.data2d_list.append(data2d)
-                
-                return data2d, xs, ys, field_name, plot_type, file_index, figure, ax
-        else:
-            # Single dataset
-            self.source_data = source_data  # Set source_data for dimension handling
-            
-            # Get dimension names using source_name instead of indexing into source_names
-            dim1, dim2 = self.coord_names(source_name, source_data, field_name, plot_type)
-            
-            # Get time level
-            time_level = self.config_manager.ax_opts['time_lev']
-            if isinstance(time_level, str) and time_level == 'all':
-                time_level = 0  # Default to first time level for comparison
-            
-            # Extract data based on plot type
-            d = source_data['vars'][field_name]
-            
-            # Process data based on plot type
-            if 'yz' in plot_type:
-                data2d = self._get_yz(d, field_name, time_lev=time_level)
-            elif 'xy' in plot_type or 'polar' in plot_type:
-                data2d = self._get_xy(d, field_name, level=level, time_lev=time_level)
-            else:
-                # Other plot types (xt, tx)
-                self.logger.warning(f"Plot type {plot_type} not fully supported for comparison")
-                return None
-            
-            # Store data for difference calculation
-            self.data2d_list.append(data2d)
-            
-            # Process coordinates
-            if 'xt' in plot_type or 'tx' in plot_type:
-                return data2d, None, None, field_name, plot_type, file_index, figure, ax
-            elif 'yz' in plot_type:
-                # For YZ plots, use latitude and pressure levels
-                xs = np.array(self._get_field(dim1[0], d)[0, :][:, 0])
-                ys = self.levs  # Pressure levels
-                return data2d, xs, ys, field_name, plot_type, file_index, figure, ax
-            else:
-                # For XY plots, use longitude and latitude
-                xs = np.array(self._get_field(dim1[0], data2d)[0, :])
-                ys = np.array(self._get_field(dim2[0], data2d)[:, 0])
-                return data2d, xs, ys, field_name, plot_type, file_index, figure, ax
-
     def _get_source_name_for_file_index(self, file_index):
         """
         Get the source name for a given file index.
@@ -906,216 +673,3 @@ class Wrf(NuWrf):
         # If we can't find the source name, default to 'wrf' since we're in the Wrf class
         return 'wrf'
     
-
-    def _side_by_side_plots(self, plotter):
-        """
-        Generate side-by-side comparison plots (2x1 subplots) without difference.
-        """
-        current_field_index = 0
-        self.data2d_list = []  # Initialize list to store data for comparison
-
-        # Process each pair of indices from the comparison configuration
-        for idx1, idx2 in zip(self.config_manager.a_list, self.config_manager.b_list):
-            # Get map parameters for these indices
-            map1 = self.config_manager.config.map_params[idx1]
-            map2 = self.config_manager.config.map_params[idx2]
-
-            # Load data from both sources
-            source_data_pair = self._load_comparison_data(map1, map2)
-            if not source_data_pair:
-                continue
-
-            sdat1, sdat2 = source_data_pair
-            
-            # Initialize p_top for both datasets if needed
-            self._init_domain_for_comparison(sdat1, sdat2)
-
-            # Determine file indices
-            source_name1, source_name2 = map1['source_name'], map2['source_name']
-            filename1, filename2 = map1['filename'], map2['filename']
-            file_indices = self._get_file_indices(source_name1, source_name2, filename1, filename2)
-
-            # Process each plot type
-            field_name1, field_name2 = map1['field'], map2['field']
-            self.field_names = (field_name1, field_name2)
-
-            for pt1, pt2 in zip(map1['to_plot'], map2['to_plot']):
-                plot_type = pt1  # Using the first plot type
-                self.logger.info(f"Plotting {field_name1} vs {field_name2} side by side, {plot_type} plot")
-                self.data2d_list = []  # Reset for each plot type
-
-                if 'xy' in plot_type or 'polar' in plot_type:
-                    self._process_xy_side_by_side_plots(plotter, file_indices,
-                                                    current_field_index,
-                                                    field_name1, field_name2, plot_type,
-                                                    sdat1, sdat2)
-                else:
-                    self._process_other_side_by_side_plots(plotter, file_indices,
-                                                        current_field_index,
-                                                        field_name1, field_name2,
-                                                        plot_type, sdat1, sdat2)
-
-            current_field_index += 1
-
-    def _process_xy_side_by_side_plots(self, plotter, file_indices, current_field_index,
-                                    field_name1, field_name2, plot_type, sdat1, sdat2):
-        """Process side-by-side comparison plots for xy or polar plot types."""
-        file_index1, file_index2 = file_indices
-        nrows, ncols = self.config_manager.input_config._comp_panels
-        
-        # Get levels for the plots
-        levels = self.config_manager.get_levels(field_name1, plot_type + 'plot')
-        if not levels:
-            self.logger.warning(f' -> No levels specified for {field_name1}')
-            return
-        
-        for level in levels:
-            # Create a figure with 2x1 subplots (side by side)
-            figure = Figure(self.config_manager, plot_type, nrows=nrows, ncols=ncols)
-            ax = figure.get_fig_ax()
-            self.config_manager.level = level
-            
-            # Create the 2x1 side-by-side comparison plot
-            self._create_2x1_side_by_side_plot(plotter, file_indices,
-                                            current_field_index,
-                                            field_name1, field_name2, figure, ax,
-                                            plot_type, sdat1, sdat2, level)
-            
-    def _process_other_side_by_side_plots(self, plotter, file_indices, current_field_index,
-                                        field_name1, field_name2, plot_type, sdat1, sdat2):
-        """Process side-by-side comparison plots for other plot types."""
-        file_index1, file_index2 = file_indices
-        nrows, ncols = self.config_manager.input_config._comp_panels
-        
-        # Create a figure with 2x1 subplots (side by side)
-        figure = Figure(self.config_manager, plot_type, nrows=nrows, ncols=ncols)
-        ax = figure.get_axes()
-        self.config_manager.level = None
-        
-        # Create the 2x1 side-by-side comparison plot
-        self._create_2x1_side_by_side_plot(plotter, file_indices, current_field_index,
-                                        field_name1, field_name2, figure, ax,
-                                        plot_type, sdat1, sdat2)
-        
-
-    def _create_2x1_side_by_side_plot(self, plotter, file_indices, current_field_index,
-                                    field_name1, field_name2, figure, ax,
-                                    plot_type, sdat1, sdat2, level=None):
-        """
-        Create a 2x1 side-by-side comparison plot for WRF data.
-        
-        The layout is:
-        - Left subplot: First dataset
-        - Right subplot: Second dataset
-        """
-        file_index1, file_index2 = file_indices
-        
-        # Plot the first dataset in the left subplot
-        self.comparison_plot = False
-        self._process_side_by_side_plot(plotter, file_index1, current_field_index,
-                                    field_name1,
-                                    figure, ax, 0, sdat1, plot_type, level=level)
-        
-        # Plot the second dataset in the right subplot
-        self._process_side_by_side_plot(plotter, file_index2, current_field_index,
-                                    field_name2,
-                                    figure, ax, 1, sdat2, plot_type, level=level)
-
-    def _process_side_by_side_plot(self, plotter, file_index, current_field_index, field_name, 
-                                figure, ax, ax_index, source_data, plot_type, level=None):
-        """Process a side-by-side plot for WRF data."""
-        self.config_manager.findex = file_index
-        self.config_manager.pindex = current_field_index
-        self.config_manager.axindex = ax_index
-        self.config_manager.ax_opts = figure.init_ax_opts(field_name)
-        # figure.set_ax_opts_diff_field(ax[ax_index])
-        
-        # # Set up the axis
-        # if isinstance(ax, list):
-        #     current_ax = ax[ax_index]
-        # else:
-        #     current_ax = ax
-        
-        # Get field to plot
-        field_to_plot = self._get_field_to_plot_side_by_side(source_data, field_name, file_index,
-                                                        plot_type, figure, level=level)
-        
-        # Check which type of plotter we're using and call the appropriate method
-        if hasattr(plotter, 'single_plots'):
-            # SinglePlotter
-            plotter.single_plots(self.config_manager, field_to_plot, level=level)
-        elif hasattr(plotter, 'comparison_plots'):
-            # ComparisonPlotter
-            plotter.comparison_plots(self.config_manager, field_to_plot, level=level)
-        else:
-            # Fallback - try to call plot directly
-            self.logger.warning(f"Unknown plotter type: {type(plotter).__name__}. Trying to call plot method.")
-            if hasattr(plotter, 'plot'):
-                plotter.plot(self.config_manager, field_to_plot, level=level)
-            else:
-                self.logger.error(f"Plotter {type(plotter).__name__} has no plot method.")
-
-        # Save the plot
-        print_map(self.config_manager, plot_type, self.config_manager.findex, figure, level=level)
-
-    def _get_field_to_plot_side_by_side(self, source_data, field_name, file_index, 
-                                    plot_type, figure, ax=None, level=None):
-        """Get field data for side-by-side plots with WRF-specific handling."""
-        if ax is None:
-            ax = figure.get_axes()
-        
-        # Get source name safely
-        source_name = self._get_source_name_for_file_index(file_index)
-        
-        # Set source_data for dimension handling
-        self.source_data = source_data
-        
-        # Get dimension names
-        dim1, dim2 = self.coord_names(source_name, source_data, field_name, plot_type)
-        
-        # Get time level
-        time_level = self.config_manager.ax_opts['time_lev']
-        if isinstance(time_level, str) and time_level == 'all':
-            time_level = 0  # Default to first time level for comparison
-        
-        # Extract data based on plot type
-        d = source_data['vars'][field_name]
-        
-        # Process data based on plot type
-        if 'yz' in plot_type:
-            data2d = self._get_yz(d, field_name, time_lev=time_level)
-        elif 'xy' in plot_type or 'polar' in plot_type:
-            data2d = self._get_xy(d, field_name, level=level, time_lev=time_level)
-        else:
-            # Other plot types (xt, tx)
-            self.logger.warning(f"Plot type {plot_type} not fully supported for side-by-side comparison")
-            return None
-        
-        # Process coordinates
-        if 'xt' in plot_type or 'tx' in plot_type:
-            return data2d, None, None, field_name, plot_type, file_index, figure, ax
-        elif 'yz' in plot_type:
-            # For YZ plots, use latitude and pressure levels
-            xs = np.array(self._get_field(dim1[0], d)[0, :][:, 0])
-            ys = self.levs  # Pressure levels
-            return data2d, xs, ys, field_name, plot_type, file_index, figure, ax
-        else:
-            # For XY plots, use longitude and latitude
-            xs = np.array(self._get_field(dim1[0], data2d)[0, :])
-            ys = np.array(self._get_field(dim2[0], data2d)[:, 0])
-            return data2d, xs, ys, field_name, plot_type, file_index, figure, ax
-
-    def get_field_dim_name(self, source_name: str, source_data: dict, dim_name: str, field_name: str):
-        d = source_data['vars'][field_name]
-        field_dims = list(d.dims)   # use dims only!?
-        names = self.get_model_dim_name(source_name, dim_name).split(',')
-        common = list(set(names).intersection(field_dims))
-        dim = list(common)[0] if common else None
-        return dim
-
-    def get_model_dim_name(self, source_name: str, dim_name: str):
-        try:
-            dim = self.config_manager.meta_coords[dim_name][source_name]['dim']
-            return dim
-        except KeyError:
-            return None

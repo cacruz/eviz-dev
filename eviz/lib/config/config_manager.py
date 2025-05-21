@@ -273,8 +273,6 @@ class ConfigManager:
             else:
                 self.logger.warning(f"Could not find entry for exp_id: {exp_id}")
 
-        self.logger.info(f"Comparison setup: a_list={self.a_list}, b_list={self.b_list}")
-
     def get_file_index(self, filename):
         """
         Get the file index associated with the filename.
