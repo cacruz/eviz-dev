@@ -1,11 +1,11 @@
 import pytest
 import xarray as xr
 import numpy as np
-from unittest.mock import MagicMock, patch
-import eviz.lib.const as constants
+from unittest.mock import patch
+
 
 from eviz.lib.data.units import (
-    get_species_name, get_airmass, adjust_units, moles_to_mass, mass_to_moles,
+    get_species_name, adjust_units, moles_to_mass, mass_to_moles,
     mb_to_Pa, Pa_to_hPa, Pa_to_mb, mb_to_hPa, hPa_to_mb, g_to_mg, mg_to_g,
     kg_to_mg, mg_to_kg, g_to_kg, kg_to_g, f_to_c, c_to_f, c_to_k, k_to_c,
     f_to_k, k_to_f, mol_to_ppb, ppb_to_mol
@@ -41,7 +41,7 @@ def check_airmass_availability():
     from eviz.lib import const as constants
     
     # First check local file
-    local_path = os.path.join(os.getcwd(), 'airmass.nc4')
+    local_path = os.path.join(os.getcwd(), 'airmass.nc')
     if os.path.exists(local_path):
         return True
         
@@ -51,73 +51,6 @@ def check_airmass_availability():
         return response.status_code in (200, 302, 307, 443)
     except:
         return False
-
-
-
-@pytest.mark.skip(reason="Fails with AppData issue")
-@pytest.mark.skipif(
-    "not config.getoption('--run-airmass')",
-    reason="need --run-airmass option to run"
-)
-def test_get_airmass_real(config_for_units, check_airmass_availability):
-    """Test get_airmass using real data if available"""
-    if not check_airmass_availability:
-        pytest.skip("Airmass data not available")
-        
-    # Instead of modifying config, patch the function that gets the URL
-    with patch('eviz.lib.data.units.constants.AIRMASS_URL', constants.AIRMASS_URL):
-        # Also patch the get_nested_key_value function to return the URL
-        with patch('eviz.lib.utils.get_nested_key_value', return_value=constants.AIRMASS_URL):
-            # And patch the download_airmass function to return a real dataset
-            with patch('eviz.lib.data.units.download_airmass') as mock_download:
-                # Set up the mock to return a dataset with AIRMASS variable
-                mock_dataset = xr.Dataset(
-                    data_vars={"AIRMASS": (["lev", "lat", "lon"], np.ones((3, 5, 5)))},
-                    coords={
-                        "lev": [1000, 500, 100],
-                        "lat": np.linspace(-90, 90, 5),
-                        "lon": np.linspace(-180, 180, 5)
-                    }
-                )
-                mock_download.return_value = mock_dataset
-                
-                # Now call get_airmass
-                airmass = get_airmass(config_for_units)
-                
-                # Verify the result
-                assert airmass is not None
-                assert isinstance(airmass, xr.DataArray)
-                assert airmass.name == 'AIRMASS'
-                assert 'lat' in airmass.dims
-                assert 'lon' in airmass.dims
-                assert 'lev' in airmass.dims
-
-
-@pytest.mark.skip(reason="Need real dataset / might be slow")
-@pytest.mark.skipif(
-    "not config.getoption('--run-airmass')",
-    reason="need --run-airmass option to run"
-)
-def test_get_airmass_really_real(check_airmass_availability):
-    """Test get_airmass using real data if available"""
-    if not check_airmass_availability:
-        pytest.skip("Airmass data not available")
-    
-    # Create a minimal mock config with just what get_airmass needs
-    mock_config = MagicMock()
-    # Set app_data to None so it uses the default URL
-    mock_config.app_data = None
-    
-    # Call get_airmass with our minimal config
-    airmass = get_airmass(mock_config)
-    
-    # Verify the result
-    assert airmass is not None
-    assert isinstance(airmass, xr.DataArray)
-    assert airmass.name == 'AIRMASS'
-    assert 'lat' in airmass.dims
-    assert 'lon' in airmass.dims
-    assert 'lev' in airmass.dims
 
 
 def test_moles_to_mass(config_for_units):
@@ -152,31 +85,6 @@ def mock_dataset():
 )
 def test_get_species_name(key, expected):
     assert get_species_name(key) == expected
-
-
-# @pytest.mark.skip(reason="Need to create mock datasets")
-# def test_get_airmass(get_config, mock_dataset):
-#     config = get_config()
-#     filename = 'https://portal.nccs.nasa.gov/datashare/astg/eviz/airmass/RefD2.tavg24_3d_dac_Np.AIRMASS.ANN.nc4'
-#     config.app_data['for_inputs']['airmass_file_name'] = filename
-
-#     # Mock the download_airmass function
-#     with patch('eviz.lib.data.units.download_airmass', return_value=mock_dataset):
-#         airmass = get_airmass(config)
-#         assert airmass is not None
-#         assert isinstance(airmass, xr.DataArray)
-#         assert airmass.name == 'AIRMASS'
-
-
-# # If testing the real URL, use the dry_run option
-# @pytest.mark.skip(reason="Need to create mock datasets")
-# def test_get_airmass_url(get_config):
-#     config = get_config()
-#     filename = 'https://portal.nccs.nasa.gov/datashare/astg/eviz/airmass/RefD2.tavg24_3d_dac_Np.AIRMASS.ANN.nc4'
-#     config.app_data['for_inputs']['airmass_file_name'] = filename
-
-#     airmass = get_airmass(config, dry_run=True)
-#     assert airmass is not None
 
 
 @pytest.mark.parametrize(
@@ -282,3 +190,4 @@ def test_mol_to_ppb():
 
 def test_ppb_to_mol():
     assert ppb_to_mol(ppb=1e9) == 1
+
