@@ -263,9 +263,9 @@ class NuWrf(Gridded):
             pid (str) : plot type
         """
         coords = []
+        field = source_data['vars'][field_name]
 
         if source_name == 'wrf':
-            field = source_data['vars'][field_name]
             stag = source_data['vars'][field_name].stagger
             xsuf, ysuf, zsuf = "", "", ""
             if stag == "X":
@@ -298,14 +298,14 @@ class NuWrf(Gridded):
                 coords.append(zc)
         else:
             for name in self.get_model_dim_name(source_name, 'zc').split(","):
-                if name in source_data.coords.keys():
+                if hasattr(field, "coords") and name in field.coords.keys():
                     coords.append(name)
                     break
 
         if source_name == 'wrf':
             tc = self.get_field_dim_name(source_name, field, 'tc')
         else:
-            tc = self.get_field_dim_name(source_data, 'tc', field_name)
+            tc = self.get_field_dim_name(source_name, field, 'tc')
 
         if tc:
             coords.append(tc)
@@ -316,7 +316,7 @@ class NuWrf(Gridded):
                 dim1 = coords[1]
                 dim2 = coords[2]
             elif 'xt' in pid:
-                dim1 = 'Time'
+                dim1 = coords[3] if len(coords) > 3 else None
             elif 'tx' in pid:
                 dim1 = coords[0]
                 dim2 = 'Time'
@@ -336,7 +336,10 @@ class NuWrf(Gridded):
 
     def get_field_dim_name(self, source_name: str, source_data: dict, dim_name: str):
         field_dims = list(source_data.dims)
-        names = self.get_model_dim_name(source_name, dim_name).split(',')
+        model_dim = self.get_model_dim_name(source_name, dim_name)
+        if not model_dim:
+            return None
+        names = model_dim.split(',')
         common = list(set(names).intersection(field_dims))
         dim = list(common)[0] if common else None
         return dim
