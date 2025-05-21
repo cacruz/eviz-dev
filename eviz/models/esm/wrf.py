@@ -6,14 +6,11 @@ import xarray as xr
 import logging
 import warnings
 from matplotlib import pyplot as plt
-
 from eviz.lib.data.utils import apply_mean
 from eviz.lib.data.utils import apply_conversion
 from eviz.lib.autoviz.figure import Figure
 from eviz.lib.autoviz.utils import print_map, create_gif
 from eviz.models.esm.nuwrf import NuWrf
-from eviz.lib.data.pipeline.processor import DataProcessor
-
 
 warnings.filterwarnings("ignore")
 
@@ -226,6 +223,7 @@ class Wrf(NuWrf):
         """
         Process coordinates for WRF plots
         """
+        # TODO: Use the config_manager to get the coordinate names
         if plot_type == 'xy':
             dim1 = 'XLONG'
             dim2 = 'XLAT'
@@ -308,7 +306,7 @@ class Wrf(NuWrf):
         else:
             pass
 
-        xs, ys, extent, central_lon, central_lat = None, None, [], 0.0, 0.0
+        xs, ys = None, None
         if 'xt' in plot_type or 'tx' in plot_type:
             return data2d, None, None, field_name, plot_type
         elif 'yz' in plot_type:
@@ -376,15 +374,7 @@ class Wrf(NuWrf):
             return
         if level:
             level = int(level)
-        # if self.get_model_dim_name(self.source_name, 'tc') in d.dims:
-        #     num_times = eval(f"np.size(d_temp.{self.get_model_dim_name(self.source_name, 'tc')})")
-        #     if self.config.ax_opts['tave'] and num_times > 1:
-        #         self.logger.debug(f"Averaging over {num_times} time levels.")
-        #         data2d = apply_mean(self.config, data2d, level)
-        #         return apply_conversion(self.config, data2d, name)
-        #     else:
-        #         data2d = eval(f"d_temp.isel({self.get_model_dim_name(self.source_name, 'tc')}=time_lev)")
-        # else:
+
         self.logger.debug(f"Selecting time level: {time_lev}")
         data2d = eval(f"d.isel({self.get_model_dim_name(self.source_name, 'tc')}=time_lev)")
         data2d = data2d.squeeze()
@@ -581,14 +571,6 @@ class Wrf(NuWrf):
         coords = data2d.coords
 
         return data2d, coords[dim1], coords[dim2]
-
-    # TODO: put in nuwrf_utils.py
-    def _get_field(self, name, data):
-        try:
-            return data[name]
-        except Exception as e:
-            self.logger.error('key error: %s, not found' % str(e))
-            return None
 
     def _apply_vertical_level_selection(self, data2d, field_name, level):
         """

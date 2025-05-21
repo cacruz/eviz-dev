@@ -1,11 +1,8 @@
 import logging
 import warnings
 from dataclasses import dataclass
-
 import pandas as pd
-
 from eviz.models.esm.gridded import Gridded
-from eviz.lib.data.utils import apply_conversion
 
 warnings.filterwarnings("ignore")
 
@@ -365,3 +362,11 @@ class NuWrf(Gridded):
         for d in field_dims:
             if d in names:
                 return d
+
+    def _get_field(self, name, data):
+        try:
+            return data[name]
+        except Exception as e:
+            self.logger.error('key error: %s, not found' % str(e))
+            return None
+    

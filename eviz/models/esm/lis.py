@@ -4,9 +4,7 @@ from dataclasses import dataclass
 
 import numpy as np
 import pandas as pd
-import matplotlib.pyplot as plt
 
-from eviz.lib.data.pipeline.processor import DataProcessor
 from eviz.lib.data.utils import apply_mean
 from eviz.lib.data.utils import apply_conversion
 from eviz.lib.autoviz.figure import Figure
@@ -312,14 +310,6 @@ class Lis(NuWrf):
         if dlength == 4:
             return d[0, 0, :, :]
 
-    # TODO: put in nuwrf_utils.py
-    def _get_field(self, name, data):
-        try:
-            return data[name]
-        except Exception as e:
-            self.logger.error('key error: %s, not found' % str(e))
-            return None
-    
     def _process_coordinates(self, data2d, dim1, dim2, field_name, plot_type, file_index, figure, ax):
         """
         Process coordinates for LIS plots, handling NaN values in coordinates.
