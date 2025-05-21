@@ -1,3 +1,4 @@
+import glob
 import os
 import logging
 import time
@@ -321,25 +322,31 @@ class Autoviz:
     def _check_input_files(self):
         """
         Check if input files exist and provide warnings for missing files.
-        
+
         This method verifies the existence of all input files specified in the
         configuration and logs warnings for any files that cannot be found.
         It provides detailed information about missing files to help users
         troubleshoot configuration issues.
-        
+
         The application will attempt to continue execution even if some files
         are missing, but plotting operations may fail if required data is unavailable.
         """
         if not hasattr(self._config_manager, 'app_data') or not hasattr(self._config_manager.app_data, 'inputs'):
             self.logger.warning("No input files specified in configuration.")
             return
-            
+
         missing_files = []
         for i, entry in enumerate(self._config_manager.app_data.inputs):
             file_path = os.path.join(entry.get('location', ''), entry.get('name', ''))
-            if not os.path.exists(file_path):
-                missing_files.append((i, file_path))
-                
+            # PATCH: Handle wildcards
+            if '*' in file_path or '?' in file_path or '[' in file_path:
+                matched_files = glob.glob(file_path)
+                if not matched_files:
+                    missing_files.append((i, file_path))
+            else:
+                if not os.path.exists(file_path):
+                    missing_files.append((i, file_path))
+
         if missing_files:
             self.logger.warning(f"Found {len(missing_files)} missing input files:")
             for i, file_path in missing_files:

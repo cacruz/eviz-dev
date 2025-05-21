@@ -72,19 +72,6 @@ class InputConfig:
                 self.compare = False
                 self.compare_diff = False
 
-    def _init_readers_orig(self):
-        """Initialize readers based on file extensions and special cases."""
-        data_types_needed = self._determine_data_types()
-
-        # Set reader objects for each needed data type
-        for source_name in self.source_names:
-            for i, (reader_type, is_needed) in enumerate(data_types_needed.items()):
-                if is_needed:
-                    file_path = self.file_list[i]['filename']
-                    file_extension = os.path.splitext(file_path)[1]
-                    self.logger.debug(f"Setting up {reader_type} reader for source: {source_name}")
-                    self.readers[source_name] = self._get_reader(source_name, file_extension)
-
     def _init_reader_structure(self):
         """Initialize the structure for multiple readers per source."""
         for source_name in self.source_names:
@@ -115,43 +102,40 @@ class InputConfig:
         return reader_mapping
 
     def _init_readers(self):
-        """Initialize readers based on file extensions and special cases."""
+        """Initialize readers based on file extensions, special cases, or explicit reader field."""
         self._init_reader_structure()
-        
+
         file_reader_types = {}
         for file_idx, file_entry in self.file_list.items():
             file_path = file_entry['filename']
-            reader_type = self._get_reader_type_for_extension(file_path)
+            explicit_reader = file_entry.get('reader', None)
+            reader_type = self._get_reader_type_for_extension(file_path, explicit_reader)
             
             if reader_type:
                 file_reader_types[file_path] = reader_type
                 self._file_reader_mapping[file_path] = reader_type
             else:
                 self.logger.warning(f"Could not determine reader type for {file_path}")
-        
+
         for source_name in self.source_names:
             processed_extensions = set()
-            
             for file_path, reader_type in file_reader_types.items():
                 file_extension = os.path.splitext(file_path)[1]
-                
                 # One reader per extension type per source
                 if (reader_type, file_extension) in processed_extensions:
                     continue
-                    
                 try:
                     if reader_type not in self.readers[source_name]:
                         self.logger.info(f"Setting up {reader_type} reader for source: {source_name}")
-                        self.readers[source_name][reader_type] = self._get_reader(source_name, file_extension)
-                    
+                        self.readers[source_name][reader_type] = self._get_reader(source_name, file_extension, reader_type)
                     processed_extensions.add((reader_type, file_extension))
                 except Exception as e:
                     self.logger.error(f"Failed to initialize {reader_type} reader for {file_path}: {str(e)}")
-    
+
         for source_name, readers in self.readers.items():
             self.logger.info(f"Initialized readers for source {source_name}: {list(readers.keys())}")
 
-    def _get_reader_type_for_extension(self, file_path: str) -> str:
+    def _get_reader_type_for_extension(self, file_path: str, explicit_reader: str = None) -> str:
         """
         Determine the appropriate reader type based on file path.
         
@@ -161,6 +145,9 @@ class InputConfig:
         Returns:
             str: The reader type identifier ('NetCDF', 'CSV', 'HDF5', or 'HDF4') or None if unknown
         """
+        if explicit_reader:
+            return explicit_reader.capitalize()
+
         if '*' in file_path:
             self.logger.info(f"File path contains wildcards: {file_path}, assuming NetCDF")
             return 'NetCDF'
@@ -266,22 +253,24 @@ class InputConfig:
         
         return None
 
-    def _get_reader(self, source_name: str, file_extension: str) -> Any:
+    def _get_reader(self, source_name: str, file_extension: str, reader_type: str = None) -> Any:
         """
         Return the appropriate reader based on file extension using the factory.
 
         Args:
             source_name (str): The name of the data source.
             file_extension (str): The file extension of the input file.
+            reader_type (str): optional reader type to use.
 
         Returns:
             Any: An instance of the appropriate data source class.
         """
-        factory = DataSourceFactory()
-        
+        factory = DataSourceFactory()      
         dummy_path = f"dummy{file_extension}"
         
         try:
+            if reader_type:
+                return factory.create_data_source(dummy_path, source_name, reader_type=reader_type)
             return factory.create_data_source(dummy_path, source_name)
         except ValueError as e:
             self.logger.error(f"Error creating data source: {e}")

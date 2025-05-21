@@ -12,7 +12,6 @@ from .registry import DataSourceRegistry
 from dataclasses import dataclass, field
 import logging
 
-
 @dataclass
 class DataSourceFactory:
     """Factory for creating data source instances."""
@@ -39,12 +38,13 @@ class DataSourceFactory:
         """Register a custom data source class."""
         self.registry.register(extensions, data_source_class)
     
-    def create_data_source(self, file_path: str, model_name: Optional[str] = None) -> DataSource:
-        """Create a data source instance for the specified file or URL.
+    def create_data_source(self, file_path: str, model_name: Optional[str] = None, reader_type: Optional[str] = None) -> DataSource:
+        """Create a data source instance for the specified file or URL, with optional explicit reader_type.
         
         Args:
             file_path: Path to the data file or URL
             model_name: Optional name of the model this data source belongs to
+            reader_type: Optional explicit reader type (e.g., 'CSV', 'NetCDF')
             
         Returns:
             A data source instance for the specified file
@@ -52,6 +52,21 @@ class DataSourceFactory:
         Raises:
             ValueError: If the file type is not supported
         """
+        # If explicit reader_type is provided, use it
+        if reader_type is not None:
+            reader_type = reader_type.strip().lower()
+            if reader_type == 'csv':
+                return CSVDataSource(model_name, self.config_manager)
+            elif reader_type in ['netcdf', 'nc']:
+                return NetCDFDataSource(model_name, self.config_manager)
+            elif reader_type in ['hdf5', 'h5']:
+                return HDF5DataSource(model_name, self.config_manager)
+            elif reader_type in ['grib', 'grib2']:
+                return GRIBDataSource(model_name, self.config_manager)
+            else:
+                self.logger.error(f"Unsupported explicit reader type: {reader_type}")
+                raise ValueError(f"Unsupported explicit reader type: {reader_type}")
+
         # Check if it's an OpenDAP URL
         if is_opendap_url(file_path):
             return NetCDFDataSource(model_name, self.config_manager)

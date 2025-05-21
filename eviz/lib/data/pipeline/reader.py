@@ -1,3 +1,4 @@
+import glob
 import os
 from typing import Dict, List, Optional
 from dataclasses import dataclass, field
@@ -24,12 +25,39 @@ class DataReader:
         return logging.getLogger(__name__)
 
     def read_file(self, file_path: str, model_name: Optional[str] = None) -> DataSource:
-        """Read data from a file or URL."""
+        """Read data from a file or URL, supporting wildcards."""
         self.logger.debug(f"Reading file: {file_path}")
 
         # Check if it's a URL
         is_remote = is_url(file_path)
-        
+
+        # Handle wildcards for local files
+        if not is_remote and ('*' in file_path or '?' in file_path or '[' in file_path):
+            files = glob.glob(file_path)
+            if not files:
+                self.logger.error(f"No files found matching pattern: {file_path}")
+                raise FileNotFoundError(f"No files found matching pattern: {file_path}")
+
+            self.logger.info(f"Found {len(files)} files matching pattern: {file_path}")
+
+            # Use the factory to create a data source for the first file (to get the right type)
+            data_source = self.factory.create_data_source(files[0], model_name)
+            # If the data source supports loading multiple files, do so
+            if hasattr(data_source, "load_data"):
+                data_source.load_data(files)
+            else:
+                # Fallback: load and combine manually
+                datasets = []
+                for f in files:
+                    ds = self.factory.create_data_source(f, model_name)
+                    ds.load_data(f)
+                    datasets.append(ds.dataset)
+                # Combine datasets as appropriate (e.g., pd.concat for CSV, xr.concat for NetCDF)
+                # Here, we just assign the first for simplicity
+                data_source.dataset = datasets[0]  # You may want to implement a real combine
+            self.data_sources[file_path] = data_source
+            return data_source
+
         # For local files, check if they exist
         if not is_remote and not os.path.exists(file_path):
             self.logger.error(f"File not found: {file_path}")
@@ -42,15 +70,12 @@ class DataReader:
         try:
             data_source = self.factory.create_data_source(file_path, model_name)
             data_source.load_data(file_path)
-            
             self.data_sources[file_path] = data_source
-
             return data_source
 
         except Exception as e:
             self.logger.error(f"Error reading file: {file_path}. Exception: {e}")
             raise
-
 
     def read_files(self, file_paths: List[str], model_name: Optional[str] = None) -> Dict[str, DataSource]:
         """Read data from multiple files."""

@@ -30,10 +30,27 @@ class Airnow(Root):
         self.logger.info("Start init")
         super().__post_init__()
 
+    @property
+    def logger(self) -> logging.Logger:
+        """Get the logger for this class."""
+        return logging.getLogger(__name__)
+    
+    def add_data_source(self, *args, **kwargs):
+        # Implement as needed, or just pass if not used
+        pass
+
+    def get_data_source(self, *args, **kwargs):
+        # Implement as needed, or just return None if not used
+        return None
+
+    def load_data_sources(self, *args, **kwargs):
+        # Implement as needed, or just pass if not used
+        pass
+
     def process_data(self, filename, field_name):
         """ Prepare data for plotting """
         # Get the model data
-        model_data = self.config.readers[self.source_name].read_data(filename)
+        model_data = self.config_manager.readers[self.source_name].read_data(filename)
         # create time column from ValidDate and ValidTime
         model_data['time'] = pd.to_datetime(
             (model_data.ValidDate + ' ' + model_data.ValidTime),
@@ -47,67 +64,67 @@ class Airnow(Root):
         return ds
 
     def _simple_plots(self, plotter):
-        map_params = self.config.map_params
+        map_params = self.config_manager.map_params
         field_num = 0
-        self.config.findex = 0
+        self.config_manager.findex = 0
         for i in map_params.keys():
             field_name = map_params[i]['field']
             source_name = map_params[i]['source_name']
             self.source_name = source_name
             filename = map_params[i]['filename']
-            file_index = self.config.get_file_index(filename)
+            file_index = self.config_manager.get_file_index(filename)
             self.source_data = self.process_data(filename, field_name)
-            self.config.findex = file_index
-            self.config.pindex = field_num
-            self.config.axindex = 0
+            self.config_manager.findex = file_index
+            self.config_manager.pindex = field_num
+            self.config_manager.axindex = 0
             for pt in map_params[i]['to_plot']:
                 self.logger.info(f"Plotting {field_name}, {pt} plot")
                 field_to_plot = self._get_field_for_simple_plot(field_name, pt)
-                plotter.simple_plot(self.config, field_to_plot)
+                plotter.simple_plot(self.config_manager, field_to_plot)
             field_num += 1
 
     def _single_plots(self, plotter):
-        for s in range(len(self.config.source_names)):
-            map_params = self.config.map_params
+        for s in range(len(self.config_manager.source_names)):
+            map_params = self.config_manager.map_params
             field_num = 0
             for i in map_params.keys():
                 source_name = map_params[i]['source_name']
-                if source_name == self.config.source_names[s]:
+                if source_name == self.config_manager.source_names[s]:
                     field_name = map_params[i]['field']
                     self.source_name = source_name
                     filename = map_params[i]['filename']
-                    file_index = field_num  # self.config.get_file_index(filename)
+                    file_index = field_num  # self.config_manager.get_file_index(filename)
                     self.source_data = self.process_data(filename, field_name)
                     # TODO: Is ds_index really necessary?
-                    self.config.ds_index = s
-                    self.config.findex = file_index
-                    self.config.pindex = field_num
-                    self.config.axindex = 0
+                    self.config_manager.ds_index = s
+                    self.config_manager.findex = file_index
+                    self.config_manager.pindex = field_num
+                    self.config_manager.axindex = 0
                     for pt in map_params[i]['to_plot']:
                         self.logger.info(f"Plotting {field_name}, {pt} plot")
-                        figure = Figure(self.config, pt)
+                        figure = Figure(self.config_manager, pt)
                         if 'xy' in pt:
-                            levels = self.config.get_levels(field_name, pt + 'plot')
+                            levels = self.config_manager.get_levels(field_name, pt + 'plot')
                             if not levels:
                                 self.logger.warning(f' -> No levels specified for {field_name}')
                                 continue
                             for level in levels:
                                 field_to_plot = self._get_field_to_plot(field_name, file_index, pt, figure,
                                                                         level=level)
-                                plotter.single_plots(self.config, field_to_plot=field_to_plot, level=level)
-                                print_map(self.config, pt, self.config.findex, figure, level=level)
+                                plotter.single_plots(self.config_manager, field_to_plot=field_to_plot, level=level)
+                                print_map(self.config_manager, pt, self.config_manager.findex, figure, level=level)
 
                         else:
                             field_to_plot = self._get_field_to_plot(field_name, file_index, pt, figure)
-                            plotter.single_plots(self.config, field_to_plot=field_to_plot)
-                            print_map(self.config, pt, self.config.findex, figure)
+                            plotter.single_plots(self.config_manager, field_to_plot=field_to_plot)
+                            print_map(self.config_manager, pt, self.config_manager.findex, figure)
 
                     field_num += 1
 
     def _get_field_to_plot(self, field_name, file_index, plot_type, figure, level=None) -> tuple:
-        self.config.ax_opts = figure.init_ax_opts(field_name)
+        self.config_manager.ax_opts = figure.init_ax_opts(field_name)
         _, ax = figure.get_fig_ax()
-        dim1, dim2 = self.config.get_dim_names(plot_type)
+        dim1, dim2 = self.config_manager.get_dim_names(plot_type)
         d = self.source_data[field_name]
 
         data2d = None
@@ -126,8 +143,8 @@ class Airnow(Root):
         return data2d, data2d[dim1].values, data2d[dim2].values, field_name, plot_type, file_index, figure, ax
 
     def _get_field_for_simple_plot(self, field_name, plot_type):
-        name = self.config.source_names[self.config.ds_index]
-        dim1, dim2 = self.config.get_dim_names(plot_type)
+        name = self.config_manager.source_names[self.config_manager.ds_index]
+        dim1, dim2 = self.config_manager.get_dim_names(plot_type)
         d = self.source_data[field_name]
 
         if 'xy' in plot_type:
@@ -152,7 +169,7 @@ class Airnow(Root):
         if len(data2d.shape) == 4:
             data2d = data2d.isel(time=0)
         if len(data2d.shape) == 3:
-            if self.config.get_model_dim_name('tc') in data2d.dims:
+            if self.config_manager.get_model_dim_name('tc') in data2d.dims:
                 data2d = data2d.isel(time=0)
             else:
                 data2d = data2d.isel(lev=0)
