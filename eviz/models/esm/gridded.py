@@ -51,6 +51,8 @@ class Gridded(Root):
     def __post_init__(self):
         self.logger.info("Start init")
         super().__post_init__()
+        self.processor = DataProcessor(self.config_manager)
+
 
     def add_data_source(self, file_path, data_source):
         """
@@ -465,12 +467,35 @@ class Gridded(Root):
             self.logger.error("No data sources available for comparison plotting.")
             return
 
-        for idx1, idx2 in zip(self.config_manager.a_list, self.config_manager.b_list):
-            map1_params = self.config_manager.map_params.get(idx1)
-            map2_params = self.config_manager.map_params.get(idx2)
+        # Get the file indices for the two files being compared
+        if not self.config_manager.a_list or not self.config_manager.b_list:
+            self.logger.error("a_list or b_list is empty, cannot perform comparison.")
+            return
 
-            if not map1_params or not map2_params:
+        idx1 = self.config_manager.a_list[0]
+        idx2 = self.config_manager.b_list[0]
+
+        # Gather all unique field names from map_params for these files
+        fields_file1 = [params['field'] for i, params in self.config_manager.map_params.items() if params['file_index'] == idx1]
+        fields_file2 = [params['field'] for i, params in self.config_manager.map_params.items() if params['file_index'] == idx2]
+        all_fields = set(fields_file1) & set(fields_file2)  # Only fields present in both
+
+        self.logger.info(f"Comparing files {idx1} and {idx2}")
+        self.logger.info(f"Fields in file 1: {fields_file1}")
+        self.logger.info(f"Fields in file 2: {fields_file2}")
+        self.logger.info(f"Fields to compare: {all_fields}")
+
+        for field_name in all_fields:
+            # Find map_params for this field in both files
+            idx1_field = next((i for i, params in self.config_manager.map_params.items()
+                            if params['file_index'] == idx1 and params['field'] == field_name), None)
+            idx2_field = next((i for i, params in self.config_manager.map_params.items()
+                            if params['file_index'] == idx2 and params['field'] == field_name), None)
+            if idx1_field is None or idx2_field is None:
                 continue
+
+            map1_params = self.config_manager.map_params[idx1_field]
+            map2_params = self.config_manager.map_params[idx2_field]
 
             filename1 = map1_params.get('filename')
             filename2 = map2_params.get('filename')
@@ -481,44 +506,36 @@ class Gridded(Root):
             if not data_source1 or not data_source2:
                 continue
 
-            sdat1_dataset = data_source1.dataset if hasattr(data_source1,
-                                                            'dataset') else None
-            sdat2_dataset = data_source2.dataset if hasattr(data_source2,
-                                                            'dataset') else None
+            sdat1_dataset = data_source1.dataset if hasattr(data_source1, 'dataset') else None
+            sdat2_dataset = data_source2.dataset if hasattr(data_source2, 'dataset') else None
 
             if sdat1_dataset is None or sdat2_dataset is None:
                 continue
 
-            # Determine file indices (these are the indices in app_data.inputs)
-            # The config_manager already provides a_list and b_list which are these indices
-            file_indices = (idx1, idx2)
+            file_indices = (idx1_field, idx2_field)
 
-            field_name1 = map1_params.get('field')
-            field_name2 = map2_params.get('field')
-
-            if not field_name1 or not field_name2:
-                continue
-
-            self.field_names = (field_name1, field_name2)
+            self.field_names = (field_name, field_name)
 
             # Assuming plot types are the same for comparison
             plot_types = map1_params.get('to_plot', ['xy'])
+            if isinstance(plot_types, str):
+                plot_types = [pt.strip() for pt in plot_types.split(',')]
             for plot_type in plot_types:
                 self.logger.info(
-                    f"Plotting {field_name1} vs {field_name2}, {plot_type} plot")
+                    f"Plotting {field_name} vs {field_name}, {plot_type} plot")
                 self.data2d_list = []  # Reset for each plot type
 
-                if 'xy' in plot_type or 'po' in plot_type:
+                if 'xy' in plot_type or 'po' in plot_type or 'polar' in plot_type:
                     self._process_xy_comparison_plots(plotter, file_indices,
-                                                      current_field_index,
-                                                      field_name1, field_name2, plot_type,
-                                                      sdat1_dataset, sdat2_dataset)
+                                                    current_field_index,
+                                                    field_name, field_name, plot_type,
+                                                    sdat1_dataset, sdat2_dataset)
                 else:
                     self._process_other_comparison_plots(plotter, file_indices,
-                                                         current_field_index,
-                                                         field_name1, field_name2,
-                                                         plot_type, sdat1_dataset,
-                                                         sdat2_dataset)
+                                                        current_field_index,
+                                                        field_name, field_name,
+                                                        plot_type, sdat1_dataset,
+                                                        sdat2_dataset)
 
             current_field_index += 1
 
@@ -671,7 +688,7 @@ class Gridded(Root):
             # Compute and plot the difference field
             if len(self.data2d_list) == 2:
                 data2d1, data2d2 = self.data2d_list
-                proc = DataProcessor(self.config_manager)
+                proc = self.processor
                 dim1_name, dim2_name = self.config_manager.get_dim_names(plot_type)
                 self.logger.debug(f"Regridding {field_name} over {dim1_name} and {dim2_name} for difference plot")
                 diff_result, diff_x, diff_y = proc.regrid(data2d1, data2d2, dim1_name, dim2_name)
@@ -724,7 +741,7 @@ class Gridded(Root):
         if isinstance(data_array, tuple):
             if len(self.data2d_list) == 2:
                 data2d1, data2d2 = self.data2d_list
-                proc = DataProcessor(self.config_manager)
+                proc = self.processor
                 dim1_name, dim2_name = self.config_manager.get_dim_names(plot_type)
                 self.logger.debug(f"Regridding {field_name} over {dim1_name} and {dim2_name} for difference plot")
                 diff_result, diff_x, diff_y = proc.regrid(data2d1, data2d2, dim1_name, dim2_name)
@@ -753,19 +770,39 @@ class Gridded(Root):
     # SIDE-BY-SIDE COMPARE METHODS (always need SPECS file)
     # --------------------------------------------------------------------------
     def _side_by_side_plots(self, plotter):
-        """
-        Generate side-by-side comparison plots (2x1 subplots) without difference.
-        """
         self.logger.info("Generating side-by-side comparison plots")
         current_field_index = 0
-        self.data2d_list = []  # Initialize list to store data for comparison
+        self.data2d_list = []
 
-        for idx1, idx2 in zip(self.config_manager.a_list, self.config_manager.b_list):
-            map1_params = self.config_manager.map_params.get(idx1)
-            map2_params = self.config_manager.map_params.get(idx2)
+        # Get the file indices for the two files being compared
+        if not self.config_manager.a_list or not self.config_manager.b_list:
+            self.logger.error("a_list or b_list is empty, cannot perform side-by-side comparison.")
+            return
 
-            if not map1_params or not map2_params:
+        idx1 = self.config_manager.a_list[0]
+        idx2 = self.config_manager.b_list[0]
+
+        # Gather all unique field names from map_params for these files
+        fields_file1 = [params['field'] for i, params in self.config_manager.map_params.items() if params['file_index'] == idx1]
+        fields_file2 = [params['field'] for i, params in self.config_manager.map_params.items() if params['file_index'] == idx2]
+        all_fields = set(fields_file1) & set(fields_file2)  # Only fields present in both
+
+        self.logger.debug(f"Comparing files {idx1} and {idx2}")
+        self.logger.debug(f"Fields in file 1: {fields_file1}")
+        self.logger.debug(f"Fields in file 2: {fields_file2}")
+        self.logger.debug(f"Fields to compare: {all_fields}")
+
+        for field_name in all_fields:
+            # Find map_params for this field in both files
+            idx1_field = next((i for i, params in self.config_manager.map_params.items()
+                            if params['file_index'] == idx1 and params['field'] == field_name), None)
+            idx2_field = next((i for i, params in self.config_manager.map_params.items()
+                            if params['file_index'] == idx2 and params['field'] == field_name), None)
+            if idx1_field is None or idx2_field is None:
                 continue
+
+            map1_params = self.config_manager.map_params[idx1_field]
+            map2_params = self.config_manager.map_params[idx2_field]
 
             filename1 = map1_params.get('filename')
             filename2 = map2_params.get('filename')
@@ -776,41 +813,35 @@ class Gridded(Root):
             if not data_source1 or not data_source2:
                 continue
 
-            sdat1_dataset = data_source1.dataset if hasattr(data_source1,
-                                                            'dataset') else None
-            sdat2_dataset = data_source2.dataset if hasattr(data_source2,
-                                                            'dataset') else None
+            sdat1_dataset = data_source1.dataset if hasattr(data_source1, 'dataset') else None
+            sdat2_dataset = data_source2.dataset if hasattr(data_source2, 'dataset') else None
 
             if sdat1_dataset is None or sdat2_dataset is None:
                 continue
 
-            file_indices = (idx1, idx2)
+            file_indices = (idx1_field, idx2_field)
 
-            field_name1 = map1_params.get('field')
-            field_name2 = map2_params.get('field')
-
-            if not field_name1 or not field_name2:
-                continue
-
-            self.field_names = (field_name1, field_name2)
+            self.field_names = (field_name, field_name)
 
             plot_types = map1_params.get('to_plot', ['xy'])
+            if isinstance(plot_types, str):
+                plot_types = [pt.strip() for pt in plot_types.split(',')]
             for plot_type in plot_types:
-                self.data2d_list = []  # Reset for each plot type
-                self.logger.info(f"Plotting {field_name1} vs {field_name2} , {plot_type} plot")
+                self.data2d_list = []
+                self.logger.info(f"Plotting {field_name} vs {field_name} , {plot_type} plot")
 
                 if 'xy' in plot_type or 'polar' in plot_type:
                     self._process_xy_side_by_side_plots(plotter, file_indices,
                                                         current_field_index,
-                                                        field_name1, field_name2,
+                                                        field_name, field_name,
                                                         plot_type,
                                                         sdat1_dataset, sdat2_dataset)
                 else:
                     self._process_other_side_by_side_plots(plotter, file_indices,
-                                                           current_field_index,
-                                                           field_name1, field_name2,
-                                                           plot_type, sdat1_dataset,
-                                                           sdat2_dataset)
+                                                        current_field_index,
+                                                        field_name, field_name,
+                                                        plot_type, sdat1_dataset,
+                                                        sdat2_dataset)
 
             current_field_index += 1
 
@@ -1011,7 +1042,7 @@ class Gridded(Root):
 
         # Handle difference field for comparison plots
         if self.config_manager.ax_opts.get('is_diff_field', False) and len(self.data2d_list) >= 2:
-            proc = DataProcessor(self.config_manager)
+            proc = self.processor
             data2d, x, y = proc.regrid(plot_type)
             return data2d, x, y, self.field_names[0], plot_type, file_index, figure, ax
 
@@ -1079,84 +1110,6 @@ class Gridded(Root):
         except Exception as e:
             self.logger.error(f"Error processing coordinates for {field_name}: {e}")
             return None
-
-    def _get_field_to_plot_compare2(self, data_array, field_name, file_index,
-                                   plot_type, figure, level=None) -> tuple:
-        """Prepare data for comparison plots."""
-
-        dim1_name, dim2_name = self.config_manager.get_dim_names(plot_type)
-        data2d = None
-
-        ax = figure.get_axes()
-        # compare plots
-        if figure.get_gs_geometry() == (1, 2) or figure.get_gs_geometry() == (1, 3):
-            ax = ax[self.config_manager.axindex]
-        # compare_diff plots
-        if self.config_manager.ax_opts.get('is_diff_field', False) and len(
-                self.data2d_list) >= 2:
-            proc = DataProcessor(self.config_manager)
-            data2d, x, y = proc.regrid(plot_type)
-            return data2d, x, y, self.field_names[0], plot_type, file_index, figure, ax
-        else:  # single plots
-            if 'yz' in plot_type:
-                data2d = self._get_yz(data_array,
-                                      time_lev=self.config_manager.ax_opts.get('time_lev',
-                                                                               0))
-            elif 'xt' in plot_type:
-                data2d = self._get_xt(data_array,
-                                      time_lev=self.config_manager.ax_opts.get('time_lev',
-                                                                               0))
-            elif 'tx' in plot_type:
-                data2d = self._get_tx(data_array, level=level,
-                                      time_lev=self.config_manager.ax_opts.get('time_lev',
-                                                                               0))
-            elif 'xy' in plot_type or 'polar' in plot_type:
-                data2d = self._get_xy(data_array, level=level,
-                                      time_lev=self.config_manager.ax_opts.get('time_lev',
-                                                                               0))
-            else:
-                self.logger.warning(
-                    f"Unsupported plot type for _get_field_to_plot_compare: {plot_type}")
-                return None
-
-        # For time series plots, coordinates are handled differently
-        if 'xt' in plot_type or 'tx' in plot_type:
-            return data2d, None, None, field_name, plot_type, file_index, figure, ax
-
-        # For spatial plots, get the coordinate arrays
-        try:
-
-            # if Global domains
-            # x = data2d[dim1_name].values if dim1_name in data2d.coords else None
-            # y = data2d[dim2_name].values if dim2_name in data2d.coords else None
-
-            # else (regional)
-            # LIS
-            x = np.array(self.lon[0, :])
-            y = np.array(self.lat[:, 0])
-            latN = max(y[:])
-            latS = min(y[:])
-            lonW = min(x[:])
-            lonE = max(x[:])
-            extent = [lonW, lonE, latS, latN]
-            
-            self.config_manager.ax_opts['extent'] = [lonW, lonE, latS, latN]
-            self.config_manager.ax_opts['central_lon'] = np.mean(self.config_manager.ax_opts['extent'][:2])
-            self.config_manager.ax_opts['central_lat'] = np.mean(self.config_manager.ax_opts['extent'][2:])
-            # end regional
-
-            return data2d, x, y, field_name, plot_type, file_index, figure, ax
-        except KeyError as e:
-            self.logger.error(f"Error getting coordinates for {field_name}: {e}")
-            # Fallback to using the first two dimensions
-            dims = list(data2d.dims)
-            if len(dims) >= 2:
-                x = data2d[dims[0]].values
-                y = data2d[dims[1]].values
-                return data2d, x, y, field_name, plot_type, file_index, figure, ax
-            else:
-                self.logger.error("Dataset has fewer than 2 dimensions, cannot plot")
-                return None
 
     # DATA SLICE PROCESSING METHODS
     # --------------------------------------------------------------------------

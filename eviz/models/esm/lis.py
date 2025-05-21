@@ -371,66 +371,6 @@ class Lis(NuWrf):
         
         return data2d
 
-    def _get_field_to_plot_compare2(self, data_array, field_name, file_index,
-                                   plot_type, figure, level=None) -> tuple:
-        """Prepare data for comparison plots."""
-
-        dim1_name, dim2_name = self.config_manager.get_dim_names(plot_type)
-        data2d = None
-
-        ax = figure.get_axes()
-        # compare plots
-        if figure.get_gs_geometry() == (1, 2) or figure.get_gs_geometry() == (1, 3):
-            ax = ax[self.config_manager.axindex]
-        # compare_diff plots
-        if self.config_manager.ax_opts.get('is_diff_field', False) and len(
-                self.data2d_list) >= 2:
-            proc = DataProcessor(self.config_manager)
-            data2d, x, y = proc.regrid(plot_type)
-            return data2d, x, y, self.field_names[0], plot_type, file_index, figure, ax
-        else:  # single plots
-            if 'yz' in plot_type:
-                data2d = self._get_yz(data_array,
-                                      time_lev=self.config_manager.ax_opts.get('time_lev',
-                                                                               0))
-            elif 'xt' in plot_type:
-                data2d = self._get_xt(data_array,
-                                      time_lev=self.config_manager.ax_opts.get('time_lev',
-                                                                               0))
-            elif 'tx' in plot_type:
-                data2d = self._get_tx(data_array, level=level,
-                                      time_lev=self.config_manager.ax_opts.get('time_lev',
-                                                                               0))
-            elif 'xy' in plot_type or 'polar' in plot_type:
-                data2d = self._get_xy(data_array, level=level,
-                                      time_lev=self.config_manager.ax_opts.get('time_lev',
-                                                                               0))
-            else:
-                self.logger.warning(
-                    f"Unsupported plot type for _get_field_to_plot_compare: {plot_type}")
-                return None
-
-        # For time series plots, coordinates are handled differently
-        if 'xt' in plot_type or 'tx' in plot_type:
-            return data2d, None, None, field_name, plot_type, file_index, figure, ax
-
-        # For spatial plots, get the coordinate arrays
-        try:
-            x = data2d[dim1_name].values if dim1_name in data2d.coords else None
-            y = data2d[dim2_name].values if dim2_name in data2d.coords else None
-            return data2d, x, y, field_name, plot_type, file_index, figure, ax
-        except KeyError as e:
-            self.logger.error(f"Error getting coordinates for {field_name}: {e}")
-            # Fallback to using the first two dimensions
-            dims = list(data2d.dims)
-            if len(dims) >= 2:
-                x = data2d[dims[0]].values
-                y = data2d[dims[1]].values
-                return data2d, x, y, field_name, plot_type, file_index, figure, ax
-            else:
-                self.logger.error("Dataset has fewer than 2 dimensions, cannot plot")
-                return None
-
     def get_field_dim_name(self, source_data, dim_name, field_name):
         d = source_data['vars'][field_name]
         field_dims = list(d.dims) 

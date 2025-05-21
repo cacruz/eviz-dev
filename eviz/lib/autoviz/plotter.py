@@ -1308,35 +1308,40 @@ def _line_contours(fig, ax, ax_opts, x, y, data2d):
 
 
 def _create_clevs(field_name, ax_opts, data2d):
-    """ Create contour levels if none are specified in the fields' specs
-    """
     dmin = data2d.min(skipna=True).values
     dmax = data2d.max(skipna=True).values
     logger.debug(f"dmin: {dmin}, dmax: {dmax}")
 
-    # Automatically compute the precision based on range of dmin and dmax
     range_val = abs(dmax - dmin)
     precision = max(0, int(np.ceil(-np.log10(range_val)))) if range_val != 0 else 6
-    # Extra hack for "small" ranges
     if range_val <= 9.0:
         precision = 1
     ax_opts['clevs_prec'] = precision
     logger.debug(f"range_val: {range_val}, precision: {precision}")
 
-    # Initialize clevs with default values if not creating new ones
+    # Generate levels
     if not ax_opts.get('create_clevs', True):
-        # Use a reasonable default number of levels
         clevs = np.around(np.linspace(dmin, dmax, 10), decimals=precision)
     else:
         clevs = np.around(np.linspace(dmin, dmax, ax_opts.get('num_clevs', 10)), decimals=precision)
-        # Ensure contour levels are strictly increasing (avoids warnings)
-        clevs = np.unique(clevs)
-        if len(clevs) < 2:
-            clevs = np.linspace(dmin, dmax, ax_opts.get('num_clevs', 10))
-    
-    ax_opts['clevs'] = clevs
-    logger.debug(f'Created contour levels for {field_name}: {ax_opts["clevs"]}')
+        clevs = np.unique(clevs)  # Remove duplicates
 
+    # Check if levels are strictly increasing
+    # If not enough unique levels, regenerate with more precision or fallback
+    if len(set(clevs)) <= 2:
+        logger.warning(f"Not enough unique contour levels for {field_name}.")
+        # Try with more levels and higher precision
+        clevs = np.linspace(dmin, dmax, 10)
+        clevs = np.unique(np.around(clevs, decimals=6))
+        if len(clevs) <= 2:
+            # As a last resort, just use [dmin, dmax]
+            clevs = np.array([dmin, dmax])
+
+    # Ensure strictly increasing
+    clevs = np.sort(clevs)
+    ax_opts['clevs'] = clevs
+
+    logger.debug(f'Created contour levels for {field_name}: {ax_opts["clevs"]}')
     if ax_opts['clevs'][0] == 0.0:
         ax_opts['extend_value'] = "max"
 
@@ -1354,9 +1359,9 @@ def _filled_contours(config, field_name, ax, x, y, data2d, transform=None):
     # Check for constant field
     vmin, vmax = np.nanmin(data2d), np.nanmax(data2d)
     if np.isclose(vmin, vmax):
-        print("Fill with a neutral color and print text")
+        logger.debug ("Fill with a neutral color and print text")
         ax.set_facecolor('whitesmoke')
-        ax.text(0.5, 0.5, 'zero-diff', transform=ax.transAxes,
+        ax.text(0.5, 0.5, 'zero field', transform=ax.transAxes,
                 ha='center', va='center', fontsize=16, color='gray', fontweight='bold')
         return None
 

@@ -46,7 +46,7 @@ def apply_conversion(config, data2d, name):
         
     # A user specifies units AND unitconversion factor:
     if 'units' in config.spec_data[name] and 'unitconversion' in config.spec_data[name]:
-        logger.info(f"Applying unit conversion with factor: {config.spec_data[name]['unitconversion']}")
+        logger.debug(f"Applying unit conversion with factor: {config.spec_data[name]['unitconversion']}")
         if "AOA" in name.upper():
             data2d = data2d / np.timedelta64(1, 'ns') / 1000000000 / 86400
         else:

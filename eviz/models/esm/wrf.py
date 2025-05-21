@@ -140,7 +140,10 @@ class Wrf(NuWrf):
                         
                         if time_level == 'all':
                             num_times = d.dims[time_dim] if time_dim in d.dims else 1
-                        time_levels = range(num_times)
+                            time_levels = range(num_times)
+                        else:  # one value
+                            time_levels = [time_level]
+                        
                         if 'xy' in pt:
                             levels = self.config_manager.get_levels(field_name, pt + 'plot')
                             if not levels:
@@ -382,6 +385,7 @@ class Wrf(NuWrf):
         #     else:
         #         data2d = eval(f"d_temp.isel({self.get_model_dim_name(self.source_name, 'tc')}=time_lev)")
         # else:
+        self.logger.debug(f"Selecting time level: {time_lev}")
         data2d = eval(f"d.isel({self.get_model_dim_name(self.source_name, 'tc')}=time_lev)")
         data2d = data2d.squeeze()
         zname = self.get_field_dim_name(self.source_name, self.source_data, 'zc', name)
