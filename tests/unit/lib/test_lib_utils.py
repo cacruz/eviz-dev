@@ -205,3 +205,48 @@ def test_invalid_yaml_missing_indentation3():
         u.load_yaml(temp_file_path)
     assert str(excinfo.value) == "YAML validation failure!"
 
+
+def test_expand_env_vars_simple_string(monkeypatch):
+    monkeypatch.setenv("MYTESTVAR", "myvalue")
+    input_str = "${MYTESTVAR}/data"
+    result = u.expand_env_vars(input_str)
+    assert result == "myvalue/data"
+
+
+def test_expand_env_vars_dict(monkeypatch):
+    monkeypatch.setenv("HOME", "/home/testuser")
+    input_dict = {
+        "path": "${HOME}/project",
+        "other": "no_var"
+    }
+    result = u.expand_env_vars(input_dict)
+    assert result["path"] == "/home/testuser/project"
+    assert result["other"] == "no_var"
+
+
+def test_expand_env_vars_list(monkeypatch):
+    monkeypatch.setenv("DATA_DIR", "/data")
+    input_list = ["${DATA_DIR}/a", "${DATA_DIR}/b"]
+    result = u.expand_env_vars(input_list)
+    assert result == ["/data/a", "/data/b"]
+
+
+def test_expand_env_vars_nested(monkeypatch):
+    monkeypatch.setenv("FOO", "bar")
+    input_obj = {
+        "level1": [
+            {"level2": "${FOO}/baz"},
+            "plain"
+        ]
+    }
+    result = u.expand_env_vars(input_obj)
+    assert result["level1"][0]["level2"] == "bar/baz"
+    assert result["level1"][1] == "plain"
+
+
+def test_expand_env_vars_non_string():
+    # Should return non-string types unchanged
+    assert u.expand_env_vars(123) == 123
+    assert u.expand_env_vars(None) is None
+    assert u.expand_env_vars(3.14) == 3.14
+

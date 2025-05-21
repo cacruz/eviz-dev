@@ -179,9 +179,22 @@ def load_yaml_simple(file_path: str) -> Dict[str, Any]:
     if not os.path.exists(file_path):
         raise FileNotFoundError(f"YAML file not found: {file_path}")
     with open(file_path, 'r') as file:
-        return yaml.safe_load(file)
+        config = yaml.safe_load(file)
+        config = expand_env_vars(config)
+        return config
 
 
+def expand_env_vars(obj):
+    if isinstance(obj, dict):
+        return {k: expand_env_vars(v) for k, v in obj.items()}
+    elif isinstance(obj, list):
+        return [expand_env_vars(i) for i in obj]
+    elif isinstance(obj, str):
+        return os.path.expandvars(obj)
+    else:
+        return obj
+    
+    
 def load_yaml(yaml_filename):
     """Load a YAML file."""
     my_yaml = os.path.abspath(yaml_filename)

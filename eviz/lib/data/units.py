@@ -37,11 +37,12 @@ def get_airmass(config, dry_run=False):
     airmass_file_name = constants.AIRMASS_URL
     airmass_field_name = 'AIRMASS'
     if config.app_data is not None:
-        if 'for_inputs' in config.app_data:
+        if hasattr(config.app_data, 'for_inputs'):
             airmass_file_name = result if (
-                result := u.get_nested_key_value(config.app_data, ['for_inputs', 'airmass_file_name'])) else constants.AIRMASS_URL
+                result := u.get_nested_key_value(config.app_data.for_inputs, ['airmass_file_name'])) else constants.AIRMASS_URL
             airmass_field_name = result if (
-                result := u.get_nested_key_value(config.app_data, ['for_inputs', 'airmass_field_name'])) else 'AIRMASS'
+                result := u.get_nested_key_value(config.app_data.for_inputs, ['airmass_field_name'])) else 'AIRMASS'
+
     logger.debug(f"Loading airmass data from {airmass_file_name}")
 
     if dry_run:
