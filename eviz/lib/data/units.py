@@ -2,12 +2,12 @@ import sys
 from dataclasses import dataclass, field
 import xarray as xr
 import numpy as np
-from scipy.interpolate import interp1d
 import requests
 import logging
 import os
 from eviz.lib import const as constants
 import eviz.lib.utils as u
+from eviz.lib.data.pipeline.processor import DataProcessor
 
 
 logger = logging.getLogger(__name__)
@@ -463,49 +463,6 @@ def calculate_total_column(species, airmass, species_name):
     return total_column_mol_m2, total_column_molecules_cm2, total_column_du
 
 
-def _interp(y_src, x_src, x_dest, **kwargs):
-    """ Wrapper for SciPy's interp1d """
-    return interp1d(x_src, y_src, **kwargs)(x_dest)
-
-
-def _regrid(ref_arr, in_arr, dim1_name, dim2_name, regrid_dims=(0, 0)):
-    """ Main regrid function used in eviz
-
-    The regridding uses SciPy's interp1d function and interpolates
-    a 2D field one row at a time.
-
-    Parameters:
-       ref_arr (ndarray) : the reference array
-        in_arr (ndarray) : the input array
-        dim1_name (str) : name of the input dimension
-        dim2_name (str) : name of the output dimension
-    """
-    new_arr = ref_arr
-
-    if regrid_dims[0]:
-        new_arr = xr.apply_ufunc(_interp, new_arr,
-                                 input_core_dims=[[dim2_name]],
-                                 output_core_dims=[[dim2_name]],
-                                 exclude_dims={dim2_name},
-                                 kwargs={'x_src': ref_arr[dim2_name],
-                                         'x_dest': in_arr.coords[dim2_name].values,
-                                         'fill_value': "extrapolate"},
-                                 dask='allowed', vectorize=True)
-        new_arr.coords[dim2_name] = in_arr.coords[dim2_name]
-    elif regrid_dims[1]:
-        new_arr = xr.apply_ufunc(_interp, new_arr,
-                                 input_core_dims=[[dim1_name]],
-                                 output_core_dims=[[dim1_name]],
-                                 exclude_dims={dim1_name},
-                                 kwargs={'x_src': ref_arr[dim1_name],
-                                         'x_dest': in_arr.coords[dim1_name].values,
-                                         'fill_value': "extrapolate",},
-                                 dask='allowed', vectorize=True)
-        new_arr.coords[dim1_name] = in_arr.coords[dim1_name]
-
-    return new_arr
-
-
 def get_species_name(species_name):
     species_map = {
         'o3': 'O3',
@@ -533,12 +490,11 @@ class Units:
 
     Parameters:
 
-    config (Config) :
+    config (ConfigManager) :
         Representation of the model configuration used to specify data sources and
-        user choices for the map generation. The config instance is created at the
-        application level.
+        user choices for the map generation.
     """
-    config: 'Config'
+    config: 'ConfigManager'
     species_db: dict = field(init=False)
     airmass: float = field(init=False)
 
@@ -596,12 +552,18 @@ class Units:
         # Mass of dry air in kg (required when converting from v/v)
         area_m2 = 1.0
         vv_to_kg = 1.0
+        if not hasattr(self, 'processor') or self.processor is None:
+            self.processor = DataProcessor(self.config)
+
         if 'mol/mol' in from_unit:
             if self.config.map_params[self.config.findex]['to_plot'][self.config.pindex] == 'xy':
                 lev_to_plot = int(np.where(self.airmass.coords[self.config.get_model_dim_name('zc')].values == self.config.level)[0])
                 self.airmass = self.airmass.isel(lev=lev_to_plot)
-                self.airmass = _regrid(self.airmass, data, 'lon', 'lat', regrid_dims=(1, 0))
-                self.airmass = _regrid(self.airmass, data, 'lon', 'lat', regrid_dims=(0, 1))
+
+                dim1 = self.config_manager.get_model_dim_name('xc')  # e.g., 'lon'
+                dim2 = self.config_manager.get_model_dim_name('yc')  # e.g., 'lat'
+                self.airmass, x, y = self.processor.regrid(self.airmass, data, dim1, dim2)
+
 
             # Conversion factor for v/v to kg
             # v/v * kg dry air / g/mol dry air * g/mol species = kg species
@@ -623,8 +585,11 @@ class Units:
 
         elif 'kg/kg' in from_unit:
             if "DU" in to_unit:
-                self.airmass = _regrid(self.airmass, data, 'lon', 'lat', regrid_dims=(1, 0))
-                self.airmass = _regrid(self.airmass, data, 'lon', 'lat', regrid_dims=(0, 1))
+                self.airmass = self.airmass.isel(lev=lev_to_plot)
+
+                dim1 = self.config_manager.get_model_dim_name('xc')
+                dim2 = self.config_manager.get_model_dim_name('yc')
+                self.airmass, x, y = self.processor.regrid(self.airmass, data, dim1, dim2)
                 vv_to_kg = self.airmass  # / MOLAR_MASS_AIR * mw_g
 
                 # Conversion factor for v/v to kg
