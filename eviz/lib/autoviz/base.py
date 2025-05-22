@@ -16,7 +16,7 @@ from eviz.models.root_factory import (GriddedFactory,
                               OmiFactory,
                               FluxnetFactory,
 )
-import eviz.lib.const as constants
+from eviz.lib.config.paths_config import PathsConfig
 
 
 def get_config_path_from_env():
@@ -34,7 +34,64 @@ def get_config_path_from_env():
     return os.environ.get(env_var_name)
 
 
+from eviz.lib.config.paths_config import PathsConfig
+
 def create_config(args):
+    """
+    Create a ConfigManager instance from command-line arguments.
+    
+    Args:
+        args (argparse.Namespace): Command-line arguments containing configuration options.
+            Expected attributes include:
+            - sources: List of source names (e.g., 'gridded', 'wrf')
+            - config: Optional path to configuration directory
+            - configfile: Optional path to specific configuration file
+    
+    Returns:
+        ConfigManager: A fully initialized configuration manager with input, output,
+                      system, and history configurations.
+    
+    This function handles the configuration initialization process, including:
+    1. Parsing source names from command-line arguments
+    2. Locating configuration files (from specified paths or environment variables)
+    3. Creating a Config instance with appropriate source-specific configurations
+    4. Initializing sub-configurations (input, output, system, history)
+    5. Creating and returning a ConfigManager that encapsulates all configuration data
+    
+    If no configuration directory is specified, it attempts to use the EVIZ_CONFIG_PATH
+    environment variable. If that is not set, it falls back to the default path defined
+    in constants.config_path.
+    """
+    source_names = args.sources[0].split(',')
+    config_dir = args.config
+    config_file = args.configfile
+
+    # Instantiate PathsConfig to get default paths
+    paths = PathsConfig()
+
+    if config_file:
+        config = Config(source_names=source_names, config_files=config_file)
+    else:
+        if config_dir:
+            config_files = [os.path.join(config_dir[0], source_name, f"{source_name}.yaml") for source_name in source_names]
+        else:
+            config_dir = get_config_path_from_env()
+            if not config_dir:
+                # No configuration directory specified. Using eviz default.
+                config_dir = paths.config_path  # Use PathsConfig for the default
+            config_files = [os.path.join(config_dir, source_name, f"{source_name}.yaml") for source_name in source_names]
+        config = Config(source_names=source_names, config_files=config_files)
+
+    # Initialize sub-configurations
+    input_config = config.input_config
+    output_config = config.output_config
+    system_config = config.system_config
+    history_config = config.history_config
+
+    return ConfigManager(input_config, output_config, system_config, history_config, config=config)
+
+
+def create_config2(args):
     """
     Create a ConfigManager instance from command-line arguments.
     
@@ -72,7 +129,7 @@ def create_config(args):
             config_dir = get_config_path_from_env()
             if not config_dir:
                 # No configuration directory specified. Using eviz default.
-                config_dir = constants.config_path
+                config_dir = config.path.config_path
             config_files = [os.path.join(config_dir, source_name, f"{source_name}.yaml") for source_name in source_names]
         config = Config(source_names=source_names, config_files=config_files)
 

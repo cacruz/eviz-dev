@@ -6,7 +6,7 @@ import dask
 import logging
 from datetime import datetime
 from dateutil.relativedelta import relativedelta
-import eviz.lib.const as constants
+import eviz.lib.constants as constants
 
 dask.config.set({"array.slicing.split_large_chunks": False})
 
@@ -116,7 +116,7 @@ def apply_zsum(config, data2d):
     return data2d_zsum.squeeze()
 
 
-def grid_cell_areas(lon1d, lat1d, radius=constants.R_EARTH_m):
+def grid_cell_areas(lon1d, lat1d, radius=constants.R_EARTH_M):
     """ Calculate grid cell areas given 1D arrays of longitudes and latitudes
     for a planet with the given radius.
 
@@ -201,7 +201,7 @@ def _guess_bounds(points, bound_position=0.5):
     return np.array([min_bounds, max_bounds]).transpose()
 
 
-def calc_spatial_mean(xr_da, lon_name="longitude", lat_name="latitude", radius=constants.R_EARTH_m):
+def calc_spatial_mean(xr_da, lon_name="longitude", lat_name="latitude", radius=constants.R_EARTH_M):
     """ Calculate spatial mean of xarray.DataArray with grid cell weighting.
 
     Args:
@@ -222,7 +222,7 @@ def calc_spatial_mean(xr_da, lon_name="longitude", lat_name="latitude", radius=c
     return (xr_da * aw_factor).mean(dim=[lon_name, lat_name])
 
 
-def calc_spatial_integral(xr_da, lon_name="longitude", lat_name="latitude", radius=constants.R_EARTH_m):
+def calc_spatial_integral(xr_da, lon_name="longitude", lat_name="latitude", radius=constants.R_EARTH_M):
     """ Calculate spatial integral of xarray.DataArray with grid cell weighting.
 
     Args:

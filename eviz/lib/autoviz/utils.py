@@ -21,7 +21,7 @@ from PIL import Image
 from numpy import e
 from matplotlib.offsetbox import (OffsetImage, TextArea, AnchoredOffsetbox, VPacker)
 import eviz.lib.utils as u
-import eviz.lib.const as constants
+import eviz.lib.constants as constants
 from eviz.lib.utils import timer
 
 logger = logging.getLogger('plot_utils')
@@ -184,7 +184,7 @@ def print_map(
         map_params = config.map_params
         output_dir = u.get_nested_key_value(map_params[config.pindex], ['outputs', 'output_dir'])
         if not output_dir:
-            output_dir = constants.output_path
+            output_dir = config.paths.output_path
         if not os.path.exists(output_dir):
             os.makedirs(output_dir)
             logger.debug(f"Created output directory: {output_dir}")
@@ -608,7 +608,7 @@ def output_basic(config, name):
         output_fname = name + "." + config.print_format
         output_dir = u.get_nested_key_value(config.map_params[config.pindex], ['outputs', 'output_dir'])
         if not output_dir:
-            output_dir = constants.output_path
+            output_dir = config.paths.output_path
         if not os.path.exists(output_dir):
             os.makedirs(output_dir)
         filename = os.path.join(output_dir, output_fname)

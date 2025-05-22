@@ -1,3 +1,5 @@
+from eviz.lib.config.paths_config import PathsConfig
+
 import logging
 import matplotlib as mpl
 
@@ -53,6 +55,7 @@ class Config:
     config_files: List[str]
     app_data: AppData = field(default_factory=AppData)
     spec_data: Dict[str, Any] = field(default_factory=dict)
+    paths: PathsConfig = field(default_factory=PathsConfig)
 
     def __post_init__(self):
         self.yaml_parser = YAMLParser(config_files=self.config_files, source_names=self.source_names)

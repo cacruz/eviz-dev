@@ -6,7 +6,7 @@ import pytest
 import yaml
 
 import eviz.lib.utils as u
-import eviz.lib.const as constants
+import eviz.lib.constants as constants
 
 
 # Write StringIO content to a temporary file
@@ -22,17 +22,19 @@ def write_to_temp_file(string_io_obj):
 @pytest.mark.parametrize(
     ('model_name', 'expected'),
     (
-            ('ccm', constants.ccm_yaml_path),
-            ('cf', constants.cf_yaml_path),
-            ('geos', constants.geos_yaml_path),
-            ('lis', constants.lis_yaml_path),
-            ('wrf', constants.wrf_yaml_path),
-            ('gridded', constants.gridded_yaml_path),
+        ('ccm', constants.CCM_YAML_PATH),
+        ('cf', constants.CF_YAML_PATH),
+        ('geos', constants.GEOS_YAML_PATH),
+        ('lis', constants.LIS_YAML_PATH),
+        ('wrf', constants.WRF_YAML_PATH),
+        ('gridded', constants.GRIDDED_YAML_PATH),
     )
 )
 def test_get_nested_key_value_1nest(model_name, expected):
     val = u.get_nested_key_value({'key1': 1}, ['key1'])
     assert val == 1
+
+
 
 
 def test_get_nested_key_value2nest():

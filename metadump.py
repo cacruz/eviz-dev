@@ -8,7 +8,6 @@ with autoviz. It can process single files or pairs of files for comparison, and 
 - YAML specification files for plot configurations
 - YAML application files for autoviz execution parameters
 """
-
 import json
 import sys
 import random
@@ -17,16 +16,16 @@ from typing import Optional, Dict, List, Set, Tuple, Any, Union
 from dataclasses import dataclass
 import logging
 import textwrap
-import numpy as np
-import xarray as xr
-import pandas as pd
 import argparse
 import yaml
+import numpy as np
+import xarray as xr
 
 import eviz.lib.utils as u
-import eviz.lib.const as constants
+from eviz.lib.constants import SUPPORTED_MODELS, META_ATTRS_NAME, META_COORDS_NAME, SPECIES_DB_NAME
 
 logger = logging.getLogger(__name__)
+
 
 @dataclass
 class MetadumpConfig:

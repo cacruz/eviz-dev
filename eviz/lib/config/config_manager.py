@@ -74,7 +74,10 @@ class ConfigManager:
         self.logger.info("Start init")
         self.setup_comparison()
 
-    # Delegate properties to Config
+    @property
+    def paths(self):
+        return self.config.paths
+
     @property
     def app_data(self):
         return self.config.app_data
