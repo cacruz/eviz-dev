@@ -1,5 +1,3 @@
-# eviz/lib/constants.py
-
 """
 Project-wide constants for eViz.
 

@@ -2,12 +2,14 @@ import logging
 import sys
 import warnings
 from typing import Any
+import numpy as np
 import pandas as pd
+import pandas as xr
 from dataclasses import dataclass, field
+import eviz.lib.autoviz.utils as pu
 
 
 from eviz.lib.autoviz.figure import Figure
-from eviz.lib.autoviz.utils import print_map
 from eviz.models.root import Root
 
 warnings.filterwarnings("ignore")
@@ -47,22 +49,6 @@ class Airnow(Root):
         # Implement as needed, or just pass if not used
         pass
 
-    def process_data(self, filename, field_name):
-        """ Prepare data for plotting """
-        # Get the model data
-        model_data = self.config_manager.readers[self.source_name].read_data(filename)
-        # create time column from ValidDate and ValidTime
-        model_data['time'] = pd.to_datetime(
-            (model_data.ValidDate + ' ' + model_data.ValidTime),
-            format='%m/%d/%y %H:%M')
-
-        # Extract selected columns
-        selected_columns = model_data[['time', 'lat', 'lon', field_name]]
-        selected_columns = selected_columns.set_index('time')
-        ds = selected_columns.to_xarray()
-        ds = ds.dropna(dim='time')
-        return ds
-
     def _simple_plots(self, plotter):
         map_params = self.config_manager.map_params
         field_num = 0
@@ -84,56 +70,100 @@ class Airnow(Root):
             field_num += 1
 
     def _single_plots(self, plotter):
-        for s in range(len(self.config_manager.source_names)):
-            map_params = self.config_manager.map_params
-            field_num = 0
-            for i in map_params.keys():
-                source_name = map_params[i]['source_name']
-                if source_name == self.config_manager.source_names[s]:
-                    field_name = map_params[i]['field']
-                    self.source_name = source_name
-                    filename = map_params[i]['filename']
-                    file_index = field_num  # self.config_manager.get_file_index(filename)
-                    self.source_data = self.process_data(filename, field_name)
-                    # TODO: Is ds_index really necessary?
-                    self.config_manager.ds_index = s
-                    self.config_manager.findex = file_index
-                    self.config_manager.pindex = field_num
-                    self.config_manager.axindex = 0
-                    for pt in map_params[i]['to_plot']:
-                        self.logger.info(f"Plotting {field_name}, {pt} plot")
-                        figure = Figure(self.config_manager, pt)
-                        if 'xy' in pt:
-                            levels = self.config_manager.get_levels(field_name, pt + 'plot')
-                            if not levels:
-                                self.logger.warning(f' -> No levels specified for {field_name}')
-                                continue
-                            for level in levels:
-                                field_to_plot = self._get_field_to_plot(field_name, file_index, pt, figure,
-                                                                        level=level)
-                                plotter.single_plots(self.config_manager, field_to_plot=field_to_plot, level=level)
-                                print_map(self.config_manager, pt, self.config_manager.findex, figure, level=level)
+        """Generate single plots for each source and field according to configuration."""
+        self.logger.info("Generating single plots")
 
-                        else:
-                            field_to_plot = self._get_field_to_plot(field_name, file_index, pt, figure)
-                            plotter.single_plots(self.config_manager, field_to_plot=field_to_plot)
-                            print_map(self.config_manager, pt, self.config_manager.findex, figure)
+        all_data_sources = self.config_manager.pipeline.get_all_data_sources()
+        if not all_data_sources:
+            self.logger.error("No data sources available for single plotting.")
+            return
 
-                    field_num += 1
+        # Iterate through map_params to generate plots
+        for idx, params in self.config_manager.map_params.items():
+            field_name = params.get('field')
+            if not field_name:
+                continue
 
-    def _get_field_to_plot(self, field_name, file_index, plot_type, figure, level=None) -> tuple:
+            filename = params.get('filename')
+            data_source = self.config_manager.pipeline.get_data_source(filename)
+
+            if not data_source or not hasattr(data_source,
+                                              'dataset') or data_source.dataset is None:
+                continue
+
+            if field_name not in data_source.dataset:
+                continue
+
+            self.config_manager.findex = idx  
+            self.config_manager.pindex = idx
+            self.config_manager.axindex = 0
+
+            field_data_array = data_source.dataset[field_name]
+            plot_types = params.get('to_plot', ['xy'])
+            if isinstance(plot_types, str):
+                plot_types = [pt.strip() for pt in plot_types.split(',')]
+            for plot_type in plot_types:
+                self._process_plot(field_data_array, field_name, idx, plot_type, plotter)
+
+        if self.config_manager.make_gif:
+            pu.create_gif(self.config_manager.config)
+
+    def _process_plot(self, data_array: pd.DataFrame, field_name: str, file_index: int,
+                      plot_type: str, plotter):
+        """Process a single plot type for a given field."""
+        self.logger.info(f"Plotting {field_name}, {plot_type} plot")
+        figure = Figure.create_eviz_figure(self.config_manager, plot_type)
         self.config_manager.ax_opts = figure.init_ax_opts(field_name)
-        _, ax = figure.get_fig_ax()
-        dim1, dim2 = self.config_manager.get_dim_names(plot_type)
-        d = self.source_data[field_name]
 
+
+        self._process_obs_plot(data_array, field_name, file_index, plot_type, figure, plotter)
+
+
+
+    def _process_obs_plot(self, data_array: pd.DataFrame, field_name: str,
+                            file_index: int, plot_type: str, figure,
+                            plotter):
+        """Process non-xy and non-polar plot types."""
+        self.config_manager.level = None
+        time_level_config = self.config_manager.ax_opts.get('time_lev', 0)
+        tc_dim = self.config_manager.get_model_dim_name('tc') or 'time'
+
+        if tc_dim in data_array.dims:
+            num_times = data_array[tc_dim].size
+            # TODO: Handle yx_plot Gifs
+            time_levels = range(num_times) if time_level_config == 'all' else [
+                time_level_config]
+        else:
+            time_levels = [0]
+
+        ax = figure.get_axes()
+        field_to_plot = self._get_field_to_plot(ax, data_array, field_name, file_index,
+                                                plot_type, figure,
+                                                time_level=time_level_config)
+        if field_to_plot:
+            plotter.single_plots(self.config_manager, field_to_plot=field_to_plot)
+            pu.print_map(self.config_manager, plot_type, self.config_manager.findex,
+                         figure)
+
+    def _get_field_to_plot(self, ax, data_array: pd.DataFrame, field_name: str,
+                           file_index: int, plot_type: str, figure, time_level=None,
+                           level=None) -> tuple:
+        ax = figure.get_axes()
+        self.config_manager.ax_opts = figure.init_ax_opts(field_name)
         data2d = None
+
+        dim1, dim2 = self.config_manager.get_dim_names(plot_type)
+        lon = data_array.lon
+        lat = data_array.lat
+   
+        self.config_manager.ax_opts['extent'] = [-120, -70, 24, 50.5]
+        self.config_manager.ax_opts['central_lon'] = np.mean(self.config_manager.ax_opts['extent'][:2])
+        self.config_manager.ax_opts['central_lat'] = np.mean(self.config_manager.ax_opts['extent'][2:])
+
         if 'xy' in plot_type:
-            data2d = self._get_xy_simple(d, field_name, 0)
+            data2d = self._get_xy_simple(data_array, field_name, 0)
         elif 'sc' in plot_type:
-            lon = self.source_data['lon'].data
-            lat = self.source_data['lat'].data
-            data2d = d.data
+            data2d = data_array.data
             return data2d, lon, lat, field_name, plot_type, file_index, figure, ax
         else:
             pass
@@ -141,6 +171,7 @@ class Airnow(Root):
         if 'xt' in plot_type or 'tx' in plot_type:
             return data2d, None, None, field_name, plot_type, file_index, figure, ax
         return data2d, data2d[dim1].values, data2d[dim2].values, field_name, plot_type, file_index, figure, ax
+        
 
     def _get_field_for_simple_plot(self, field_name, plot_type):
         name = self.config_manager.source_names[self.config_manager.ds_index]

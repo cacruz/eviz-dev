@@ -329,11 +329,10 @@ class Gridded(Root):
     def _process_other_plot(self, data_array: xr.DataArray, field_name: str,
                             file_index: int, plot_type: str, figure,
                             plotter):
-        """Process non-xy and non-po plot types."""
+        """Process non-xy and non-polar plot types."""
         self.config_manager.level = None
-        time_level_config = self.config_manager.ax_opts.get('time_lev', 0)  # Default to 0
-        tc_dim = self.config_manager.get_model_dim_name(
-            'tc') or 'time'  # Default to 'time'
+        time_level_config = self.config_manager.ax_opts.get('time_lev', 0)
+        tc_dim = self.config_manager.get_model_dim_name('tc') or 'time'
 
         if tc_dim in data_array.dims:
             num_times = data_array[tc_dim].size

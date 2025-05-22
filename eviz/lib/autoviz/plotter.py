@@ -254,10 +254,12 @@ def _single_scat_plot(config: ConfigManager, data_to_plot: tuple) -> None:
         config (Config) : configuration used to specify data sources
         data_to_plot (tuple) : dict with plotted data and specs
     """
-    source_name = config.source_names[config.ds_index]
     data2d, x, y, field_name, plot_type, findex, fig, ax_temp = data_to_plot
     ax_opts = config.ax_opts
     ax = ax_temp
+    if isinstance(ax, (list, tuple, np.ndarray)):
+        ax = ax[0]
+
     logger.debug(f'Plotting {field_name}')
     rc = {
         'text.usetex': False,
@@ -274,36 +276,24 @@ def _single_scat_plot(config: ConfigManager, data_to_plot: tuple) -> None:
         else:
             extent = [-180, 180, -90, 90]
 
-        if fig.use_cartopy:
-            ax = fig.set_cartopy_latlon_opts(ax, extent)
-            ax.set_extent(extent)
-            ax = fig.set_cartopy_features(ax)
+        is_cartopy_axis = False
+        try:
+            is_cartopy_axis = isinstance(ax, GeoAxes)
+        except ImportError:
+            pass
+
+        if fig.use_cartopy and is_cartopy_axis:
+            # Only pass transform if using Cartopy GeoAxes
+            ax.set_extent(extent, crs=ccrs.PlateCarree())
             ax.stock_img()
             scat = ax.scatter(x, y, c=data2d, cmap=ax_opts['use_cmap'], s=5, transform=ccrs.PlateCarree())
         else:
             scat = ax.scatter(x, y, c=data2d, cmap=ax_opts['use_cmap'], s=2)
 
-        cbar = fig.fig.colorbar(scat, ax=ax,
-                                orientation='horizontal',
-                                pad=pu.cbar_pad(fig.subplots),
-                                fraction=pu.cbar_fraction(fig.subplots),
-                                extendfrac='auto',
-                                shrink=0.5)
-
-        if ax_opts['clabel'] is None:
-            if 'units' in config.spec_data[field_name]:
-                cbar_label = config.spec_data[field_name]['units']
-            else:
-                try:
-                    cbar_label = data_to_plot['vars'][field_name].units
-                except:
-                    logger.warning(f"Please specify {field_name} units in specs file")
-                    cbar_label = "n.a."
+        if scat is None:
+            pass
         else:
-            cbar_label = ax_opts['clabel']
-        cbar.set_label(cbar_label, size=pu.bar_font_size(fig.subplots))
-        for t in cbar.ax.get_xticklabels():
-            t.set_fontsize(pu.contour_tick_font_size(fig.subplots))
+            _set_colorbar(config, scat, fig, ax, ax_opts, findex, field_name, data2d)
 
         ax.set_title(f'{field_name}')
 
