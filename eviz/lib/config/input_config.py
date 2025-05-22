@@ -146,43 +146,59 @@ class InputConfig:
             str: The reader type identifier ('NetCDF', 'CSV', 'HDF5', or 'HDF4') or None if unknown
         """
         if explicit_reader:
-            return explicit_reader.capitalize()
+            return explicit_reader  # FIX: Use explicit_reader as is, no .capitalize()
 
-        if '*' in file_path:
-            self.logger.info(f"File path contains wildcards: {file_path}, assuming NetCDF")
-            return 'NetCDF'
-        
-        # Handle WRF special cases - check this before getting extension
-        if 'wrf' in file_path.lower() or 'wrfout' in file_path.lower():
+        path_lower = file_path.lower()
+
+        # Handle WRF special cases first, as they are NetCDF
+        if 'wrf' in path_lower or 'wrfout' in path_lower:
             self.logger.info(f"Detected WRF file: {file_path}, using NetCDF reader")
             return 'NetCDF'
         
-        file_extension = os.path.splitext(file_path)[1]
+        # Prioritize HDF5/HDF4 name inference before checking ambiguous extensions
+        # This helps with files like 'my_hdf5_data.dat' or 'log_containing_hdf4.log'
         
-        if file_extension in ['.nc', '.nc4', '']:  # Added empty extension
+        # Check for HDF5 by name or common HDF5 extensions in the name string
+        # Note: .he5 is HDF5, .h5 can be HDF5
+        if any(keyword in path_lower for keyword in ['hdf5', '.h5', '.he5']):
+            # Avoid misclassifying an HDF4 file (e.g. file.hdf) if 'hdf' from 'hdf5' matches
+            if not (path_lower.endswith('.hdf') and not any(ext_key in path_lower for ext_key in ['.h5', '.he5'])):
+                self.logger.info(f"Inferred HDF5 from filename/keywords: {file_path}")
+                return 'HDF5'
+
+        # Check for HDF4 by name or common HDF4 extension in the name string
+        # Note: .hdf is HDF4
+        if any(keyword in path_lower for keyword in ['hdf4', '.hdf']):
+            # Avoid misclassifying an HDF5 file (e.g. file.he5 or file_with_hdf5.hdf)
+            if not any(ext_key in path_lower for ext_key in ['.h5', '.he5', 'hdf5']):
+                self.logger.info(f"Inferred HDF4 from filename/keywords: {file_path}")
+                return 'HDF4'
+
+        file_extension = os.path.splitext(path_lower)[1]
+
+        if file_extension in ['.nc', '.nc4', '']:
             return 'NetCDF'
         elif file_extension in ['.csv', '.dat']:
+            # This is reached if HDF5/HDF4 was not inferred by name for a .dat file
             return 'CSV'
-        elif file_extension in ['.h5', '.he5']:
+        elif file_extension in ['.h5', '.he5']:  # Explicit HDF5 extensions
             return 'HDF5'
-        elif file_extension == '.hdf':
+        elif file_extension == '.hdf':  # Explicit HDF4 extension
             return 'HDF4'
-        elif file_extension.startswith('.wrf'):  # Handle .wrf-arw, .wrf-arw-nmp, etc.
+        elif file_extension.startswith('.wrf'):  # e.g., .wrf-arw, .wrf-arw-nmp
             return 'NetCDF'
         else:
-            self.logger.warning(f"Unrecognized extension: {file_extension} in {file_path}, attempting to infer type")
-            # Try to infer from filename patterns
-            if any(x in file_path.lower() for x in ['netcdf', 'nc']):
+            # Fallback inference for truly unrecognized extensions
+            self.logger.warning(f"Unrecognized extension: {file_extension} in {file_path}, attempting to infer type from name as a last resort.")
+            if any(x in path_lower for x in ['netcdf', 'nc']):
                 return 'NetCDF'
-            elif any(x in file_path.lower() for x in ['csv', 'data', 'txt']):
+            elif any(x in path_lower for x in ['csv', 'data', 'txt']):
                 return 'CSV'
-            elif any(x in file_path.lower() for x in ['hdf5', 'h5']):
-                return 'HDF5'
-            elif any(x in file_path.lower() for x in ['hdf4', 'hdf']):
-                return 'HDF4'
+            # HDF5/HDF4 name inference was already attempted and prioritized.
                 
-        self.logger.error(f"Unsupported file extension: {file_extension} in file {file_path}")
-        return 'NetCDF'  # Default to NetCDF as a fallback
+        self.logger.error(f"Unsupported file extension: {file_extension} for file {file_path}. Defaulting to NetCDF.")
+        return 'NetCDF'  # Default fallback
+
                        
     def _determine_data_types(self) -> Dict[str, bool]:
         """Determine the data types needed based on file extensions."""
