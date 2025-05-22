@@ -477,19 +477,22 @@ class Gridded(Root):
         # Gather all unique field names from map_params for these files
         fields_file1 = [params['field'] for i, params in self.config_manager.map_params.items() if params['file_index'] == idx1]
         fields_file2 = [params['field'] for i, params in self.config_manager.map_params.items() if params['file_index'] == idx2]
-        all_fields = set(fields_file1) & set(fields_file2)  # Only fields present in both
+
+        # Pair fields by order, not by name
+        num_pairs = min(len(fields_file1), len(fields_file2))
+        field_pairs = list(zip(fields_file1[:num_pairs], fields_file2[:num_pairs]))
 
         self.logger.info(f"Comparing files {idx1} and {idx2}")
         self.logger.info(f"Fields in file 1: {fields_file1}")
         self.logger.info(f"Fields in file 2: {fields_file2}")
-        self.logger.info(f"Fields to compare: {all_fields}")
+        self.logger.info(f"Field pairs to compare: {field_pairs}")
 
-        for field_name in all_fields:
+        for field1, field2 in field_pairs:
             # Find map_params for this field in both files
             idx1_field = next((i for i, params in self.config_manager.map_params.items()
-                            if params['file_index'] == idx1 and params['field'] == field_name), None)
+                            if params['file_index'] == idx1 and params['field'] == field1), None)
             idx2_field = next((i for i, params in self.config_manager.map_params.items()
-                            if params['file_index'] == idx2 and params['field'] == field_name), None)
+                            if params['file_index'] == idx2 and params['field'] == field2), None)
             if idx1_field is None or idx2_field is None:
                 continue
 
@@ -513,7 +516,7 @@ class Gridded(Root):
 
             file_indices = (idx1_field, idx2_field)
 
-            self.field_names = (field_name, field_name)
+            self.field_names = (field1, field2)
 
             # Assuming plot types are the same for comparison
             plot_types = map1_params.get('to_plot', ['xy'])
@@ -521,18 +524,18 @@ class Gridded(Root):
                 plot_types = [pt.strip() for pt in plot_types.split(',')]
             for plot_type in plot_types:
                 self.logger.info(
-                    f"Plotting {field_name} vs {field_name}, {plot_type} plot")
+                    f"Plotting {field1} vs {field2}, {plot_type} plot")
                 self.data2d_list = []  # Reset for each plot type
 
                 if 'xy' in plot_type or 'po' in plot_type or 'polar' in plot_type:
                     self._process_xy_comparison_plots(plotter, file_indices,
                                                     current_field_index,
-                                                    field_name, field_name, plot_type,
+                                                    field1, field2, plot_type,
                                                     sdat1_dataset, sdat2_dataset)
                 else:
                     self._process_other_comparison_plots(plotter, file_indices,
                                                         current_field_index,
-                                                        field_name, field_name,
+                                                        field1, field2,
                                                         plot_type, sdat1_dataset,
                                                         sdat2_dataset)
 
@@ -784,19 +787,22 @@ class Gridded(Root):
         # Gather all unique field names from map_params for these files
         fields_file1 = [params['field'] for i, params in self.config_manager.map_params.items() if params['file_index'] == idx1]
         fields_file2 = [params['field'] for i, params in self.config_manager.map_params.items() if params['file_index'] == idx2]
-        all_fields = set(fields_file1) & set(fields_file2)  # Only fields present in both
 
-        self.logger.debug(f"Comparing files {idx1} and {idx2}")
-        self.logger.debug(f"Fields in file 1: {fields_file1}")
-        self.logger.debug(f"Fields in file 2: {fields_file2}")
-        self.logger.debug(f"Fields to compare: {all_fields}")
+        # Pair fields by order, not by name
+        num_pairs = min(len(fields_file1), len(fields_file2))
+        field_pairs = list(zip(fields_file1[:num_pairs], fields_file2[:num_pairs]))
 
-        for field_name in all_fields:
+        self.logger.info(f"Comparing files {idx1} and {idx2}")
+        self.logger.info(f"Fields in file 1: {fields_file1}")
+        self.logger.info(f"Fields in file 2: {fields_file2}")
+        self.logger.info(f"Field pairs to compare: {field_pairs}")
+
+        for field1, field2 in field_pairs:
             # Find map_params for this field in both files
             idx1_field = next((i for i, params in self.config_manager.map_params.items()
-                            if params['file_index'] == idx1 and params['field'] == field_name), None)
+                            if params['file_index'] == idx1 and params['field'] == field1), None)
             idx2_field = next((i for i, params in self.config_manager.map_params.items()
-                            if params['file_index'] == idx2 and params['field'] == field_name), None)
+                            if params['file_index'] == idx2 and params['field'] == field2), None)
             if idx1_field is None or idx2_field is None:
                 continue
 
@@ -820,25 +826,25 @@ class Gridded(Root):
 
             file_indices = (idx1_field, idx2_field)
 
-            self.field_names = (field_name, field_name)
+            self.field_names = (field1, field2)
 
             plot_types = map1_params.get('to_plot', ['xy'])
             if isinstance(plot_types, str):
                 plot_types = [pt.strip() for pt in plot_types.split(',')]
             for plot_type in plot_types:
                 self.data2d_list = []
-                self.logger.info(f"Plotting {field_name} vs {field_name} , {plot_type} plot")
+                self.logger.info(f"Plotting {field1} vs {field2} , {plot_type} plot")
 
                 if 'xy' in plot_type or 'polar' in plot_type:
                     self._process_xy_side_by_side_plots(plotter, file_indices,
                                                         current_field_index,
-                                                        field_name, field_name,
+                                                        field1, field2,
                                                         plot_type,
                                                         sdat1_dataset, sdat2_dataset)
                 else:
                     self._process_other_side_by_side_plots(plotter, file_indices,
                                                         current_field_index,
-                                                        field_name, field_name,
+                                                        field1, field2,
                                                         plot_type, sdat1_dataset,
                                                         sdat2_dataset)
 
