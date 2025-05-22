@@ -99,3 +99,24 @@ fieldname:
         cmap: coolwarm
         extent: [lonW, lonE, latS, latN]  # or conus
         projection: # (default: Plate Carree) [lambert, albers, ortho, stereo, polar]
+
+
+# You can also customize each plot by adding custom valic rcParams. For example, for field PM25
+# specify a custom titlesize, font size, etc to be used in the scatter plot (scplot):
+PM25:
+    unitconversion: 1
+    units: ppb
+    scplot:
+        # eviz-specific options described above
+        cmap: BuPu
+        extent: conus
+        projection: lambert
+        # rc_params are optional and matplotlib-specific. They can be used to customize the plot further.
+        # see https://matplotlib.org/stable/users/explain/customizing.html
+        rc_params:
+            font.size: 12
+            axes.titlesize: 16
+            lines.markersize: 8
+            scatter.marker: "."
+
+

@@ -1,5 +1,6 @@
 import logging
 from typing import Any, Dict
+import matplotlib as mpl
 import matplotlib.figure as mfigure
 import matplotlib.pyplot as plt
 from mpl_toolkits.axes_grid1 import make_axes_locatable
@@ -452,6 +453,7 @@ class Figure(mfigure.Figure):
         plot_type = "polar" if self.plot_type.startswith("po") else self.plot_type[:2]
         spec = self.config_manager.spec_data.get(field_name, {}).get(f"{plot_type}plot", {})
         defaults = {
+            'rc_params': None,
             'boundary': None, 'use_pole': 'north', 'profile_dim': None, 'zsum': None, 'zave': None, 'tave': None,
             'taverange': 'all', 'cmap_set_over': None, 'cmap_set_under': None, 'use_cmap': self.config_manager.input_config._cmap,
             'use_diff_cmap': self.config_manager.input_config._cmap, 'cscale': None, 'zscale': 'linear', 'cbar_sci_notation': False,
@@ -467,6 +469,18 @@ class Figure(mfigure.Figure):
             'title_fontsize': {'title.fontsize': 10}, 'subplot_title_fontsize': {'subplot_title.fontsize': 12}
         }
         self._ax_opts = {key: spec.get(key, defaults[key]) for key in defaults}
+        
+        # Merge rc_params from YAML if present
+        rc_params_from_yaml = spec.get('rc_params', {})
+        rc_keys = set(mpl.rcParams.keys())
+        # Filter for valid rcParams
+        filtered_rc_params = {k: v for k, v in rc_params_from_yaml.items() if k in rc_keys}
+        # Merge with any rcParams already in _ax_opts
+        if self._ax_opts.get('rc_params'):
+            self._ax_opts['rc_params'].update(filtered_rc_params)
+        else:
+            self._ax_opts['rc_params'] = filtered_rc_params        
+
         return self._ax_opts
 
     @staticmethod
@@ -542,8 +556,19 @@ class Figure(mfigure.Figure):
             self._set_clevs(field_name, f"{pid}plot",
                             level if isinstance(level, int) else "contours")
 
+        # Optionally, update rc_params if new ones are found in the spec
+        plot_type = "polar" if self.plot_type.startswith("po") else self.plot_type[:2]
+        spec = self.config_manager.spec_data.get(field_name, {}).get(f"{plot_type}plot", {})
+        rc_params_from_yaml = spec.get('rc_params', {})
+        rc_keys = set(mpl.rcParams.keys())
+        filtered_rc_params = {k: v for k, v in rc_params_from_yaml.items() if k in rc_keys}
+        if filtered_rc_params:
+            if self._ax_opts.get('rc_params'):
+                self._ax_opts['rc_params'].update(filtered_rc_params)
+            else:
+                self._ax_opts['rc_params'] = filtered_rc_params
         return self._ax_opts
-
+    
     def _update_single_plot(self, field_name, pid, level):
         """Update axes options for single subplot case."""
         plot_type_map = {

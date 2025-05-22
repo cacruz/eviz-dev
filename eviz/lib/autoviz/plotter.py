@@ -261,12 +261,7 @@ def _single_scat_plot(config: ConfigManager, data_to_plot: tuple) -> None:
         ax = ax[0]
 
     logger.debug(f'Plotting {field_name}')
-    rc = {
-        'text.usetex': False,
-        'font.family': 'stixgeneral',
-        'mathtext.fontset': 'stix',
-    }
-    with mpl.rc_context(rc=rc):
+    with mpl.rc_context(rc=ax_opts.get('rc_params', {})):
         # TODO: Need set extent function!
         if ax_opts['extent']:
             if ax_opts['extent'] == 'conus':
@@ -1561,7 +1556,6 @@ class SinglePlotter(Plotter):
             field_to_plot: tuple (data2d, dim1, dim2, field_name, plot_type, findex, map_params)
             level: int (optional)
         """
-        # data2d, dim1, dim2, field_name, plot_type, findex, map_params = field_to_plot
         plot_type = field_to_plot[4] + 'plot'
         if plot_type == 'yzplot':
             _single_yz_plot(config, field_to_plot)
