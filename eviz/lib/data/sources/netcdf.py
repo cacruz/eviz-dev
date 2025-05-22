@@ -28,53 +28,58 @@ class NetCDFDataSource(DataSource):
         return logging.getLogger(__name__)
     
     def load_data(self, file_path: str) -> xr.Dataset:
-        """Load data from a NetCDF file or OpenDAP URL into an Xarray dataset.
-        
-        Args:
-            file_path: Path to the NetCDF file, a glob pattern, or an OpenDAP URL
-            
-        Returns:
-            An Xarray dataset containing the loaded data
+        """
+        Load data from a NetCDF file or OpenDAP URL into an Xarray dataset.
         """
         self.logger.debug(f"Loading NetCDF data from {file_path}")
-        
+
         try:
             # Check if it's a URL
             is_remote = is_url(file_path)
             is_opendap = is_opendap_url(file_path)
-            
+
+            # If file_path is a list (from globbing), use open_mfdataset
+            if isinstance(file_path, list):
+                files = file_path
+            elif "*" in file_path or "?" in file_path or "[" in file_path:
+                import glob
+                files = sorted(glob.glob(file_path))
+            else:
+                files = [file_path]
+
             if is_remote:
                 self.logger.info(f"Loading remote data from URL: {file_path}")
                 if is_opendap:
                     self.logger.info(f"Detected OpenDAP URL: {file_path}")
-                
-                # For remote files, we use open_dataset with engine='netcdf4'
                 dataset = xr.open_dataset(file_path, decode_cf=True, engine='netcdf4')
                 self.logger.debug(f"Loaded remote NetCDF data: {file_path}")
-            elif "*" in file_path:
+            elif len(files) == 1:
+                dataset = xr.open_dataset(files[0], decode_cf=True)
+                self.logger.debug(f"Loaded single NetCDF file: {files[0]}")
+            elif len(files) > 1:
                 self._setup_dask_client()
-                dataset = xr.open_mfdataset(file_path, decode_cf=True, combine="by_coords")
-                self.logger.debug(f"Loaded multiple NetCDF files matching pattern: {file_path}")
+                # dataset = xr.open_mfdataset(files, decode_cf=True, combine="by_coords", parallel=True, chunks={})
+                dataset = xr.open_mfdataset(files, combine="nested", concat_dim="time", decode_cf=True, parallel=True)
+                self.logger.debug(f"Loaded multiple NetCDF files: {files}")
             else:
-                dataset = xr.open_dataset(file_path, decode_cf=True)
-                self.logger.debug(f"Loaded single NetCDF file: {file_path}")
-            
+                raise FileNotFoundError(f"No files found for pattern: {file_path}")
+
             # Standardize dimension names
             dataset = self._rename_dims(dataset)
-            
+
             self.dataset = dataset
             self._extract_metadata(dataset)
-            
+
             # For URLs, use the last part of the path as the file name
             if is_remote:
                 file_name = os.path.basename(file_path.split('?')[0])  # Remove query parameters
             else:
-                file_name = os.path.basename(file_path)
-                
+                file_name = os.path.basename(files[0])
+
             self.datasets[file_name] = dataset
-            
+
             return dataset
-            
+
         except FileNotFoundError as exc:
             self.logger.error(f"Error loading NetCDF file: {file_path}. Exception: {exc}")
             raise
