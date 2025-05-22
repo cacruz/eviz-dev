@@ -23,7 +23,7 @@ from cartopy.mpl.geoaxes import GeoAxes
 
 from sklearn.metrics import mean_squared_error
 
-import eviz.lib.const as constants
+import eviz.lib.constants as constants
 import eviz.lib.autoviz.utils as pu
 import eviz.lib.utils as u
 from eviz.lib.config.config_manager import ConfigManager
@@ -1573,18 +1573,17 @@ class SinglePlotter(Plotter):
         """
         # data2d, dim1, dim2, field_name, plot_type, findex, map_params = field_to_plot
         plot_type = field_to_plot[4] + 'plot'
-
-        if plot_type == constants.yzplot:
+        if plot_type == 'yzplot':
             _single_yz_plot(config, field_to_plot)
-        if plot_type == constants.xtplot:
+        if plot_type == 'xtplot':
             _single_xt_plot(config, field_to_plot)
-        if plot_type == constants.txplot:
+        if plot_type == 'txplot':
             _single_tx_plot(config, field_to_plot)
-        if plot_type == constants.xyplot:
+        if plot_type == 'xyplot':
             _single_xy_plot(config, field_to_plot, level)
-        if plot_type == constants.polarplot:
+        if plot_type == 'polarplot':
             _single_polar_plot(config, field_to_plot)
-        if plot_type == constants.scplot:
+        if plot_type == 'scplot':
             _single_scat_plot(config, field_to_plot)
         # TODO: for user defined functions you need to do the following:
         # elif plot_type == constants.myplot:
@@ -1617,17 +1616,17 @@ class ComparisonPlotter:
         if plot_type not in ['xyplot', 'yzplot', 'polarplot', 'scplot']:
             plot_type = field_to_plot[2]
 
-        if plot_type == constants.yzplot:
+        if plot_type == 'yzplot':
             _single_yz_plot(config, field_to_plot)
-        elif plot_type == constants.xtplot:
+        elif plot_type == 'xtplot':
             _single_xt_plot(config, field_to_plot)
-        elif plot_type == constants.txplot:
+        elif plot_type == 'txplot':
             _single_tx_plot(config, field_to_plot)
-        elif plot_type == constants.xyplot:
+        elif plot_type == 'xyplot':
             _single_xy_plot(config, field_to_plot, level)
-        elif plot_type == constants.polarplot:
+        elif plot_type == 'polarplot':
             _single_polar_plot(config, field_to_plot)
-        elif plot_type == constants.scplot:
+        elif plot_type == 'scplot':
             _single_scat_plot(config, field_to_plot)
         else:
             logger.error(f'{plot_type} is not implemented')

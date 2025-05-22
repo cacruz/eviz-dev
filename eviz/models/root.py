@@ -6,7 +6,6 @@ import matplotlib.pyplot as plt
 
 from eviz.lib.autoviz.plotter import SimplePlotter, ComparisonPlotter, SinglePlotter
 import eviz.lib.utils as u
-from eviz.lib import const as constants
 from eviz.lib.config.config_manager import ConfigManager
 from eviz.models.base import AbstractRoot
 logging.getLogger('matplotlib.font_manager').setLevel(logging.WARNING)
@@ -28,7 +27,7 @@ class Root(AbstractRoot):
 
     def __post_init__(self):
         self.logger.info("Start init")
-
+        self.config = self.config_manager.config
         self.app = self.config_manager.app_data
         self.specs = self.config_manager.spec_data
 
@@ -91,7 +90,7 @@ class Root(AbstractRoot):
                     if entry:
                         output_dirs.append(entry)
             if not output_dirs:
-                output_dirs = [constants.output_path]
+                output_dirs = [self.config.paths.output_path]
 
             unique_dirs = set(output_dirs)
             for dir_path in unique_dirs:

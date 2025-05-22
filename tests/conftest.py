@@ -1,12 +1,12 @@
 """
 Pytest fixtures for the Eviz tests.
 """
+import xarray as xr
+import numpy as np
+import yaml
 import os
 import pytest
-import numpy as np
-import xarray as xr
 import tempfile
-import yaml
 from eviz.lib.config.config import Config
 from eviz.lib.config.config_manager import ConfigManager
 from eviz.lib.config.input_config import InputConfig
@@ -19,7 +19,7 @@ from eviz.lib.data.pipeline.processor import DataProcessor
 from eviz.lib.data.pipeline.transformer import DataTransformer
 from eviz.lib.data.pipeline.integrator import DataIntegrator
 from eviz.lib.data.sources import DataSource
-import eviz.lib.const as constants
+import eviz.lib.constants as constants
 from tests.fixtures.mock_airmass import create_mock_airmass_dataset
 
 

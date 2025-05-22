@@ -1,6 +1,7 @@
-import pytest
+import yaml
 import numpy as np
 import xarray as xr
+import pytest
 from unittest.mock import MagicMock, patch
 from eviz.lib.data.sources.netcdf import NetCDFDataSource
 

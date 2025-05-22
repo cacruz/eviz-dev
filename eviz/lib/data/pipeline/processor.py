@@ -9,7 +9,7 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from eviz.lib.config.config_manager import ConfigManager
 from eviz.lib.data.utils import get_dst_attribute
-from eviz.lib import const as constants
+from eviz.lib import constants as constants
 from eviz.lib.data.sources import DataSource
 
 logger = logging.getLogger(__name__)

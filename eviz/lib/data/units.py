@@ -5,7 +5,7 @@ import numpy as np
 import requests
 import logging
 import os
-from eviz.lib import const as constants
+from eviz.lib import constants as constants
 import eviz.lib.utils as u
 from eviz.lib.data.pipeline.processor import DataProcessor
 
@@ -18,7 +18,7 @@ Some functions are adopted from GCpy - with minor modifications
 """
 
 AVOGADRO = constants.AVOGADRO
-MOLAR_MASS_AIR = constants.MW_AIR_kg
+MOLAR_MASS_AIR = constants.MW_AIR_KG
 DU_CONVERSION = 2.6867e16  # molecules/cm² for 1 DU
 PPB_CONVERSION = 1e9
 
@@ -111,7 +111,7 @@ def calculate_total_area(field):
     Returns:
         float: The total area over which the data array is defined.
     """
-    R = constants.R_EARTH_m
+    R = constants.R_EARTH_M
 
     # Calculate the latitudinal and longitudinal spacing
     # Assumes 'lat' and 'lon' dim names!

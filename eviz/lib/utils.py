@@ -11,8 +11,8 @@ from typing import Any, Dict, List
 from yaml import SafeLoader
 from datetime import timedelta
 from matplotlib.transforms import BboxBase as bbase
+from eviz.lib.config.paths_config import PathsConfig
 
-from . import const as constants
 
 logger = logging.getLogger(__name__)
 path_matcher = re.compile(r'\$\{([^}^{]+)\}')
@@ -280,38 +280,46 @@ def log_method(func):
 # Domain-Specific Utilities
 # ------------------------------
 
-def read_species_db() -> dict:
+def read_species_db(paths=None) -> dict:
     """Read species database YAML file and load into data structure."""
+    if paths is None:
+        paths = PathsConfig()
     root_path = os.path.dirname(os.path.abspath('const.py'))
-    db_path = constants.species_db_path
+    db_path = paths.species_db_path
     if not os.path.exists(db_path):
-        db_path = os.path.join(root_path, constants.species_db_path)
+        db_path = os.path.join(root_path, paths.species_db_path)
     return load_yaml(db_path)
 
-def read_meta_coords() -> dict:
+def read_meta_coords(paths=None) -> dict:
     """ Read meta coordinates YAML file and load into data structure"""
+    if paths is None:
+        paths = PathsConfig()
+    coord_file_path = paths.meta_coords_path
     root_path = os.path.dirname(os.path.abspath('const.py'))
-    coord_file_path = constants.meta_coords_path
     if not os.path.exists(coord_file_path):
-        coord_file_path = os.path.join(root_path, constants.meta_coords_path)
+        coord_file_path = os.path.join(root_path, paths.meta_coords_path)
     return load_yaml(coord_file_path)
 
 
-def read_meta_attrs() -> dict:
+def read_meta_attrs(paths=None) -> dict:
     """ Read meta attributes YAML file and load into data structure"""
+    if paths is None:
+        paths = PathsConfig()
     root_path = os.path.dirname(os.path.abspath('const.py'))
-    attr_file_path = constants.meta_attrs_path
+    attr_file_path = paths.meta_attrs_path
     if not os.path.exists(attr_file_path):
-        attr_file_path = os.path.join(root_path, constants.meta_attrs_path)
+        attr_file_path = os.path.join(root_path, paths.meta_attrs_path)
     return load_yaml(attr_file_path)
 
 
-def read_species_db() -> dict:
+def read_species_db(paths=None) -> dict:
     """ Read species database YAML file and load into data structure"""
+    if paths is None:
+        paths = PathsConfig()
     root_path = os.path.dirname(os.path.abspath('const.py'))
-    db_path = constants.species_db_path
+    db_path = paths.species_db_path
     if not os.path.exists(db_path):
-        db_path = os.path.join(root_path, constants.species_db_path)
+        db_path = os.path.join(root_path, paths.species_db_path)
     return load_yaml(db_path)
 
 
