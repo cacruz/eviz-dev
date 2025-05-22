@@ -1,7 +1,7 @@
 from dataclasses import dataclass, field
 import logging
 import os
-from typing import Optional, List
+from typing import Optional, List, Dict, Any
 import eviz.lib.utils as u
 from eviz.lib.config.config import Config
 from eviz.lib.config.input_config import InputConfig
@@ -27,30 +27,18 @@ class ConfigManager:
     It also maintains references to key application components like the data processing pipeline.
     
     Attributes:
-        All attributes from Config class, plus:
-        args: Command-line arguments passed to the application
-        compare: Flag indicating if comparison mode is active
-        compare_diff: Flag indicating if difference comparison mode is active
-        compare_exp_ids: List of experiment IDs for comparison
+        input_config: Configuration for input data sources and parameters
+        output_config: Configuration for output settings and file generation
+        system_config: Configuration for system-level settings
+        history_config: Configuration for tracking history and versioning
+        config: Base configuration object containing shared settings
         a_list: List of indices for the first set of comparison items
         b_list: List of indices for the second set of comparison items
-        findex: Current file index being processed
-        pindex: Current plot index being processed
-        axindex: Current axis index being processed
-        level: Current vertical level being processed
-        time_level: Current time level being processed
-        real_time: Human-readable representation of the current time
-        pipeline: Reference to the data processing pipeline
-        
-    Methods:
-        initialize: Complete the initialization process after construction
-        get_model_dim_name: Map standard dimension names to model-specific names
-        get_dim_names: Get dimension names for a specific plot type
-        get_levels: Get level information for a specific field and plot type
-        
-    Note:
-        This class is designed to be instantiated once and used throughout the application
-        as the single source of configuration information.
+        _findex: Current file index being processed
+        _ds_index: Current data source index being processed
+        _units: Reference to the units conversion system (lazy loaded)
+        _integrator: Reference to the data integrator (lazy loaded)
+        _pipeline: Reference to the data processing pipeline (lazy loaded)
     """
     # Required fields first
     input_config: InputConfig
@@ -62,8 +50,8 @@ class ConfigManager:
     # Fields with default values
     a_list: List[int] = field(default_factory=list)
     b_list: List[int] = field(default_factory=list)
-    _findex: int = 0  # Use underscore to avoid name conflicts
-    _ds_index: int = 0  # Use underscore to avoid name conflicts
+    _findex: int = 0
+    _ds_index: int = 0
 
     # Fields not included in __init__
     _units: Optional[object] = field(default=None, init=False)
@@ -71,51 +59,60 @@ class ConfigManager:
     _pipeline: Optional[DataPipeline] = field(default=None, init=False)
         
     def __post_init__(self):
-        self.logger.info("Start init")
+        """Initialize the ConfigManager after construction."""
+        self.logger.info("Starting ConfigManager initialization")
         self.setup_comparison()
 
     @property
+    def logger(self):
+        """Return the logger for this class."""
+        return logging.getLogger(__name__)
+
+    @property
     def paths(self):
+        """Access to paths configuration."""
         return self.config.paths
 
     @property
     def app_data(self):
+        """Access to application data."""
         return self.config.app_data
 
     @property
     def spec_data(self):
+        """Access to specification data."""
         return self.config.spec_data
     
     @property
     def source_names(self):
+        """Access to source names."""
         return self.config.source_names
 
     @property
     def ds_index(self):
-        # Return the local value, not delegating to config
+        """Get the current data source index."""
         return self._ds_index
 
     @ds_index.setter
     def ds_index(self, value):
+        """Set the data source index and update config if needed."""
         self._ds_index = value
-        # Optionally also update config if needed
+        # Also update config if it has the attribute
         if hasattr(self.config, '_ds_index'):
             self.config._ds_index = value
 
     @property
     def findex(self):
+        """Get the current file index."""
         return self._findex
 
     @findex.setter
     def findex(self, value):
+        """Set the file index and update config if needed."""
         self._findex = value
-        # Optionally also update config if needed
+        # Also update config if it has the attribute
         if hasattr(self.config, '_findex'):
-            self.config._findex = value    
-    @property
-    def logger(self):
-        """Return the logger for this class."""
-        return logging.getLogger(__name__)
+            self.config._findex = value
 
     @property
     def integrator(self):
@@ -143,7 +140,7 @@ class ConfigManager:
             self._pipeline = DataPipeline(self)
         return self._pipeline
 
-    def to_dict(self) -> dict:
+    def to_dict(self) -> Dict[str, Any]:
         """Return a dictionary representation of all configuration objects."""
         return {
             "input_config": self.input_config.to_dict(),
@@ -157,16 +154,29 @@ class ConfigManager:
 
     def __getattr__(self, name):
         """
-        Dynamically access attributes from the underlying config objects or the Config object.
+        Dynamically access attributes from the underlying config objects.
+        
+        This method is called only when an attribute is not found through normal lookup.
+        It searches for the attribute in the config objects in a specific order.
+        
+        Args:
+            name: The name of the attribute to look up
+            
+        Returns:
+            The value of the attribute if found
+            
+        Raises:
+            AttributeError: If the attribute is not found in any config object
         """
         # Check if the attribute exists in this instance directly
-        # (This is needed to avoid recursion for attributes like a_list and b_list)
         if name in self.__dict__:
             return self.__dict__[name]
 
+        # Check in config first
         if hasattr(self.config, name):
             return getattr(self.config, name)
 
+        # Then check in other config objects
         for config in [self.input_config, self.output_config, self.system_config, self.history_config]:
             if hasattr(config, name):
                 return getattr(config, name)
@@ -191,14 +201,18 @@ class ConfigManager:
         Get the model-specific dimension name.
 
         Args:
-            dim_name: Gridded dimension name
+            dim_name (str): Gridded dimension name
 
         Returns:
             str or None: Model-specific dimension name if available
         """
+        if self.ds_index >= len(self.source_names):
+            self.logger.debug(f"ds_index {self.ds_index} out of bounds for source_names {self.source_names}")
+            return None
+            
         source = self.source_names[self.ds_index]
         
-        if source not in self.meta_coords.get(dim_name, {}):
+        if dim_name not in self.meta_coords or source not in self.meta_coords.get(dim_name, {}):
             self.logger.debug(f"No meta_coords mapping for dimension '{dim_name}' and source '{source}'")
             return None
 
@@ -208,40 +222,92 @@ class ConfigManager:
              self.logger.debug(f"Found direct mapping for '{dim_name}' in source '{source}': '{coords}'")
              return coords
 
-        coord_candidates = coords.split(',') if isinstance(coords, str) else [coords.get('dim')] if isinstance(coords, dict) and 'dim' in coords else []
+        coord_candidates = []
+        if isinstance(coords, str):
+            coord_candidates = coords.split(',')
+        elif isinstance(coords, dict) and 'dim' in coords:
+            coord_candidates = [coords.get('dim')]
 
-        file_path = None
+        file_path = self._get_current_file_path(source)
+        if not file_path:
+            return None
+
+        data_source = self._get_data_source_for_file(file_path)
+        if not data_source:
+            return None
+            
+        available_dims = self._get_available_dimensions(data_source)
+        if not available_dims:
+            return None
+            
+        self.logger.debug(f"Coordinate candidates for '{dim_name}': {coord_candidates}")
+        for coord in coord_candidates:
+            if coord and coord in available_dims:
+                self.logger.debug(f"Found matching coordinate: {coord}")
+                return coord
+                
+        return None
+        
+    def _get_current_file_path(self, source):
+        """
+        Get the file path for the current file index or source name.
+        
+        Args:
+            source (str): The source name to look for if file index is invalid
+            
+        Returns:
+            str or None: The file path if found, None otherwise
+        """
         try:
-            # Assuming app_data.inputs is a list of dictionaries
             if self.findex is not None and self.findex < len(self.app_data.inputs):
-                 file_entry = self.app_data.inputs[self.findex]
-                 file_path = os.path.join(file_entry.get('location', ''), file_entry.get('name', ''))
+                file_entry = self.app_data.inputs[self.findex]
+                return os.path.join(file_entry.get('location', ''), file_entry.get('name', ''))
         except Exception as e:
             self.logger.debug(f"Could not get file path for ds_index {self.ds_index}, findex {self.findex}: {e}")
-            for entry in self.app_data.inputs:
-                if entry.get('source_name') == source:
-                    file_path = os.path.join(entry.get('location', ''), entry.get('name', ''))
-                    break
-
-        if file_path:
-            data_source = self.pipeline.get_data_source(file_path)
-
-            if data_source and hasattr(data_source, 'dataset') and data_source.dataset is not None:
-                available_dims = list(data_source.dataset.dims.keys())
-                self.logger.debug(f"Available dimensions in dataset for {file_path}: {available_dims}")
-
-                self.logger.debug(f"Coordinate candidates for '{dim_name}': {coord_candidates}")
-                for coord in coord_candidates:
-                    if coord and coord in available_dims:
-                        self.logger.debug(f"Found matching coordinate: {coord}")
-                        return coord
-                return None
-            else:
-                 self.logger.debug(f"No data source or dataset loaded for file: {file_path}")
-                 return None
-        else:
-            self.logger.debug(f"Could not determine file path for source '{source}' and findex {self.findex}")
-            return None 
+            
+        # Fallback to searching by source name
+        for entry in self.app_data.inputs:
+            if entry.get('source_name') == source:
+                return os.path.join(entry.get('location', ''), entry.get('name', ''))
+                
+        self.logger.debug(f"Could not determine file path for source '{source}' and findex {self.findex}")
+        return None
+        
+    def _get_data_source_for_file(self, file_path):
+        """
+        Get the data source for a file path.
+        
+        Args:
+            file_path (str): The file path to get the data source for
+            
+        Returns:
+            object or None: The data source if found, None otherwise
+        """
+        if not file_path or not self.pipeline:
+            return None
+            
+        data_source = self.pipeline.get_data_source(file_path)
+        if not data_source or not hasattr(data_source, 'dataset') or data_source.dataset is None:
+            self.logger.debug(f"No data source or dataset loaded for file: {file_path}")
+            return None
+            
+        return data_source
+        
+    def _get_available_dimensions(self, data_source):
+        """
+        Get the available dimensions from a data source.
+        
+        Args:
+            data_source (object): The data source to get dimensions from
+            
+        Returns:
+            list or None: The list of available dimensions if found, None otherwise
+        """
+        if not data_source or not hasattr(data_source, 'dataset') or data_source.dataset is None:
+            return None
+            
+        available_dims = list(data_source.dataset.dims.keys())
+        return available_dims
         
     def setup_comparison(self):
         """
@@ -281,30 +347,48 @@ class ConfigManager:
         Get the file index associated with the filename.
 
         Args:
-            filename: The exact filename to search for
+            filename (str): The exact filename to search for
 
         Returns:
             int: Index of the file in app_data.inputs, or 0 if not found
         """
+        if not filename:
+            self.logger.warning("Empty filename provided, returning 0")
+            return 0
+            
         for i, entry in enumerate(self.app_data.inputs):
-            # Use exact matching or path-aware matching
-            # Ensure 'filename' key exists before accessing
-            if 'filename' in entry and (filename == entry['filename'] or os.path.basename(filename) == os.path.basename(entry['filename'])):
+            # Check if 'filename' key exists before accessing
+            if 'filename' in entry and (filename == entry['filename'] or 
+                                       os.path.basename(filename) == os.path.basename(entry['filename'])):
                 return i
+                
         self.logger.warning(f"File index not found for filename: {filename}, returning 0")
         return 0
 
-
     def get_levels(self, to_plot, plot_type):
-        """ Get model levels to plot from YAML specs file"""
+        """
+        Get model levels to plot from YAML specs file.
+        
+        Args:
+            to_plot (str): The field to plot
+            plot_type (str): The type of plot
+            
+        Returns:
+            list: The levels to plot, or an empty list if not found
+        """
         levels = u.get_nested_key_value(self.spec_data, [to_plot, plot_type, 'levels'])
-        if not levels:
-            return []
-        else:
-            return levels
+        return levels if levels else []
 
     def get_file_description(self, file):
-        """ Get user-defined file description (default: None)"""
+        """
+        Get user-defined file description.
+        
+        Args:
+            file (int or str): The file index or name
+            
+        Returns:
+            str or None: The file description if found, None otherwise
+        """
         try:
             return self.input_config.file_list[file]['description']
         except (KeyError, IndexError, TypeError) as e:
@@ -312,25 +396,49 @@ class ConfigManager:
             return None
 
     def get_file_exp_name(self, i):
-        """ Get user-defined experiment name associated with the input file (default None)"""
+        """
+        Get user-defined experiment name associated with the input file.
+        
+        Args:
+            i (int): The file index
+            
+        Returns:
+            str or None: The experiment name if found, None otherwise
+        """
         try:
             return self.input_config.file_list[i]['exp_name']
         except Exception as e:
-            self.logger.debug(f'key error {e}, returning default')
+            self.logger.debug(f'Key error {e}, returning default')
             return None
 
     def get_file_exp_id(self, i):
-        """ Get user-defined experiment ID associated with the input file (default None)
-        If an expid is set, then it will be used to compare with another expid, as set in compare field
+        """
+        Get user-defined experiment ID associated with the input file.
+        If an expid is set, then it will be used to compare with another expid, as set in compare field.
+        
+        Args:
+            i (int): The file index
+            
+        Returns:
+            str or None: The experiment ID if found, None otherwise
         """
         try:
             return self.input_config.file_list[i]['exp_id']
         except Exception as e:
-            self.logger.debug(f'key error {e}, returning default')
+            self.logger.debug(f'Key error {e}, returning default')
             return None
 
     @staticmethod
     def get_dim_names(pid):
+        """
+        Get dimension names for a specific plot type.
+        
+        Args:
+            pid (str): The plot ID
+            
+        Returns:
+            tuple: A tuple of (dim1, dim2) dimension names
+        """
         dim1, dim2 = None, None
         if 'yz' in pid:
             dim1, dim2 = 'lat', 'lev'
@@ -342,217 +450,228 @@ class ConfigManager:
             dim1, dim2 = 'lon', 'lat'
         return dim1, dim2
 
-
     def get_model_attr_name(self, attr_name):
-        """ Get model-specific attribute name associated with the source as defined
-            in meta_attributes.yaml
         """
-        if self.ds_index < len(self.source_names):
-            source = self.source_names[self.ds_index]
-            if attr_name in self.meta_attrs and source in self.meta_attrs[attr_name]:
-                return self.meta_attrs[attr_name][source]
-            else:
-                self.logger.debug(f"No meta_attrs mapping for attribute '{attr_name}' and source '{source}'")
-                return None
-        else:
+        Get model-specific attribute name associated with the source as defined
+        in meta_attributes.yaml.
+        
+        Args:
+            attr_name (str): The attribute name to look up
+            
+        Returns:
+            str or None: The model-specific attribute name, or None if not found
+        """
+        if self.ds_index >= len(self.source_names):
             self.logger.debug(f"ds_index {self.ds_index} out of bounds for source_names {self.source_names}")
             return None
+            
+        source = self.source_names[self.ds_index]
+        if attr_name in self.meta_attrs and source in self.meta_attrs[attr_name]:
+            return self.meta_attrs[attr_name][source]
+        else:
+            self.logger.debug(f"No meta_attrs mapping for attribute '{attr_name}' and source '{source}'")
+            return None
 
-
-    """Expose Config object attributes"""
-    @property
-    def app_data(self):
-        return self.config.app_data
-
-    @property
-    def spec_data(self):
-        return self.config.spec_data
-
+    # Properties that delegate to config objects
+    # These are defined explicitly to provide better documentation and type hints
+    
     @property
     def map_params(self):
+        """Access to map parameters."""
         return self.config.map_params
 
     @property
-    def source_names(self):
-        return self.config.source_names
-
-    @property
     def compare(self):
+        """Flag indicating if comparison mode is active."""
         return self.input_config._compare
 
     @property
     def compare_diff(self):
+        """Flag indicating if difference comparison mode is active."""
         return self.input_config._compare_diff
 
     @property
     def extra_diff_plot(self):
+        """Flag indicating if extra difference plots should be generated."""
         return self.input_config._extra_diff_plot
 
     @property
     def cmap(self):
+        """The colormap to use for plotting."""
         return self.input_config._cmap
 
     @property
     def use_cartopy(self):
+        """Flag indicating if cartopy should be used for plotting."""
         return self.input_config._use_cartopy
 
     @property
     def have_specs_yaml_file(self):
+        """Flag indicating if a specs YAML file exists."""
         return self.config._specs_yaml_exists
 
     @property
-    def ds_index(self):
-        # Access ds_index from the config object
-        return self.config._ds_index
-
-    @ds_index.setter
-    def ds_index(self, value):
-        # Set ds_index on the config object
-        self.config._ds_index = value
-
-    @property
-    def findex(self):
-        # Access findex from the config object
-        return self.config._findex
-
-    @findex.setter
-    def findex(self, value):
-        # Set findex on the config object
-        self.config._findex = value
-
-
-    @property
     def meta_coords(self):
+        """Access to metadata for coordinate systems."""
         return self.config.meta_coords
 
     @property
     def meta_attrs(self):
+        """Access to metadata for attributes."""
         return self.config.meta_attrs
 
     @property
     def species_db(self):
+        """Access to the database of chemical species information."""
         return self.config.species_db
 
     @property
     def trop_height_file_list(self):
+        """Access to the list of tropopause height files."""
         return self.input_config._trop_height_file_list
 
     @property
     def sphum_conv_file_list(self):
+        """Access to the list of specific humidity conversion files."""
         return self.input_config._sphum_conv_file_list
 
     @property
     def use_trop_height(self):
+        """Flag indicating if tropopause height should be used."""
         return self.input_config._use_trop_height
 
     @use_trop_height.setter
     def use_trop_height(self, value):
+        """Set the use_trop_height flag."""
         self.input_config._use_trop_height = value
 
     @property
     def use_sphum_conv(self):
+        """Flag indicating if specific humidity conversion should be used."""
         return self.input_config._use_sphum_conv
 
     @property
     def add_logo(self):
-        # This attribute seems to be missing in the provided code, defaulting to False
+        """Flag indicating if a logo should be added to plots."""
         return getattr(self.config, '_add_logo', False)
 
     @property
     def print_to_file(self):
+        """Flag indicating if output should be printed to a file."""
         return self.input_config._print_to_file
 
     @property
     def output_dir(self):
+        """The directory to write output files to."""
         return self.input_config._output_dir
 
     @property
     def print_format(self):
+        """The format to use for printing output."""
         return self.input_config._print_format
 
     @property
     def make_gif(self):
+        """Flag indicating if GIFs should be generated."""
         return self.input_config._make_gif
 
     @property
     def gif_fps(self):
+        """The frames per second to use for GIFs."""
         return self.input_config._gif_fps
 
     @property
     def make_pdf(self):
+        """Flag indicating if PDFs should be generated."""
         return self.input_config._make_pdf
 
     @property
     def mpl_style(self):
+        """The matplotlib style to use for plotting."""
         return self.input_config._mpl_style
 
     @property
     def print_basic_stats(self):
+        """Flag indicating if basic statistics should be printed."""
         return self.input_config._print_basic_stats
 
     @property
     def use_mp_pool(self):
+        """Flag indicating if multiprocessing should be used."""
         return self.input_config._use_mp_pool
 
     @property
     def archive_web_results(self):
+        """Flag indicating if web results should be archived."""
         return self.input_config._archive_web_results
 
     @property
     def to_plot(self):
+        """The fields to plot."""
         return self.input_config._to_plot
 
     @property
     def compare_exp_ids(self):
+        """The experiment IDs to compare."""
         return self.input_config._compare_exp_ids
 
-    # Added properties for pindex, axindex, ax_opts, level, time_level, real_time
-    # These seem to be state variables used during plotting, better managed elsewhere
-    # but keeping them for now to match the original code's usage pattern.
+    # State variables used during plotting
     @property
     def pindex(self):
+        """The current plot index."""
         return getattr(self.config, '_pindex', 0)
 
     @pindex.setter
     def pindex(self, value):
+        """Set the current plot index."""
         self.config._pindex = value
 
     @property
     def axindex(self):
+        """The current axis index."""
         return getattr(self.config, '_axindex', 0)
 
     @axindex.setter
     def axindex(self, value):
+        """Set the current axis index."""
         self.config._axindex = value
 
     @property
     def ax_opts(self):
+        """The current axis options."""
         return getattr(self.config, '_ax_opts', {})
 
     @ax_opts.setter
     def ax_opts(self, value):
+        """Set the current axis options."""
         self.config._ax_opts = value
 
     @property
     def level(self):
+        """The current vertical level."""
         return getattr(self.config, '_level', None)
 
     @level.setter
     def level(self, value):
+        """Set the current vertical level."""
         self.config._level = value
 
     @property
     def time_level(self):
+        """The current time level."""
         return getattr(self.config, '_time_level', 0)
 
     @time_level.setter
     def time_level(self, value):
+        """Set the current time level."""
         self.config._time_level = value
 
     @property
     def real_time(self):
+        """The human-readable representation of the current time."""
         return getattr(self.config, '_real_time', None)
 
     @real_time.setter
     def real_time(self, value):
+        """Set the human-readable representation of the current time."""
         self.config._real_time = value
