@@ -58,9 +58,29 @@ class NetCDFDataSource(DataSource):
                 self.logger.debug(f"Loaded single NetCDF file: {files[0]}")
             elif len(files) > 1:
                 self._setup_dask_client()
-                # dataset = xr.open_mfdataset(files, decode_cf=True, combine="by_coords", parallel=True, chunks={})
-                dataset = xr.open_mfdataset(files, combine="nested", concat_dim="time", decode_cf=True, parallel=True)
-                self.logger.debug(f"Loaded multiple NetCDF files: {files}")
+
+                # Possible optimization for large datasets:
+                vars_to_keep = set()
+                for entry in self.config_manager.app_data.inputs:
+                    if 'to_plot' in entry:
+                        vars_to_keep.update(entry['to_plot'].keys())
+                self.logger.info(f"Variables to keep: {vars_to_keep}")        
+                def drop_unneeded_vars(ds):
+                    available = set(ds.data_vars)
+                    keep = [v for v in vars_to_keep if v in available]
+                    return ds[keep]
+                dataset = xr.open_mfdataset(
+                    files,
+                    decode_cf=True,
+                    combine="by_coords",
+                    parallel=True,
+                    preprocess=drop_unneeded_vars
+                )
+
+                # No-op:
+                # dataset = xr.open_mfdataset(file_path, decode_cf=True, engine='netcdf4')
+                # self.logger.debug(f"Loaded multiple NetCDF files: {files}")
+
             else:
                 raise FileNotFoundError(f"No files found for pattern: {file_path}")
 
