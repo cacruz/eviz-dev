@@ -29,10 +29,9 @@ def mock_config():
         "attr1": {"source1": "attribute1", "source2": "attribute2"}
     }
     config._specs_yaml_exists = True
-    # Add missing attributes expected by tests
     config._ds_index = 0
     config._findex = 0
-    config.map_params = {}  # Add map_params
+    config.map_params = {} 
     return config
 
 
@@ -107,13 +106,13 @@ class TestConfigManager:
             
             # First access should create the pipeline
             pipeline = config_manager.pipeline
-            assert pipeline is mock_pipeline_instance # Use 'is' for mock instances
+            assert pipeline is mock_pipeline_instance 
             mock_pipeline.assert_called_once_with(config_manager)
             
             # Second access should use the cached instance
             mock_pipeline.reset_mock()
             pipeline_cached = config_manager.pipeline # Assign to a different variable
-            assert pipeline_cached is mock_pipeline_instance # Use 'is' for mock instances
+            assert pipeline_cached is mock_pipeline_instance 
             mock_pipeline.assert_not_called()
             
     def test_to_dict(self, config_manager):
@@ -137,21 +136,15 @@ class TestConfigManager:
         
     def test_getattr_delegation(self, config_manager):
         """Test the __getattr__ method for attribute delegation."""
-        # Set up test attributes
         config_manager.config.test_attr = "config_value"
         config_manager.input_config.test_attr_input = "input_value"
         config_manager.output_config.test_attr_output = "output_value"
         
-        # Test delegation to config
         assert config_manager.test_attr == "config_value"
-        
-        # Test delegation to input_config
         assert config_manager.test_attr_input == "input_value"
-        
-        # Test delegation to output_config
+
         assert config_manager.test_attr_output == "output_value"
-        
-        # Test attribute error for non-existent attribute
+
         with pytest.raises(AttributeError):
             _ = config_manager.non_existent_attr
             

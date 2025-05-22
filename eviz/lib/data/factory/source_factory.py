@@ -30,7 +30,7 @@ class DataSourceFactory:
     def _register_default_data_sources(self) -> None:
         """Register the default data source implementations."""
         self.registry.register(['nc', 'nc4', 'netcdf', 'netcdf4', 'opendap', 'dods', 'dap'], NetCDFDataSource)
-        self.registry.register(['h5', 'hdf5', 'hdf'], HDF5DataSource)
+        self.registry.register(['h5', 'he5', 'hdf5', 'hdf'], HDF5DataSource)
         self.registry.register(['csv', 'dat', 'txt'], CSVDataSource)
         self.registry.register(['grib', 'grib2'], GRIBDataSource)
     

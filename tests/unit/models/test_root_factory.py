@@ -7,7 +7,6 @@ from unittest.mock import MagicMock
 
 # List of factories that are known to produce abstract classes
 ABSTRACT_FACTORIES = {
-    "OmiFactory",
     "MopittFactory",
     "LandsatFactory",
     "FluxnetFactory",
