@@ -35,18 +35,6 @@ class Figure(mfigure.Figure):
         *,
         nrows=None,
         ncols=None,
-        refnum=None,
-        ref=None,
-        refaspect=None,
-        aspect=None,
-        refwidth=None,
-        refheight=None,
-        axwidth=None,
-        axheight=None,
-        figwidth=None,
-        figheight=None,
-        width=None,
-        height=None,
         **kwargs,
     ):
         """
@@ -619,17 +607,10 @@ class Figure(mfigure.Figure):
     def _plot_text(self, field_name, ax, pid, level=None, data=None, **kwargs):
         """Add text to a single axes."""
         fontsize = kwargs.get('fontsize', pu.subplot_title_font_size(self._subplots))
-        ha = kwargs.get('horizontalalignment', 'center')
-        va = kwargs.get('verticalalignment', 'center')
         loc = kwargs.get('location', 'left')
-        transform = kwargs.get('transform', ax.transAxes)
-        x_pos = kwargs.get('x_pos', 0.5)  # Default x position
-        y_pos = kwargs.get('y_pos', 1.1)  # Default y position       
 
         findex = self.config_manager.findex
         sname = self.config_manager.config.map_params[findex]['source_name']
-        ds_index = self.config_manager.ds_index
-        # ds_index = self.config_manager.config.map_params[findex]['source_index']
         geom = pu.get_subplot_geometry(ax) if self.config_manager.compare or self.config_manager.compare_diff else None
 
         # Handle plot titles for comparison cases
@@ -638,7 +619,7 @@ class Figure(mfigure.Figure):
                 if geom[1:] == (0, 1, 1, 1):  # Bottom plot
                     title_string = "Difference (top - middle)"
                 elif geom[1:] in [(1, 1, 0, 1), (0, 1, 0, 1)]:  # Top/Middle plots
-                    title_string = self._set_axes_title(ax, findex)
+                    title_string = self._set_axes_title(findex)
             elif self._subplots == (2, 2):  # (2,2) subplot structure
                 if geom[1:] == (0, 1, 1, 0):
                     title_string = "Difference (left - right)"
@@ -653,9 +634,9 @@ class Figure(mfigure.Figure):
                         diff_type, ("Difference (left - right)", None))
                     self._ax_opts['line_contours'] = False
                 else:  # Default case
-                    title_string = self._set_axes_title(ax, findex)
+                    title_string = self._set_axes_title(findex)
             elif geom and (geom[0] == (1, 2) or geom[0] == (1, 3)):
-                title_string = self._set_axes_title(ax, findex)
+                title_string = self._set_axes_title(findex)
             else:  # Default title for comparison
                 title_string = 'Placeholder'
             ax.set_title(title_string, loc=loc, fontsize=fontsize)
@@ -669,7 +650,7 @@ class Figure(mfigure.Figure):
         bottom, height = 0, 1.0
         right = left + width
         top = bottom + height
-        title_string = self._set_axes_title(ax, findex)
+        title_string = self._set_axes_title(findex)
 
         if 'yz' in pid:
             if self.config_manager.print_basic_stats:
@@ -747,7 +728,7 @@ class Figure(mfigure.Figure):
                     verticalalignment=kwargs.get('va', 'center'),
                     transform=ax.transAxes)
         
-    def _set_axes_title(self, ax, findex):
+    def _set_axes_title(self, findex):
         if self.config_manager.get_file_description(findex):
             return self.config_manager.get_file_description(findex)
         elif self.config_manager.get_file_exp_name(findex):

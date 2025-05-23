@@ -94,13 +94,6 @@ class YAMLParser:
             elif not isinstance(compare_diff_ids, list):
                 compare_diff_ids = []
 
-            compare_flag = len(compare_ids) > 0
-            compare_diff_flag = len(compare_diff_ids) > 0
-            
-            compare_dir = None
-            if compare_flag or compare_diff_flag:
-                compare_dir = os.path.join(os.path.dirname(current_outputs.get('output_dir', '')), 'comparisons')
-
             for i, input_entry in enumerate(current_inputs):
                 filename = os.path.join(input_entry.get('location', ''), input_entry.get('name', ''))
                 exp_id = input_entry.get('exp_id', '')
@@ -171,7 +164,6 @@ class YAMLParser:
             process_input_dict(input_dict)
 
         self._map_params = _maps
-
 
     @property
     def map_params(self) -> Dict[int, Dict[str, Any]]:

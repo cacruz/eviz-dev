@@ -116,7 +116,6 @@ class Airnow(Root):
         self.config_manager.level = None
         time_level_config = self.config_manager.ax_opts.get('time_lev', 0)
 
-        ax = figure.get_axes()
         field_to_plot = self._get_field_to_plot(data_array, field_name, file_index,
                                                 plot_type, figure,
                                                 time_level=time_level_config)
@@ -152,7 +151,6 @@ class Airnow(Root):
         return data2d, data2d[dim1].values, data2d[dim2].values, field_name, plot_type, file_index, figure, ax
         
     def _get_field_for_simple_plot(self, field_name, plot_type):
-        name = self.config_manager.source_names[self.config_manager.ds_index]
         dim1, dim2 = self.config_manager.get_dim_names(plot_type)
         d = self.source_data[field_name]
 
