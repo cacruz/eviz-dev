@@ -8,9 +8,6 @@ from eviz.lib.autoviz.plotter import (
     _create_clevs,
     _time_series_plot,
     _determine_axes_shape,
-    _select_axes,
-    _simple_sc_plot,
-    _simple_xy_plot
 )
 
 
@@ -38,8 +35,6 @@ def mock_config_manager():
         'is_diff_field': False, # for _select_axes
         'add_extra_field_type': False, # for _select_axes
         'use_diff_cmap': 'coolwarm_r', # for _plot_xy_data via _single_xy_plot
-        'cmap_set_under': None,
-        'cmap_set_over': None,
     }
     mock.source_names = ['gridded']
     mock.ds_index = 0
@@ -110,7 +105,7 @@ def test_data_2d():
     fig.subplots = (1, 1)
     fig.EVIZ_LOGO = 'dummy_logo_path' # For pu.add_logo_fig
 
-    return (data, x_np, y_np, 'test_field', 'xy', 0, fig, ax)
+    return data, x_np, y_np, 'test_field', 'xy', 0, fig, ax
 
 @pytest.fixture
 def simple_plot_data():
