@@ -64,163 +64,22 @@ class Lis(NuWrf):
                 field_to_plot = self._get_field_for_simple_plot(field_name, pt)
                 plotter.simple_plot(self.config_manager, field_to_plot)
             field_num += 1
-
-
-    def _single_plots(self, plotter):
-        for s in range(len(self.config_manager.source_names)):
-            map_params = self.config_manager.map_params
-            field_num = 0
-            for i in map_params.keys():
-                source_name = map_params[i]['source_name']
-                if source_name == self.config_manager.source_names[s]:
-                    field_name = map_params[i]['field']
-                    self.source_name = source_name
-                    filename = map_params[i]['filename']
-                    file_index = field_num  # self.config_manager.get_file_index(filename)
-
-                    # Get the appropriate reader
-                    reader = self._get_reader(source_name)
-                    if not reader:
-                        self.logger.error(f"No reader found for source {source_name}")
-                        continue
-                        
-                    self.source_data = reader.read_data(filename)
-                    if not self.source_data:
-                        self.logger.error(f"Failed to read data from {filename}")
-                        continue
-
-                    self._global_attrs = self.source_data['attrs']
-                    self.config_manager.findex = file_index
-                    self.config_manager.pindex = field_num
-                    self.config_manager.axindex = 0
-                    for pt in map_params[i]['to_plot']:
-                        self.logger.info(f"Plotting {field_name}, {pt} plot")
-                        figure = Figure(self.config_manager, pt)
-                        self.config_manager.ax_opts = figure.init_ax_opts(field_name)
-                        time_level = self.config_manager.ax_opts['time_lev']
-                        d = self.source_data['vars'][field_name]
-                        
-                        # Get the time dimension name - try several common variants
-                        time_dim = None
-                        for dim_name in ['time', 'Time', 't', 'T']:
-                            if dim_name in d.dims:
-                                time_dim = dim_name
-                                break
-                        
-                        # If no time dimension found, create a dummy
-                        if time_dim is None:
-                            self.logger.warning(f"No time dimension found in {field_name}")
-                            num_times = 1
-                        else:
-                            num_times = d.dims[time_dim] if time_level == 'all' else 1
-                        
-                        time_levels = range(num_times)
-
-                        # vertical levels (soil moisture or soil temperature)
-                        levels = self.config_manager.get_levels(field_name, pt + 'plot')
-
-                        if not levels:
-                            self.logger.warning(f' -> No levels specified for {field_name}')
-                            for t in time_levels:
-                                self.config_manager.time_level = t
-                                
-                                # Get time value safely
-                                real_time = self._get_time_value(d, t, time_dim)
-                                
-                                # Convert time to a readable format
-                                try:
-                                    real_time_readable = pd.to_datetime(real_time).strftime('%Y-%m-%d %H')
-                                except:
-                                    real_time_readable = f"Time step {t}"
-                                    
-                                self.config_manager.real_time = real_time_readable
-                                
-                                field_to_plot = self._get_field_to_plot(field_name, file_index, pt, figure)
-                                plotter.single_plots(self.config_manager, field_to_plot=field_to_plot)
-                                print_map(self.config_manager, pt, self.config_manager.findex, figure)
-                        else:
-                            for level in levels:
-                                self.logger.info(f' -> Processing {num_times} time levels')
-                                for t in time_levels:
-                                    self.config_manager.time_level = t
-                                    
-                                    # Get time value safely
-                                    real_time = self._get_time_value(d, t, time_dim)
-                                    
-                                    # Convert time to a readable format
-                                    try:
-                                        real_time_readable = pd.to_datetime(real_time).strftime('%Y-%m-%d %H')
-                                    except:
-                                        real_time_readable = f"Time step {t}"
-                                        
-                                    self.config_manager.real_time = real_time_readable
-                                    
-                                    field_to_plot = self._get_field_to_plot(field_name, file_index, pt, figure, level=level)
-                                    plotter.single_plots(self.config_manager, field_to_plot=field_to_plot, level=level)
-                                    print_map(self.config_manager, pt, self.config_manager.findex, figure, level=level)
-
-                    field_num += 1
-
-    def _get_time_value(self, data_array, time_index, time_dim=None):
-        """
-        Get the time value for the given index.
         
-        Args:
-            data_array: The data array containing time values
-            time_index: The index to extract
-            time_dim: The name of the time dimension
-            
-        Returns:
-            The time value or a default timestamp if unavailable
-        """
-        # If no time dimension, return a default timestamp
-        if time_dim is None:
-            return pd.Timestamp('2000-01-01')
-        
-        # Try different approaches to get the time value
-        try:
-            # First try: Check if there's a time coordinate with the time_dim
-            if time_dim in data_array.coords:
-                return data_array.coords[time_dim].values[time_index]
-            
-            # Second try: Check for a time variable attribute
-            if hasattr(data_array, 'time') and hasattr(data_array.time, 'isel'):
-                return data_array.time.isel({time_dim: time_index}).values
-            
-            # Third try: Check for time-related variables in source_data
-            for var_name in ['time', 'Time', 'times', 'Times']:
-                if var_name in self.source_data['vars']:
-                    time_var = self.source_data['vars'][var_name]
-                    if time_dim in time_var.dims:
-                        return time_var.isel({time_dim: time_index}).values
-            
-            # Last resort: create a dummy timestamp
-            return pd.Timestamp('2000-01-01') + pd.Timedelta(days=time_index)
-        
-        except Exception as e:
-            self.logger.warning(f"Error getting time value: {e}")
-            return pd.Timestamp('2000-01-01') + pd.Timedelta(days=time_index)
-        
-    def _get_field_to_plot(self, field_name, file_index, plot_type, figure, level=None):
+    def _get_field_to_plot(self, field_name, file_index, plot_type, figure, time_level, level=None):
         ax = figure.get_axes()
         self.config_manager.ax_opts = figure.init_ax_opts(field_name)
         data2d = None
         d = self.source_data['vars'][field_name]
         
-        # Get the time level from config
-        time_lev = self.config_manager.time_level if hasattr(self.config_manager, 'time_level') else 0
-        
         if 'xt' in plot_type:
-            data2d = self._get_xt(d, field_name, time_lev=self.ax_opts['time_lev'])
+            data2d = self._get_xt(d, field_name, time_lev=time_level)
         elif 'xy' in plot_type:
             # Pass all required arguments to _get_xy
-            data2d = self._get_xy(d, level=level,
-                        time_lev=self.config_manager.ax_opts.get('time_lev',
-                                                                0))
+            data2d = self._get_xy(d, level=level, time_lev=time_level)
         else:
             pass
 
-        xs, ys, extent, central_lon, central_lat = None, None, [], 0.0, 0.0
+        xs, ys = None, None
         if 'xt' in plot_type or 'tx' in plot_type:
             return data2d, None, None, field_name, plot_type, file_index, figure, ax
         else:
@@ -283,7 +142,6 @@ class Lis(NuWrf):
                 ys[i] = ys[i - 1] + self._global_attrs["DY"] / 1000.0 / 100.0
 
             return data2d, xs, ys, field_name, plot_type
-
 
     def _calculate_diff(self, name1, name2, ax_opts):
         """ Helper method for get_diff_data """

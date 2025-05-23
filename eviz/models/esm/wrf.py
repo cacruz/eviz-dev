@@ -8,8 +8,6 @@ import warnings
 from matplotlib import pyplot as plt
 from eviz.lib.data.utils import apply_mean
 from eviz.lib.data.utils import apply_conversion
-from eviz.lib.autoviz.figure import Figure
-from eviz.lib.autoviz.utils import print_map, create_gif
 from eviz.models.esm.nuwrf import NuWrf
 
 warnings.filterwarnings("ignore")
@@ -94,155 +92,6 @@ class Wrf(NuWrf):
                 plotter.simple_plot(self.config_manager, field_to_plot)
             field_num += 1
 
-    def _single_plots(self, plotter):
-        for s in range(len(self.config_manager.source_names)):
-            map_params = self.config_manager.map_params
-            field_num = 0
-            for i in map_params.keys():
-                source_name = map_params[i]['source_name']
-                if source_name == self.config_manager.source_names[s]:
-                    field_name = map_params[i]['field']
-                    self.source_name = source_name
-                    filename = map_params[i]['filename']
-                    file_index = field_num
-                    
-                    # Get the appropriate reader
-                    reader = self._get_reader(source_name)
-                    if not reader:
-                        self.logger.error(f"No reader found for source {source_name}")
-                        continue
-                        
-                    self.source_data = reader.read_data(filename)
-                    if not self.source_data:
-                        self.logger.error(f"Failed to read data from {filename}")
-                        continue
-                        
-                    self._global_attrs = self.source_data['attrs']
-                    if not self.p_top:
-                        self._init_domain()
-
-                    self.config_manager.findex = file_index
-                    self.config_manager.pindex = field_num
-                    self.config_manager.axindex = 0
-                    
-                    for pt in map_params[i]['to_plot']:
-                        self.logger.info(f"Plotting {field_name}, {pt} plot")
-                        
-                        # CREATE TEMPORARY FIGURE TO GET AX_OPTS (including time_lev setting)
-                        temp_figure = Figure(self.config_manager, pt)
-                        self.config_manager.ax_opts = temp_figure.init_ax_opts(field_name)
-                        
-                        d = self.source_data['vars'][field_name]
-
-                        # Get the time dimension name - WRF uses 'Time', not 'time'
-                        time_dim = 'Time' if 'Time' in d.dims else 'time'
-                        time_level = self.config_manager.ax_opts.get('time_lev', 0)  # NOW this will work
-                        
-                        # Determine if we're dealing with multiple time levels
-                        if time_level == 'all':
-                            if time_dim in d.dims:
-                                num_times = d.sizes[time_dim]
-                                time_levels = range(num_times)
-                            else:
-                                num_times = 1
-                                time_levels = [0]
-                        else:  # single time level
-                            num_times = 1
-                            time_levels = [time_level]
-
-                        # Check if this is a multi-subplot scenario (comparison, multi-level, etc.)
-                        is_comparison = getattr(self.config_manager, 'compare', False) or getattr(self.config_manager, 'compare_diff', False)
-                        
-                        if 'xy' in pt:
-                            levels = self.config_manager.get_levels(field_name, pt + 'plot')
-                            if not levels:
-                                self.logger.warning(f' -> No levels specified for {field_name}')
-                                continue
-                                
-                            # For XY plots, we might have multiple levels on the same figure
-                            is_multi_level = len(levels) > 1 and not is_comparison
-                            
-                            for level in levels:
-                                self.logger.info(f' -> Processing {len(time_levels)} time levels for level {level}')
-                                
-                                # Create figure strategy:
-                                # - New figure for each time level (to avoid overlapping)
-                                # - BUT reuse figure for multi-subplot scenarios within the same time
-                                for t in time_levels:
-                                    # Always create a new figure for each time level
-                                    figure = Figure(self.config_manager, pt)
-                                    self.config_manager.ax_opts = figure.init_ax_opts(field_name)
-                                    
-                                    self.config_manager.time_level = t
-                                    
-                                    # Handle WRF time variable
-                                    real_time_readable = self._get_time_string(d, time_dim, t)
-                                    self.config_manager.real_time = real_time_readable
-                                    
-                                    # For comparison plots, we need to handle multiple datasets on the same figure
-                                    if is_comparison:
-                                        # This would require more complex logic to handle multiple datasets
-                                        # For now, process normally but be aware this might need special handling
-                                        pass
-                                    
-                                    field_to_plot = self._get_field_to_plot_wrf(
-                                        field_name, file_index, pt, figure, t, level=level
-                                    )
-                                    plotter.single_plots(self.config_manager, field_to_plot=field_to_plot, level=level)
-                                    print_map(self.config_manager, pt, self.config_manager.findex, figure, level=level)
-                                    
-                                    # Close the figure to free memory
-                                    plt.close(figure)
-                                    
-                        else:  # Non-XY plots
-                            for t in time_levels:
-                                # Create new figure for each time level
-                                figure = Figure(self.config_manager, pt)
-                                self.config_manager.ax_opts = figure.init_ax_opts(field_name)
-                                
-                                self.config_manager.time_level = t
-                                real_time_readable = self._get_time_string(d, time_dim, t)
-                                self.config_manager.real_time = real_time_readable
-                                
-                                field_to_plot = self._get_field_to_plot_wrf(
-                                    field_name, file_index, pt, figure, t, level=None
-                                )
-                                plotter.single_plots(self.config_manager, field_to_plot=field_to_plot)
-                                print_map(self.config_manager, pt, self.config_manager.findex, figure)
-                                
-                                # Close the figure to free memory
-                                plt.close(figure)
-                                
-                    field_num += 1
-        
-        if self.config_manager.make_gif:
-            create_gif(self.config_manager)
-
-
-    def _get_time_string(self, d, time_dim, t):
-        """Helper method to get readable time string"""
-        try:
-            if hasattr(d, 'XTIME'):
-                if time_dim in d.XTIME.dims:
-                    real_time = d.XTIME.isel({time_dim: t}).values
-                else:
-                    real_time = pd.Timestamp('2000-01-01')
-            else:
-                time_var = None
-                for var_name in ['Times', 'time', 'Time']:
-                    if var_name in self.source_data['vars']:
-                        time_var = self.source_data['vars'][var_name]
-                        break
-                if time_var is not None and time_dim in time_var.dims:
-                    real_time = time_var.isel({time_dim: t}).values
-                else:
-                    real_time = pd.Timestamp('2000-01-01')
-
-            return pd.to_datetime(real_time).strftime('%Y-%m-%d %H')
-        except Exception:
-            return f"Time step {t}"
-
-
     def _process_coordinates(self, data2d, dim1, dim2, field_name, plot_type, file_index, figure, ax):
         """
         Process coordinates for WRF plots
@@ -278,7 +127,7 @@ class Wrf(NuWrf):
             return data2d, xs, ys, field_name, plot_type, file_index, figure, ax
 
 
-    def _get_field_to_plot_wrf(self, field_name, file_index, plot_type, figure, time_level, level=None):
+    def _get_field_to_plot(self, field_name, file_index, plot_type, figure, time_level, level=None):
         ax = figure.get_axes()
         dim1, dim2 = self.coord_names(self.source_name, self.source_data,
                                          field_name, plot_type)

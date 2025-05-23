@@ -2,7 +2,10 @@ import logging
 import warnings
 from dataclasses import dataclass
 import pandas as pd
+from matplotlib import pyplot as plt
 from eviz.models.esm.gridded import Gridded
+from eviz.lib.autoviz.figure import Figure
+from eviz.lib.autoviz.utils import print_map, create_gif
 
 warnings.filterwarnings("ignore")
 
@@ -104,6 +107,152 @@ class NuWrf(Gridded):
                 plotter.simple_plot(self.config_manager, field_to_plot)
             field_num += 1
 
+    def _single_plots(self, plotter):
+        for s in range(len(self.config_manager.source_names)):
+            map_params = self.config_manager.map_params
+            field_num = 0
+            for i in map_params.keys():
+                source_name = map_params[i]['source_name']
+                if source_name == self.config_manager.source_names[s]:
+                    field_name = map_params[i]['field']
+                    self.source_name = source_name
+                    filename = map_params[i]['filename']
+                    file_index = field_num
+                    
+                    reader = self._get_reader(source_name)
+                    if not reader:
+                        self.logger.error(f"No reader found for source {source_name}")
+                        continue
+                        
+                    self.source_data = reader.read_data(filename)
+                    if not self.source_data:
+                        self.logger.error(f"Failed to read data from {filename}")
+                        continue
+                        
+                    self._global_attrs = self.source_data['attrs']
+                    if source_name == 'wrf':
+                        if not self.p_top:
+                            self._init_domain()
+
+                    self.config_manager.findex = file_index
+                    self.config_manager.pindex = field_num
+                    self.config_manager.axindex = 0
+                    
+                    for pt in map_params[i]['to_plot']:
+                        self.logger.info(f"Plotting {field_name}, {pt} plot")
+                        
+                        # Hack: create temporary figure to get ax_opts
+                        # TODO: refactor to avoid this
+                        temp_figure = Figure(self.config_manager, pt)
+                        self.config_manager.ax_opts = temp_figure.init_ax_opts(field_name)
+                        
+                        d = self.source_data['vars'][field_name]
+
+                        # Get the time dimension name - WRF uses 'Time', not 'time'
+                        time_dim = 'Time' if 'Time' in d.dims else 'time'
+                        time_level = self.config_manager.ax_opts.get('time_lev', 0)  # NOW this will work
+                        
+                        # Determine if we're dealing with multiple time levels
+                        if time_level == 'all':
+                            if time_dim in d.dims:
+                                num_times = d.sizes[time_dim]
+                                time_levels = range(num_times)
+                            else:
+                                num_times = 1
+                                time_levels = [0]
+                        else:  # single time level
+                            num_times = 1
+                            time_levels = [time_level]
+
+                        # Check if this is a multi-subplot scenario (comparison, multi-level, etc.)
+                        is_comparison = getattr(self.config_manager, 'compare', False) or getattr(self.config_manager, 'compare_diff', False)
+                        
+                        if 'xy' in pt:
+                            levels = self.config_manager.get_levels(field_name, pt + 'plot')
+                            if not levels:
+                                self.logger.warning(f' -> No levels specified for {field_name}')
+                                continue
+                                
+                            # For XY plots, we might have multiple levels on the same figure
+                            is_multi_level = len(levels) > 1 and not is_comparison
+                            
+                            for level in levels:
+                                self.logger.info(f' -> Processing {len(time_levels)} time levels for level {level}')
+                                
+                                # Create figure strategy:
+                                # - New figure for each time level (to avoid overlapping)
+                                # - BUT reuse figure for multi-subplot scenarios within the same time
+                                for t in time_levels:
+                                    # Always create a new figure for each time level
+                                    figure = Figure(self.config_manager, pt)
+                                    self.config_manager.ax_opts = figure.init_ax_opts(field_name)
+                                    
+                                    self.config_manager.time_level = t
+                                    
+                                    # Handle WRF time variable
+                                    real_time_readable = self._get_time_string(d, time_dim, t)
+                                    self.config_manager.real_time = real_time_readable
+                                    
+                                    field_to_plot = self._get_field_to_plot(
+                                        field_name, file_index, pt, figure, t, level=level
+                                    )
+                                    plotter.single_plots(self.config_manager, field_to_plot=field_to_plot, level=level)
+                                    print_map(self.config_manager, pt, self.config_manager.findex, figure, level=level)
+                                    
+                                    # Close the figure to free memory
+                                    plt.close(figure)
+                                    
+                        else:  # Non-XY plots
+                            for t in time_levels:
+                                # Create new figure for each time level
+                                figure = Figure(self.config_manager, pt)
+                                self.config_manager.ax_opts = figure.init_ax_opts(field_name)
+                                
+                                self.config_manager.time_level = t
+                                if source_name == 'wrf':
+                                    real_time_readable = self._get_time_string(d, time_dim, t)
+                                else:
+                                    real_time_readable = self._get_time_value(d, t, time_dim)
+                                self.config_manager.real_time = real_time_readable
+                                
+                                field_to_plot = self._get_field_to_plot(
+                                    field_name, file_index, pt, figure, t, level=None
+                                )
+                                plotter.single_plots(self.config_manager, field_to_plot=field_to_plot)
+                                print_map(self.config_manager, pt, self.config_manager.findex, figure)
+                                
+                                # Close the figure to free memory
+                                plt.close(figure)
+                                
+                    field_num += 1
+        
+        if self.config_manager.make_gif:
+            create_gif(self.config_manager)
+
+
+    def _get_time_string(self, d, time_dim, t):
+        """Helper method to get readable time string"""
+        try:
+            if hasattr(d, 'XTIME'):
+                if time_dim in d.XTIME.dims:
+                    real_time = d.XTIME.isel({time_dim: t}).values
+                else:
+                    real_time = pd.Timestamp('2000-01-01')
+            else:
+                time_var = None
+                for var_name in ['Times', 'time', 'Time']:
+                    if var_name in self.source_data['vars']:
+                        time_var = self.source_data['vars'][var_name]
+                        break
+                if time_var is not None and time_dim in time_var.dims:
+                    real_time = time_var.isel({time_dim: t}).values
+                else:
+                    real_time = pd.Timestamp('2000-01-01')
+
+            return pd.to_datetime(real_time).strftime('%Y-%m-%d %H')
+        except Exception:
+            return f"Time step {t}"
+
     def _get_time_value(self, data_array, time_index, time_dim=None):
         """
         Get the time value for the given index.
@@ -116,14 +265,7 @@ class NuWrf(Gridded):
         Returns:
             The time value or a default timestamp if unavailable
         """
-        # If no time dimension provided, try to find one
-        if time_dim is None:
-            for dim_name in ['time', 'Time', 't', 'T']:
-                if dim_name in data_array.dims:
-                    time_dim = dim_name
-                    break
-        
-        # If still no time dimension, return a default timestamp
+        # If no time dimension, return a default timestamp
         if time_dim is None:
             return pd.Timestamp('2000-01-01')
         
@@ -137,12 +279,7 @@ class NuWrf(Gridded):
             if hasattr(data_array, 'time') and hasattr(data_array.time, 'isel'):
                 return data_array.time.isel({time_dim: time_index}).values
             
-            # Third try: Check for WRF-specific time variables
-            if hasattr(data_array, 'XTIME'):
-                if time_dim in data_array.XTIME.dims:
-                    return data_array.XTIME.isel({time_dim: time_index}).values
-            
-            # Fourth try: Check for time-related variables in source_data
+            # Third try: Check for time-related variables in source_data
             for var_name in ['time', 'Time', 'times', 'Times']:
                 if var_name in self.source_data['vars']:
                     time_var = self.source_data['vars'][var_name]
@@ -155,7 +292,6 @@ class NuWrf(Gridded):
         except Exception as e:
             self.logger.warning(f"Error getting time value: {e}")
             return pd.Timestamp('2000-01-01') + pd.Timedelta(days=time_index)
-
 
     def _init_model_specific_data(self):
         """Hook for model-specific initialization. Override in subclasses."""
