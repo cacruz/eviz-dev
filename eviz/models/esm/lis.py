@@ -1,8 +1,6 @@
 import warnings
 from dataclasses import dataclass
-
 import numpy as np
-
 from eviz.lib.data.utils import apply_mean
 from eviz.lib.data.utils import apply_conversion
 from eviz.models.esm.nuwrf import NuWrf
@@ -20,35 +18,6 @@ class Lis(NuWrf):
         self.comparison_plot = False
         self.source_name = 'lis'
 
-    def _get_field_for_simple_plot(self, field_name, plot_type):
-        """LIS-specific simple plot field processing."""
-        data2d = None
-        d = self.source_data['vars'][field_name]
-        
-        # Default values for level and time_lev
-        level = 0
-        time_lev = 0
-        
-        if 'xt' in plot_type:
-            data2d = self._get_xt(d, field_name, time_lev=self.ax_opts['time_lev'])
-        elif 'tx' in plot_type:
-            data2d = self._get_tx(d, field_name, level=None, time_lev=self.ax_opts['time_lev'])
-        elif 'xy' in plot_type:
-            data2d = self._get_xy(d, field_name, level, time_lev)
-
-        xs, ys = None, None
-        if 'xt' in plot_type or 'tx' in plot_type:
-            return data2d, xs, ys, field_name, plot_type
-        else:
-            lon = self._get_field('east_west', data2d)
-            lat = self._get_field('north_south', data2d)
-            xs = np.array(lon)
-            ys = np.array(lat)
-            
-            # Handle NaN coordinates
-            self._fix_nan_coordinates(xs, ys)
-            return data2d, xs, ys, field_name, plot_type
-
     def _get_field_to_plot(self, field_name, file_index, plot_type, figure, time_level, level=None):
         """LIS-specific field processing."""
         ax = figure.get_axes()
@@ -61,7 +30,6 @@ class Lis(NuWrf):
         elif 'xy' in plot_type:
             data2d = self._get_xy(d, level=level, time_lev=time_level)
 
-        xs, ys = None, None
         if 'xt' in plot_type or 'tx' in plot_type:
             return data2d, None, None, field_name, plot_type, file_index, figure, ax
         else:
@@ -100,7 +68,6 @@ class Lis(NuWrf):
         data2d = None
         d = self.source_data['vars'][field_name]
         
-        # Default values for level and time_lev
         level = 0
         time_lev = 0
         
@@ -109,7 +76,6 @@ class Lis(NuWrf):
         elif 'tx' in plot_type:
             data2d = self._get_tx(d, field_name, level=None, time_lev=self.ax_opts['time_lev'])
         elif 'xy' in plot_type:
-            # Pass all required arguments to _get_xy
             data2d = self._get_xy(d, field_name, level, time_lev)
         else:
             pass

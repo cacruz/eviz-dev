@@ -58,7 +58,7 @@ def _simple_graph_plot(config: ConfigManager, data_to_plot: tuple) -> None:
     nx.draw_networkx_nodes(graph, pos, node_size=700, node_color='skyblue')
     nx.draw_networkx_labels(graph, pos, labels=nx.get_node_attributes(graph, 'name'))
 
-    edge_weights = [graph[u][v]['weight'] * 2 for u, v in graph.edges()]
+    edge_weights = [graph[p][q]['weight'] * 2 for p, q in graph.edges()]
     nx.draw_networkx_edges(graph, pos, width=edge_weights)
 
     edge_labels = nx.get_edge_attributes(graph, 'relationship')
@@ -83,7 +83,8 @@ def _simple_xy_plot_regional(config: ConfigManager, data_to_plot: tuple, level=0
     elif isinstance(dim1, xr.DataArray) and isinstance(dim2, xr.DataArray):
         cf = ax.contourf(dim1.values, dim2.values, data2d, cmap=config.cmap)
     else:
-        raise TypeError('dim1 and dim2 must be either numpy.ndarrays or xarray.DataArrays.')
+        raise TypeError(
+            'dim1 and dim2 must be either numpy.ndarrays or xarray.DataArrays.')
 
     cbar = fig.colorbar(cf, ax=ax,
                         orientation='vertical',
@@ -108,8 +109,10 @@ def _simple_yz_plot_regional(config: ConfigManager, data_to_plot: tuple):
 
     def _prof_plot(ax, data2d, ax_dims):
         if ax_dims[0] == 'zc':
-            y0 = data2d.coords[config.meta_coords['yc'][config.model_name](ax_dims[1])][0].values
-            y1 = data2d.coords[config.meta_coords['zc'][config.model_name](ax_dims[1])][-1].values
+            y0 = data2d.coords[config.meta_coords['yc'][config.model_name](ax_dims[1])][
+                0].values
+            y1 = data2d.coords[config.meta_coords['zc'][config.model_name](ax_dims[1])][
+                -1].values
             ax.plot(data2d, data2d.coords[config.meta_coords['yc'][config.model_name]])
             ax.set_ylim(y0, y1)
         elif ax_dims[0] == 'yc':
@@ -123,7 +126,8 @@ def _simple_yz_plot_regional(config: ConfigManager, data_to_plot: tuple):
 def _simple_sc_plot(config: ConfigManager, data_to_plot: tuple) -> None:
     """ Create a simple scatter plot """
     data2d, dim1, dim2, field_name, plot_type = data_to_plot
-    fig, ax = plt.subplots(nrows=1, ncols=1, subplot_kw=dict(projection=ccrs.PlateCarree()))
+    fig, ax = plt.subplots(nrows=1, ncols=1,
+                           subplot_kw=dict(projection=ccrs.PlateCarree()))
     scat = ax.scatter(dim1, dim2, c=data2d,
                       cmap='coolwarm', s=5,
                       transform=ccrs.PlateCarree())
@@ -161,10 +165,12 @@ def _simple_xy_plot(config: ConfigManager, data_to_plot: tuple) -> None:
     if data2d is None:
         return
     if dim1 is None or dim2 is None:
-        print(f"ERROR: dim1 or dim2 is None for field {field_name}, plot type {plot_type}")
+        print(
+            f"ERROR: dim1 or dim2 is None for field {field_name}, plot type {plot_type}")
         return
     cf = ax.contourf(dim1.values, dim2.values, shift_columns(data2d), cmap=config.cmap)
-    co = ax.contour(dim1.values, dim2.values, shift_columns(data2d), levels, linewidths=(1,), origin='lower')
+    co = ax.contour(dim1.values, dim2.values, shift_columns(data2d), levels,
+                    linewidths=(1,), origin='lower')
     ax.clabel(co, fmt='%2.1f', colors='w', fontsize=8)
     cbar = fig.colorbar(cf, ax=ax, orientation='vertical', pad=0.05, fraction=0.05)
 
@@ -210,10 +216,12 @@ def _simple_yz_plot(config: ConfigManager, data_to_plot: tuple) -> None:
     if data2d is None:
         return
     if dim1 is None or dim2 is None:
-        print(f"ERROR: dim1 or dim2 is None for field {field_name}, plot type {plot_type}")
+        print(
+            f"ERROR: dim1 or dim2 is None for field {field_name}, plot type {plot_type}")
         return
     cf = ax.contourf(dim1.values, dim2.values, data2d, cmap=config.cmap)
-    co = ax.contour(dim1.values, dim2.values, data2d, levels, linewidths=(1,), origin='lower')
+    co = ax.contour(dim1.values, dim2.values, data2d, levels, linewidths=(1,),
+                    origin='lower')
     ax.clabel(co, fmt='%2.1f', colors='w', fontsize=8)
     cbar = fig.colorbar(cf, ax=ax, orientation='vertical', pad=0.05, fraction=0.05)
     if 'field_name' in config.meta_attrs['field_name']:
@@ -275,7 +283,8 @@ def _single_scat_plot(config: ConfigManager, data_to_plot: tuple) -> None:
             # Only pass transform if using Cartopy GeoAxes
             ax.set_extent(extent, crs=ccrs.PlateCarree())
             ax.stock_img()
-            scat = ax.scatter(x, y, c=data2d, cmap=ax_opts['use_cmap'], s=5, transform=ccrs.PlateCarree())
+            scat = ax.scatter(x, y, c=data2d, cmap=ax_opts['use_cmap'], s=5,
+                              transform=ccrs.PlateCarree())
         else:
             scat = ax.scatter(x, y, c=data2d, cmap=ax_opts['use_cmap'], s=2)
 
@@ -350,14 +359,15 @@ def _single_xy_plot(config: ConfigManager, data_to_plot: tuple, level: int) -> N
         ax = ax_temp
     if data2d is None:
         return
-    
+
     ax_opts = fig.update_ax_opts(field_name, ax, 'xy', level=level)
     fig.plot_text(field_name, ax, 'xy', level=level, data=data2d)
 
     # Handle single axes or list of axes
     if isinstance(ax, list):
         for single_ax in ax:
-            _plot_xy_data(config, single_ax, data2d, x, y, field_name, fig, ax_opts, level,
+            _plot_xy_data(config, single_ax, data2d, x, y, field_name, fig, ax_opts,
+                          level,
                           plot_type, findex)
     else:
         _plot_xy_data(config, ax, data2d, x, y, field_name, fig, ax_opts, level,
@@ -374,7 +384,7 @@ def _plot_xy_data(config, ax, data2d, x, y, field_name, fig, ax_opts, level,
             extent = ax_opts['extent']
     else:
         extent = [-180, 180, -90, 90]
-        
+
     if 'fill_value' in config.spec_data[field_name]['xyplot']:
         fill_value = config.spec_data[field_name]['xyplot']['fill_value']
         data2d = data2d.where(data2d != fill_value, np.nan)
@@ -389,7 +399,8 @@ def _plot_xy_data(config, ax, data2d, x, y, field_name, fig, ax_opts, level,
     if fig.use_cartopy and is_cartopy_axis:
         # Only pass transform if using Cartopy GeoAxes
         ax.set_extent(extent, crs=ccrs.PlateCarree())
-        cfilled = _filled_contours(config, field_name, ax, x, y, data2d, transform=ccrs.PlateCarree())
+        cfilled = _filled_contours(config, field_name, ax, x, y, data2d,
+                                   transform=ccrs.PlateCarree())
     else:
         cfilled = _filled_contours(config, field_name, ax, x, y, data2d)
 
@@ -403,7 +414,7 @@ def _plot_xy_data(config, ax, data2d, x, y, field_name, fig, ax_opts, level,
         name = field_name
         if 'name' in config.spec_data[field_name]:
             name = config.spec_data[field_name]['name']
-        
+
         level_text = None
         if config.ax_opts.get('zave', False):
             level_text = ' (Column Mean)'
@@ -444,11 +455,11 @@ def _single_yz_plot(config: ConfigManager, data_to_plot: tuple) -> None:
         data_to_plot (tuple) : dict with plotted data and specs
     """
     data2d, x, y, field_name, plot_type, findex, fig, ax_temp = data_to_plot
-    
+
     zc = config.get_model_dim_name('zc')
     vertical_coord = None
     vertical_units = 'n.a.'
-    
+
     if isinstance(zc, dict):
         for dim_name in data2d.coords:
             if 'lev' in dim_name or 'z' in dim_name or 'height' in dim_name:
@@ -468,7 +479,7 @@ def _single_yz_plot(config: ConfigManager, data_to_plot: tuple) -> None:
                 if dim_name in data2d.coords:
                     vertical_coord = data2d.coords[dim_name]
                     break
-    
+
     # If we found a vertical coordinate, get its units
     if vertical_coord is not None:
         vertical_units = vertical_coord.attrs.get('units', 'n.a.')
@@ -497,13 +508,14 @@ def _single_yz_plot(config: ConfigManager, data_to_plot: tuple) -> None:
 
     if data2d is None:
         return
-    
+
     ax_opts = fig.update_ax_opts(field_name, ax, 'yz')
     fig.plot_text(field_name, ax, 'yz', level=None, data=data2d)
     # Handle single axes or list of axes
     if isinstance(ax, list):
         for single_ax in ax:
-            _plot_yz_data(config, single_ax, data2d, x, y, field_name, fig, ax_opts, vertical_units,
+            _plot_yz_data(config, single_ax, data2d, x, y, field_name, fig, ax_opts,
+                          vertical_units,
                           plot_type, findex)
     else:
         _plot_yz_data(config, ax, data2d, x, y, field_name, fig, ax_opts, vertical_units,
@@ -536,7 +548,8 @@ def _plot_yz_data(config, ax, data2d, x, y, field_name, fig, ax_opts, vertical_u
                 units = "n.a."
         if dep_var == 'zc':
             ax.set_xlabel(units)
-            ax.set_ylabel("Pressure (" + vertical_units + ")", size=pu.axes_label_font_size(fig.subplots))
+            ax.set_ylabel("Pressure (" + vertical_units + ")",
+                          size=pu.axes_label_font_size(fig.subplots))
 
     else:
         cfilled = _filled_contours(config, field_name, ax, x, y, data2d)
@@ -583,7 +596,7 @@ def _plot_yz_data(config, ax, data2d, x, y, field_name, fig, ax_opts, vertical_u
                     else:
                         # direct access
                         reader = config.readers[source_name]
-                
+
                 if reader and hasattr(reader, 'datasets'):
                     if findex in reader.datasets and 'vars' in reader.datasets[findex]:
                         var_attrs = reader.datasets[findex]['vars'][field_name].attrs
@@ -601,7 +614,7 @@ def _plot_yz_data(config, ax, data2d, x, y, field_name, fig, ax_opts, vertical_u
         except Exception as e:
             logger.warning(f"Error getting field name: {e}")
             name = field_name
-            
+
         plt.suptitle(
             name, fontweight='bold',
             fontstyle='italic',
@@ -619,10 +632,11 @@ def _set_ax_ranges(config, field_name, fig, ax, ax_opts, y, units):
         if y.min() <= 1000.0:
             y_ranges = np.append(y_ranges, np.array([70, 50, 30, 20, 10]) * 100)
         if y.min() <= 20.:
-            y_ranges = np.append(y_ranges, np.array([7, 5, 3, 2, 1, .7, .5, .3, .2, .1]) * 100)
+            y_ranges = np.append(y_ranges,
+                                 np.array([7, 5, 3, 2, 1, .7, .5, .3, .2, .1]) * 100)
         if y_ranges[-1] != y.min():
             y_ranges = np.append(y_ranges, y.min())
-    else:   # TODO hPa (mb) only?, do we need meters?
+    else:  # TODO hPa (mb) only?, do we need meters?
         if y.min() <= 10.0:
             y_ranges = np.append(y_ranges, np.array([70, 50, 30, 20, 10]))
         if y.min() <= 0.2:
@@ -638,7 +652,8 @@ def _set_ax_ranges(config, field_name, fig, ax, ax_opts, y, units):
             lo_z = config.spec_data[field_name]['yzplot']['zrange'][0]
             hi_z = config.spec_data[field_name]['yzplot']['zrange'][1]
             if hi_z >= lo_z:
-                logger.error(f"Upper level value ({hi_z}) must be less than low level value ({lo_z})")
+                logger.error(
+                    f"Upper level value ({hi_z}) must be less than low level value ({lo_z})")
                 return None
 
     # These can be defined for global or regional models. We let the respective model
@@ -696,9 +711,9 @@ def z_masked_overlap(axe, X, Y, Z, source_projection=None):
     if len(X.shape) != 2 or len(Y.shape) != 2:
         return X, Y, Z
     if (source_projection is not None and
-        isinstance(source_projection, ccrs.Geodetic)):
+            isinstance(source_projection, ccrs.Geodetic)):
         transformed_pts = axe.projection.transform_points(
-                                   source_projection, X, Y)
+            source_projection, X, Y)
         ptx, pty = transformed_pts[..., 0], transformed_pts[..., 1]
     else:
         ptx, pty = X, Y
@@ -706,14 +721,14 @@ def z_masked_overlap(axe, X, Y, Z, source_projection=None):
     with np.errstate(invalid='ignore'):
         # diagonals have one less row and one less columns
         diagonal0_lengths = np.hypot(
-                               ptx[1:, 1:] - ptx[:-1, :-1],
-                               pty[1:, 1:] - pty[:-1, :-1])
+            ptx[1:, 1:] - ptx[:-1, :-1],
+            pty[1:, 1:] - pty[:-1, :-1])
         diagonal1_lengths = np.hypot(
-                               ptx[1:, :-1] - ptx[:-1, 1:],
-                               pty[1:, :-1] - pty[:-1, 1:])
+            ptx[1:, :-1] - ptx[:-1, 1:],
+            pty[1:, :-1] - pty[:-1, 1:])
         to_mask = ((diagonal0_lengths > (
-                       abs(axe.projection.x_limits[1]
-                           - axe.projection.x_limits[0])) / 2) |
+            abs(axe.projection.x_limits[1]
+                - axe.projection.x_limits[0])) / 2) |
                    np.isnan(diagonal0_lengths) |
                    (diagonal1_lengths > (
                        abs(axe.projection.x_limits[1]
@@ -722,7 +737,7 @@ def z_masked_overlap(axe, X, Y, Z, source_projection=None):
         # TODO check if we need to do something about surrounding vertices
         # add one extra colum and row for contour and contourf
         if (to_mask.shape[0] == Z.shape[0] - 1 and
-            to_mask.shape[1] == Z.shape[1] - 1):
+                to_mask.shape[1] == Z.shape[1] - 1):
             to_mask_extended = np.zeros(Z.shape, dtype=bool)
             to_mask_extended[:-1, :-1] = to_mask
             to_mask_extended[-1, :] = to_mask_extended[-2, :]
@@ -748,7 +763,7 @@ def _single_polar_plot(config: ConfigManager, data_to_plot: tuple) -> None:
     if data2d is None:
         return
     ax_opts = config.ax_opts
-    
+
     ax = ax_temp
     axes_shape = fig.get_gs_geometry()
     if axes_shape == (3, 1):
@@ -766,11 +781,12 @@ def _single_polar_plot(config: ConfigManager, data_to_plot: tuple) -> None:
         extent_lat = -60  # Southern limit for South Polar plot
     else:
         projection = ccrs.NorthPolarStereo()
-        extent_lat = 60   # Northern limit for North Polar plot
-    
+        extent_lat = 60  # Northern limit for North Polar plot
+
     ax = fig.add_subplot(1, 1, 1, projection=projection)
 
-    ax.set_extent([-180, 180, extent_lat, 90 if ax_opts['use_pole'] == 'north' else -90], ccrs.PlateCarree())
+    ax.set_extent([-180, 180, extent_lat, 90 if ax_opts['use_pole'] == 'north' else -90],
+                  ccrs.PlateCarree())
     if ax_opts['boundary']:
         theta = np.linspace(0, 2 * np.pi, 100)
         center = [0.5, 0.5]
@@ -788,15 +804,15 @@ def _single_polar_plot(config: ConfigManager, data_to_plot: tuple) -> None:
     norm = colors.BoundaryNorm(ax_opts['clevs'], ncolors=256, clip=False)
 
     trans = ccrs.PlateCarree()
-    
+
     try:
         # contourf
         pcm = ax.contourf(x, y, data2d,
-                        cmap=ax_opts['use_cmap'],
-                        levels=clevs,
-                        transform=trans,
-                        extend=extend_value,
-                        norm=norm)
+                          cmap=ax_opts['use_cmap'],
+                          levels=clevs,
+                          transform=trans,
+                          extend=extend_value,
+                          norm=norm)
 
         plot_success = True
     except Exception as e:
@@ -804,7 +820,7 @@ def _single_polar_plot(config: ConfigManager, data_to_plot: tuple) -> None:
         try:
             pcm = ax.imshow(
                 data2d,
-                extent=[-180, 180, -90 if ax_opts['use_pole'] == 'south' else 0, 
+                extent=[-180, 180, -90 if ax_opts['use_pole'] == 'south' else 0,
                         0 if ax_opts['use_pole'] == 'south' else 90],
                 transform=ccrs.PlateCarree(),
                 cmap=ax_opts['use_cmap'],
@@ -821,20 +837,20 @@ def _single_polar_plot(config: ConfigManager, data_to_plot: tuple) -> None:
 
     if ax_opts['line_contours']:
         clines = ax.contour(x, y, data2d,
-                                levels=ax_opts['clevs'], colors="black",
-                                linewidths=0.5, alpha=0.5, linestyles='solid',
-                                transform=trans)
+                            levels=ax_opts['clevs'], colors="black",
+                            linewidths=0.5, alpha=0.5, linestyles='solid',
+                            transform=trans)
         ax.clabel(clines, inline=1, fontsize=8,
-                      inline_spacing=10, colors="black",
-                      rightside_up=True,  # fmt=contour_format,
-                      use_clabeltext=True)
+                  inline_spacing=10, colors="black",
+                  rightside_up=True,  # fmt=contour_format,
+                  use_clabeltext=True)
     else:
         _ = ax.contour(x, y, data2d, linewidths=0.0)
 
     ax.add_feature(cfeature.BORDERS, zorder=10, linewidth=0.5, edgecolor='grey')
     ax.add_feature(cfeature.LAKES, alpha=0.9)
     ax.add_feature(cfeature.LAND, color='silver', zorder=1, facecolor=0.9)
-    ax.add_feature(cfeature.COASTLINE, zorder=10, linewidth=0.5)      
+    ax.add_feature(cfeature.COASTLINE, zorder=10, linewidth=0.5)
     ax.add_feature(cfeature.OCEAN, color='lightblue', zorder=0)
 
     cbar = plt.colorbar(pcm, ax=ax, shrink=0.5, pad=0.05)
@@ -855,14 +871,16 @@ def _single_polar_plot(config: ConfigManager, data_to_plot: tuple) -> None:
     cbar.set_label(label=cbar_label, size=12, weight='bold')
 
     if ax_opts['add_grid']:
-        _ = ax.gridlines(draw_labels=False, linewidth=0.5, color='gray', alpha=0.75, linestyle='--')
+        _ = ax.gridlines(draw_labels=False, linewidth=0.5, color='gray', alpha=0.75,
+                         linestyle='--')
 
     if 'name' in config.spec_data[field_name]:
-        ax.set_title(config.spec_data[field_name]['name'], y=1.03, fontsize=14, weight='bold')
+        ax.set_title(config.spec_data[field_name]['name'], y=1.03, fontsize=14,
+                     weight='bold')
     else:
         ax.set_title(source_name, y=1.03, fontsize=14, weight='bold')
 
- 
+
 def _single_xt_plot(config: ConfigManager, data_to_plot: tuple) -> None:
     """ Create a single xt (time-series) plot using SPECS data
 
@@ -876,7 +894,7 @@ def _single_xt_plot(config: ConfigManager, data_to_plot: tuple) -> None:
     """
     data2d, _, _, field_name, plot_type, findex, fig, ax_temp = data_to_plot
     ax_opts = config.ax_opts
-    
+
     # Handle different axes configurations
     if isinstance(ax_temp, list):
         if len(ax_temp) == 3:
@@ -893,7 +911,7 @@ def _single_xt_plot(config: ConfigManager, data_to_plot: tuple) -> None:
 
     if data2d is None:
         return
-        
+
     ax_opts = fig.update_ax_opts(field_name, ax, 'xt', level=0)
     fig.plot_text(field_name, ax, 'xt', data=data2d)
 
@@ -911,13 +929,13 @@ def _time_series_plot(config, ax, ax_opts, fig, data2d, field_name, findex):
 
         try:
             tc_dim = config.get_model_dim_name('tc')
-            
+
             if tc_dim is None or tc_dim not in data2d.coords:
                 for time_dim in ['time', 't', 'TIME', 'Time']:
                     if time_dim in data2d.coords:
                         tc_dim = time_dim
                         break
-            
+
             if tc_dim and tc_dim in data2d.coords:
                 time_coords = data2d.coords[tc_dim].values
             else:
@@ -925,7 +943,7 @@ def _time_series_plot(config, ax, ax_opts, fig, data2d, field_name, findex):
                     time_coords = data2d[data2d.dims[0]].values
                 else:
                     time_coords = np.arange(len(data2d))
-                    
+
             # Handle cftime objects
             if isinstance(time_coords[0], cftime._cftime.DatetimeNoLeap):
                 try:
@@ -934,7 +952,7 @@ def _time_series_plot(config, ax, ax_opts, fig, data2d, field_name, findex):
                 except Exception as e:
                     logger.warning(f"Error converting cftime to pandas datetime: {e}")
                     time_coords = np.arange(len(data2d))
-                    
+
         except Exception as e:
             logger.warning(f"Error getting time coordinates: {e}")
             time_coords = np.arange(len(data2d))
@@ -947,8 +965,8 @@ def _time_series_plot(config, ax, ax_opts, fig, data2d, field_name, findex):
             if config.spec_data[field_name]['xtplot']['mean_type'] == 'rolling':
                 if 'window_size' in config.spec_data[field_name]['xtplot']:
                     window_size = config.spec_data[field_name]['xtplot']['window_size']
-                    
-        if window_size > 0 and len(data2d) > 2*window_size:
+
+        if window_size > 0 and len(data2d) > 2 * window_size:
             end_idx = max(0, len(time_coords) - window_size - 1)
             ax.plot(time_coords[window_size:end_idx], data2d[window_size:end_idx])
         else:
@@ -959,10 +977,11 @@ def _time_series_plot(config, ax, ax_opts, fig, data2d, field_name, findex):
             if config.spec_data[field_name]['xtplot']['add_trend']:
                 try:
                     if isinstance(t0, (pd.Timestamp, np.datetime64)):
-                        time_numeric = (time_coords - t0).astype('timedelta64[D]').astype(float)
+                        time_numeric = (time_coords - t0).astype('timedelta64[D]').astype(
+                            float)
                     else:
                         time_numeric = np.arange(len(time_coords))
-                        
+
                     errors = []
                     if 'trend_polyfit' in config.spec_data[field_name]['xtplot']:
                         degree = config.spec_data[field_name]['xtplot']['trend_polyfit']
@@ -984,7 +1003,7 @@ def _time_series_plot(config, ax, ax_opts, fig, data2d, field_name, findex):
         ax.yaxis.set_minor_locator(mticker.AutoMinorLocator(5))
         fig.autofmt_xdate()
         ax.set_xlim(t0, t1)
-        
+
         try:
             davg = 0.5 * (abs(dmin - dmax))
             ax.set_ylim([dmin - davg, dmax + davg])
@@ -993,16 +1012,17 @@ def _time_series_plot(config, ax, ax_opts, fig, data2d, field_name, findex):
 
         try:
             source_name = config.source_names[config.ds_index]
-            
+
             if 'units' in config.spec_data[field_name]:
                 units = config.spec_data[field_name]['units']
             else:
                 units = getattr(data2d, 'units', None)
-                
+
                 if not units:
                     reader = config.get_primary_reader(source_name)
                     if reader and hasattr(reader, 'datasets'):
-                        if findex in reader.datasets and 'vars' in reader.datasets[findex]:
+                        if findex in reader.datasets and 'vars' in reader.datasets[
+                            findex]:
                             field_var = reader.datasets[findex]['vars'].get(field_name)
                             if field_var:
                                 units = getattr(field_var, 'units', 'n.a.')
@@ -1028,6 +1048,7 @@ def _time_series_plot(config, ax, ax_opts, fig, data2d, field_name, findex):
 
         if ax_opts['add_grid']:
             ax.grid()
+
 
 def _single_prof_plot(config, data2d, fig, ax, ax_opts, ax_dims) -> None:
     """ Create a single prof (vertical profile) plot using SPECS data"""
@@ -1062,6 +1083,7 @@ def _single_prof_plot(config, data2d, fig, ax, ax_opts, ax_dims) -> None:
     if ax_opts['add_grid']:
         ax.grid()
 
+
 def _single_tx_plot(config: ConfigManager, data_to_plot: tuple) -> None:
     """ Create a single tx (Hovmoller) plot using SPECS data
 
@@ -1086,7 +1108,8 @@ def _single_tx_plot(config: ConfigManager, data_to_plot: tuple) -> None:
     # gs = mgridspec.GridSpec(nrows=2, ncols=1, height_ratios=[1, 5], hspace=0.1)
     gs = mgridspec.GridSpec(nrows=2, ncols=1, height_ratios=[1, 6], hspace=0.1)
     ax = list()
-    ax.append(fig.add_subplot(gs[0, 0], projection=ccrs.PlateCarree(central_longitude=180)))
+    ax.append(
+        fig.add_subplot(gs[0, 0], projection=ccrs.PlateCarree(central_longitude=180)))
     ax.append((fig.add_subplot(gs[1, 0])))
 
     ax_opts = fig.update_ax_opts(field_name, ax, 'tx')
@@ -1104,7 +1127,7 @@ def _single_tx_plot(config: ConfigManager, data_to_plot: tuple) -> None:
 
     vtimes = data2d.time.values.astype('datetime64[ms]').astype('O')
     lon_dim = config.get_model_dim_name('xc')
-    
+
     try:
         if lon_dim:
             lons = get_data_coords(data2d, lon_dim)
@@ -1120,7 +1143,7 @@ def _single_tx_plot(config: ConfigManager, data_to_plot: tuple) -> None:
     except Exception as e:
         logger.error(f"Error getting longitude coordinates: {e}")
         lons = np.arange(data2d.shape[1])
-    
+
     try:
         if len(data2d.shape) > 2:
             if data2d.shape[0] == len(vtimes):
@@ -1128,35 +1151,35 @@ def _single_tx_plot(config: ConfigManager, data_to_plot: tuple) -> None:
                 if len(data2d.shape) == 3 and data2d.shape[2] == len(lons):
                     # average over the middle dimension (level)
                     data2d_reduced = data2d.mean(axis=1)
-                    
+
                 # data shape is (time, lat, lon), we need to average over lat
                 elif len(data2d.shape) == 3 and data2d.shape[2] == len(lons):
                     # average over the middle dimension (lat)
                     data2d_reduced = data2d.mean(axis=1)
-                    
+
                 else:
                     dim_names = list(data2d.dims)
                     time_dim_idx = None
                     lon_dim_idx = None
-                    
+
                     for i, dim in enumerate(dim_names):
                         if dim in ['time', 't', 'TIME']:
                             time_dim_idx = i
                             break
-                    
+
                     for i, dim in enumerate(dim_names):
                         if dim in ['lon', 'longitude', 'x']:
                             lon_dim_idx = i
                             break
-                    
+
                     if time_dim_idx is not None and lon_dim_idx is not None:
-                        dims_to_avg = [i for i in range(len(dim_names)) 
-                                     if i != time_dim_idx and i != lon_dim_idx]
-                        
+                        dims_to_avg = [i for i in range(len(dim_names))
+                                       if i != time_dim_idx and i != lon_dim_idx]
+
                         data2d_reduced = data2d.copy()
                         for dim_idx in sorted(dims_to_avg, reverse=True):
                             data2d_reduced = data2d_reduced.mean(axis=dim_idx)
-                            
+
                         # transpose if needed to get (time, lon) order
                         if time_dim_idx > lon_dim_idx:
                             data2d_reduced = data2d_reduced.T
@@ -1172,7 +1195,7 @@ def _single_tx_plot(config: ConfigManager, data_to_plot: tuple) -> None:
                     lons = np.arange(data2d.shape[1])
         else:
             data2d_reduced = data2d
-            
+
             if data2d.shape != (len(vtimes), len(lons)):
                 if data2d.shape == (len(lons), len(vtimes)):
                     data2d_reduced = data2d.T
@@ -1185,7 +1208,7 @@ def _single_tx_plot(config: ConfigManager, data_to_plot: tuple) -> None:
         if len(data2d.shape) >= 2:
             vtimes = np.arange(data2d.shape[0])
             lons = np.arange(data2d.shape[1])
-    
+
     if hasattr(data2d_reduced, 'shape') and len(data2d_reduced.shape) >= 2:
         if data2d_reduced.shape[0] != len(vtimes) or data2d_reduced.shape[1] != len(lons):
             vtimes = np.arange(data2d_reduced.shape[0])
@@ -1204,26 +1227,28 @@ def _single_tx_plot(config: ConfigManager, data_to_plot: tuple) -> None:
 
     ax[0].add_feature(cfeature.COASTLINE.with_scale('50m'))
     ax[0].add_feature(cfeature.LAKES.with_scale('50m'), color='black', linewidths=0.5)
-    fig.plot_text(field_name=field_name, ax=ax[0], pid='tx', data=data2d, fontsize=10, loc='left')
+    fig.plot_text(field_name=field_name, ax=ax[0], pid='tx', data=data2d, fontsize=10,
+                  loc='left')
 
     if ax_opts['torder']:
         ax[1].invert_yaxis()  # Reverse the time order
 
     try:
-        cfilled = ax[1].contourf(lons, vtimes, data2d_reduced, ax_opts['clevs'], norm=norm,
-                                cmap=ax_opts['use_cmap'], extend=extend_value)
+        cfilled = ax[1].contourf(lons, vtimes, data2d_reduced, ax_opts['clevs'],
+                                 norm=norm,
+                                 cmap=ax_opts['use_cmap'], extend=extend_value)
     except Exception as e:
         logger.error(f"Error creating contour plot: {e}")
         try:
             logger.info("Falling back to pcolormesh")
             lon_mesh, time_mesh = np.meshgrid(lons, vtimes)
-            cfilled = ax[1].pcolormesh(lon_mesh, time_mesh, data2d_reduced, 
-                                    norm=norm, cmap=ax_opts['use_cmap'])
+            cfilled = ax[1].pcolormesh(lon_mesh, time_mesh, data2d_reduced,
+                                       norm=norm, cmap=ax_opts['use_cmap'])
         except Exception as e2:
             logger.error(f"Error creating pcolormesh plot: {e2}")
             # just show something
             cfilled = ax[1].imshow(data2d_reduced, aspect='auto', origin='lower',
-                                norm=norm, cmap=ax_opts['use_cmap'])
+                                   norm=norm, cmap=ax_opts['use_cmap'])
 
     ax[1].set_xlabel("Longitude")
     ax[1].set_ylabel("Time")
@@ -1234,7 +1259,8 @@ def _single_tx_plot(config: ConfigManager, data_to_plot: tuple) -> None:
     except Exception as e:
         logger.error(f"Error adding contour lines: {e}")
 
-    cbar = fig.colorbar(cfilled, orientation='horizontal', pad=0.1, aspect=70, extendrect=True)    
+    cbar = fig.colorbar(cfilled, orientation='horizontal', pad=0.1, aspect=70,
+                        extendrect=True)
     cbar.set_label('m $s^{-1}$')
 
     if lons[0] <= -179:
@@ -1251,11 +1277,11 @@ def _single_tx_plot(config: ConfigManager, data_to_plot: tuple) -> None:
         else:
             ax[1].set_yticks(vtimes)
             ax[1].set_yticklabels(vtimes)
-        
+
         y_labels = ax[1].get_yticklabels()
         if len(y_labels) > 1:
             y_labels[1].set_visible(False)  # hide first label
-            
+
         for i, label in enumerate(y_labels):
             label.set_rotation(45)
             label.set_ha('right')
@@ -1276,9 +1302,11 @@ def _single_box_plot(config: ConfigManager, data_to_plot: tuple) -> None:
 
 def _line_contours(fig, ax, ax_opts, x, y, data2d):
     with mpl.rc_context(ax_opts['contour_linestyle']):
-        contour_format = pu.contour_format_from_levels(pu.formatted_contours(ax_opts['clevs']),
-                                                       scale=ax_opts['cscale'])
-        clines = ax.contour(x, y, data2d, levels=ax_opts['clevs'], colors="black", alpha=0.5)
+        contour_format = pu.contour_format_from_levels(
+            pu.formatted_contours(ax_opts['clevs']),
+            scale=ax_opts['cscale'])
+        clines = ax.contour(x, y, data2d, levels=ax_opts['clevs'], colors="black",
+                            alpha=0.5)
         if len(clines.allsegs) == 0 or all(len(seg) == 0 for seg in clines.allsegs):
             logger.warning("No contours were generated. Skipping contour labeling.")
             return
@@ -1302,7 +1330,8 @@ def _create_clevs(field_name, ax_opts, data2d):
     if not ax_opts.get('create_clevs', True):
         clevs = np.around(np.linspace(dmin, dmax, 10), decimals=precision)
     else:
-        clevs = np.around(np.linspace(dmin, dmax, ax_opts.get('num_clevs', 10)), decimals=precision)
+        clevs = np.around(np.linspace(dmin, dmax, ax_opts.get('num_clevs', 10)),
+                          decimals=precision)
         clevs = np.unique(clevs)  # Remove duplicates
 
     # Check if levels are strictly increasing
@@ -1338,7 +1367,7 @@ def _filled_contours(config, field_name, ax, x, y, data2d, transform=None):
     # Check for constant field
     vmin, vmax = np.nanmin(data2d), np.nanmax(data2d)
     if np.isclose(vmin, vmax):
-        logger.debug ("Fill with a neutral color and print text")
+        logger.debug("Fill with a neutral color and print text")
         ax.set_facecolor('whitesmoke')
         ax.text(0.5, 0.5, 'zero field', transform=ax.transAxes,
                 ha='center', va='center', fontsize=16, color='gray', fontweight='bold')
@@ -1376,8 +1405,8 @@ def _set_colorbar(config, cfilled, fig, ax, ax_opts, findex, field_name, data2d)
         source_name = config.source_names[config.ds_index]
         if ax_opts['cbar_sci_notation']:
             fmt = pu.FlexibleOOMFormatter(min_val=data2d.min().compute().item(),
-                                           max_val=data2d.max().compute().item(),
-                                           math_text=True)
+                                          max_val=data2d.max().compute().item(),
+                                          math_text=True)
         else:
             fmt = pu.OOMFormatter(prec=ax_opts['clevs_prec'], math_text=True)
 
@@ -1385,18 +1414,18 @@ def _set_colorbar(config, cfilled, fig, ax, ax_opts, findex, field_name, data2d)
             cbar = fig.colorbar(cfilled)
         else:
             cbar = fig.colorbar(cfilled, ax=ax,
-                                 orientation='vertical' if config.compare or config.compare_diff else 'horizontal',
-                                 extendfrac=True if config.compare else 'auto',
-                                 pad=pu.cbar_pad(fig.subplots),
-                                 fraction=pu.cbar_fraction(fig.subplots),
-                                 ticks=ax_opts.get('clevs', None),
-                                 format=fmt,
-                                 shrink=pu.cbar_shrink(fig.subplots))
-            
+                                orientation='vertical' if config.compare or config.compare_diff else 'horizontal',
+                                extendfrac=True if config.compare else 'auto',
+                                pad=pu.cbar_pad(fig.subplots),
+                                fraction=pu.cbar_fraction(fig.subplots),
+                                ticks=ax_opts.get('clevs', None),
+                                format=fmt,
+                                shrink=pu.cbar_shrink(fig.subplots))
+
         # Use the following ONLY with the FlexibleOOMFormatter()
         if ax_opts['cbar_sci_notation']:
             cbar.ax.text(1.05, -0.5, r'$\times 10^{%d}$' % fmt.oom,
-                           transform=cbar.ax.transAxes, va='center', ha='left', fontsize=12)
+                         transform=cbar.ax.transAxes, va='center', ha='left', fontsize=12)
 
         try:
             if field_name in config.spec_data and 'units' in config.spec_data[field_name]:
@@ -1417,11 +1446,13 @@ def _set_colorbar(config, cfilled, fig, ax, ax_opts, findex, field_name, data2d)
                                 reader = next(iter(readers_dict.values()))
                         else:
                             reader = config.readers[source_name]
-                    
+
                     if reader and hasattr(reader, 'datasets'):
-                        if findex in reader.datasets and 'vars' in reader.datasets[findex]:
+                        if findex in reader.datasets and 'vars' in reader.datasets[
+                            findex]:
                             field_var = reader.datasets[findex]['vars'].get(field_name)
-                            if field_var and hasattr(field_var, 'attrs') and 'units' in field_var.attrs:
+                            if field_var and hasattr(field_var,
+                                                     'attrs') and 'units' in field_var.attrs:
                                 units = field_var.attrs['units']
                             elif field_var and hasattr(field_var, 'units'):
                                 units = field_var.units
@@ -1434,7 +1465,7 @@ def _set_colorbar(config, cfilled, fig, ax, ax_opts, findex, field_name, data2d)
         except Exception as e:
             logger.warning(f"Error getting units: {e}")
             units = "n.a."
- 
+
         if ax_opts['clabel'] is None:
             cbar_label = units
         else:
@@ -1470,7 +1501,8 @@ def colorbar(mappable):
     if isinstance(ax, GeoAxes):
         # Create a new axes for the colorbar with the same projection
         divider = make_axes_locatable(ax)
-        cax = divider.append_axes("right", size="5%", pad=0.05, axes_class=type(ax), projection=ax.projection)
+        cax = divider.append_axes("right", size="5%", pad=0.05, axes_class=type(ax),
+                                  projection=ax.projection)
     else:
         # Standard Matplotlib Axes
         divider = make_axes_locatable(ax)
@@ -1529,6 +1561,7 @@ class SimplePlotter:
         elif plot_type == 'graph':
             _simple_graph_plot(config, field_to_plot)
 
+
 @dataclass()
 class SinglePlotter(Plotter):
 
@@ -1539,7 +1572,8 @@ class SinglePlotter(Plotter):
     def __post_init__(self):
         self.logger.info("Start init")
 
-    def single_plots(self, config: ConfigManager, field_to_plot: tuple, level: int = None):
+    def single_plots(self, config: ConfigManager, field_to_plot: tuple,
+                     level: int = None):
         self.plot(config, field_to_plot, level)
 
     @staticmethod
@@ -1567,6 +1601,7 @@ class SinglePlotter(Plotter):
         # elif plot_type == constants.myplot:
         #     self._myplot_subplot(config, field_to_plot)
 
+
 @dataclass()
 class ComparisonPlotter:
     to_compare: list
@@ -1578,7 +1613,8 @@ class ComparisonPlotter:
     def __post_init__(self):
         self.logger.info("Start init")
 
-    def comparison_plots(self, config: ConfigManager, field_to_plot: tuple, level: int = None):
+    def comparison_plots(self, config: ConfigManager, field_to_plot: tuple,
+                         level: int = None):
         self.plot(config, field_to_plot, level)
 
     @staticmethod

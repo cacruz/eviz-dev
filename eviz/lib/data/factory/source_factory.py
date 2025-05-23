@@ -12,10 +12,12 @@ from .registry import DataSourceRegistry
 from dataclasses import dataclass, field
 import logging
 
+
 @dataclass
 class DataSourceFactory:
     """Factory for creating data source instances."""
-    config_manager: Optional[object] = None  # Replace 'object' with actual config manager type
+    config_manager: Optional[
+        object] = None  # Replace 'object' with actual config manager type
     registry: DataSourceRegistry = field(init=False)
 
     def __post_init__(self):
@@ -29,16 +31,20 @@ class DataSourceFactory:
 
     def _register_default_data_sources(self) -> None:
         """Register the default data source implementations."""
-        self.registry.register(['nc', 'nc4', 'netcdf', 'netcdf4', 'opendap', 'dods', 'dap'], NetCDFDataSource)
+        self.registry.register(
+            ['nc', 'nc4', 'netcdf', 'netcdf4', 'opendap', 'dods', 'dap'],
+            NetCDFDataSource)
         self.registry.register(['h5', 'he5', 'hdf5', 'hdf'], HDF5DataSource)
         self.registry.register(['csv', 'dat', 'txt'], CSVDataSource)
         self.registry.register(['grib', 'grib2'], GRIBDataSource)
-    
-    def register_data_source(self, extensions: List[str], data_source_class: Type[DataSource]) -> None:
+
+    def register_data_source(self, extensions: List[str],
+                             data_source_class: Type[DataSource]) -> None:
         """Register a custom data source class."""
         self.registry.register(extensions, data_source_class)
-    
-    def create_data_source(self, file_path: str, model_name: Optional[str] = None, reader_type: Optional[str] = None) -> DataSource:
+
+    def create_data_source(self, file_path: str, model_name: Optional[str] = None,
+                           reader_type: Optional[str] = None) -> DataSource:
         """Create a data source instance for the specified file or URL, with optional explicit reader_type.
         
         Args:
@@ -70,7 +76,7 @@ class DataSourceFactory:
         # Check if it's an OpenDAP URL
         if is_opendap_url(file_path):
             return NetCDFDataSource(model_name, self.config_manager)
-            
+
         # For regular URLs, try to determine the type from the path
         if is_url(file_path):
             path = file_path.split('?')[0]  # Remove query parameters
@@ -98,16 +104,16 @@ class DataSourceFactory:
                 ext = '.grib'
             else:
                 raise ValueError(f"Could not determine file type for: {file_path}")
-        
+
         ext = ext[1:] if ext.startswith('.') else ext
         try:
             data_source_class = self.registry.get_data_source_class(ext)
         except ValueError:
             self.logger.error(f"Unsupported file type: {ext}")
             raise ValueError(f"Unsupported file type: {ext}")
-        
+
         return data_source_class(model_name, self.config_manager)
-    
+
     def get_supported_extensions(self) -> List[str]:
         """Get the list of supported file extensions.
         
@@ -115,7 +121,7 @@ class DataSourceFactory:
             List of supported file extensions
         """
         return sorted(list(self.registry.get_supported_extensions()))
-    
+
     def is_supported(self, file_path: str) -> bool:
         """Check if the specified file is supported.
         
@@ -128,7 +134,7 @@ class DataSourceFactory:
         _, ext = os.path.splitext(file_path)
         if not ext:
             return False
-        
+
         ext = ext[1:] if ext.startswith('.') else ext
-        
+
         return self.registry.is_supported(ext)

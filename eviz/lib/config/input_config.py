@@ -7,6 +7,8 @@ from eviz.lib.utils import join_file_path
 from eviz.lib.autoviz.utils import get_subplot_shape
 from eviz.lib.config.app_data import AppData
 from eviz.lib.data.factory.source_factory import DataSourceFactory
+
+
 # from eviz.lib.utils import log_method
 
 
@@ -24,7 +26,7 @@ class InputConfig:
     _use_trop_height: bool = False
     _use_sphum_conv: bool = False
     _file_reader_mapping: Dict[str, str] = field(default_factory=dict)
-    
+
     _compare: bool = field(default=False, init=False)
     _compare_diff: bool = field(default=False, init=False)
     _compare_exp_ids: List[str] = field(default_factory=list, init=False)
@@ -40,7 +42,7 @@ class InputConfig:
         """Initialize input configuration."""
         self._compare = self.compare
         self._compare_diff = self.compare_diff
-        
+
         self._get_file_list()
         self._init_file_list_to_plot()
         self._init_readers()
@@ -49,7 +51,8 @@ class InputConfig:
     def _get_file_list(self):
         """Get all specified input files from the `inputs` section of the AppData object."""
         if not self.app_data.inputs:
-            self.logger.error("The 'inputs' section in the AppData object is empty or missing.")
+            self.logger.error(
+                "The 'inputs' section in the AppData object is empty or missing.")
             sys.exit()
 
         self.logger.debug(f"Processing {len(self.app_data.inputs)} input file entries.")
@@ -62,7 +65,9 @@ class InputConfig:
     def _init_file_list_to_plot(self):
         """Create the list of files that contain the data to be plotted."""
         if getattr(self, '_use_history', False):  # Check if history is enabled
-            if not getattr(self, '_history_year', None) or not getattr(self, '_history_month', None):
+            if not getattr(self, '_history_year', None) or not getattr(self,
+                                                                       '_history_month',
+                                                                       None):
                 self.logger.error("You need to provide the year and/or the month.")
                 self.logger.error("\tEdit the config file and try again.")
                 sys.exit()
@@ -87,18 +92,18 @@ class InputConfig:
             file entries grouped by reader type
         """
         reader_mapping = {source_name: [] for source_name in self.source_names}
-        
+
         for file_idx, file_entry in self.file_list.items():
             file_path = file_entry['filename']
             reader_type = self._get_reader_type_for_extension(file_path)
-            
+
             if reader_type:
                 for source_name in self.source_names:
                     reader_mapping[source_name].append({
                         'file_entry': file_entry,
                         'reader_type': reader_type
                     })
-        
+
         return reader_mapping
 
     def _init_readers(self):
@@ -110,7 +115,7 @@ class InputConfig:
             file_path = file_entry['filename']
             explicit_reader = file_entry.get('reader', None)
             reader_type = self._get_reader_type_for_extension(file_path, explicit_reader)
-            
+
             if reader_type:
                 file_reader_types[file_path] = reader_type
                 self._file_reader_mapping[file_path] = reader_type
@@ -126,16 +131,21 @@ class InputConfig:
                     continue
                 try:
                     if reader_type not in self.readers[source_name]:
-                        self.logger.info(f"Setting up {reader_type} reader for source: {source_name}")
-                        self.readers[source_name][reader_type] = self._get_reader(source_name, file_extension, reader_type)
+                        self.logger.info(
+                            f"Setting up {reader_type} reader for source: {source_name}")
+                        self.readers[source_name][reader_type] = self._get_reader(
+                            source_name, file_extension, reader_type)
                     processed_extensions.add((reader_type, file_extension))
                 except Exception as e:
-                    self.logger.error(f"Failed to initialize {reader_type} reader for {file_path}: {str(e)}")
+                    self.logger.error(
+                        f"Failed to initialize {reader_type} reader for {file_path}: {str(e)}")
 
         for source_name, readers in self.readers.items():
-            self.logger.info(f"Initialized readers for source {source_name}: {list(readers.keys())}")
+            self.logger.info(
+                f"Initialized readers for source {source_name}: {list(readers.keys())}")
 
-    def _get_reader_type_for_extension(self, file_path: str, explicit_reader: str = None) -> str:
+    def _get_reader_type_for_extension(self, file_path: str,
+                                       explicit_reader: str = None) -> str:
         """
         Determine the appropriate reader type based on file path.
         
@@ -154,15 +164,16 @@ class InputConfig:
         if 'wrf' in path_lower or 'wrfout' in path_lower:
             self.logger.info(f"Detected WRF file: {file_path}, using NetCDF reader")
             return 'NetCDF'
-        
+
         # Prioritize HDF5/HDF4 name inference before checking ambiguous extensions
         # This helps with files like 'my_hdf5_data.dat' or 'log_containing_hdf4.log'
-        
+
         # Check for HDF5 by name or common HDF5 extensions in the name string
         # Note: .he5 is HDF5, .h5 can be HDF5
         if any(keyword in path_lower for keyword in ['hdf5', '.h5', '.he5']):
             # Avoid misclassifying an HDF4 file (e.g. file.hdf) if 'hdf' from 'hdf5' matches
-            if not (path_lower.endswith('.hdf') and not any(ext_key in path_lower for ext_key in ['.h5', '.he5'])):
+            if not (path_lower.endswith('.hdf') and not any(
+                    ext_key in path_lower for ext_key in ['.h5', '.he5'])):
                 self.logger.info(f"Inferred HDF5 from filename/keywords: {file_path}")
                 return 'HDF5'
 
@@ -189,17 +200,18 @@ class InputConfig:
             return 'NetCDF'
         else:
             # Fallback inference for truly unrecognized extensions
-            self.logger.warning(f"Unrecognized extension: {file_extension} in {file_path}, attempting to infer type from name as a last resort.")
+            self.logger.warning(
+                f"Unrecognized extension: {file_extension} in {file_path}, attempting to infer type from name as a last resort.")
             if any(x in path_lower for x in ['netcdf', 'nc']):
                 return 'NetCDF'
             elif any(x in path_lower for x in ['csv', 'data', 'txt']):
                 return 'CSV'
             # HDF5/HDF4 name inference was already attempted and prioritized.
-                
-        self.logger.error(f"Unsupported file extension: {file_extension} for file {file_path}. Defaulting to NetCDF.")
+
+        self.logger.error(
+            f"Unsupported file extension: {file_extension} for file {file_path}. Defaulting to NetCDF.")
         return 'NetCDF'  # Default fallback
 
-                       
     def _determine_data_types(self) -> Dict[str, bool]:
         """Determine the data types needed based on file extensions."""
         data_types_needed = {}
@@ -243,11 +255,11 @@ class InputConfig:
             reader_type = self._file_reader_mapping[file_path]
             if source_name in self.readers and reader_type in self.readers[source_name]:
                 return self.readers[source_name][reader_type]
-        
+
         # Fall back to the first available reader
         if source_name in self.readers and self.readers[source_name]:
             return next(iter(self.readers[source_name].values()))
-        
+
         return None
 
     def get_primary_reader(self, source_name: str):
@@ -266,10 +278,11 @@ class InputConfig:
                 return self.readers[source_name]['NetCDF']
             elif self.readers[source_name]:
                 return next(iter(self.readers[source_name].values()))
-        
+
         return None
 
-    def _get_reader(self, source_name: str, file_extension: str, reader_type: str = None) -> Any:
+    def _get_reader(self, source_name: str, file_extension: str,
+                    reader_type: str = None) -> Any:
         """
         Return the appropriate reader based on file extension using the factory.
 
@@ -281,26 +294,28 @@ class InputConfig:
         Returns:
             Any: An instance of the appropriate data source class.
         """
-        factory = DataSourceFactory()      
+        factory = DataSourceFactory()
         dummy_path = f"dummy{file_extension}"
-        
+
         try:
             if reader_type:
-                return factory.create_data_source(dummy_path, source_name, reader_type=reader_type)
+                return factory.create_data_source(dummy_path, source_name,
+                                                  reader_type=reader_type)
             return factory.create_data_source(dummy_path, source_name)
         except ValueError as e:
             self.logger.error(f"Error creating data source: {e}")
             # Default to NetCDF for unrecognized extensions when WRF is involved
             if 'wrf' in source_name.lower():
-                self.logger.debug(f"Unrecognized extension '{file_extension}' for WRF source, defaulting to NetCDF reader")
+                self.logger.debug(
+                    f"Unrecognized extension '{file_extension}' for WRF source, defaulting to NetCDF reader")
                 return factory.create_data_source("dummy.nc", source_name)
             else:
                 raise ValueError(f"Unsupported file extension: {file_extension}")
-        
+
     def _init_for_inputs(self) -> None:
         """Initialize parameters in the `for_inputs` section of the AppData object."""
         for_inputs = getattr(self.app_data, 'for_inputs', {})
-        
+
         self._compare_exp_ids = []
         self._extra_diff_plot = False
         self._profile = False
@@ -308,44 +323,45 @@ class InputConfig:
         self._use_cartopy = for_inputs.get('use_cartopy', False)
         self._comp_panels = for_inputs.get('comp_panels', (1, 1))
         self._subplot_specs = for_inputs.get('subplot_specs', (1, 1))
-        
+
         self._parse_for_inputs(for_inputs)
-        
+
         if self._compare_diff:
             # Check for extra_diff in both places
             extra_diff = (
-                for_inputs.get('extra_diff') or  # Check top level first
-                for_inputs.get('compare_diff', {}).get('_extra_diff_plot') or  # Then check under compare_diff
-                for_inputs.get('compare_diff', {}).get('extra_diff', False)  # Also check without underscore
+                    for_inputs.get('extra_diff') or  # Check top level first
+                    for_inputs.get('compare_diff', {}).get(
+                        '_extra_diff_plot') or  # Then check under compare_diff
+                    for_inputs.get('compare_diff', {}).get('extra_diff', False)
+                # Also check without underscore
             )
             self._extra_diff_plot = extra_diff
             self._profile = for_inputs.get('compare_diff', {}).get('profile', False)
             self._cmap = for_inputs.get('compare_diff', {}).get('cmap', 'rainbow')
             self._comp_panels = (2, 2) if self._extra_diff_plot else (3, 1)
-            self.logger.debug(f"Compare diff settings: extra_diff={extra_diff}, comp_panels={self._comp_panels}")
-            
+            self.logger.debug(
+                f"Compare diff settings: extra_diff={extra_diff}, comp_panels={self._comp_panels}")
+
         if self._compare:
             self._profile = for_inputs.get('compare', {}).get('profile', False)
             self._cmap = for_inputs.get('compare', {}).get('cmap', 'rainbow')
             self._comp_panels = get_subplot_shape(len(self._compare_exp_ids))
-
 
         self._use_trop_height = 'trop_height' in for_inputs
         if self._use_trop_height:
             self._set_trop_height_file_list()  # Custom method for trop_height logic
 
         self.logger.debug(f"Initialized for_inputs with: "
-                        f"compare={self._compare}, "
-                        f"compare_diff={self._compare_diff}, "
-                        f"compare_exp_ids={self._compare_exp_ids}, "
-                        f"extra_diff_plot={self._extra_diff_plot}, "
-                        f"profile={self._profile}, "
-                        f"cmap={self._cmap}, "
-                        f"comp_panels={self._comp_panels}, "
-                        f"use_trop_height={self._use_trop_height}, "
-                        f"subplot_specs={self._subplot_specs}, "
-                        f"use_cartopy={self._use_cartopy}")
-
+                          f"compare={self._compare}, "
+                          f"compare_diff={self._compare_diff}, "
+                          f"compare_exp_ids={self._compare_exp_ids}, "
+                          f"extra_diff_plot={self._extra_diff_plot}, "
+                          f"profile={self._profile}, "
+                          f"cmap={self._cmap}, "
+                          f"comp_panels={self._comp_panels}, "
+                          f"use_trop_height={self._use_trop_height}, "
+                          f"subplot_specs={self._subplot_specs}, "
+                          f"use_cartopy={self._use_cartopy}")
 
     def get_all_variables(self, source_name: str) -> Dict[str, Any]:
         """
@@ -368,9 +384,10 @@ class InputConfig:
                         var_data['source_reader'] = reader_type
                         all_vars[var_name] = var_data
                 except Exception as e:
-                    self.logger.error(f"Error getting variables from {reader_type} reader: {str(e)}")
-        
-        return all_vars   
+                    self.logger.error(
+                        f"Error getting variables from {reader_type} reader: {str(e)}")
+
+        return all_vars
 
     def get_metadata(self, source_name: str, file_path: str) -> Dict[str, Any]:
         """
@@ -389,29 +406,29 @@ class InputConfig:
                 return reader.get_metadata(file_path)
             except Exception as e:
                 self.logger.error(f"Error getting metadata: {str(e)}")
-        
-        return {}    
-    
+
+        return {}
+
     def _parse_for_inputs(self, for_inputs):
         """Parse the for_inputs section of the configuration."""
         if not for_inputs:
             return
-        
+
         self._compare = False
         self._compare_diff = False
         self._compare_exp_ids = []
-        
+
         if 'compare' in for_inputs:
             self._compare = True
             compare_config = for_inputs['compare']
-            
+
             if 'ids' in compare_config:
                 self._compare_exp_ids = compare_config['ids'].split(',')
-        
+
         elif 'compare_diff' in for_inputs:
             self._compare_diff = True
             compare_diff_config = for_inputs['compare_diff']
-            
+
             if 'ids' in compare_diff_config:
                 self._compare_exp_ids = compare_diff_config['ids'].split(',')
 
@@ -419,7 +436,7 @@ class InputConfig:
     def logger(self):
         """Return the logger for this class."""
         return logging.getLogger(__name__)
-    
+
     def to_dict(self) -> dict:
         """Return a dictionary representation of the input configuration."""
         return {
@@ -427,7 +444,8 @@ class InputConfig:
             "config_files": self.config_files,
             "app_data": self.app_data.__dict__,  # Convert AppData to a dictionary
             "file_list": self.file_list,
-            "readers": {key: str(reader) for key, reader in self.readers.items()},  # Convert readers to strings
+            "readers": {key: str(reader) for key, reader in self.readers.items()},
+            # Convert readers to strings
             "compare": self.compare,
             "compare_diff": self.compare_diff,
             "compare_exp_ids": getattr(self, "_compare_exp_ids", None),
@@ -439,7 +457,7 @@ class InputConfig:
             "subplot_specs": getattr(self, "_subplot_specs", None),
             "use_cartopy": getattr(self, "_use_cartopy", None),
         }
-    
+
     # TODO: trop_height and sph_conv files are GEOS-specific
     # Therefore, GEOS-specific functionality should be moved to a ConfigGeos class
     def _set_trop_height_file_list(self):
@@ -449,11 +467,15 @@ class InputConfig:
             self.logger.debug(f'Looping over {n_files} trop_height file entries:')
             for i in range(n_files):
                 if 'location' in self.app_data.for_inputs['trop_height'][i]:
-                    filename = os.path.join(self.app_data.for_inputs['trop_height'][i]['location'],
-                                            self.app_data.for_inputs['trop_height'][i]['name'])
+                    filename = os.path.join(
+                        self.app_data.for_inputs['trop_height'][i]['location'],
+                        self.app_data.for_inputs['trop_height'][i]['name'])
                 else:
-                    filename = os.path.join('/', self.app_data.for_inputs['trop_height'][i]['name'])
-                self._trop_height_file_list[i] = self.app_data.for_inputs['trop_height'][i]
+                    filename = os.path.join('/',
+                                            self.app_data.for_inputs['trop_height'][i][
+                                                'name'])
+                self._trop_height_file_list[i] = self.app_data.for_inputs['trop_height'][
+                    i]
                 self._trop_height_file_list[i]['filename'] = filename
                 self._trop_height_file_list[i]['exp_name'] = \
                     self.app_data.for_inputs['trop_height'][i]['exp_id']
@@ -471,11 +493,15 @@ class InputConfig:
                 self.logger.debug(f'Looping over {n_files} sphum_field file entries:')
                 for i in range(n_files):
                     if 'location' in self.app_data.for_inputs['sphum_field'][i]:
-                        filename = os.path.join(self.app_data.for_inputs['sphum_field'][i]['location'],
-                                                self.app_data.for_inputs['sphum_field'][i]['name'])
+                        filename = os.path.join(
+                            self.app_data.for_inputs['sphum_field'][i]['location'],
+                            self.app_data.for_inputs['sphum_field'][i]['name'])
                     else:
-                        filename = os.path.join('/', self.app_data.for_inputs['sphum_field'][i]['name'])
-                    self._sphum_conv_file_list[i] = self.app_data.for_inputs['sphum_field'][i]
+                        filename = os.path.join('/',
+                                                self.app_data.for_inputs['sphum_field'][
+                                                    i]['name'])
+                    self._sphum_conv_file_list[i] = \
+                        self.app_data.for_inputs['sphum_field'][i]
                     self._sphum_conv_file_list[i]['filename'] = filename
                     self._sphum_conv_file_list[i]['exp_name'] = \
                         self.app_data.for_inputs['sphum_field'][i]['exp_id']

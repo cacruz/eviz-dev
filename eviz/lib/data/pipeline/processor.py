@@ -6,6 +6,7 @@ from scipy.interpolate import interp1d
 import xarray as xr
 
 from typing import TYPE_CHECKING
+
 if TYPE_CHECKING:
     from eviz.lib.config.config_manager import ConfigManager
 from eviz.lib.data.utils import get_dst_attribute
@@ -48,19 +49,16 @@ class DataProcessor:
             
         Returns:
             The processed data source
-        """        
+        """
         if not data_source.validate_data():
             self.logger.error("Data validation failed")
             return data_source
-
         data_source.dataset = self._process_dataset(data_source.dataset)
-        
         # Apply advanced processing if config_manager is available
         if self.config_manager:
             data_source = self._apply_geos_processing(data_source)
-        
         return data_source
-    
+
     def _apply_geos_processing(self, data_source: DataSource) -> DataSource:
         """Apply GEOS processing operations if requested.
         
@@ -74,11 +72,13 @@ class DataProcessor:
             return data_source
 
         # Apply tropopause height processing if configured
-        if hasattr(self.config_manager, 'use_trop_height') and self.config_manager.use_trop_height:
+        if hasattr(self.config_manager,
+                   'use_trop_height') and self.config_manager.use_trop_height:
             data_source = self._apply_tropopause_height(data_source)
 
         # Apply specific humidity conversion if configured
-        if hasattr(self.config_manager, 'use_sphum_conv') and self.config_manager.use_sphum_conv:
+        if hasattr(self.config_manager,
+                   'use_sphum_conv') and self.config_manager.use_sphum_conv:
             data_source = self._apply_sphum_conversion(data_source)
 
         return data_source
@@ -106,7 +106,7 @@ class DataProcessor:
             trop_config = self.config_manager.trop_height_file_list[findex]
             exp_id = trop_config['exp_id']
             field_exp_id = self.config_manager.file_list[findex]['exp_id']
-            
+
             if exp_id != field_exp_id:
                 return data_source
 
@@ -130,7 +130,6 @@ class DataProcessor:
                     conversion_factor = 1 / 100.0
                 elif units == 'hPa':
                     conversion_factor = 1.0
-
                 data_source = tropp * conversion_factor
 
         except Exception as e:
@@ -149,7 +148,7 @@ class DataProcessor:
         """
         radionuclides = ['Be10', 'Be10s', 'Be7', 'Be7s', 'Pb210', 'Rn222']
         to_convert = set(self.config_manager.to_plot).intersection(set(radionuclides))
-        
+
         if not to_convert:
             return data_source
 
@@ -178,15 +177,16 @@ class DataProcessor:
 
             # Convert each radionuclide
             for species_name in to_convert:
-                self._convert_radionuclide_units(data_source, species_name, specific_hum, 'mol mol-1')
-
+                self._convert_radionuclide_units(data_source, species_name, specific_hum,
+                                                 'mol mol-1')
         except Exception as e:
             self.logger.error(f"Error processing specific humidity: {e}")
-            
+
         return data_source
 
-    def _convert_radionuclide_units(self, data_source: DataSource, species_name: str, 
-                                  specific_hum: xr.DataArray, target_units: str) -> None:
+    def _convert_radionuclide_units(self, data_source: DataSource, species_name: str,
+                                    specific_hum: xr.DataArray,
+                                    target_units: str) -> None:
         """Convert radionuclide units using specific humidity.
         
         Args:
@@ -197,10 +197,11 @@ class DataProcessor:
         """
         try:
             ds_index = self.config_manager.data_source.get_ds_index()
-            
+
             # Skip if already in target units
             if self.config_manager.data_source.data_unit_is_mol_per_mol(
-                self.config_manager.data_source.datasets[ds_index]['vars'][species_name]):
+                    self.config_manager.data_source.datasets[ds_index]['vars'][
+                        species_name]):
                 return
 
             self.logger.debug(f"Converting {species_name} units to {target_units}")
@@ -209,7 +210,7 @@ class DataProcessor:
             if species_name not in self.config_manager.species_db:
                 self.logger.error(f"Species {species_name} not found in species database")
                 return
-                
+
             mw_g = self.config_manager.species_db[species_name].get("MW_g")
             if not mw_g:
                 self.logger.error(f"Molecular weight not found for species {species_name}")
@@ -218,19 +219,20 @@ class DataProcessor:
             # Perform conversion
             mw_air = constants.MW_AIR_G  # g/mole
             rn_arr = self.config_manager.datasets[ds_index]['vars'][species_name]
-            
+
             # Convert using specific humidity
             data = (rn_arr / (1. - specific_hum)) * (mw_air / mw_g)
 
             # Create new DataArray with converted data
             rn_new = xr.DataArray(
-                data, name=rn_arr.name, coords=rn_arr.coords, 
+                data, name=rn_arr.name, coords=rn_arr.coords,
                 dims=rn_arr.dims, attrs=rn_arr.attrs
             )
             rn_new.attrs["units"] = target_units
 
             # Update the dataset
-            self.config_manager.data_source.datasets[ds_index]['ptr'][rn_arr.name] = rn_new
+            self.config_manager.data_source.datasets[ds_index]['ptr'][
+                rn_arr.name] = rn_new
 
         except Exception as e:
             self.logger.error(f"Error converting {species_name}: {e}")
@@ -373,10 +375,10 @@ class DataProcessor:
         """Regrid two data arrays to a common grid.
         
         Args:
-            data1: First data array
-            data2: Second data array
-            dim1_name: Name of first dimension
-            dim2_name: Name of second dimension
+            d1: First data array
+            d2: Second data array
+            dim1: Name of first dimension
+            dim2: Name of second dimension
             
         Returns:
             Tuple of regridded data arrays
@@ -405,9 +407,10 @@ class DataProcessor:
             return data_diff, coords[dim1].values, coords[dim2].values
         else:
             return d1, d2
-        
-    def _regrid(self, ref_arr: xr.DataArray, target: xr.DataArray, 
-                dim1_name: str, dim2_name: str, regrid_dims: Tuple[int, int]) -> xr.DataArray:
+
+    def _regrid(self, ref_arr: xr.DataArray, target: xr.DataArray,
+                dim1_name: str, dim2_name: str,
+                regrid_dims: Tuple[int, int]) -> xr.DataArray:
         """Regrid a data array to match a target grid along specified dimensions.
         
         Args:
@@ -429,9 +432,9 @@ class DataProcessor:
                 output_core_dims=[[dim2_name]],
                 exclude_dims={dim2_name},
                 kwargs={'x_src': ref_arr[dim2_name],
-                       'x_dest': target.coords[dim2_name].values,
-                       'fill_value': "extrapolate"},
-                dask='allowed', 
+                        'x_dest': target.coords[dim2_name].values,
+                        'fill_value': "extrapolate"},
+                dask='allowed',
                 vectorize=True
             )
             new_arr.coords[dim2_name] = target.coords[dim2_name]
@@ -443,9 +446,9 @@ class DataProcessor:
                 output_core_dims=[[dim1_name]],
                 exclude_dims={dim1_name},
                 kwargs={'x_src': ref_arr[dim1_name],
-                       'x_dest': target.coords[dim1_name].values,
-                       'fill_value': "extrapolate"},
-                dask='allowed', 
+                        'x_dest': target.coords[dim1_name].values,
+                        'fill_value': "extrapolate"},
+                dask='allowed',
                 vectorize=True
             )
             new_arr.coords[dim1_name] = target.coords[dim1_name]
@@ -480,7 +483,8 @@ class DataProcessor:
         return field_diff
 
     @staticmethod
-    def _interp(y_src: np.ndarray, x_src: np.ndarray, x_dest: np.ndarray, **kwargs) -> np.ndarray:
+    def _interp(y_src: np.ndarray, x_src: np.ndarray, x_dest: np.ndarray,
+                **kwargs) -> np.ndarray:
         """Interpolate data to new coordinates.
         
         Args:

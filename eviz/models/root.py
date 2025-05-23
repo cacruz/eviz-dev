@@ -8,6 +8,7 @@ from eviz.lib.autoviz.plotter import SimplePlotter, ComparisonPlotter, SinglePlo
 import eviz.lib.utils as u
 from eviz.lib.config.config_manager import ConfigManager
 from eviz.models.base import AbstractRoot
+
 logging.getLogger('matplotlib.font_manager').setLevel(logging.WARNING)
 
 
@@ -43,7 +44,6 @@ class Root(AbstractRoot):
             # Set to avoid establishing a GUI in each sub-process:
             matplotlib.use('agg')
             self.procs = list()
-
 
     def set_map_params(self, map_params):
         """Set the map parameters for plotting.
@@ -81,12 +81,14 @@ class Root(AbstractRoot):
             output_dirs = []
             for i in range(len(self.config_manager.map_params)):
                 if self.config_manager.compare or self.config_manager.compare_diff:
-                    entry = u.get_nested_key_value(self.config_manager.map_params[i], ['outputs', 'output_dir'])
+                    entry = u.get_nested_key_value(self.config_manager.map_params[i],
+                                                   ['outputs', 'output_dir'])
                     if entry:
                         output_dirs.append(entry)
                     break
                 else:
-                    entry = u.get_nested_key_value(self.config_manager.map_params[i], ['outputs', 'output_dir'])
+                    entry = u.get_nested_key_value(self.config_manager.map_params[i],
+                                                   ['outputs', 'output_dir'])
                     if entry:
                         output_dirs.append(entry)
             if not output_dirs:
@@ -111,17 +113,20 @@ class Root(AbstractRoot):
         self.logger.info("Generating single plots")
 
         if not self.config_manager.map_params:
-            self.logger.error("No map_params available for plotting. Check your YAML configuration.")
+            self.logger.error(
+                "No map_params available for plotting. Check your YAML configuration.")
             return
 
         all_data_sources = self.config_manager.pipeline.get_all_data_sources()
         if not all_data_sources:
-            self.logger.error("No data sources available. Check your YAML configuration and ensure data files exist.")
-            self.logger.info("Map parameters found but no data sources loaded. Here are the expected files:")
+            self.logger.error(
+                "No data sources available. Check your YAML configuration and ensure data files exist.")
+            self.logger.info(
+                "Map parameters found but no data sources loaded. Here are the expected files:")
 
             for i, entry in enumerate(self.config_manager.app_data.inputs):
                 file_path = os.path.join(entry.get('location', ''), entry.get('name', ''))
-                print(f"  {i+1}. {file_path}")
+                print(f"  {i + 1}. {file_path}")
             return
 
         for idx, params in self.config_manager.map_params.items():
@@ -137,20 +142,21 @@ class Root(AbstractRoot):
                 continue
 
             if hasattr(data_source, 'dataset') and data_source.dataset is not None:
-                 field_data = data_source.dataset.get(field_name)
+                field_data = data_source.dataset.get(field_name)
             else:
-                 field_data = None
-
+                field_data = None
 
             if field_data is None:
-                self.logger.warning(f"Field {field_name} not found in data source for {filename}")
+                self.logger.warning(
+                    f"Field {field_name} not found in data source for {filename}")
                 continue
 
-            plot_type = params.get('to_plot', ['xy'])[0]  # Default to 'xy' if not specified
+            plot_type = params.get('to_plot', ['xy'])[
+                0]  # Default to 'xy' if not specified
 
-            self.config_manager.findex = idx # Assuming idx corresponds to file index in map_params
-            self.config_manager.pindex = idx # Assuming idx corresponds to plot index
-            self.config_manager.axindex = 0 # Reset axis index for each plot
+            self.config_manager.findex = idx  # Assuming idx corresponds to file index in map_params
+            self.config_manager.pindex = idx  # Assuming idx corresponds to plot index
+            self.config_manager.axindex = 0  # Reset axis index for each plot
 
             # Generate the plot using the plotter
             self.logger.info(f"Plotting {field_name} as {plot_type} plot")
@@ -161,8 +167,8 @@ class Root(AbstractRoot):
             # We need to determine x and y values here or in the plotter
             # Let's pass the DataArray and let the plotter handle coordinates
             # The plotter will need access to config_manager to get dim names and coordinates
-            plotter.single_plots(self.config_manager, (field_data, None, None, field_name, plot_type, idx, None, None), level=0)
-
+            plotter.single_plots(self.config_manager, (
+                field_data, None, None, field_name, plot_type, idx, None, None), level=0)
 
     def _comparison_plots(self, plotter):
         """Generate comparison plots."""

@@ -1,10 +1,8 @@
-from eviz.lib.config.paths_config import PathsConfig
-
 import logging
 import matplotlib as mpl
-
 from dataclasses import dataclass, field
 from typing import List, Dict, Any
+from eviz.lib.config.paths_config import PathsConfig
 from eviz.lib.config.input_config import InputConfig
 from eviz.lib.config.output_config import OutputConfig
 from eviz.lib.config.system_config import SystemConfig
@@ -14,6 +12,7 @@ from eviz.lib.config.app_data import AppData
 from eviz.lib.utils import log_method
 
 rc_matplotlib = mpl.rcParams  # PEP8 4 lyfe
+
 
 @dataclass
 class Config:

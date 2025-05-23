@@ -10,7 +10,6 @@ import multiprocessing
 import logging
 import time
 
-
 import matplotlib
 import matplotlib.pyplot as plt
 import numpy as np
@@ -104,7 +103,8 @@ def create_pdf(config):
 
 
 def natural_key(filename):
-    return [int(text) if text.isdigit() else text for text in re.split(r'(\d+)', filename)]
+    return [int(text) if text.isdigit() else text for text in
+            re.split(r'(\d+)', filename)]
 
 
 def create_gif(config):
@@ -114,25 +114,25 @@ def create_gif(config):
     else:
         img_path = config.app_data.outputs['output_dir']
 
-    all_files = glob.glob(img_path+"/*."+config.print_format)
+    all_files = glob.glob(img_path + "/*." + config.print_format)
     files = sorted(all_files, key=natural_key)
     if len(files) == 1:
         return
     prefix = list(config.app_data.inputs[0]['to_plot'])[0]
-    
+
     # remove IC (NUWRF only)
     if not config.archive_web_results:
         if {'lis', 'wrf'} & set(config.source_names):
             # Find the file that ends with "_0_0.png" instead of assuming exact name
             ic_file_pattern = f"*{prefix}*_0_0.{config.print_format}"
             ic_files = glob.glob(os.path.join(img_path, ic_file_pattern))
-            
+
             if ic_files:
                 # Remove the first matching IC file
                 ic_file_to_remove = ic_files[0]
                 logger.debug(f"Removing IC file: {ic_file_to_remove}")
                 os.remove(ic_file_to_remove)
-                
+
                 # Remove it from the files list as well
                 if ic_file_to_remove in files:
                     files.remove(ic_file_to_remove)
@@ -141,7 +141,8 @@ def create_gif(config):
                     ic_basename = os.path.basename(ic_file_to_remove)
                     files = [f for f in files if os.path.basename(f) != ic_basename]
             else:
-                logger.warning(f"Warning: No IC file found matching pattern {ic_file_pattern}")
+                logger.warning(
+                    f"Warning: No IC file found matching pattern {ic_file_pattern}")
 
     if not files:
         logger.error("No files remaining after IC removal")
@@ -165,11 +166,11 @@ def create_gif(config):
     fps = config.gif_fps
     duration_ms = int(1000 / fps)
     image_sequence = [Image.fromarray(img) for img in image_array]
-    
+
     # Create GIF filename - use just the field name for cleaner naming
     gif_filename = f"{prefix}.gif"
     gif_path = os.path.join(img_path, gif_filename)
-    
+
     image_sequence[0].save(
         gif_path,
         save_all=True,
@@ -177,7 +178,7 @@ def create_gif(config):
         duration=duration_ms,
         loop=0
     )
-    
+
     logger.info(f"Created GIF: {gif_path}")
 
     if config.archive_web_results:
@@ -197,11 +198,11 @@ def create_gif(config):
 
 
 def print_map(
-    config,
-    plot_type: str,
-    findex: int,
-    fig,
-    level: int = None, 
+        config,
+        plot_type: str,
+        findex: int,
+        fig,
+        level: int = None,
 ) -> None:
     """Save or display a plot, handling output directory, file naming, and optional archiving.
 
@@ -212,10 +213,12 @@ def print_map(
         fig: Matplotlib figure object to save or show.
         level (int, optional): Vertical level for the plot, if applicable.
     """
+
     def resolve_output_dir(config) -> str:
         """Determine and create the output directory if needed."""
         map_params = config.map_params
-        output_dir = u.get_nested_key_value(map_params[config.pindex], ['outputs', 'output_dir'])
+        output_dir = u.get_nested_key_value(map_params[config.pindex],
+                                            ['outputs', 'output_dir'])
         if not output_dir:
             output_dir = config.paths.output_path
         if not os.path.exists(output_dir):
@@ -571,7 +574,8 @@ def colorbar(mappable):
     if isinstance(ax, GeoAxes):
         # Create a new axes for the colorbar with the same projection
         divider = make_axes_locatable(ax)
-        cax = divider.append_axes("right", size="5%", pad=0.05, axes_class=type(ax), projection=ax.projection)
+        cax = divider.append_axes("right", size="5%", pad=0.05, axes_class=type(ax),
+                                  projection=ax.projection)
     else:
         # Standard Matplotlib Axes
         divider = make_axes_locatable(ax)
@@ -610,7 +614,8 @@ def add_logo_anchor(ax, logo, label=None, logo_loc='upper left', alpha=0.5):
     image_box = OffsetImage(logo, alpha=alpha, zoom=0.05)
     if label:
         textbox = TextArea(label, textprops=dict(alpha=alpha))
-        packer = VPacker(children=[image_box, textbox], mode='fixed', pad=0, sep=0, align='center')
+        packer = VPacker(children=[image_box, textbox], mode='fixed', pad=0, sep=0,
+                         align='center')
         ao = AnchoredOffsetbox(logo_loc, pad=0, borderpad=0, child=packer)
     else:
         ao = AnchoredOffsetbox(logo_loc, pad=0.01, borderpad=0, child=image_box)
@@ -640,7 +645,8 @@ def add_logo(ax, logo):
 def output_basic(config, name):
     if config.print_to_file:
         output_fname = name + "." + config.print_format
-        output_dir = u.get_nested_key_value(config.map_params[config.pindex], ['outputs', 'output_dir'])
+        output_dir = u.get_nested_key_value(config.map_params[config.pindex],
+                                            ['outputs', 'output_dir'])
         if not output_dir:
             output_dir = config.paths.output_path
         if not os.path.exists(output_dir):
@@ -655,13 +661,14 @@ def output_basic(config, name):
 def get_subplot_geometry(axes):
     ss = axes.get_subplotspec()
     geom = ss.get_geometry()[0:2]
-    return geom, int(ss.is_first_row()), int(ss.is_first_col()), int(ss.is_last_row()), int(ss.is_last_col())
+    return geom, int(ss.is_first_row()), int(ss.is_first_col()), int(
+        ss.is_last_row()), int(ss.is_last_col())
 
 
 def get_subplot_shape(n):
     if n <= 3:
         return n, 1
-    
+
     # Try to make the layout as square as possible
     for cols in range(1, n + 1):
         rows = math.ceil(n / cols)
@@ -701,7 +708,7 @@ def dump_json_file(fname, config, plot_type, findex, map_filename, fig, output_d
     #     vis_summary[findex]['level'] = config.level
 
     if config.make_gif:  # one file per field_name
-        vis_summary[findex]['filename'] = field_name+".gif"
+        vis_summary[findex]['filename'] = field_name + ".gif"
     else:
         vis_summary[findex]['filename'] = map_filename
     vis_summary[findex]['field_name'] = field_name
@@ -744,7 +751,8 @@ def archive(config, output_dir, event_stamp):
         output_dir (str) : Output directory to store images
         event_stamp (str) : Time stamp for archived web results
     """
-    fs = [f for f in os.listdir(output_dir) if os.path.isfile(os.path.join(output_dir, f))]
+    fs = [f for f in os.listdir(output_dir) if
+          os.path.isfile(os.path.join(output_dir, f))]
     full_fs = [os.path.join(output_dir, f) for f in fs]
     archive_path = os.path.join(output_dir, event_stamp)
     config.archive_path = archive_path
@@ -765,8 +773,9 @@ class OOMFormatter(matplotlib.ticker.ScalarFormatter):
     def __init__(self, order=0, prec=0, offset=True, math_text=True):
         self.prec = prec
         self.oom = order
-        self.fformat = "%1."+str(self.prec)+"f"
-        matplotlib.ticker.ScalarFormatter.__init__(self, useOffset=offset, useMathText=math_text)
+        self.fformat = "%1." + str(self.prec) + "f"
+        matplotlib.ticker.ScalarFormatter.__init__(self, useOffset=offset,
+                                                   useMathText=math_text)
 
     def _set_order_of_magnitude(self):
         self.orderOfMagnitude = self.oom
@@ -774,7 +783,7 @@ class OOMFormatter(matplotlib.ticker.ScalarFormatter):
     def _set_format(self):
         self.format = self.fformat
         if self._useMathText:
-             self.format = r'$\mathdefault{%s}$' % self.format
+            self.format = r'$\mathdefault{%s}$' % self.format
 
     def _custom_format(self, value, tick_number):
         return f'{value:.2f}'
@@ -785,7 +794,8 @@ class FlexibleOOMFormatter(matplotlib.ticker.ScalarFormatter):
         self.oom = order
         self.min_val = min_val
         self.max_val = max_val
-        matplotlib.ticker.ScalarFormatter.__init__(self, useOffset=offset, useMathText=math_text)
+        matplotlib.ticker.ScalarFormatter.__init__(self, useOffset=offset,
+                                                   useMathText=math_text)
         # set oom explicitly
         self._set_order_of_magnitude()
 
@@ -809,7 +819,7 @@ class FlexibleOOMFormatter(matplotlib.ticker.ScalarFormatter):
     def _custom_format(self, value, tick_number):
         if value != 0:
             exp = int(np.floor(np.log10(np.abs(value))))
-            coeff = value / (10**exp)
+            coeff = value / (10 ** exp)
             # return r'$%1.2f \times 10^{%d}$' % (coeff, exp)
             return r'$%1.2f$' % coeff
         else:

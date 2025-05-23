@@ -13,7 +13,6 @@ from datetime import timedelta
 from matplotlib.transforms import BboxBase as bbase
 from eviz.lib.config.paths_config import PathsConfig
 
-
 logger = logging.getLogger(__name__)
 path_matcher = re.compile(r'\$\{([^}^{]+)\}')
 
@@ -43,7 +42,8 @@ def logger_setup(logger_name, log=1, verbose=1):
     )
     stdout_log = logging.StreamHandler(sys.stdout)
     stdout_log.setLevel(verbose_level)
-    formatter = logging.Formatter("%(levelname)s :: %(module)s (%(funcName)s:%(lineno)d) : %(message)s")
+    formatter = logging.Formatter(
+        "%(levelname)s :: %(module)s (%(funcName)s:%(lineno)d) : %(message)s")
     stdout_log.setFormatter(formatter)
     root = logging.getLogger()
     root.addHandler(stdout_log)
@@ -193,8 +193,8 @@ def expand_env_vars(obj):
         return os.path.expandvars(obj)
     else:
         return obj
-    
-    
+
+
 def load_yaml(yaml_filename):
     """Load a YAML file."""
     my_yaml = os.path.abspath(yaml_filename)
@@ -263,6 +263,7 @@ def log_method(func):
     Returns:
         callable: The wrapped method.
     """
+
     @wraps(func)
     def wrapper(*args, **kwargs):
         logger = logging.getLogger(func.__module__)
@@ -273,23 +274,13 @@ def log_method(func):
         result = func(*args, **kwargs)
         logger.debug(f"Finished {func.__name__} in {file_name}")
         return result
+
     return wrapper
 
 
 # ------------------------------
 # Domain-Specific Utilities
 # ------------------------------
-
-def read_species_db(paths=None) -> dict:
-    """Read species database YAML file and load into data structure."""
-    if paths is None:
-        paths = PathsConfig()
-    root_path = os.path.dirname(os.path.abspath('const.py'))
-    db_path = paths.species_db_path
-    if not os.path.exists(db_path):
-        db_path = os.path.join(root_path, paths.species_db_path)
-    return load_yaml(db_path)
-
 def read_meta_coords(paths=None) -> dict:
     """ Read meta coordinates YAML file and load into data structure"""
     if paths is None:
@@ -346,7 +337,8 @@ def get_season_from_file(file_name):
         return "MAM"
     else:
         return None
-    
+
+
 def squeeze_fig_aspect(fig, preserve='h'):
     # https://github.com/matplotlib/matplotlib/issues/5463
     preserve = preserve.lower()
@@ -361,4 +353,3 @@ def squeeze_fig_aspect(fig, preserve='h'):
         raise ValueError(
             'preserve must be "h" or "w", not {}'.format(preserve))
     fig.set_size_inches(new_size, forward=True)
-

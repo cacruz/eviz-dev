@@ -10,7 +10,6 @@ import eviz.lib.constants as constants
 
 dask.config.set({"array.slicing.split_large_chunks": False})
 
-
 logger = logging.getLogger(__name__)
 
 
@@ -29,9 +28,11 @@ def apply_conversion(config, data2d, name):
     For comparison plots, we rely on the "target" units specified in the specs file and the unit
     conversion is provided by the Units conversion module.
     """
-    logger.debug(f"apply_conversion input for {name}: shape={data2d.shape}, dims={data2d.dims}")
+    logger.debug(
+        f"apply_conversion input for {name}: shape={data2d.shape}, dims={data2d.dims}")
     try:
-        logger.debug(f"apply_conversion input stats: min={data2d.min().values}, max={data2d.max().values}")
+        logger.debug(
+            f"apply_conversion input stats: min={data2d.min().values}, max={data2d.max().values}")
     except Exception as e:
         logger.warning(f"Could not compute min/max for {name}: {e}")
 
@@ -39,33 +40,40 @@ def apply_conversion(config, data2d, name):
     if not hasattr(config, 'spec_data') or config.spec_data is None:
         logger.warning(f"No spec_data found in config for {name}")
         return data2d
-    
+
     if name not in config.spec_data:
         logger.warning(f"Field {name} not found in spec_data")
         return data2d
-        
+
     # A user specifies units AND unitconversion factor:
     if 'units' in config.spec_data[name] and 'unitconversion' in config.spec_data[name]:
-        logger.debug(f"Applying unit conversion with factor: {config.spec_data[name]['unitconversion']}")
+        logger.debug(
+            f"Applying unit conversion with factor: {config.spec_data[name]['unitconversion']}")
         if "AOA" in name.upper():
             data2d = data2d / np.timedelta64(1, 'ns') / 1000000000 / 86400
         else:
             data2d = data2d * float(config.spec_data[name]['unitconversion'])
     # A user specifies units AND no unitconversion factor, in that case we use units module
-    elif 'units' in config.spec_data[name] and 'unitconversion' not in config.spec_data[name]:
-        logger.debug(f"Using units module for conversion to: {config.spec_data[name]['units']}")
+    elif 'units' in config.spec_data[name] and 'unitconversion' not in config.spec_data[
+        name]:
+        logger.debug(
+            f"Using units module for conversion to: {config.spec_data[name]['units']}")
         # If field name is a chemical species...
-        if hasattr(config, 'species_db') and config.species_db and name in config.species_db.keys():
-            data2d = config.units.convert_chem(data2d, name, config.spec_data[name]['units'])
+        if hasattr(config,
+                   'species_db') and config.species_db and name in config.species_db.keys():
+            data2d = config.units.convert_chem(data2d, name,
+                                               config.spec_data[name]['units'])
         else:
             # Check if units attribute exists in config
             if hasattr(config, 'units') and config.units:
                 try:
-                    data2d = config.units.convert(data2d, name, config.spec_data[name]['units'])
+                    data2d = config.units.convert(data2d, name,
+                                                  config.spec_data[name]['units'])
                 except Exception as e:
                     logger.error(f"Error converting units for {name}: {e}")
                     # If conversion fails, just return the original data
-                    logger.warning(f"Returning original data for {name} without unit conversion")
+                    logger.warning(
+                        f"Returning original data for {name} without unit conversion")
             else:
                 logger.warning(f"No units module found in config for {name}")
     else:
@@ -74,13 +82,15 @@ def apply_conversion(config, data2d, name):
             data2d = data2d / np.timedelta64(1, 'ns') / 1000000000 / 86400
         msg = f"No units found for {name}. Will use the given 'dataset' units."
         logger.debug(msg)
-    
+
     try:
-        logger.debug(f"apply_conversion output for {name}: shape={data2d.shape}, dims={data2d.dims}")
-        logger.debug(f"apply_conversion output stats: min={data2d.min().values}, max={data2d.max().values}")
+        logger.debug(
+            f"apply_conversion output for {name}: shape={data2d.shape}, dims={data2d.dims}")
+        logger.debug(
+            f"apply_conversion output stats: min={data2d.min().values}, max={data2d.max().values}")
     except Exception as e:
         logger.warning(f"Could not compute min/max for output {name}: {e}")
-    
+
     return data2d
 
 
@@ -93,7 +103,9 @@ def apply_mean(config, d, level=None):
             if len(d.dims) == 3:
                 data2d = d.mean(dim=config.get_model_dim_name('tc'))
             else:  # 4D array - we need to select a level
-                lev_to_plot = int(np.where(d.coords[config.get_model_dim_name('zc')].values == level)[0])
+                lev_to_plot = int(
+                    np.where(d.coords[config.get_model_dim_name('zc')].values == level)[
+                        0])
                 logger.debug("Level to plot:" + str(lev_to_plot))
                 # select level
                 data2d = d.isel(lev=lev_to_plot)
@@ -201,7 +213,8 @@ def _guess_bounds(points, bound_position=0.5):
     return np.array([min_bounds, max_bounds]).transpose()
 
 
-def calc_spatial_mean(xr_da, lon_name="longitude", lat_name="latitude", radius=constants.R_EARTH_M):
+def calc_spatial_mean(xr_da, lon_name="longitude", lat_name="latitude",
+                      radius=constants.R_EARTH_M):
     """ Calculate spatial mean of xarray.DataArray with grid cell weighting.
 
     Args:
@@ -222,7 +235,8 @@ def calc_spatial_mean(xr_da, lon_name="longitude", lat_name="latitude", radius=c
     return (xr_da * aw_factor).mean(dim=[lon_name, lat_name])
 
 
-def calc_spatial_integral(xr_da, lon_name="longitude", lat_name="latitude", radius=constants.R_EARTH_M):
+def calc_spatial_integral(xr_da, lon_name="longitude", lat_name="latitude",
+                          radius=constants.R_EARTH_M):
     """ Calculate spatial integral of xarray.DataArray with grid cell weighting.
 
     Args:
@@ -386,11 +400,14 @@ def sum_over_lev(data_array):
     result_array = data_array.sum(dim='lev')
     return result_array
 
+
 """
 Internal utilities for managing datetime objects and strings
 Adopted from GCpy - with minor modifications
 
 """
+
+
 def get_timestamp_string(date_array):
     """
     Convenience function returning the datetime timestamp based on the given input
@@ -446,7 +463,7 @@ def is_full_year(start_date, end_date):
     Returns: boolean
     """
     return (
-        add_months(start_date, 12) == end_date
-        and start_date.astype(datetime).month == 1
-        and start_date.astype(datetime).day == 1
+            add_months(start_date, 12) == end_date
+            and start_date.astype(datetime).month == 1
+            and start_date.astype(datetime).day == 1
     )

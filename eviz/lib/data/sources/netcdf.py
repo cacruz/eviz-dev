@@ -15,7 +15,7 @@ class NetCDFDataSource(DataSource):
     This class handles loading and processing data from NetCDF files and OpenDAP URLs.
     """
     model_name: Optional[str] = None
-    config_manager: Optional[object] = None 
+    config_manager: Optional[object] = None
     datasets: Dict = field(default_factory=dict, init=False)
 
     def __post_init__(self):
@@ -26,7 +26,7 @@ class NetCDFDataSource(DataSource):
     def logger(self) -> logging.Logger:
         """Get the logger for this class."""
         return logging.getLogger(__name__)
-    
+
     def load_data(self, file_path: str) -> xr.Dataset:
         """
         Load data from a NetCDF file or OpenDAP URL into an Xarray dataset.
@@ -64,11 +64,13 @@ class NetCDFDataSource(DataSource):
                 for entry in self.config_manager.app_data.inputs:
                     if 'to_plot' in entry:
                         vars_to_keep.update(entry['to_plot'].keys())
-                self.logger.info(f"Variables to keep: {vars_to_keep}")        
+                self.logger.info(f"Variables to keep: {vars_to_keep}")
+
                 def drop_unneeded_vars(ds):
                     available = set(ds.data_vars)
                     keep = [v for v in vars_to_keep if v in available]
                     return ds[keep]
+
                 dataset = xr.open_mfdataset(
                     files,
                     decode_cf=True,
@@ -92,7 +94,8 @@ class NetCDFDataSource(DataSource):
 
             # For URLs, use the last part of the path as the file name
             if is_remote:
-                file_name = os.path.basename(file_path.split('?')[0])  # Remove query parameters
+                file_name = os.path.basename(
+                    file_path.split('?')[0])  # Remove query parameters
             else:
                 file_name = os.path.basename(files[0])
 
@@ -106,7 +109,7 @@ class NetCDFDataSource(DataSource):
         except Exception as exc:
             self.logger.error(f"Error loading NetCDF data: {file_path}. Exception: {exc}")
             raise
-    
+
     def _setup_dask_client(self) -> None:
         """Set up a Dask distributed client for parallel computation."""
         try:
@@ -115,8 +118,9 @@ class NetCDFDataSource(DataSource):
             self.logger.info(f"Dask dashboard is available at: {client.dashboard_link}")
             self.logger.info(f"Using {n_workers} workers for parallel computation")
         except Exception as exc:
-            self.logger.warning(f"Failed to set up Dask client: {exc}. Continuing without parallel computation.")
-    
+            self.logger.warning(
+                f"Failed to set up Dask client: {exc}. Continuing without parallel computation.")
+
     def _extract_metadata(self, dataset: xr.Dataset) -> None:
         """Extract metadata from the dataset.
         
@@ -125,7 +129,7 @@ class NetCDFDataSource(DataSource):
         """
         if dataset is None:
             return
-        
+
         self.metadata["global_attrs"] = dict(dataset.attrs)
         self.metadata["dimensions"] = {dim: dataset.dims[dim] for dim in dataset.dims}
         self.metadata["variables"] = {}
@@ -136,7 +140,7 @@ class NetCDFDataSource(DataSource):
                 "dtype": str(var.dtype),
                 "shape": var.shape
             }
-    
+
     def get_dataset(self, file_name: str) -> Optional[xr.Dataset]:
         """Get a specific dataset by file name.
         
@@ -147,7 +151,7 @@ class NetCDFDataSource(DataSource):
             The dataset for the specified file, or None if not found
         """
         return self.datasets.get(file_name)
-    
+
     def get_all_datasets(self) -> Dict[str, xr.Dataset]:
         """Get all loaded datasets.
         
@@ -155,7 +159,7 @@ class NetCDFDataSource(DataSource):
             Dictionary of all loaded datasets
         """
         return self.datasets
-    
+
     def _rename_dims(self, ds):
         """
         Standardize dimension names in the dataset.
@@ -172,38 +176,38 @@ class NetCDFDataSource(DataSource):
         if self.model_name in ['wrf', 'lis']:
             # Skip renaming for these special models
             return ds
-        
+
         available_dims = list(ds.dims)
-        
+
         xc = self._get_model_dim_name('xc', available_dims)
         yc = self._get_model_dim_name('yc', available_dims)
         zc = self._get_model_dim_name('zc', available_dims)
         tc = self._get_model_dim_name('tc', available_dims)
-        
+
         rename_dict = {}
-        
+
         # Add mappings only for dimensions that exist and need renaming
         if xc and xc != 'lon' and xc in available_dims:
             rename_dict[xc] = 'lon'
-        
+
         if yc and yc != 'lat' and yc in available_dims:
             rename_dict[yc] = 'lat'
-        
+
         if zc and zc != 'lev' and zc in available_dims:
             rename_dict[zc] = 'lev'
-        
+
         if tc and tc != 'time' and tc in available_dims:
             rename_dict[tc] = 'time'
-        
+
         if rename_dict:
             self.logger.debug(f"Renaming dimensions: {rename_dict}")
             try:
                 ds = ds.rename(rename_dict)
             except Exception as e:
                 self.logger.error(f"Error renaming dimensions: {e}")
-        
+
         return ds
-    
+
     def close(self) -> None:
         """Close all datasets and free resources."""
         super().close()

@@ -9,6 +9,7 @@ from eviz.lib.data.factory import DataSourceFactory
 from eviz.lib.data.sources import DataSource
 from eviz.lib.data.url_validator import is_url
 
+
 @dataclass
 class DataReader:
     """Data reading stage of the pipeline."""
@@ -54,7 +55,8 @@ class DataReader:
                     datasets.append(ds.dataset)
                 # Combine datasets as appropriate (e.g., pd.concat for CSV, xr.concat for NetCDF)
                 # Here, we just assign the first for simplicity
-                data_source.dataset = datasets[0]  # You may want to implement a real combine
+                data_source.dataset = datasets[
+                    0]  # You may want to implement a real combine
             self.data_sources[file_path] = data_source
             return data_source
 
@@ -77,7 +79,8 @@ class DataReader:
             self.logger.error(f"Error reading file: {file_path}. Exception: {e}")
             raise
 
-    def read_files(self, file_paths: List[str], model_name: Optional[str] = None) -> Dict[str, DataSource]:
+    def read_files(self, file_paths: List[str], model_name: Optional[str] = None) -> Dict[
+        str, DataSource]:
         """Read data from multiple files."""
         self.logger.debug(f"Reading {len(file_paths)} files")
 
@@ -101,7 +104,7 @@ class DataReader:
             The data source, or None if not found
         """
         return self.data_sources.get(file_path)
-    
+
     def get_all_data_sources(self) -> Dict[str, DataSource]:
         """Get all data sources.
         
@@ -155,7 +158,6 @@ def get_data_coords(data_array, attribute_name):
         'lev': ['lev', 'level', 'z', 'altitude', 'height', 'depth', 'plev'],
     }
 
-
     # Check if attribute_name is a gridded name present in the mapping
     for gridded, specific_list in attribute_mapping.items():
         if attribute_name in specific_list:
@@ -179,4 +181,3 @@ def get_data_coords(data_array, attribute_name):
 
     # If the attribute wasn't found after all attempts, raise an error
     raise ValueError(f"Gridded name for {attribute_name} not found in attribute_mapping.")
-

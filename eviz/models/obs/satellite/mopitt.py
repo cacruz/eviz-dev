@@ -106,8 +106,6 @@ class Mopitt(Root):
                     mopitt_data = self.config.readers[source_name].read_data(filename)
                     # Additional HDF5 processing
                     source_data = self.prepare_data(mopitt_data)
-                    # TODO: Is ds_index really necessary?
-                    self.config.ds_index = s
                     self.config.findex = file_index
                     self.config.pindex = field_num
                     self.config.axindex = 0

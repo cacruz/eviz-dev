@@ -1,7 +1,6 @@
 import sys
 from dataclasses import dataclass
 import numpy as np
-import pandas as pd
 import xarray as xr
 import logging
 import warnings
@@ -38,49 +37,28 @@ class Wrf(NuWrf):
         self.eta_mid = np.array(self.source_data['vars']['ZNU'][0])
         self.levf = np.empty(len(self.eta_full))
         self.levs = np.empty(len(self.eta_mid))
-        
+
         for i, s in enumerate(self.eta_full):
             if s > 0:
                 self.levf[i] = int(self.p_top + s * (1000 - self.p_top))
             else:
                 self.levf[i] = self.p_top + s * (1000 - self.p_top)
-        
+
         for i, s in enumerate(self.eta_mid):
             if s > 0:
                 self.levs[i] = int(self.p_top + s * (1000 - self.p_top))
             else:
                 self.levs[i] = self.p_top + s * (1000 - self.p_top)
 
-    def _get_field_for_simple_plot(self, field_name, plot_type):
-        """WRF-specific simple plot field processing."""
-        data2d = None
-        d = self.source_data['vars'][field_name]
-        dim1, dim2 = self.coord_names(self.source_name, self.source_data, field_name, plot_type)
-        
-        if 'yz' in plot_type:
-            data2d = self._get_yz(d, field_name)
-        elif 'xy' in plot_type:
-            data2d = self._get_xy(d, field_name, level=0)
-
-        xs, ys = None, None
-        if 'xt' in plot_type or 'tx' in plot_type:
-            return data2d, None, None, field_name, plot_type
-        elif 'yz' in plot_type:
-            xs = np.array(self._get_field(dim1, d)[0, :][:, 0])
-            ys = self.levs
-            return data2d, xs, ys, field_name, plot_type
-        else:
-            xs = np.array(self._get_field(dim1, data2d)[0, :])
-            ys = np.array(self._get_field(dim2, data2d)[:, 0])
-            return data2d, xs, ys, field_name, plot_type
-
-    def _get_field_to_plot(self, field_name, file_index, plot_type, figure, time_level, level=None):
+    def _get_field_to_plot(self, field_name, file_index, plot_type, figure, time_level,
+                           level=None):
         """WRF-specific field processing."""
         ax = figure.get_axes()
-        dim1, dim2 = self.coord_names(self.source_name, self.source_data, field_name, plot_type)
+        dim1, dim2 = self.coord_names(self.source_name, self.source_data, field_name,
+                                      plot_type)
         data2d = None
         d = self.source_data['vars'][field_name]
-        
+
         if 'yz' in plot_type:
             data2d = self._get_yz(d, time_lev=time_level)
         elif 'xt' in plot_type:
@@ -90,9 +68,11 @@ class Wrf(NuWrf):
         elif 'xy' in plot_type or 'polar' in plot_type:
             data2d = self._get_xy(d, level=level, time_lev=time_level)
 
-        return self._process_coordinates(data2d, dim1, dim2, field_name, plot_type, file_index, figure, ax)
+        return self._process_coordinates(data2d, dim1, dim2, field_name, plot_type,
+                                         file_index, figure, ax)
 
-    def _process_coordinates(self, data2d, dim1, dim2, field_name, plot_type, file_index, figure, ax):
+    def _process_coordinates(self, data2d, dim1, dim2, field_name, plot_type, file_index,
+                             figure, ax):
         """Process coordinates for WRF plots"""
         if 'xt' in plot_type or 'tx' in plot_type:
             return data2d, None, None, field_name, plot_type, file_index, figure, ax
@@ -115,15 +95,11 @@ class Wrf(NuWrf):
             self.config_manager.ax_opts['central_lat'] = np.mean([latS, latN])
             return data2d, xs, ys, field_name, plot_type, file_index, figure, ax
 
-    def _get_time_dimension_name(self, d):
-        """WRF uses 'Time' as the time dimension."""
-        return 'Time' if 'Time' in d.dims else super()._get_time_dimension_name(d)
-
     def _get_field_for_simple_plot(self, field_name, plot_type):
         data2d = None
         d = self.source_data['vars'][field_name]
         dim1, dim2 = self.coord_names(self.source_name, self.source_data,
-                                         field_name, plot_type)
+                                      field_name, plot_type)
         if 'yz' in plot_type:
             data2d = self.__get_yz(d, field_name)
         elif 'xy' in plot_type:
@@ -193,7 +169,6 @@ class Wrf(NuWrf):
             dim2 = dims[1]
         return dim1, dim2
 
-
     def _get_xy(self, d, level, time_lev):
         """ Extract XY slice from N-dim data field"""
         if d is None:
@@ -202,7 +177,8 @@ class Wrf(NuWrf):
             level = int(level)
 
         self.logger.debug(f"Selecting time level: {time_lev}")
-        data2d = eval(f"d.isel({self.get_model_dim_name(self.source_name, 'tc')}=time_lev)")
+        data2d = eval(
+            f"d.isel({self.get_model_dim_name(self.source_name, 'tc')}=time_lev)")
         data2d = data2d.squeeze()
         zname = self.get_field_dim_name('wrf', d, 'zc')
         if zname in data2d.dims:
@@ -234,7 +210,8 @@ class Wrf(NuWrf):
         d = self.source_data['vars'][d.name]
         stag = d.stagger
         if stag == "X":
-            data2d = data2d.mean(dim=self.get_model_dim_name(self.source_name, 'xc') + "_stag")
+            data2d = data2d.mean(
+                dim=self.get_model_dim_name(self.source_name, 'xc') + "_stag")
         else:
             data2d = data2d.mean(dim=self.get_model_dim_name(self.source_name, 'xc'))
         return apply_conversion(self.config_manager, data2d, d.name)
@@ -249,15 +226,16 @@ class Wrf(NuWrf):
         d_temp = d
         if d_temp is None:
             return
-        
+
         xtime = d.XTIME
-        
+
         num_times = xtime.size
         self.logger.info(f"'{name}' field has {num_times} time levels")
         print(xr.ALL_DIMS)
         if isinstance(time_lev, list):
             self.logger.info(f"Computing time series on {time_lev} time range")
-            data2d = eval(f"d_temp.isel({self.config.get_model_dim_name('tc')}=slice(time_lev))")
+            data2d = eval(
+                f"d_temp.isel({self.config.get_model_dim_name('tc')}=slice(time_lev))")
         else:
             data2d = d_temp.squeeze()
 
@@ -274,34 +252,42 @@ class Wrf(NuWrf):
                 x2 = self.config.spec_data[name]['xtplot']['area_sel'][1]
                 y1 = self.config.spec_data[name]['xtplot']['area_sel'][2]
                 y2 = self.config.spec_data[name]['xtplot']['area_sel'][3]
-                data2d = data2d.sel(lon=np.arange(x1, x2, 0.5), lat=np.arange(y1, y2, 0.5), method='nearest')
-                data2d = data2d.mean(dim=(self.config.get_model_dim_name('xc'), self.config.get_model_dim_name('yc')))
+                data2d = data2d.sel(lon=np.arange(x1, x2, 0.5),
+                                    lat=np.arange(y1, y2, 0.5), method='nearest')
+                data2d = data2d.mean(dim=(self.config.get_model_dim_name('xc'),
+                                          self.config.get_model_dim_name('yc')))
             elif mean_type in ['year', 'season', 'month']:
-                data2d = data2d.groupby(self.config.get_model_dim_name('tc') + '.' + mean_type).mean(
+                data2d = data2d.groupby(
+                    self.config.get_model_dim_name('tc') + '.' + mean_type).mean(
                     dim=self.config.get_model_dim_name('tc'), keep_attrs=True)
             else:
-                data2d = data2d.groupby(self.config.get_model_dim_name('tc')).mean(dim=xr.ALL_DIMS, keep_attrs=True)
+                data2d = data2d.groupby(self.config.get_model_dim_name('tc')).mean(
+                    dim=xr.ALL_DIMS, keep_attrs=True)
                 if 'mean_type' in self.config.spec_data[name]['xtplot']:
                     if self.config.spec_data[name]['xtplot']['mean_type'] == 'rolling':
                         window_size = 5
                         if 'window_size' in self.config.spec_data[name]['xtplot']:
-                            window_size = self.config.spec_data[name]['xtplot']['window_size']
+                            window_size = self.config.spec_data[name]['xtplot'][
+                                'window_size']
                         self.logger.info(f" -- smoothing window size: {window_size}")
                         kernel = np.ones(window_size) / window_size
                         convolved_data = np.convolve(data2d, kernel, mode="same")
-                        data2d = xr.DataArray(convolved_data, dims=self.config.get_model_dim_name('tc'),
+                        data2d = xr.DataArray(convolved_data,
+                                              dims=self.config.get_model_dim_name('tc'),
                                               coords=data2d.coords)
 
         else:
-            data2d = data2d.groupby(self.config.get_model_dim_name('tc')).mean(dim=xr.ALL_DIMS, keep_attrs=True)
+            data2d = data2d.groupby(self.config.get_model_dim_name('tc')).mean(
+                dim=xr.ALL_DIMS, keep_attrs=True)
 
         if 'level' in self.config.spec_data[name]['xtplot']:
             level = int(self.config.spec_data[name]['xtplot']['level'])
-            lev_to_plot = int(np.where(data2d.coords[self.config.get_model_dim_name('zc')].values == level)[0])
+            lev_to_plot = int(np.where(
+                data2d.coords[self.config.get_model_dim_name('zc')].values == level)[0])
             data2d = data2d[:, lev_to_plot].squeeze()
 
         return apply_conversion(self.config, data2d, name)
-    
+
     def _select_yrange(self, data2d, name):
         """ Select a range of vertical levels"""
         if 'zrange' in self.config_manager.spec_data[name]['yzplot']:
@@ -310,7 +296,8 @@ class Wrf(NuWrf):
             lo_z = self.config_manager.spec_data[name]['yzplot']['zrange'][0]
             hi_z = self.config_manager.spec_data[name]['yzplot']['zrange'][1]
             if hi_z >= lo_z:
-                self.logger.error(f"Upper level value ({hi_z}) must be less than low level value ({lo_z})")
+                self.logger.error(
+                    f"Upper level value ({hi_z}) must be less than low level value ({lo_z})")
                 return
             lev = self.get_model_dim_name(self.source_name, 'zc')
             min_index, max_index = 0, len(data2d.coords[lev].values) - 1
@@ -342,16 +329,16 @@ class Wrf(NuWrf):
             return
         cf = ax.contourf(dim1.values, dim2.values, data2d, cmap=self.config_manager.cmap)
         cbar = self.fig.colorbar(cf, ax=ax,
-                                orientation='vertical',
-                                pad=0.05,
-                                fraction=0.05)
-        
+                                 orientation='vertical',
+                                 pad=0.05,
+                                 fraction=0.05)
+
         # Get the appropriate reader
         reader = self._get_reader(self.source_name)
         if not reader:
             self.logger.error(f"No reader found for source {self.source_name}")
             return
-            
+
         d = reader.get_field(field_name, self.config_manager.findex)
         dvars = d['vars'][field_name]
         t_label = self.config_manager.meta_attrs['field_name'][self.source_name]
@@ -377,13 +364,13 @@ class Wrf(NuWrf):
         if 'yz' in pid:
             dim1 = self.config_manager.meta_coords['yc'][self.source_name]
             dim2 = self.config_manager.meta_coords['zc'][self.source_name]
-        
+
         # Get the appropriate reader
         reader = self._get_reader(self.source_name)
         if not reader:
             self.logger.error(f"No reader found for source {self.source_name}")
             return None, None, None
-            
+
         d = reader.get_field(field_name, self.config_manager.findex)['vars']
 
         if 'yz' in pid:
@@ -403,17 +390,18 @@ class Wrf(NuWrf):
         Apply vertical level selection for WRF data, handling staggered grids and pressure levels.
         """
         # Get the vertical dimension name
-        zname = self.get_field_dim_name(self.source_name, self.source_data, 'zc', field_name)
-        
+        zname = self.get_field_dim_name(self.source_name, self.source_data, 'zc',
+                                        field_name)
+
         # If no vertical dimension or it's not in the data, return as is
         if not zname or zname not in data2d.dims:
             return data2d
-        
+
         # Handle soil layers differently
         if 'soil' in zname:
             soil_layer = 0  # Default to top soil layer
             return eval(f"data2d.isel({zname}=soil_layer)")
-        
+
         # For atmospheric levels, convert to pressure level
         if level is not None:
             # Find the closest model level to the requested pressure level
@@ -422,14 +410,15 @@ class Wrf(NuWrf):
             lev_to_plot = self.levs[index]
             self.logger.debug(f'Level to plot: {lev_to_plot} at index {index}')
             return eval(f"data2d.isel({zname}=index)")
-        
+
         return data2d
 
     def _get_time_dimension_name(self, d):
         """WRF uses 'Time' as the time dimension."""
         return 'Time' if 'Time' in d.dims else super()._get_time_dimension_name(d)
 
-    def _apply_time_selection(self, original_data, data2d, time_dim, time_lev, field_name, level):
+    def _apply_time_selection(self, original_data, data2d, time_dim, time_lev, field_name,
+                              level):
         """WRF applies time selection directly."""
         if time_dim and time_dim in original_data.dims:
             return original_data.isel({time_dim: time_lev}).squeeze()
@@ -443,11 +432,11 @@ class Wrf(NuWrf):
         # Get readers for both sources
         reader1 = self._get_reader(source_name1)
         reader2 = self._get_reader(source_name2)
-        
+
         if not reader1 or not reader2:
             self.logger.error("No suitable readers found for comparison")
             return None
-        
+
         # Read data from both files
         sdat1 = reader1.read_data(filename1)
         sdat2 = reader2.read_data(filename2)
@@ -473,15 +462,16 @@ class Wrf(NuWrf):
         This handles the case where multiple files come from the same source.
         """
         # Try to get source name from file_list
-        if hasattr(self.config_manager, 'file_list') and file_index in self.config_manager.file_list:
+        if hasattr(self.config_manager,
+                   'file_list') and file_index in self.config_manager.file_list:
             return self.config_manager.file_list[file_index].get('source_name', 'wrf')
-        
+
         # Try to get source name from map_params
         if hasattr(self.config_manager, 'map_params'):
             for param_key, param_config in self.config_manager.map_params.items():
-                if param_key == file_index or param_config.get('file_index') == file_index:
+                if param_key == file_index or param_config.get(
+                        'file_index') == file_index:
                     return param_config.get('source_name', 'wrf')
-        
+
         # If we can't find the source name, default to 'wrf' since we're in the Wrf class
         return 'wrf'
-    

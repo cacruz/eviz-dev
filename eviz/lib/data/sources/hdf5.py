@@ -1,7 +1,7 @@
 import logging
 import xarray as xr
 import h5py
-from .base import DataSource
+from eviz.lib.data.sources.base import DataSource
 
 
 class HDF5DataSource(DataSource):

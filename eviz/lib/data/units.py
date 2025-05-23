@@ -9,7 +9,6 @@ from eviz.lib import constants as constants
 import eviz.lib.utils as u
 from eviz.lib.data.pipeline.processor import DataProcessor
 
-
 logger = logging.getLogger(__name__)
 
 """
@@ -39,9 +38,11 @@ def get_airmass(config, dry_run=False):
     if config.app_data is not None:
         if hasattr(config.app_data, 'for_inputs'):
             airmass_file_name = result if (
-                result := u.get_nested_key_value(config.app_data.for_inputs, ['airmass_file_name'])) else constants.AIRMASS_URL
+                result := u.get_nested_key_value(config.app_data.for_inputs, [
+                    'airmass_file_name'])) else constants.AIRMASS_URL
             airmass_field_name = result if (
-                result := u.get_nested_key_value(config.app_data.for_inputs, ['airmass_field_name'])) else 'AIRMASS'
+                result := u.get_nested_key_value(config.app_data.for_inputs,
+                                                 ['airmass_field_name'])) else 'AIRMASS'
 
     logger.debug(f"Loading airmass data from {airmass_file_name}")
 
@@ -75,7 +76,6 @@ def download_airmass(url):
 
     Returns:
         xArray dataset
-
     """
     filename = os.path.basename(url)
     downloaded_file = os.path.join("./", filename)
@@ -85,7 +85,7 @@ def download_airmass(url):
             for chunk in r.iter_content(chunk_size=8192):
                 f.write(chunk)
     return xr.open_dataset(downloaded_file)
-        
+
 
 def calculate_total_mass(airmass):
     """
@@ -101,28 +101,26 @@ def calculate_total_mass(airmass):
     return (airmass * area_expanded).sum().item()
 
 
-def calculate_total_area(field):
+def calculate_total_area(data):
     """
     Calculates the total surface area
 
     Parameters:
-        field (xarray.DataArray): The input data array.
+        data (xarray.DataArray): The input data array.
 
     Returns:
         float: The total area over which the data array is defined.
     """
-    R = constants.R_EARTH_M
-
     # Calculate the latitudinal and longitudinal spacing
     # Assumes 'lat' and 'lon' dim names!
-    dlat = np.deg2rad(field.lat.diff('lat').mean())
-    dlon = np.deg2rad(field.lon.diff('lon').mean())
+    dlat = np.deg2rad(data.lat.diff('lat').mean())
+    dlon = np.deg2rad(data.lon.diff('lon').mean())
 
     # Calculate the area of each grid cell
-    area = R**2 * dlat * dlon * np.cos(np.deg2rad(field.lat))
+    area = constants.R_EARTH_M ** 2 * dlat * dlon * np.cos(np.deg2rad(data.lat))
 
     # Broadcast area to match the shape of field
-    area_expanded = area.broadcast_like(field)
+    area_expanded = area.broadcast_like(data)
 
     return area_expanded
 
@@ -152,53 +150,53 @@ def adjust_units(units):
     units_squeezed = units.replace(" ", "")
 
     if units_squeezed in [
-            "kg/m2/s",
-            "kgm-2s-1",
-            "kgm^-2s^-1"
+        "kg/m2/s",
+        "kgm-2s-1",
+        "kgm^-2s^-1"
     ]:
         unit_desc = "kg/m2/s"
 
     elif units_squeezed in [
-            "du",
-            "dobsonunits",
-            "dob",
+        "du",
+        "dobsonunits",
+        "dob",
     ]:
         unit_desc = "DU"
 
     elif units_squeezed in [
-            "kgC/m2/s",
-            "kgCm-2s-1",
-            "kgCm^-2s^-1",
-            "kgc/m2/s",
-            "kgcm-2s-1",
-            "kgcm^-2s^-1",
+        "kgC/m2/s",
+        "kgCm-2s-1",
+        "kgCm^-2s^-1",
+        "kgc/m2/s",
+        "kgcm-2s-1",
+        "kgcm^-2s^-1",
     ]:
         unit_desc = "kgC/m2/s"
 
     elif units_squeezed in [
-            "molec/cm2",
-            "molecules/cm2",
-            "moleccm-2",
-            "molecpercm2",
+        "molec/cm2",
+        "molecules/cm2",
+        "moleccm-2",
+        "molecpercm2",
     ]:
         unit_desc = "molec/cm2"
 
     elif units_squeezed in [
-            "molec/cm2/s",
-            "moleccm-2s-1",
-            "moleccm^-2s^-1"
+        "molec/cm2/s",
+        "moleccm-2s-1",
+        "moleccm^-2s^-1"
     ]:
         unit_desc = "molec/cm2/s"
     elif units_squeezed in [
-            "molmol-1dry",
-            "mol/mol",
-            "molmol-1"
+        "molmol-1dry",
+        "mol/mol",
+        "molmol-1"
     ]:
         unit_desc = "mol/mol"
     elif units_squeezed in [
-            "kg/kg",
-            "kgkg-1",
-        ]:
+        "kg/kg",
+        "kgkg-1",
+    ]:
         unit_desc = "kg/kg"
     else:
         unit_desc = units_squeezed
@@ -458,7 +456,8 @@ def calculate_total_column(species, airmass, species_name):
     if species_name.lower() == "ozone":
         total_column_du = total_column_mol_m2 * (DU_CONVERSION / AVOGADRO)
     else:
-        total_column_du = xr.full_like(total_column_mol_m2, np.nan)  # DU conversion not typically applicable
+        total_column_du = xr.full_like(total_column_mol_m2,
+                                       np.nan)  # DU conversion not typically applicable
 
     return total_column_mol_m2, total_column_molecules_cm2, total_column_du
 
@@ -501,13 +500,13 @@ class Units:
     def __post_init__(self):
         self.logger.debug("Create units converter")
         self.species_db = self.config.species_db
-                
 
     @property
     def logger(self) -> logging.Logger:
         return logging.getLogger(__name__)
 
-    def convert_chem(self, data, species_name, to_unit, air_column_density=None, airmass=None):
+    def convert_chem(self, data, species_name, to_unit, air_column_density=None,
+                     airmass=None):
         """ Conversion method for chemical species
 
         Parameters:
@@ -556,19 +555,21 @@ class Units:
             self.processor = DataProcessor(self.config)
 
         if 'mol/mol' in from_unit:
-            if self.config.map_params[self.config.findex]['to_plot'][self.config.pindex] == 'xy':
-                lev_to_plot = int(np.where(self.airmass.coords[self.config.get_model_dim_name('zc')].values == self.config.level)[0])
+            if self.config.map_params[self.config.findex]['to_plot'][
+                self.config.pindex] == 'xy':
+                lev_to_plot = int(np.where(self.airmass.coords[
+                                               self.config.get_model_dim_name(
+                                                   'zc')].values == self.config.level)[0])
                 self.airmass = self.airmass.isel(lev=lev_to_plot)
 
                 dim1 = self.config_manager.get_model_dim_name('xc')  # e.g., 'lon'
                 dim2 = self.config_manager.get_model_dim_name('yc')  # e.g., 'lat'
                 self.airmass, x, y = self.processor.regrid(self.airmass, data, dim1, dim2)
 
-
             # Conversion factor for v/v to kg
             # v/v * kg dry air / g/mol dry air * g/mol species = kg species
             if "DU" in to_unit:
-                vv_to_kg = self.airmass.values # / MOLAR_MASS_AIR * mw_g
+                vv_to_kg = self.airmass.values  # / MOLAR_MASS_AIR * mw_g
 
                 # Conversion factor for v/v to kg
                 # v/v * kg dry air / g/mol dry air * g/mol species = kg species
@@ -581,7 +582,8 @@ class Units:
                 area_m2 = calculate_total_area(data)
                 box_height = 1.0  # TODO
                 if "molec" in to_unit:
-                    vv_to_MND = self.airmass / MOLAR_MASS_AIR * AVOGADRO / (area_m2 * box_height) / 1e6
+                    vv_to_MND = self.airmass / MOLAR_MASS_AIR * AVOGADRO / (
+                            area_m2 * box_height) / 1e6
 
         elif 'kg/kg' in from_unit:
             if "DU" in to_unit:
@@ -651,7 +653,7 @@ class Units:
         # TODO: needs testing
         elif to_unit == 'DU':
             # Calculate kg/kg
-            kgkg = data * (molar_mass_species/MOLAR_MASS_AIR)
+            kgkg = data * (molar_mass_species / MOLAR_MASS_AIR)
             # Calculate kgm2 
             kgm2 = kgkg * vv_to_kg
             # Calculate molm2
@@ -669,45 +671,46 @@ class Units:
 
         conversion_functions = {
             'moles': {
-                'g': lambda data: moles_to_mass(data, self.species_db['MW_g']),
+                'g': lambda d: moles_to_mass(d, self.species_db['MW_g']),
             },
             'g': {
-                'mg': lambda data: g_to_mg(data),
-                'kg': lambda data: g_to_kg(data),
-                'moles': lambda data: mass_to_moles(data, self.species_db['MW_g']),
+                'mg': lambda d: g_to_mg(d),
+                'kg': lambda d: g_to_kg(d),
+                'moles': lambda d: mass_to_moles(d, self.species_db['MW_g']),
             },
             'mg': {
-                'g': lambda data: mg_to_g(data),
-                'kg': lambda data: mg_to_kg(data),
+                'g': lambda d: mg_to_g(d),
+                'kg': lambda d: mg_to_kg(d),
             },
             'kg': {
-                'g': lambda data: kg_to_g(data),
-                'mg': lambda data: kg_to_mg(data),
+                'g': lambda d: kg_to_g(d),
+                'mg': lambda d: kg_to_mg(d),
             },
             'mol/mol': {
-                'kg/kg': lambda data: mol_to_kg(data, molar_mass_species),
-                # 'DU': lambda data: mol_to_du(data, molar_mass_species, airmass),
+                'kg/kg': lambda d: mol_to_kg(d, molar_mass_species),
+                # 'DU': lambda d: mol_to_du(d, molar_mass_species, airmass),
                 # 'DU': total_column_du,
-                'ppb': lambda data: mol_to_ppb(data),
-                'molecules/cm2': lambda data: mol_to_molecules_cm2(data, air_column_density)
+                'ppb': lambda d: mol_to_ppb(d),
+                'molecules/cm2': lambda d: mol_to_molecules_cm2(d, air_column_density)
             },
             'kg/kg': {
-                'mol/mol': lambda data: kg_to_mol(data, molar_mass_species),
-                'DU': lambda data: kg_to_du(data, molar_mass_species, airmass),
-                'ppb': lambda data: kg_to_ppb(data, molar_mass_species)
+                'mol/mol': lambda d: kg_to_mol(d, molar_mass_species),
+                'DU': lambda d: kg_to_du(d, molar_mass_species, airmass),
+                'ppb': lambda d: kg_to_ppb(d, molar_mass_species)
             },
             'DU': {
-                'mol/mol': lambda data: du_to_mol(data, molar_mass_species, airmass)
+                'mol/mol': lambda d: du_to_mol(d, molar_mass_species, airmass)
             },
             'ppb': {
-                'mol/mol': lambda data: ppb_to_mol(data)
+                'mol/mol': lambda d: ppb_to_mol(d)
             },
             'mol': {
-                'mol/mol': lambda data: moles_to_mass(data, molar_mass_species)
+                'mol/mol': lambda d: moles_to_mass(d, molar_mass_species)
             },
         }
 
-        if from_unit not in conversion_functions or to_unit not in conversion_functions[from_unit]:
+        if from_unit not in conversion_functions or to_unit not in conversion_functions[
+            from_unit]:
             raise ValueError(f"Conversion from {from_unit} to {to_unit} not supported.")
 
         new_data = conversion_functions[from_unit][to_unit](data)
@@ -731,50 +734,52 @@ class Units:
         from_unit = adjust_units(data.attrs.get('units'))
         to_unit = adjust_units(to_unit)
         if from_unit == to_unit:
-            self.logger.warning(f"Units are identical {from_unit} == {to_unit}...returning.")
+            self.logger.warning(
+                f"Units are identical {from_unit} == {to_unit}...returning.")
             return data
         self.logger.debug(f"Convert {species_name} units from {from_unit} to {to_unit}")
 
         conversion_functions = {
             'mb': {
-                'hPa': lambda data: mb_to_hPa(data),
-                'Pa': lambda data: mb_to_Pa(data),
+                'hPa': lambda d: mb_to_hPa(d),
+                'Pa': lambda d: mb_to_Pa(d),
             },
             'hPa': {
-                'mb': lambda data: hPa_to_mb(data),
-                'Pa': lambda data: hPa_to_Pa(data),
+                'mb': lambda d: hPa_to_mb(d),
+                'Pa': lambda d: hPa_to_Pa(d),
             },
             'Pa': {
-                'hPa': lambda data: Pa_to_hPa(data),
-                'mb': lambda data: Pa_to_mb(data),
+                'hPa': lambda d: Pa_to_hPa(d),
+                'mb': lambda d: Pa_to_mb(d),
             },
             'g': {
-                'mg': lambda data: g_to_mg(data),
-                'kg': lambda data: g_to_kg(data),
+                'mg': lambda d: g_to_mg(d),
+                'kg': lambda d: g_to_kg(d),
             },
             'mg': {
-                'g': lambda data: mg_to_g(data),
-                'kg': lambda data: mg_to_kg(data),
+                'g': lambda d: mg_to_g(d),
+                'kg': lambda d: mg_to_kg(d),
             },
             'kg': {
-                'g': lambda data: kg_to_g(data),
-                'mg': lambda data: kg_to_mg(data),
+                'g': lambda d: kg_to_g(d),
+                'mg': lambda d: kg_to_mg(d),
             },
             'F': {
-                'C': lambda data: f_to_c(data),
-                'K': lambda data: f_to_k(data),
+                'C': lambda d: f_to_c(d),
+                'K': lambda d: f_to_k(d),
             },
             'C': {
-                'F': lambda data: c_to_f(data),
-                'K': lambda data: c_to_k(data),
+                'F': lambda d: c_to_f(d),
+                'K': lambda d: c_to_k(d),
             },
             'K': {
-                'F': lambda data: k_to_f(data),
-                'C': lambda data: k_to_c(data),
+                'F': lambda d: k_to_f(d),
+                'C': lambda d: k_to_c(d),
             },
         }
 
-        if from_unit not in conversion_functions or to_unit not in conversion_functions[from_unit]:
+        if from_unit not in conversion_functions or to_unit not in conversion_functions[
+            from_unit]:
             raise ValueError(f"Conversion from {from_unit} to {to_unit} not supported.")
 
         new_data = conversion_functions[from_unit][to_unit](data)

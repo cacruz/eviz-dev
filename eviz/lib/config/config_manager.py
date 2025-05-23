@@ -57,7 +57,7 @@ class ConfigManager:
     _units: Optional[object] = field(default=None, init=False)
     _integrator: Optional[DataIntegrator] = field(default=None, init=False)
     _pipeline: Optional[DataPipeline] = field(default=None, init=False)
-        
+
     def __post_init__(self):
         """Initialize the ConfigManager after construction."""
         self.logger.info("Starting ConfigManager initialization")
@@ -82,7 +82,7 @@ class ConfigManager:
     def spec_data(self):
         """Access to specification data."""
         return self.config.spec_data
-    
+
     @property
     def source_names(self):
         """Access to source names."""
@@ -177,11 +177,13 @@ class ConfigManager:
             return getattr(self.config, name)
 
         # Then check in other config objects
-        for config in [self.input_config, self.output_config, self.system_config, self.history_config]:
+        for config in [self.input_config, self.output_config, self.system_config,
+                       self.history_config]:
             if hasattr(config, name):
                 return getattr(config, name)
 
-        raise AttributeError(f"'{self.__class__.__name__}' object has no attribute '{name}'")
+        raise AttributeError(
+            f"'{self.__class__.__name__}' object has no attribute '{name}'")
 
     def get_model_dim_name(self, dim_name):
         """
@@ -207,20 +209,24 @@ class ConfigManager:
             str or None: Model-specific dimension name if available
         """
         if self.ds_index >= len(self.source_names):
-            self.logger.debug(f"ds_index {self.ds_index} out of bounds for source_names {self.source_names}")
+            self.logger.debug(
+                f"ds_index {self.ds_index} out of bounds for source_names {self.source_names}")
             return None
-            
+
         source = self.source_names[self.ds_index]
-        
-        if dim_name not in self.meta_coords or source not in self.meta_coords.get(dim_name, {}):
-            self.logger.debug(f"No meta_coords mapping for dimension '{dim_name}' and source '{source}'")
+
+        if dim_name not in self.meta_coords or source not in self.meta_coords.get(
+                dim_name, {}):
+            self.logger.debug(
+                f"No meta_coords mapping for dimension '{dim_name}' and source '{source}'")
             return None
 
         coords = self.meta_coords[dim_name][source]
 
         if isinstance(coords, str) and ',' not in coords:
-             self.logger.debug(f"Found direct mapping for '{dim_name}' in source '{source}': '{coords}'")
-             return coords
+            self.logger.debug(
+                f"Found direct mapping for '{dim_name}' in source '{source}': '{coords}'")
+            return coords
 
         coord_candidates = []
         if isinstance(coords, str):
@@ -235,19 +241,19 @@ class ConfigManager:
         data_source = self._get_data_source_for_file(file_path)
         if not data_source:
             return None
-            
+
         available_dims = self._get_available_dimensions(data_source)
         if not available_dims:
             return None
-            
+
         self.logger.debug(f"Coordinate candidates for '{dim_name}': {coord_candidates}")
         for coord in coord_candidates:
             if coord and coord in available_dims:
                 self.logger.debug(f"Found matching coordinate: {coord}")
                 return coord
-                
+
         return None
-        
+
     def _get_current_file_path(self, source):
         """
         Get the file path for the current file index or source name.
@@ -261,18 +267,21 @@ class ConfigManager:
         try:
             if self.findex is not None and self.findex < len(self.app_data.inputs):
                 file_entry = self.app_data.inputs[self.findex]
-                return os.path.join(file_entry.get('location', ''), file_entry.get('name', ''))
+                return os.path.join(file_entry.get('location', ''),
+                                    file_entry.get('name', ''))
         except Exception as e:
-            self.logger.debug(f"Could not get file path for ds_index {self.ds_index}, findex {self.findex}: {e}")
-            
+            self.logger.debug(
+                f"Could not get file path for ds_index {self.ds_index}, findex {self.findex}: {e}")
+
         # Fallback to searching by source name
         for entry in self.app_data.inputs:
             if entry.get('source_name') == source:
                 return os.path.join(entry.get('location', ''), entry.get('name', ''))
-                
-        self.logger.debug(f"Could not determine file path for source '{source}' and findex {self.findex}")
+
+        self.logger.debug(
+            f"Could not determine file path for source '{source}' and findex {self.findex}")
         return None
-        
+
     def _get_data_source_for_file(self, file_path):
         """
         Get the data source for a file path.
@@ -285,14 +294,15 @@ class ConfigManager:
         """
         if not file_path or not self.pipeline:
             return None
-            
+
         data_source = self.pipeline.get_data_source(file_path)
-        if not data_source or not hasattr(data_source, 'dataset') or data_source.dataset is None:
+        if not data_source or not hasattr(data_source,
+                                          'dataset') or data_source.dataset is None:
             self.logger.debug(f"No data source or dataset loaded for file: {file_path}")
             return None
-            
+
         return data_source
-        
+
     def _get_available_dimensions(self, data_source):
         """
         Get the available dimensions from a data source.
@@ -303,12 +313,13 @@ class ConfigManager:
         Returns:
             list or None: The list of available dimensions if found, None otherwise
         """
-        if not data_source or not hasattr(data_source, 'dataset') or data_source.dataset is None:
+        if not data_source or not hasattr(data_source,
+                                          'dataset') or data_source.dataset is None:
             return None
-            
+
         available_dims = list(data_source.dataset.dims.keys())
         return available_dims
-        
+
     def setup_comparison(self):
         """
         Set up comparison between datasets based on config settings.
@@ -355,13 +366,14 @@ class ConfigManager:
         if not filename:
             self.logger.warning("Empty filename provided, returning 0")
             return 0
-            
+
         for i, entry in enumerate(self.app_data.inputs):
             # Check if 'filename' key exists before accessing
-            if 'filename' in entry and (filename == entry['filename'] or 
-                                       os.path.basename(filename) == os.path.basename(entry['filename'])):
+            if 'filename' in entry and (filename == entry['filename'] or
+                                        os.path.basename(filename) == os.path.basename(
+                        entry['filename'])):
                 return i
-                
+
         self.logger.warning(f"File index not found for filename: {filename}, returning 0")
         return 0
 
@@ -462,19 +474,21 @@ class ConfigManager:
             str or None: The model-specific attribute name, or None if not found
         """
         if self.ds_index >= len(self.source_names):
-            self.logger.debug(f"ds_index {self.ds_index} out of bounds for source_names {self.source_names}")
+            self.logger.debug(
+                f"ds_index {self.ds_index} out of bounds for source_names {self.source_names}")
             return None
-            
+
         source = self.source_names[self.ds_index]
         if attr_name in self.meta_attrs and source in self.meta_attrs[attr_name]:
             return self.meta_attrs[attr_name][source]
         else:
-            self.logger.debug(f"No meta_attrs mapping for attribute '{attr_name}' and source '{source}'")
+            self.logger.debug(
+                f"No meta_attrs mapping for attribute '{attr_name}' and source '{source}'")
             return None
 
     # Properties that delegate to config objects
     # These are defined explicitly to provide better documentation and type hints
-    
+
     @property
     def map_params(self):
         """Access to map parameters."""

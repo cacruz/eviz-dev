@@ -29,7 +29,7 @@ class SystemConfig:
                           f"archive_web_results={self.archive_web_results}, "
                           f"collection={self.collection}, "
                           f"event_stamp={self.event_stamp}")
-        
+
     @property
     def logger(self):
         """Return the logger for this class."""
@@ -42,4 +42,4 @@ class SystemConfig:
             "archive_web_results": self.archive_web_results,
             "collection": self.collection,
             "event_stamp": self.event_stamp,
-        }   
+        }

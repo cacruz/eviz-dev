@@ -52,17 +52,6 @@ class ConfigurationAdapter:
         """Process the configuration and load data."""        
         for i, file_entry in enumerate(self.config_manager.app_data.inputs):
             file_path = self._get_file_path(file_entry)
-            
-            # Expand the file path if it contains wildcards
-            file_paths = []
-            if '*' in file_path or '?' in file_path or '[' in file_path:
-                file_paths = glob.glob(file_path)
-                if not file_paths:
-                    self.logger.error(f"No files found matching pattern: {file_path}")
-                    continue
-            else:
-                file_paths = [file_path]
-                
             try:
                 source_name = self.config_manager.source_names[self.config_manager.ds_index]
             except (IndexError, AttributeError):

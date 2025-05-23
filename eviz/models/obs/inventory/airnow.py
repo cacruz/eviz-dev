@@ -4,7 +4,6 @@ import warnings
 from typing import Any
 import numpy as np
 import pandas as pd
-import pandas as xr
 from dataclasses import dataclass, field
 import eviz.lib.autoviz.utils as pu
 from eviz.lib.autoviz.figure import Figure
@@ -116,18 +115,9 @@ class Airnow(Root):
         """Process non-xy and non-polar plot types."""
         self.config_manager.level = None
         time_level_config = self.config_manager.ax_opts.get('time_lev', 0)
-        tc_dim = self.config_manager.get_model_dim_name('tc') or 'time'
-
-        if tc_dim in data_array.dims:
-            num_times = data_array[tc_dim].size
-            # TODO: Handle yx_plot Gifs
-            time_levels = range(num_times) if time_level_config == 'all' else [
-                time_level_config]
-        else:
-            time_levels = [0]
 
         ax = figure.get_axes()
-        field_to_plot = self._get_field_to_plot(ax, data_array, field_name, file_index,
+        field_to_plot = self._get_field_to_plot(data_array, field_name, file_index,
                                                 plot_type, figure,
                                                 time_level=time_level_config)
         if field_to_plot:
@@ -135,9 +125,8 @@ class Airnow(Root):
             pu.print_map(self.config_manager, plot_type, self.config_manager.findex,
                          figure)
 
-    def _get_field_to_plot(self, ax, data_array: pd.DataFrame, field_name: str,
-                           file_index: int, plot_type: str, figure, time_level=None,
-                           level=None) -> tuple:
+    def _get_field_to_plot(self, data_array: pd.DataFrame, field_name: str, file_index: int,
+                           plot_type: str, figure, time_level=None,) -> tuple:
         ax = figure.get_axes()
         self.config_manager.ax_opts = figure.init_ax_opts(field_name)
         data2d = None
