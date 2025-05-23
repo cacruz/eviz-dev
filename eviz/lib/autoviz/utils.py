@@ -114,26 +114,52 @@ def update(i, im, image_array):
 
 def create_gif(config):
     if config.archive_web_results:
-        img_path = os.path.join(config.app_data['outputs']['output_dir'],
-                                config.archive_path)
+        img_path = os.path.join(config.app_data.outputs['output_dir'],
+                                config.paths.archive_path)
     else:
-        img_path = config.app_data['outputs']['output_dir']
+        img_path = config.app_data.outputs['output_dir']
+
     all_files = glob.glob(img_path+"/*."+config.print_format)
     files = sorted(all_files, key=natural_key)
     if len(files) == 1:
         return
-    prefix = list(config.app_data['inputs'][0]['to_plot'])[0]
-
+    prefix = list(config.app_data.inputs[0]['to_plot'])[0]
+    
     # remove IC (NUWRF only)
     if not config.archive_web_results:
-        if 'lis' in config.source_names or 'wrf' in config.source_names:
-            os.remove(os.path.join(img_path, prefix+"_0_0." + config.print_format))
-            files.pop(0)
+        if {'lis', 'wrf'} & set(config.source_names):
+            # Find the file that ends with "_0_0.png" instead of assuming exact name
+            ic_file_pattern = f"*{prefix}*_0_0.{config.print_format}"
+            ic_files = glob.glob(os.path.join(img_path, ic_file_pattern))
+            
+            if ic_files:
+                # Remove the first matching IC file
+                ic_file_to_remove = ic_files[0]
+                logger.debug(f"Removing IC file: {ic_file_to_remove}")
+                os.remove(ic_file_to_remove)
+                
+                # Remove it from the files list as well
+                if ic_file_to_remove in files:
+                    files.remove(ic_file_to_remove)
+                else:
+                    # If not found by exact match, find by basename
+                    ic_basename = os.path.basename(ic_file_to_remove)
+                    files = [f for f in files if os.path.basename(f) != ic_basename]
+            else:
+                logger.warning(f"Warning: No IC file found matching pattern {ic_file_pattern}")
+
+    if not files:
+        logger.error("No files remaining after IC removal")
+        return
 
     image_array = []
     for my_file in files:
         image = Image.open(my_file)
         image_array.append(np.array(image))
+
+    if not image_array:
+        logger.error("No images to create GIF")
+        return
 
     height, width, _ = image_array[0].shape
     fig, ax = plt.subplots(figsize=(width / 100, height / 100),
@@ -144,21 +170,35 @@ def create_gif(config):
     fps = config.gif_fps
     duration_ms = int(1000 / fps)
     image_sequence = [Image.fromarray(img) for img in image_array]
+    
+    # Create GIF filename - use just the field name for cleaner naming
+    gif_filename = f"{prefix}.gif"
+    gif_path = os.path.join(img_path, gif_filename)
+    
     image_sequence[0].save(
-        os.path.join(img_path, prefix + ".gif"),
+        gif_path,
         save_all=True,
         append_images=image_sequence[1:],
         duration=duration_ms,
         loop=0  # Infinite loop
     )
+    
+    logger.info(f"Created GIF: {gif_path}")
 
     if config.archive_web_results:
-        with open(os.path.join(img_path, prefix + ".json"), 'w') as fp:
+        json_filename = f"{prefix}.json"
+        json_path = os.path.join(img_path, json_filename)
+        with open(json_path, 'w') as fp:
             json.dump(config.vis_summary, fp)
             fp.close()
 
+    # Clean up individual PNG files
     for my_file in files:
-        os.remove(my_file)
+        try:
+            os.remove(my_file)
+            logger.debug(f"Removed: {os.path.basename(my_file)}")
+        except OSError as e:
+            logger.warning(f"Warning: Could not remove {my_file}: {e}")
 
 
 def print_map(
@@ -166,10 +206,9 @@ def print_map(
     plot_type: str,
     findex: int,
     fig,
-    level: int = None
+    level: int = None, 
 ) -> None:
-    """
-    Save or display a plot, handling output directory, file naming, and optional archiving.
+    """Save or display a plot, handling output directory, file naming, and optional archiving.
 
     Args:
         config: Configuration object with plotting and output options.
@@ -240,6 +279,9 @@ def print_map(
     else:
         plt.tight_layout()
         plt.show()
+    logger.debug("Clearing figure")
+
+
 
 
 def formatted_contours(clevs):
