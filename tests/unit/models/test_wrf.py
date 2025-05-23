@@ -23,11 +23,6 @@ def mock_config_manager():
     mock.spec_data = {}
     return mock
 
-def test_global_attrs_property(mock_config_manager):
-    wrf = Wrf(config_manager=mock_config_manager)
-    wrf._global_attrs = {'P_TOP': 10000}
-    assert wrf.global_attrs['P_TOP'] == 10000
-
 def test_init_domain_sets_levels(mock_config_manager):
     wrf = Wrf(config_manager=mock_config_manager)
     wrf.source_data = {

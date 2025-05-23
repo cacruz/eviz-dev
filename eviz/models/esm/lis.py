@@ -1,71 +1,56 @@
-import logging
 import warnings
 from dataclasses import dataclass
 
 import numpy as np
-import pandas as pd
 
 from eviz.lib.data.utils import apply_mean
 from eviz.lib.data.utils import apply_conversion
-from eviz.lib.autoviz.figure import Figure
 from eviz.models.esm.nuwrf import NuWrf
-from eviz.lib.autoviz.utils import print_map
 
 warnings.filterwarnings("ignore")
 
 
 @dataclass
 class Lis(NuWrf):
-    """ Define LIS specific model data and functions.
-    """
-
-    @property
-    def logger(self) -> logging.Logger:
-        return logging.getLogger(__name__)
+    """ Define LIS specific model data and functions."""
 
     def __post_init__(self):
         self.logger.info("Start init")
         super().__post_init__()
         self.comparison_plot = False
         self.source_name = 'lis'
-        
-    @property
-    def global_attrs(self):
-        return self._global_attrs
 
-    def _simple_plots(self, plotter):
-        map_params = self.config_manager.map_params
-        field_num = 0
-        self.config_manager.findex = 0
-        for i in map_params.keys():
-            field_name = map_params[i]['field']
-            source_name = map_params[i]['source_name']
-            self.source_name = source_name
-            filename = map_params[i]['filename']
-            file_index = self.config_manager.get_file_index(filename)
-            
-            # Get the appropriate reader
-            reader = self._get_reader(source_name)
-            if not reader:
-                self.logger.error(f"No reader found for source {source_name}")
-                continue
-                
-            self.source_data = reader.read_data(filename)
-            if not self.source_data:
-                self.logger.error(f"Failed to read data from {filename}")
-                continue
-                
-            self._global_attrs = self.set_global_attrs(source_name, self.source_data['attrs'])
-            self.config_manager.findex = file_index
-            self.config_manager.pindex = field_num
-            self.config_manager.axindex = 0
-            for pt in map_params[i]['to_plot']:
-                self.logger.info(f"Plotting {field_name}, {pt} plot")
-                field_to_plot = self._get_field_for_simple_plot(field_name, pt)
-                plotter.simple_plot(self.config_manager, field_to_plot)
-            field_num += 1
+    def _get_field_for_simple_plot(self, field_name, plot_type):
+        """LIS-specific simple plot field processing."""
+        data2d = None
+        d = self.source_data['vars'][field_name]
         
+        # Default values for level and time_lev
+        level = 0
+        time_lev = 0
+        
+        if 'xt' in plot_type:
+            data2d = self._get_xt(d, field_name, time_lev=self.ax_opts['time_lev'])
+        elif 'tx' in plot_type:
+            data2d = self._get_tx(d, field_name, level=None, time_lev=self.ax_opts['time_lev'])
+        elif 'xy' in plot_type:
+            data2d = self._get_xy(d, field_name, level, time_lev)
+
+        xs, ys = None, None
+        if 'xt' in plot_type or 'tx' in plot_type:
+            return data2d, xs, ys, field_name, plot_type
+        else:
+            lon = self._get_field('east_west', data2d)
+            lat = self._get_field('north_south', data2d)
+            xs = np.array(lon)
+            ys = np.array(lat)
+            
+            # Handle NaN coordinates
+            self._fix_nan_coordinates(xs, ys)
+            return data2d, xs, ys, field_name, plot_type
+
     def _get_field_to_plot(self, field_name, file_index, plot_type, figure, time_level, level=None):
+        """LIS-specific field processing."""
         ax = figure.get_axes()
         self.config_manager.ax_opts = figure.init_ax_opts(field_name)
         data2d = None
@@ -74,10 +59,7 @@ class Lis(NuWrf):
         if 'xt' in plot_type:
             data2d = self._get_xt(d, field_name, time_lev=time_level)
         elif 'xy' in plot_type:
-            # Pass all required arguments to _get_xy
             data2d = self._get_xy(d, level=level, time_lev=time_level)
-        else:
-            pass
 
         xs, ys = None, None
         if 'xt' in plot_type or 'tx' in plot_type:
@@ -87,24 +69,32 @@ class Lis(NuWrf):
             lat = self.source_data['vars'][self.get_model_coord_name(self.source_name, 'yc')]
             xs = np.array(lon[0, :])
             ys = np.array(lat[:, 0])
-            # Some LIS coordinates are NaN. The following workaround fills out those elements
-            # with reasonable values:
-            idx = np.argwhere(np.isnan(xs))
-            for i in idx:
-                xs[i] = xs[i - 1] + self._global_attrs["DX"] / 1000.0 / 100.0
-            idx = np.argwhere(np.isnan(ys))
-            for i in idx:
-                ys[i] = ys[i - 1] + self._global_attrs["DY"] / 1000.0 / 100.0
-
-            latN = max(ys[:])
-            latS = min(ys[:])
-            lonW = min(xs[:])
-            lonE = max(xs[:])
-            self.config_manager.ax_opts['extent'] = [lonW, lonE, latS, latN]
-            self.config_manager.ax_opts['central_lon'] = np.mean(self.config_manager.ax_opts['extent'][:2])
-            self.config_manager.ax_opts['central_lat'] = np.mean(self.config_manager.ax_opts['extent'][2:])
-
+            
+            # Handle NaN coordinates and set extents
+            self._fix_nan_coordinates(xs, ys)
+            self._set_lis_extents(xs, ys)
+            
             return data2d, xs, ys, field_name, plot_type, file_index, figure, ax
+
+    def _fix_nan_coordinates(self, xs, ys):
+        """Fix NaN values in LIS coordinates."""
+        idx = np.argwhere(np.isnan(xs))
+        for i in idx:
+            xs[i] = xs[i - 1] + self._global_attrs["DX"] / 1000.0 / 100.0
+        
+        idx = np.argwhere(np.isnan(ys))
+        for i in idx:
+            ys[i] = ys[i - 1] + self._global_attrs["DY"] / 1000.0 / 100.0
+
+    def _set_lis_extents(self, xs, ys):
+        """Set LIS-specific map extents."""
+        latN = max(ys[:])
+        latS = min(ys[:])
+        lonW = min(xs[:])
+        lonE = max(xs[:])
+        self.config_manager.ax_opts['extent'] = [lonW, lonE, latS, latN]
+        self.config_manager.ax_opts['central_lon'] = np.mean([lonW, lonE])
+        self.config_manager.ax_opts['central_lat'] = np.mean([latS, latN])
 
     def _get_field_for_simple_plot(self, field_name, plot_type):
         data2d = None

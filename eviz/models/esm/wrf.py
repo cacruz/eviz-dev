@@ -17,12 +17,7 @@ logger = logging.getLogger(__name__)
 
 @dataclass
 class Wrf(NuWrf):
-    """ Define NUWRF specific model data and functions.
-    """
-
-    @property
-    def logger(self) -> logging.Logger:
-        return logging.getLogger(__name__)
+    """ Define WRF specific model data and functions."""
 
     def __post_init__(self):
         self.logger.info("Start init")
@@ -30,109 +25,62 @@ class Wrf(NuWrf):
         self.comparison_plot = False
         self.source_name = 'wrf'
 
+    def _init_model_specific_data(self):
+        """WRF-specific initialization."""
+        if not self.p_top:
+            self._init_domain()
+
     def _init_domain(self):
         """ Approximate unknown fields """
         # Create sigma->pressure dictionary
-        # model_top + sigma * (surf_pressure - model_top)
         self.p_top = self.source_data['vars']['P_TOP'][0] / 1e5  # mb
         self.eta_full = np.array(self.source_data['vars']['ZNW'][0])
         self.eta_mid = np.array(self.source_data['vars']['ZNU'][0])
         self.levf = np.empty(len(self.eta_full))
         self.levs = np.empty(len(self.eta_mid))
-        i = 0
-        for s in self.eta_full:
+        
+        for i, s in enumerate(self.eta_full):
             if s > 0:
                 self.levf[i] = int(self.p_top + s * (1000 - self.p_top))
             else:
                 self.levf[i] = self.p_top + s * (1000 - self.p_top)
-            i += 1
-        i = 0
-        for s in self.eta_mid:
+        
+        for i, s in enumerate(self.eta_mid):
             if s > 0:
                 self.levs[i] = int(self.p_top + s * (1000 - self.p_top))
             else:
                 self.levs[i] = self.p_top + s * (1000 - self.p_top)
-            i += 1
 
-    @property
-    def global_attrs(self):
-        return self._global_attrs
-
-    def _simple_plots(self, plotter):
-        map_params = self.config_manager.map_params
-        field_num = 0
-        self.config_manager.findex = 0
-        for i in map_params.keys():
-            field_name = map_params[i]['field']
-            source_name = map_params[i]['source_name']
-            self.source_name = source_name
-            filename = map_params[i]['filename']
-            file_index = self.config_manager.get_file_index(filename)
-            
-            # Get the appropriate reader
-            reader = self._get_reader(source_name)
-            if not reader:
-                self.logger.error(f"No reader found for source {source_name}")
-                continue
-                
-            self.source_data = reader.read_data(filename)
-            if not self.source_data:
-                self.logger.error(f"Failed to read data from {filename}")
-                continue
-                
-            self._global_attrs = self.set_global_attrs(source_name, self.source_data['attrs'])
-            if not self.p_top:
-                self._init_domain()
-            self.config_manager.findex = file_index
-            self.config_manager.pindex = field_num
-            self.config_manager.axindex = 0
-            for pt in map_params[i]['to_plot']:
-                self.logger.info(f"Plotting {field_name}, {pt} plot")
-                field_to_plot = self._get_field_for_simple_plot(field_name, pt)
-                plotter.simple_plot(self.config_manager, field_to_plot)
-            field_num += 1
-
-    def _process_coordinates(self, data2d, dim1, dim2, field_name, plot_type, file_index, figure, ax):
-        """
-        Process coordinates for WRF plots
-        """
-        # TODO: Use the config_manager to get the coordinate names
-        if plot_type == 'xy':
-            dim1 = 'XLONG'
-            dim2 = 'XLAT'
-        elif plot_type == 'yz': 
-            dim1 = 'XLAT'
-
-        if 'xt' in plot_type or 'tx' in plot_type:
-            return data2d, None, None, field_name, plot_type, file_index, figure, ax
-        elif 'yz' in plot_type:
-            # For YZ plots, use latitude and pressure levels
-            xs = np.array(self._get_field(dim1[0], data2d)[0, :][:, 0])
-            ys = self.levs  # Pressure levels   
-            latN = max(xs[:])
-            latS = min(xs[:])
-            self.config_manager.ax_opts['extent'] = [None, None, latS, latN]
-            return data2d, xs, ys, field_name, plot_type, file_index, figure, ax
-        else:
-            # For XY plots, use longitude and latitude
-            xs = np.array(self._get_field(dim1, data2d)[0, :])
-            ys = np.array(self._get_field(dim2, data2d)[:, 0])
-            latN = max(ys[:])
-            latS = min(ys[:])
-            lonW = min(xs[:])
-            lonE = max(xs[:])
-            self.config_manager.ax_opts['extent'] = [lonW, lonE, latS, latN]
-            self.config_manager.ax_opts['central_lon'] = np.mean(self.config_manager.ax_opts['extent'][:2])
-            self.config_manager.ax_opts['central_lat'] = np.mean(self.config_manager.ax_opts['extent'][2:])
-            return data2d, xs, ys, field_name, plot_type, file_index, figure, ax
-
-
-    def _get_field_to_plot(self, field_name, file_index, plot_type, figure, time_level, level=None):
-        ax = figure.get_axes()
-        dim1, dim2 = self.coord_names(self.source_name, self.source_data,
-                                         field_name, plot_type)
+    def _get_field_for_simple_plot(self, field_name, plot_type):
+        """WRF-specific simple plot field processing."""
         data2d = None
         d = self.source_data['vars'][field_name]
+        dim1, dim2 = self.coord_names(self.source_name, self.source_data, field_name, plot_type)
+        
+        if 'yz' in plot_type:
+            data2d = self._get_yz(d, field_name)
+        elif 'xy' in plot_type:
+            data2d = self._get_xy(d, field_name, level=0)
+
+        xs, ys = None, None
+        if 'xt' in plot_type or 'tx' in plot_type:
+            return data2d, None, None, field_name, plot_type
+        elif 'yz' in plot_type:
+            xs = np.array(self._get_field(dim1, d)[0, :][:, 0])
+            ys = self.levs
+            return data2d, xs, ys, field_name, plot_type
+        else:
+            xs = np.array(self._get_field(dim1, data2d)[0, :])
+            ys = np.array(self._get_field(dim2, data2d)[:, 0])
+            return data2d, xs, ys, field_name, plot_type
+
+    def _get_field_to_plot(self, field_name, file_index, plot_type, figure, time_level, level=None):
+        """WRF-specific field processing."""
+        ax = figure.get_axes()
+        dim1, dim2 = self.coord_names(self.source_name, self.source_data, field_name, plot_type)
+        data2d = None
+        d = self.source_data['vars'][field_name]
+        
         if 'yz' in plot_type:
             data2d = self._get_yz(d, time_lev=time_level)
         elif 'xt' in plot_type:
@@ -141,14 +89,15 @@ class Wrf(NuWrf):
             pass  # TODO!
         elif 'xy' in plot_type or 'polar' in plot_type:
             data2d = self._get_xy(d, level=level, time_lev=time_level)
-        else:
-            pass
 
-        xs, ys = None, None
+        return self._process_coordinates(data2d, dim1, dim2, field_name, plot_type, file_index, figure, ax)
+
+    def _process_coordinates(self, data2d, dim1, dim2, field_name, plot_type, file_index, figure, ax):
+        """Process coordinates for WRF plots"""
         if 'xt' in plot_type or 'tx' in plot_type:
             return data2d, None, None, field_name, plot_type, file_index, figure, ax
         elif 'yz' in plot_type:
-            xs = np.array(self._get_field(dim1[0], d)[0, :][:, 0])
+            xs = np.array(self._get_field(dim1[0], data2d)[0, :][:, 0])
             ys = self.levs
             latN = max(xs[:])
             latS = min(xs[:])
@@ -162,9 +111,13 @@ class Wrf(NuWrf):
             lonW = min(xs[:])
             lonE = max(xs[:])
             self.config_manager.ax_opts['extent'] = [lonW, lonE, latS, latN]
-            self.config_manager.ax_opts['central_lon'] = np.mean(self.config_manager.ax_opts['extent'][:2])
-            self.config_manager.ax_opts['central_lat'] = np.mean(self.config_manager.ax_opts['extent'][2:])
+            self.config_manager.ax_opts['central_lon'] = np.mean([lonW, lonE])
+            self.config_manager.ax_opts['central_lat'] = np.mean([latS, latN])
             return data2d, xs, ys, field_name, plot_type, file_index, figure, ax
+
+    def _get_time_dimension_name(self, d):
+        """WRF uses 'Time' as the time dimension."""
+        return 'Time' if 'Time' in d.dims else super()._get_time_dimension_name(d)
 
     def _get_field_for_simple_plot(self, field_name, plot_type):
         data2d = None

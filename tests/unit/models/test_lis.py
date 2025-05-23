@@ -27,11 +27,6 @@ def test_logger_property(mock_config_manager):
     lis = Lis(config_manager=mock_config_manager)
     assert hasattr(lis.logger, 'info')
 
-def test_global_attrs_property(mock_config_manager):
-    lis = Lis(config_manager=mock_config_manager)
-    lis._global_attrs = {'DX': 1000, 'DY': 1000}
-    assert lis.global_attrs['DX'] == 1000
-
 def test_get_field_for_simple_plot(mock_config_manager):
     lis = Lis(config_manager=mock_config_manager)
     lis.source_data = {'vars': {'soil_moisture': MagicMock()}}
