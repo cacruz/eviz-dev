@@ -1,6 +1,7 @@
 import logging
 import warnings
 from dataclasses import dataclass
+import numpy as np
 import pandas as pd
 from matplotlib import pyplot as plt
 from eviz.models.esm.gridded import Gridded
@@ -130,185 +131,185 @@ class NuWrf(Gridded):
                         continue
                         
                     self._global_attrs = self.source_data['attrs']
-                    if source_name == 'wrf':
-                        if not self.p_top:
-                            self._init_domain()
+                    if source_name == 'wrf' and not self.p_top:
+                        self._init_domain()
 
                     self.config_manager.findex = file_index
                     self.config_manager.pindex = field_num
                     self.config_manager.axindex = 0
                     
-                    for pt in map_params[i]['to_plot']:
-                        self.logger.info(f"Plotting {field_name}, {pt} plot")
-                        
-                        # Hack: create temporary figure to get ax_opts
-                        # TODO: refactor to avoid this
-                        temp_figure = Figure(self.config_manager, pt)
-                        self.config_manager.ax_opts = temp_figure.init_ax_opts(field_name)
-                        
-                        d = self.source_data['vars'][field_name]
-
-                        # Get the time dimension name - WRF uses 'Time', not 'time'
-                        time_dim = 'Time' if 'Time' in d.dims else 'time'
-                        time_level = self.config_manager.ax_opts.get('time_lev', 0)  # NOW this will work
-                        
-                        # Determine if we're dealing with multiple time levels
-                        if time_level == 'all':
-                            if time_dim in d.dims:
-                                num_times = d.sizes[time_dim]
-                                time_levels = range(num_times)
-                            else:
-                                num_times = 1
-                                time_levels = [0]
-                        else:  # single time level
-                            num_times = 1
-                            time_levels = [time_level]
-
-                        # Check if this is a multi-subplot scenario (comparison, multi-level, etc.)
-                        is_comparison = getattr(self.config_manager, 'compare', False) or getattr(self.config_manager, 'compare_diff', False)
-                        
-                        if 'xy' in pt:
-                            levels = self.config_manager.get_levels(field_name, pt + 'plot')
-                            if not levels:
-                                self.logger.warning(f' -> No levels specified for {field_name}')
-                                continue
-                                
-                            # For XY plots, we might have multiple levels on the same figure
-                            is_multi_level = len(levels) > 1 and not is_comparison
-                            
-                            for level in levels:
-                                self.logger.info(f' -> Processing {len(time_levels)} time levels for level {level}')
-                                
-                                # Create figure strategy:
-                                # - New figure for each time level (to avoid overlapping)
-                                # - BUT reuse figure for multi-subplot scenarios within the same time
-                                for t in time_levels:
-                                    # Always create a new figure for each time level
-                                    figure = Figure(self.config_manager, pt)
-                                    self.config_manager.ax_opts = figure.init_ax_opts(field_name)
-                                    
-                                    self.config_manager.time_level = t
-                                    
-                                    # Handle WRF time variable
-                                    real_time_readable = self._get_time_string(d, time_dim, t)
-                                    self.config_manager.real_time = real_time_readable
-                                    
-                                    field_to_plot = self._get_field_to_plot(
-                                        field_name, file_index, pt, figure, t, level=level
-                                    )
-                                    plotter.single_plots(self.config_manager, field_to_plot=field_to_plot, level=level)
-                                    print_map(self.config_manager, pt, self.config_manager.findex, figure, level=level)
-                                    
-                                    # Close the figure to free memory
-                                    plt.close(figure)
-                                    
-                        else:  # Non-XY plots
-                            for t in time_levels:
-                                # Create new figure for each time level
-                                figure = Figure(self.config_manager, pt)
-                                self.config_manager.ax_opts = figure.init_ax_opts(field_name)
-                                
-                                self.config_manager.time_level = t
-                                if source_name == 'wrf':
-                                    real_time_readable = self._get_time_string(d, time_dim, t)
-                                else:
-                                    real_time_readable = self._get_time_value(d, t, time_dim)
-                                self.config_manager.real_time = real_time_readable
-                                
-                                field_to_plot = self._get_field_to_plot(
-                                    field_name, file_index, pt, figure, t, level=None
-                                )
-                                plotter.single_plots(self.config_manager, field_to_plot=field_to_plot)
-                                print_map(self.config_manager, pt, self.config_manager.findex, figure)
-                                
-                                # Close the figure to free memory
-                                plt.close(figure)
-                                
+                    self._process_field_plots(field_name, map_params[i], plotter)
                     field_num += 1
-        
-        if self.config_manager.make_gif:
-            create_gif(self.config_manager)
+            
+            if self.config_manager.make_gif:
+                create_gif(self.config_manager)
 
-
-    def _get_time_string(self, d, time_dim, t):
-        """Helper method to get readable time string"""
-        try:
-            if hasattr(d, 'XTIME'):
-                if time_dim in d.XTIME.dims:
-                    real_time = d.XTIME.isel({time_dim: t}).values
-                else:
-                    real_time = pd.Timestamp('2000-01-01')
+    def _process_field_plots(self, field_name, field_config, plotter):
+        """Process all plot types for a given field."""
+        for plot_type in field_config['to_plot']:
+            self.logger.info(f"Plotting {field_name}, {plot_type} plot")
+            
+            # Initialize plot configuration
+            temp_figure = Figure(self.config_manager, plot_type)
+            self.config_manager.ax_opts = temp_figure.init_ax_opts(field_name)
+            
+            d = self.source_data['vars'][field_name]
+            time_levels = self._get_time_levels(d)
+            
+            if 'xy' in plot_type:
+                self._process_xy_plots(field_name, plot_type, d, time_levels, plotter)
             else:
-                time_var = None
-                for var_name in ['Times', 'time', 'Time']:
-                    if var_name in self.source_data['vars']:
-                        time_var = self.source_data['vars'][var_name]
-                        break
-                if time_var is not None and time_dim in time_var.dims:
-                    real_time = time_var.isel({time_dim: t}).values
-                else:
-                    real_time = pd.Timestamp('2000-01-01')
+                self._process_non_xy_plots(field_name, plot_type, d, time_levels, plotter)
 
-            return pd.to_datetime(real_time).strftime('%Y-%m-%d %H')
-        except Exception:
-            return f"Time step {t}"
+    def _get_time_levels(self, data_array):
+        """Get the list of time levels to process based on configuration."""
+        time_dim = self._get_time_dimension_name(data_array)
+        time_level_config = self.config_manager.ax_opts.get('time_lev', 0)
+        
+        if time_level_config == 'all':
+            if time_dim and time_dim in data_array.dims:
+                num_times = data_array.sizes[time_dim]
+                return list(range(num_times))
+            else:
+                return [0]
+        else:
+            return [time_level_config]
 
-    def _get_time_value(self, data_array, time_index, time_dim=None):
+    def _process_xy_plots(self, field_name, plot_type, data_array, time_levels, plotter):
+        """Process XY plots with multiple levels and time steps."""
+        levels = self.config_manager.get_levels(field_name, plot_type + 'plot')
+        if not levels:
+            self.logger.warning(f' -> No levels specified for {field_name}')
+            return
+            
+        for level in levels:
+            self.logger.info(f' -> Processing {len(time_levels)} time levels for level {level}')
+            
+            for time_step in time_levels:
+                self._create_single_plot(field_name, plot_type, data_array, time_step, plotter, level)
+
+    def _process_non_xy_plots(self, field_name, plot_type, data_array, time_levels, plotter):
+        """Process non-XY plots (yz, xt, tx, etc.)."""
+        for time_step in time_levels:
+            self._create_single_plot(field_name, plot_type, data_array, time_step, plotter, level=None)
+
+    def _create_single_plot(self, field_name, plot_type, data_array, time_step, plotter, level=None):
+        """Create a single plot for the given parameters."""
+        # Create new figure for each time level
+        figure = Figure(self.config_manager, plot_type)
+        self.config_manager.ax_opts = figure.init_ax_opts(field_name)
+        
+        # Set time-related configuration
+        self.config_manager.time_level = time_step
+        self.config_manager.real_time = self._get_time_string(data_array, time_step)
+        
+        field_to_plot = self._get_field_to_plot(
+            field_name, self.config_manager.findex, plot_type, figure, time_step, level=level
+        )        
+        if level is not None:
+            plotter.single_plots(self.config_manager, field_to_plot=field_to_plot, level=level)
+            print_map(self.config_manager, plot_type, self.config_manager.findex, figure, level=level)
+        else:
+            plotter.single_plots(self.config_manager, field_to_plot=field_to_plot)
+            print_map(self.config_manager, plot_type, self.config_manager.findex, figure)
+        
+        plt.close(figure)
+
+    def _get_time_string(self, data_array, time_index):
         """
-        Get the time value for the given index.
+        Get a readable time string for the given time index.
         
         Args:
-            data_array: The data array containing time values
-            time_index: The index to extract
-            time_dim: The name of the time dimension
+            data_array: The data array containing time information
+            time_index: The time index to extract
             
         Returns:
-            The time value or a default timestamp if unavailable
+            A formatted time string or a fallback representation
         """
-        # If no time dimension, return a default timestamp
-        if time_dim is None:
-            return pd.Timestamp('2000-01-01')
-        
-        # Try different approaches to get the time value
         try:
-            # First try: Check if there's a time coordinate with the time_dim
-            if time_dim in data_array.coords:
-                return data_array.coords[time_dim].values[time_index]
+            time_dim = self._get_time_dimension_name(data_array)
             
-            # Second try: Check for a time variable attribute
-            if hasattr(data_array, 'time') and hasattr(data_array.time, 'isel'):
-                return data_array.time.isel({time_dim: time_index}).values
+            # Try different approaches to get the time value
+            time_value = None
             
-            # Third try: Check for time-related variables in source_data
-            for var_name in ['time', 'Time', 'times', 'Times']:
-                if var_name in self.source_data['vars']:
-                    time_var = self.source_data['vars'][var_name]
-                    if time_dim in time_var.dims:
-                        return time_var.isel({time_dim: time_index}).values
+            # Method 1: Check for XTIME (WRF-specific)
+            if hasattr(data_array, 'XTIME') and time_dim in data_array.XTIME.dims:
+                time_value = data_array.XTIME.isel({time_dim: time_index}).values
             
-            # Last resort: create a dummy timestamp
-            return pd.Timestamp('2000-01-01') + pd.Timedelta(days=time_index)
-        
+            # Method 2: Check for time coordinates in the data array
+            elif time_dim and time_dim in data_array.coords:
+                time_value = data_array.coords[time_dim].values[time_index]
+            
+            # Method 3: Check for time variable in source_data
+            elif hasattr(self, 'source_data') and self.source_data:
+                for var_name in ['Times', 'time', 'Time', 'XTIME']:
+                    if var_name in self.source_data['vars']:
+                        time_var = self.source_data['vars'][var_name]
+                        if time_dim and time_dim in time_var.dims:
+                            time_value = time_var.isel({time_dim: time_index}).values
+                            break
+            
+            # Method 4: Check for time attribute in data array
+            elif hasattr(data_array, 'time') and hasattr(data_array.time, 'isel') and time_dim:
+                time_value = data_array.time.isel({time_dim: time_index}).values
+            
+            # Convert to readable format if we found a time value
+            if time_value is not None:
+                # Handle different time formats
+                if isinstance(time_value, (pd.Timestamp, np.datetime64)):
+                    return pd.to_datetime(time_value).strftime('%Y-%m-%d %H:%M')
+                elif isinstance(time_value, str):
+                    try:
+                        return pd.to_datetime(time_value).strftime('%Y-%m-%d %H:%M')
+                    except:
+                        return time_value
+                else:
+                    return pd.to_datetime(time_value).strftime('%Y-%m-%d %H:%M')
+            
+            # Fallback: create a synthetic time
+            base_time = pd.Timestamp('2000-01-01')
+            synthetic_time = base_time + pd.Timedelta(days=time_index)
+            return synthetic_time.strftime('%Y-%m-%d %H:%M')
+            
         except Exception as e:
-            self.logger.warning(f"Error getting time value: {e}")
-            return pd.Timestamp('2000-01-01') + pd.Timedelta(days=time_index)
+            self.logger.warning(f"Error getting time string: {e}")
+            return f"Time step {time_index}"
+
+    def _get_time_dimension_name(self, data_array):
+        """
+        Get the name of the time dimension from the data array.
+        
+        Args:
+            data_array: The data array to examine
+            
+        Returns:
+            The name of the time dimension or None if not found
+        """
+        # Common time dimension names, ordered by preference
+        time_dim_names = ['Time', 'time', 't', 'T', 'times', 'Times']
+        
+        for dim_name in time_dim_names:
+            if dim_name in data_array.dims:
+                return dim_name
+        
+        return None
 
     def _init_model_specific_data(self):
         """Hook for model-specific initialization. Override in subclasses."""
         pass
 
-    def _get_field_to_plot(self, field_name, file_index, plot_type, figure, time_level, level=None):
-        """Template method for getting field to plot."""
-        ax = figure.get_axes()
+    # def _get_field_to_plot(self, field_name, file_index, plot_type, figure, time_level, level=None):
+    #     """Template method for getting field to plot."""
+    #     ax = figure.get_axes()
         
-        # Get dimension names (model-specific)
-        dim1, dim2 = self.coord_names(self.source_name, self.source_data, field_name, plot_type)
+    #     # Get dimension names (model-specific)
+    #     dim1, dim2 = self.coord_names(self.source_name, self.source_data, field_name, plot_type)
         
-        # Get data based on plot type
-        data2d = self._get_data_for_plot_type(field_name, plot_type, time_level, level)
+    #     # Get data based on plot type
+    #     data2d = self._get_data_for_plot_type(field_name, plot_type, time_level, level)
         
-        # Process coordinates (model-specific)
-        return self._process_coordinates(data2d, dim1, dim2, field_name, plot_type, file_index, figure, ax)
+    #     # Process coordinates (model-specific)
+    #     return self._process_coordinates(data2d, dim1, dim2, field_name, plot_type, file_index, figure, ax)
 
     def _process_coordinates(self, data2d, dim1, dim2, field_name, plot_type, file_index, figure, ax):
         """
@@ -350,16 +351,6 @@ class NuWrf(Gridded):
     def _preprocess_data(d):
         """Pre-process the data array. Default implementation just squeezes dimensions."""
         return d.squeeze()
-
-    def _get_time_dimension_name(self, d):
-        """
-        Get the name of the time dimension.
-        Default implementation tries common time dimension names.
-        """
-        for dim_name in ['Time', 'time', 't', 'T']:
-            if dim_name in d.dims:
-                return dim_name
-        return None
 
     def _apply_time_selection(self, original_data, data2d, time_dim, time_lev, field_name, level):
         """
