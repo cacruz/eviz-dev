@@ -107,11 +107,6 @@ def natural_key(filename):
     return [int(text) if text.isdigit() else text for text in re.split(r'(\d+)', filename)]
 
 
-def update(i, im, image_array):
-    im.set_array(image_array[i])
-    return im,
-
-
 def create_gif(config):
     if config.archive_web_results:
         img_path = os.path.join(config.app_data.outputs['output_dir'],
@@ -180,7 +175,7 @@ def create_gif(config):
         save_all=True,
         append_images=image_sequence[1:],
         duration=duration_ms,
-        loop=0  # Infinite loop
+        loop=0
     )
     
     logger.info(f"Created GIF: {gif_path}")
@@ -192,7 +187,7 @@ def create_gif(config):
             json.dump(config.vis_summary, fp)
             fp.close()
 
-    # Clean up individual PNG files
+    # Clean up
     for my_file in files:
         try:
             os.remove(my_file)
@@ -280,8 +275,6 @@ def print_map(
         plt.tight_layout()
         plt.show()
     logger.debug("Clearing figure")
-
-
 
 
 def formatted_contours(clevs):
