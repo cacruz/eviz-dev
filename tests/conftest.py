@@ -7,6 +7,8 @@ import yaml
 import os
 import pytest
 import tempfile
+import requests
+from eviz.lib import constants as constants
 from eviz.lib.config.config import Config
 from eviz.lib.config.config_manager import ConfigManager
 from eviz.lib.config.input_config import InputConfig
@@ -19,7 +21,6 @@ from eviz.lib.data.pipeline.processor import DataProcessor
 from eviz.lib.data.pipeline.transformer import DataTransformer
 from eviz.lib.data.pipeline.integrator import DataIntegrator
 from eviz.lib.data.sources import DataSource
-import eviz.lib.constants as constants
 from tests.fixtures.mock_airmass import create_mock_airmass_dataset
 
 
@@ -124,10 +125,6 @@ def check_airmass_availability():
     Returns:
         bool: True if airmass data is available, False otherwise
     """
-    import os
-    import requests
-    from eviz.lib import const as constants
-    
     # First check local file
     local_path = os.path.join(os.getcwd(), 'airmass.nc4')
     if os.path.exists(local_path):

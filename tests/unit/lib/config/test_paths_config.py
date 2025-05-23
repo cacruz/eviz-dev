@@ -1,6 +1,6 @@
 import os
-import pytest
 from eviz.lib.config.paths_config import PathsConfig
+
 
 def test_defaults(monkeypatch):
     # Unset environment variables to test defaults

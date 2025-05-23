@@ -1,7 +1,7 @@
 import pytest
 import numpy as np
 import xarray as xr
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 from eviz.lib.data.sources.base import DataSource
 
 

@@ -1,4 +1,3 @@
-import os
 import pytest
 import eviz.lib.constants as constants
 

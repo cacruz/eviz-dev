@@ -1,6 +1,6 @@
 import pytest
 import xarray as xr
-from unittest.mock import MagicMock, patch, mock_open
+from unittest.mock import MagicMock, patch
 from eviz.lib.data.pipeline.reader import DataReader
 from eviz.lib.data.sources import DataSource
 from eviz.lib.data.factory import DataSourceFactory

@@ -21,7 +21,6 @@ from PIL import Image
 from numpy import e
 from matplotlib.offsetbox import (OffsetImage, TextArea, AnchoredOffsetbox, VPacker)
 import eviz.lib.utils as u
-import eviz.lib.constants as constants
 from eviz.lib.utils import timer
 
 logger = logging.getLogger('plot_utils')

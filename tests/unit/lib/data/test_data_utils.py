@@ -3,9 +3,7 @@ import pytest
 import numpy as np
 import xarray as xr
 from unittest.mock import Mock, patch
-from datetime import datetime
 import eviz.lib.data.utils as utils
-import eviz.lib.constants as constants
 
 # Fixtures
 @pytest.fixture

@@ -340,7 +340,6 @@ class Figure(mfigure.Figure):
 
     def have_nontrivial_grid(self):
         return self.gs.nrows > 1 or self.gs.ncols > 1
-    
 
     def _set_fig_axes_regional(self, use_cartopy_opt):
         pass

@@ -7,7 +7,7 @@ import logging
 import numpy as np
 from eviz.lib.data.factory import DataSourceFactory
 from eviz.lib.data.sources import DataSource
-from eviz.lib.data.url_validator import is_url, is_opendap_url
+from eviz.lib.data.url_validator import is_url
 
 @dataclass
 class DataReader:

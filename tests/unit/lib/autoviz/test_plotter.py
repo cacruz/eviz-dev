@@ -12,7 +12,7 @@ from eviz.lib.autoviz.plotter import (
     _simple_sc_plot,
     _simple_xy_plot
 )
-import cartopy.crs as ccrs # Import ccrs for mocking
+
 
 # Fixtures
 @pytest.fixture

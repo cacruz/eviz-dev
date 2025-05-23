@@ -1,9 +1,10 @@
-import yaml
 import numpy as np
 import xarray as xr
 import pytest
 from unittest.mock import patch
-
+import os
+import requests
+from eviz.lib import constants as constants
 
 from eviz.lib.data.units import (
     get_species_name, adjust_units, moles_to_mass, mass_to_moles,
@@ -37,10 +38,6 @@ def check_airmass_availability():
     Returns:
         bool: True if airmass data is available, False otherwise
     """
-    import os
-    import requests
-    from eviz.lib import const as constants
-    
     # First check local file
     local_path = os.path.join(os.getcwd(), 'airmass.nc')
     if os.path.exists(local_path):

@@ -4,8 +4,6 @@ import warnings
 import numpy as np
 import pandas as pd
 import xarray as xr
-from matplotlib import pyplot as plt
-
 from eviz.lib.data.pipeline.processor import DataProcessor
 from eviz.models.root import Root
 from eviz.lib.data.utils import apply_conversion, apply_mean, apply_zsum
@@ -554,7 +552,7 @@ class Gridded(Root):
         if not levels:
             return
 
-        for level_val in levels.keys():
+        for level_val in levels:
             figure = Figure.create_eviz_figure(self.config_manager, plot_type,
                                                nrows=nrows, ncols=ncols)
             ax = figure.get_axes()
@@ -863,7 +861,7 @@ class Gridded(Root):
         if not levels:
             return
 
-        for level_val in levels.keys():
+        for level_val in levels:
             # Create figure with appropriate number of subplots
             figure = Figure.create_eviz_figure(self.config_manager, plot_type,
                                             nrows=nrows, ncols=ncols)

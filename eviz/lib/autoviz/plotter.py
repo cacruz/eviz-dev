@@ -1,9 +1,7 @@
 from dataclasses import dataclass
-import os
 import cftime
 import logging
 import warnings
-
 import numpy as np
 import xarray as xr
 import matplotlib.pyplot as plt
@@ -20,14 +18,10 @@ import cartopy.crs as ccrs
 import cartopy.feature as cfeature
 import networkx as nx
 from cartopy.mpl.geoaxes import GeoAxes
-
 from sklearn.metrics import mean_squared_error
-
-import eviz.lib.constants as constants
 import eviz.lib.autoviz.utils as pu
 import eviz.lib.utils as u
 from eviz.lib.config.config_manager import ConfigManager
-from eviz.lib.data.pipeline import DataProcessor
 from eviz.lib.data.pipeline.reader import get_data_coords
 
 warnings.filterwarnings("ignore")

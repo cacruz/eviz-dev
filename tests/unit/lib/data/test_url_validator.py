@@ -1,5 +1,5 @@
-import pytest
 from eviz.lib.data.url_validator import is_url, is_opendap_url
+
 
 class TestUrlValidator:
     def test_is_url_with_valid_urls(self):

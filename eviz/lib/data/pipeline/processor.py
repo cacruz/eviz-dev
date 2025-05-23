@@ -1,6 +1,6 @@
 import logging
-from dataclasses import dataclass, field
-from typing import List, Optional, Tuple
+from dataclasses import dataclass
+from typing import Optional, Tuple
 import numpy as np
 from scipy.interpolate import interp1d
 import xarray as xr
@@ -216,7 +216,7 @@ class DataProcessor:
                 return
 
             # Perform conversion
-            mw_air = constants.MW_AIR_g  # g/mole
+            mw_air = constants.MW_AIR_G  # g/mole
             rn_arr = self.config_manager.datasets[ds_index]['vars'][species_name]
             
             # Convert using specific humidity

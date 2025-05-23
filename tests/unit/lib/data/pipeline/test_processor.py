@@ -1,6 +1,6 @@
 import numpy as np
 import xarray as xr
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 from eviz.lib.data.pipeline.processor import DataProcessor
 from eviz.lib.data.sources import DataSource
 

@@ -1,4 +1,3 @@
-import yaml
 import sys
 from dataclasses import dataclass, field
 import xarray as xr

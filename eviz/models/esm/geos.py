@@ -1,16 +1,7 @@
 import logging
-import os
-import sys
 import warnings
 from dataclasses import dataclass
-
-import numpy as np
-import xarray as xr
-
-from eviz.lib.data.pipeline import DataProcessor
 from eviz.models.esm.gridded import Gridded
-from eviz.lib.data.utils import apply_conversion
-from eviz.lib.data.utils import apply_mean
 
 warnings.filterwarnings("ignore")
 
@@ -21,9 +12,6 @@ class Geos(Gridded):
     The GEOS-specific functionality centers around the HISTORY.rc file which contains
     information about the GEOS data sources. In Eviz, the HISTORY.rc is parsed during
     initialization and the relevant information is stored in the Config object.
-
-    Parameters:
-        config (Config) : Config object associated with this model
     """
     @property
     def logger(self) -> logging.Logger:
@@ -33,6 +21,7 @@ class Geos(Gridded):
         self.logger.info("Start init")
         self.season = None
         super().__post_init__()
+
 
 def parse_history(hist_fname):
     """ Parse a GEOS HISTORY.rc file.

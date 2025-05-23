@@ -1,5 +1,3 @@
-import logging
-from glob import glob
 import pandas as pd
 import xarray as xr
 from .base import DataSource
@@ -37,16 +35,9 @@ class CSVDataSource(DataSource):
                 self.logger.debug(f"Reading file: {file_path}")
                 combined_data = pd.read_csv(file_path)
 
-            # Convert the Pandas DataFrame to an Xarray dataset
             dataset = combined_data.to_xarray()
-
-            # Process the dataset
             dataset = self._process_data(dataset)
-
-            # Store the dataset
             self.dataset = dataset
-
-            # Store metadata
             self._extract_metadata(dataset)
 
             return dataset
