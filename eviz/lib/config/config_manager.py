@@ -303,7 +303,8 @@ class ConfigManager:
 
         return data_source
 
-    def _get_available_dimensions(self, data_source):
+    @staticmethod
+    def _get_available_dimensions(data_source):
         """
         Get the available dimensions from a data source.
         

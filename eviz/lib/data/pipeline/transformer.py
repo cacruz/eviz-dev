@@ -161,8 +161,9 @@ class DataTransformer:
         
         return new_dataset
     
-    def _regrid_2d(self, data: np.ndarray, orig_lat_grid: np.ndarray, orig_lon_grid: np.ndarray,
-                  new_lat_grid: np.ndarray, new_lon_grid: np.ndarray, method: str = 'linear') -> np.ndarray:
+    @staticmethod
+    def _regrid_2d(data: np.ndarray, orig_lat_grid: np.ndarray, orig_lon_grid: np.ndarray,
+                   new_lat_grid: np.ndarray, new_lon_grid: np.ndarray, method: str = 'linear') -> np.ndarray:
         """Regrid a 2D array to a new grid.
         
         Args:

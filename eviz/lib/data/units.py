@@ -212,7 +212,6 @@ def check_units(ref_da, dev_da, enforce_units=True) -> bool:
             First data array containing a units attribute.
         dev_da: xarray DataArray
             Second data array containing a units attribute.
-    Keyword Args (optional):
         enforce_units: bool
             Whether to stop program if ref and dev units do not match (default: True)
     """
@@ -513,6 +512,7 @@ class Units:
             to_unit (str): data destination unit
             species_name (str): species name of the data
             data (xArray): data to undergo unit conversion
+            air_column_density (xArray)
         """
         species_name = get_species_name(species_name)
 
@@ -555,8 +555,7 @@ class Units:
             self.processor = DataProcessor(self.config)
 
         if 'mol/mol' in from_unit:
-            if self.config.map_params[self.config.findex]['to_plot'][
-                self.config.pindex] == 'xy':
+            if self.config.map_params[self.config.findex]['to_plot'][self.config.pindex] == 'xy':
                 lev_to_plot = int(np.where(self.airmass.coords[
                                                self.config.get_model_dim_name(
                                                    'zc')].values == self.config.level)[0])

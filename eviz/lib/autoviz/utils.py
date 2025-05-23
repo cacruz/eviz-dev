@@ -785,7 +785,8 @@ class OOMFormatter(matplotlib.ticker.ScalarFormatter):
         if self._useMathText:
             self.format = r'$\mathdefault{%s}$' % self.format
 
-    def _custom_format(self, value, tick_number):
+    @staticmethod
+    def _custom_format(value, tick_number):
         return f'{value:.2f}'
 
 

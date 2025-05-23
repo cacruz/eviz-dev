@@ -417,7 +417,8 @@ class Wrf(NuWrf):
         """WRF uses 'Time' as the time dimension."""
         return 'Time' if 'Time' in d.dims else super()._get_time_dimension_name(d)
 
-    def _apply_time_selection(self, original_data, data2d, time_dim, time_lev, field_name,
+    @staticmethod
+    def _apply_time_selection(original_data, data2d, time_dim, time_lev, field_name,
                               level):
         """WRF applies time selection directly."""
         if time_dim and time_dim in original_data.dims:
