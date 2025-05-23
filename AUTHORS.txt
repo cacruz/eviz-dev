@@ -1,0 +1,16 @@
+=======
+Credits
+=======
+
+Core Development
+----------------
+* Carlos Cruz <carlos.a.cruz@nasa.gov> 
+* Deepthi Raghunandan <deepthi.raghunandan@nasa.gov>
+* Vanessa Valenti <vanessa.valentu@nasa.gov>
+
+Contributors
+------------
+* Anna Boone
+* Aarav Khanna
+* Deon Kouatchou-Ngongang
+* Jules Kouatchou <jules.r.kouatchou@nasa.go>
