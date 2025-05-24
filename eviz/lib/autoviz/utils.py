@@ -109,8 +109,7 @@ def natural_key(filename):
 
 def create_gif(config):
     if config.archive_web_results:
-        img_path = os.path.join(config.app_data.outputs['output_dir'],
-                                config.paths.archive_path)
+        img_path = os.path.join(config.app_data.outputs['output_dir'], config.archive_path)
     else:
         img_path = config.app_data.outputs['output_dir']
 
@@ -219,6 +218,7 @@ def print_map(
         map_params = config.map_params
         output_dir = u.get_nested_key_value(map_params[config.pindex],
                                             ['outputs', 'output_dir'])
+
         if not output_dir:
             output_dir = config.paths.output_path
         if not os.path.exists(output_dir):
@@ -273,7 +273,7 @@ def print_map(
             dump_json_file(
                 json_fname, config, plot_type, findex, map_filename, fig, output_dir
             )
-            logger.info(f"Archived web results for {json_fname}")
+            logger.debug(f"Archived web results for {json_fname}")
     else:
         plt.tight_layout()
         plt.show()
@@ -679,7 +679,6 @@ def get_subplot_shape(n):
     return 1, n
 
 
-# def dump_json_file(config, plot_type, findex, map_filename, fig, output_dir):
 def dump_json_file(fname, config, plot_type, findex, map_filename, fig, output_dir):
     vis_summary = {}
     source_name = config.source_names[config.ds_index]
@@ -751,8 +750,7 @@ def archive(config, output_dir, event_stamp):
         output_dir (str) : Output directory to store images
         event_stamp (str) : Time stamp for archived web results
     """
-    fs = [f for f in os.listdir(output_dir) if
-          os.path.isfile(os.path.join(output_dir, f))]
+    fs = [f for f in os.listdir(output_dir) if os.path.isfile(os.path.join(output_dir, f))]
     full_fs = [os.path.join(output_dir, f) for f in fs]
     archive_path = os.path.join(output_dir, event_stamp)
     config.archive_path = archive_path

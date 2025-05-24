@@ -32,17 +32,17 @@ st.markdown("<h6 style='text-align: center; color: grey;'>(Navigate to different
 col1, col2 = st.columns(2)
 with col1:
     st.image("https://portal.nccs.nasa.gov/datashare/astg/eviz/sample_data/gif/PSFC.gif",
-             use_column_width=True)
+             use_container_width=True)
 with col2:
     st.image("https://portal.nccs.nasa.gov/datashare/astg/eviz/sample_data/gif/RI_SEPA.gif",
-             use_column_width=True)
+             use_container_width=True)
 col3, col4 = st.columns(2)
 with col3:
     st.image("https://portal.nccs.nasa.gov/datashare/astg/eviz/sample_data/gif/T2.gif",
-             use_column_width=True)
+             use_container_width=True)
 with col4:
     st.image("https://portal.nccs.nasa.gov/datashare/astg/eviz/sample_data/gif/Q2.gif",
-             use_column_width=True)
+             use_container_width=True)
 st.markdown("<h4 style='text-align: center; color: black;'>Visualization of a Hurricane Katrina Simulation</h4>",
             unsafe_allow_html=True)
 
