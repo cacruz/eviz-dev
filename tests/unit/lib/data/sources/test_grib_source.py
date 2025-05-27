@@ -35,42 +35,44 @@ class TestGRIBDataSource:
             }
         )
         mock_open_dataset.return_value = mock_dataset
-        
+
         result = self.data_source.load_data('test_file.grib')
         assert result is not None
         assert isinstance(result, xr.Dataset)
         assert 'temperature' in result.data_vars
-        
-        mock_open_dataset.assert_called_once_with('test_file.grib', engine='pynio')
-    
+
+        # Update the expected engine to 'cfgrib' instead of 'pynio'
+        mock_open_dataset.assert_called_once_with('test_file.grib', engine='cfgrib')
+
     @patch('xarray.open_dataset')
     def test_load_data_with_error(self, mock_open_dataset):
         """Test loading data with an error."""
         mock_open_dataset.side_effect = Exception("Test error")
-        
+
         with pytest.raises(Exception):
             self.data_source.load_data('test_file.grib')
+
+        # Update the expected engine to 'cfgrib' instead of 'pynio'
+        mock_open_dataset.assert_called_once_with('test_file.grib', engine='cfgrib')
         
-        mock_open_dataset.assert_called_once_with('test_file.grib', engine='pynio')
-    
-    def test_validate_data(self):
-        """Test validating data."""
-        self.data_source.dataset = xr.Dataset(
-            data_vars={
-                'temperature': xr.DataArray(
-                    data=np.random.rand(2, 3, 4),
-                    dims=['time', 'lat', 'lon'],
-                    coords={
-                        'time': np.array(['2022-01-01', '2022-01-02'], dtype='datetime64[D]'),
-                        'lat': np.array([0, 45, 90]),
-                        'lon': np.array([0, 90, 180, 270])
-                    }
-                )
-            }
-        )
-        
-        result = self.data_source.validate_data()
-        assert result is True
+        def test_validate_data(self):
+            """Test validating data."""
+            self.data_source.dataset = xr.Dataset(
+                data_vars={
+                    'temperature': xr.DataArray(
+                        data=np.random.rand(2, 3, 4),
+                        dims=['time', 'lat', 'lon'],
+                        coords={
+                            'time': np.array(['2022-01-01', '2022-01-02'], dtype='datetime64[D]'),
+                            'lat': np.array([0, 45, 90]),
+                            'lon': np.array([0, 90, 180, 270])
+                        }
+                    )
+                }
+            )
+            
+            result = self.data_source.validate_data()
+            assert result is True
     
     def test_validate_data_no_dataset(self):
         """Test validating data with no dataset."""

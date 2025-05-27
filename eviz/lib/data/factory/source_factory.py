@@ -44,13 +44,15 @@ class DataSourceFactory:
         self.registry.register(extensions, data_source_class)
 
     def create_data_source(self, file_path: str, model_name: Optional[str] = None,
-                           reader_type: Optional[str] = None) -> DataSource:
-        """Create a data source instance for the specified file or URL, with optional explicit reader_type.
+                        reader_type: Optional[str] = None, 
+                        file_format: Optional[str] = None) -> DataSource:
+        """Create a data source instance for the specified file or URL, with optional explicit reader_type or format.
         
         Args:
             file_path: Path to the data file or URL
             model_name: Optional name of the model this data source belongs to
             reader_type: Optional explicit reader type (e.g., 'CSV', 'NetCDF')
+            file_format: Optional explicit file format (e.g., 'netcdf', 'csv')
             
         Returns:
             A data source instance for the specified file
@@ -61,6 +63,23 @@ class DataSourceFactory:
         # If explicit reader_type is provided, use it
         if reader_type is not None:
             reader_type = reader_type.strip().lower()
+        # If file_format is provided but reader_type is not, use file_format to determine reader_type
+        elif file_format is not None:
+            self.logger.info(f"Using explicit format '{file_format}' for file: {file_path}")
+            file_format = file_format.strip().lower()
+            if file_format in ['netcdf', 'nc', 'nc4']:
+                reader_type = 'netcdf'
+            elif file_format in ['csv', 'text', 'txt', 'dat']:
+                reader_type = 'csv'
+            elif file_format in ['hdf5', 'h5', 'he5']:
+                reader_type = 'hdf5'
+            elif file_format in ['grib', 'grib2']:
+                reader_type = 'grib'
+            else:
+                self.logger.warning(f"Unknown format: {file_format}, attempting to infer from file path")
+        
+        # Process reader_type if available
+        if reader_type is not None:
             if reader_type == 'csv':
                 return CSVDataSource(model_name, self.config_manager)
             elif reader_type in ['netcdf', 'nc']:
@@ -113,6 +132,7 @@ class DataSourceFactory:
             raise ValueError(f"Unsupported file type: {ext}")
 
         return data_source_class(model_name, self.config_manager)
+
 
     def get_supported_extensions(self) -> List[str]:
         """Get the list of supported file extensions.

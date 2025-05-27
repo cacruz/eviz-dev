@@ -77,7 +77,15 @@ class DataPipeline:
         """
         self.logger.debug(f"Processing file: {file_path}")
         
-        data_source = self.reader.read_file(file_path, model_name)
+        # Get format if available from config_manager
+        file_format = None
+        if self.config_manager and hasattr(self.config_manager, 'get_file_format'):
+            file_format = self.config_manager.get_file_format(file_path)
+            if file_format:
+                self.logger.debug(f"Using format '{file_format}' for file: {file_path}")
+        
+        # Pass the file_format to read_file
+        data_source = self.reader.read_file(file_path, model_name, file_format=file_format)
 
         # Attach metadata if provided
         if metadata and hasattr(data_source, 'metadata'):
@@ -90,7 +98,7 @@ class DataPipeline:
         self.data_sources[file_path] = data_source
         
         return data_source
-    
+
     def process_files(self, file_paths: List[str], model_name: Optional[str] = None,
                      process: bool = True, transform: bool = False,
                      transform_params: Optional[Dict[str, Any]] = None) -> Dict[str, DataSource]:

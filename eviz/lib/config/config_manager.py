@@ -185,6 +185,33 @@ class ConfigManager:
         raise AttributeError(
             f"'{self.__class__.__name__}' object has no attribute '{name}'")
 
+    def get_file_format(self, file_path: str) -> Optional[str]:
+        """
+        Get the format for a specific file.
+        
+        Args:
+            file_path (str): The path to the file
+            
+        Returns:
+            Optional[str]: The format or None if not specified
+        """
+        if hasattr(self.input_config, 'get_format_for_file'):
+            return self.input_config.get_format_for_file(file_path)
+        return None
+
+    @property
+    def file_formats(self) -> Dict[str, str]:
+        """
+        Get a dictionary mapping file paths to their formats.
+        
+        Returns:
+            Dict[str, str]: Dictionary mapping file paths to formats
+        """
+        if hasattr(self.input_config, '_file_format_mapping'):
+            return self.input_config._file_format_mapping
+        return {}
+
+
     def get_model_dim_name(self, dim_name):
         """
         Get model-specific dimension name associated with the source as defined

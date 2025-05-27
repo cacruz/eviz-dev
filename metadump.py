@@ -22,7 +22,6 @@ import numpy as np
 import xarray as xr
 
 import eviz.lib.utils as u
-from eviz.lib.constants import SUPPORTED_MODELS, META_ATTRS_NAME, META_COORDS_NAME, SPECIES_DB_NAME
 
 logger = logging.getLogger(__name__)
 

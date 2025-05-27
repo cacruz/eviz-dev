@@ -2,7 +2,8 @@ import sys
 import os
 import logging
 from dataclasses import dataclass, field
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
+from eviz.lib.data.sources.base import DataSource
 from eviz.lib.utils import join_file_path
 from eviz.lib.autoviz.utils import get_subplot_shape
 from eviz.lib.config.app_data import AppData
@@ -26,6 +27,7 @@ class InputConfig:
     _use_trop_height: bool = False
     _use_sphum_conv: bool = False
     _file_reader_mapping: Dict[str, str] = field(default_factory=dict)
+    _file_format_mapping: Dict[str, str] = field(default_factory=dict) 
 
     _compare: bool = field(default=False, init=False)
     _compare_diff: bool = field(default=False, init=False)
@@ -60,7 +62,25 @@ class InputConfig:
             filename = join_file_path(entry.get('location', ''), entry['name'])
             self.file_list[i] = entry
             self.file_list[i]['filename'] = filename
+            
+            # Store the format if provided
+            if 'format' in entry:
+                self._file_format_mapping[filename] = entry['format']
+                self.logger.debug(f"File format for {filename}: {entry['format']}")
+                
             self.logger.debug(f"file_list[{i}] = {self.file_list[i]}")
+
+    def get_format_for_file(self, file_path: str) -> Optional[str]:
+        """
+        Get the format specified for a file.
+        
+        Args:
+            file_path (str): The path to the file
+            
+        Returns:
+            Optional[str]: The format or None if not specified
+        """
+        return self._file_format_mapping.get(file_path)
 
     def _init_file_list_to_plot(self):
         """Create the list of files that contain the data to be plotted."""
@@ -77,6 +97,30 @@ class InputConfig:
                 self.compare = False
                 self.compare_diff = False
 
+    def _create_data_source(self, file_path: str, source_name: str, reader_type: Optional[str] = None) -> DataSource:
+        """
+        Create a data source for the given file path and source name.
+        
+        Args:
+            file_path (str): Path to the data file
+            source_name (str): Name of the source
+            reader_type (Optional[str]): Optional reader type
+            
+        Returns:
+            DataSource: The created data source
+        """        
+        factory = DataSourceFactory(self.config_manager)
+        
+        # Get format if available
+        file_format = self._file_format_mapping.get(file_path)
+        
+        return factory.create_data_source(
+            file_path=file_path,
+            model_name=source_name,
+            reader_type=reader_type,
+            file_format=file_format
+        )
+    
     def _init_reader_structure(self):
         """Initialize the structure for multiple readers per source."""
         for source_name in self.source_names:
@@ -114,7 +158,15 @@ class InputConfig:
         for file_idx, file_entry in self.file_list.items():
             file_path = file_entry['filename']
             explicit_reader = file_entry.get('reader', None)
-            reader_type = self._get_reader_type_for_extension(file_path, explicit_reader)
+            explicit_format = file_entry.get('format', None)
+
+            # Use format to determine reader type if provided
+            if explicit_format:
+                reader_type = self._get_reader_type_from_format(explicit_format)
+                self._file_format_mapping[file_path] = explicit_format
+                self.logger.debug(f"Using explicit format for {file_path}: {explicit_format} -> reader_type: {reader_type}")
+            else:
+                reader_type = self._get_reader_type_for_extension(file_path, explicit_reader)
 
             if reader_type:
                 file_reader_types[file_path] = reader_type
@@ -143,6 +195,30 @@ class InputConfig:
         for source_name, readers in self.readers.items():
             self.logger.info(
                 f"Initialized readers for source {source_name}: {list(readers.keys())}")
+
+    def _get_reader_type_from_format(self, format_str: str) -> str:
+        """
+        Determine the appropriate reader type based on format string.
+        
+        Args:
+            format_str (str): The format string (e.g., 'netcdf', 'csv', 'hdf5')
+            
+        Returns:
+            str: The reader type identifier
+        """
+        format_lower = format_str.lower()
+        
+        if format_lower in ['netcdf', 'nc', 'nc4']:
+            return 'NetCDF'
+        elif format_lower in ['csv', 'text', 'txt', 'dat']:
+            return 'CSV'
+        elif format_lower in ['hdf5', 'h5', 'he5']:
+            return 'HDF5'
+        elif format_lower in ['hdf4', 'hdf']:
+            return 'HDF4'
+        else:
+            self.logger.warning(f"Unknown format: {format_str}, defaulting to NetCDF")
+            return 'NetCDF'
 
     def _get_reader_type_for_extension(self, file_path: str,
                                        explicit_reader: str = None) -> str:
@@ -281,8 +357,7 @@ class InputConfig:
 
         return None
 
-    def _get_reader(self, source_name: str, file_extension: str,
-                    reader_type: str = None) -> Any:
+    def _get_reader(self, source_name: str, file_extension: str, reader_type: str = None) -> Any:
         """
         Return the appropriate reader based on file extension using the factory.
 
@@ -294,24 +369,25 @@ class InputConfig:
         Returns:
             Any: An instance of the appropriate data source class.
         """
-        factory = DataSourceFactory()
         dummy_path = f"dummy{file_extension}"
-
+        
         try:
-            if reader_type:
-                return factory.create_data_source(dummy_path, source_name,
-                                                  reader_type=reader_type)
-            return factory.create_data_source(dummy_path, source_name)
+            # Use our new helper method
+            return self._create_data_source(
+                file_path=dummy_path,
+                source_name=source_name,
+                reader_type=reader_type
+            )
         except ValueError as e:
             self.logger.error(f"Error creating data source: {e}")
             # Default to NetCDF for unrecognized extensions when WRF is involved
             if 'wrf' in source_name.lower():
                 self.logger.debug(
                     f"Unrecognized extension '{file_extension}' for WRF source, defaulting to NetCDF reader")
-                return factory.create_data_source("dummy.nc", source_name)
+                return self._create_data_source("dummy.nc", source_name)
             else:
                 raise ValueError(f"Unsupported file extension: {file_extension}")
-
+            
     def _init_for_inputs(self) -> None:
         """Initialize parameters in the `for_inputs` section of the AppData object."""
         for_inputs = getattr(self.app_data, 'for_inputs', {})
@@ -439,13 +515,12 @@ class InputConfig:
 
     def to_dict(self) -> dict:
         """Return a dictionary representation of the input configuration."""
-        return {
+        result = {
             "source_names": self.source_names,
             "config_files": self.config_files,
-            "app_data": self.app_data.__dict__,  # Convert AppData to a dictionary
+            "app_data": self.app_data.__dict__,
             "file_list": self.file_list,
             "readers": {key: str(reader) for key, reader in self.readers.items()},
-            # Convert readers to strings
             "compare": self.compare,
             "compare_diff": self.compare_diff,
             "compare_exp_ids": getattr(self, "_compare_exp_ids", None),
@@ -456,7 +531,10 @@ class InputConfig:
             "use_trop_height": getattr(self, "_use_trop_height", None),
             "subplot_specs": getattr(self, "_subplot_specs", None),
             "use_cartopy": getattr(self, "_use_cartopy", None),
+            # Add file formats
+            "file_formats": self._file_format_mapping,
         }
+        return result
 
     # TODO: trop_height and sph_conv files are GEOS-specific
     # Therefore, GEOS-specific functionality should be moved to a ConfigGeos class
