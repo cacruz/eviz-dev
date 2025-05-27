@@ -25,18 +25,23 @@ eviz can produce interactive plots.
     manageable pieces including a configuration adpater to bridge the 
     configuration with the pipeline.
 - Many unit tests (code coverage increased from ~25% to ~45%)
+- Minimum workable Grib class (and its corresponding grib data source option)
 - Matplotlib rcParams options in specs file
+- Automatic OpenDAP support (when input is a URL)
+- Improved documentation
 
 ### Deprecated
 
 ### Fixed
-- The above refactoring fixed my bugs.
+- The above refactoring fixed many bugs.
+- Improved metadump.py
+- Improved sviz/autoviz.py
 
 ### Removed
 - iViz code
 - The generic data source is now know as gridded to emphasize its 'nature'
 - Class in const.py that relies on a module-replacement approach is replaced
-  by a plain module for constants and nother module for env-dependent values,
+  by a plain module for constants and another module for env-dependent values,
   as well as paths.
 
 ### Known issues:
