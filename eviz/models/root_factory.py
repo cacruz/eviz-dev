@@ -48,6 +48,19 @@ class GriddedFactory(RootFactory):
 
 
 @dataclass
+class GribFactory(RootFactory):
+    """
+    Factory for creating Gridded model instances for GRIB data.
+    
+    Used for GRIB format weather and climate data from sources like ERA5, GFS, etc.
+    """
+
+    def create_root_instance(self, config_manager: ConfigManager):
+        # For now, we can use the Gridded model since GRIB data is gridded
+        # Later, you might want to create a specialized model for GRIB data if needed
+        return Gridded(config_manager)
+
+@dataclass
 class GeosFactory(RootFactory):
     """
     Factory for creating Geos model instances for GEOS data processing.

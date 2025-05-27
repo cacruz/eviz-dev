@@ -64,14 +64,31 @@ class ConfigurationAdapter:
             if 'exp_id' in file_entry:
                 exp_metadata['exp_id'] = file_entry['exp_id']
             
+            file_format = file_entry.get('format')
+            if file_format:
+                self.logger.debug(f"Using format '{file_format}' for file: {file_path}")
+            
             self.logger.debug(f"Loading data for file {i+1}: {file_path} with source_name: {source_name}")
             
             try:
-                data_source = self.config_manager._pipeline.process_file(
-                    file_path, 
-                    model_name=source_name,
-                    metadata=exp_metadata 
-                )
+                try:
+                    data_source = self.config_manager._pipeline.process_file(
+                        file_path, 
+                        model_name=source_name,
+                        metadata=exp_metadata,
+                        file_format=file_format
+                    )
+                except TypeError as e:
+                    # If process_file doesn't accept file_format, try without it
+                    if "got an unexpected keyword argument 'file_format'" in str(e):
+                        self.logger.warning("DataPipeline.process_file() doesn't accept file_format parameter. Using without it.")
+                        data_source = self.config_manager._pipeline.process_file(
+                            file_path, 
+                            model_name=source_name,
+                            metadata=exp_metadata
+                        )
+                    else:
+                        raise
                 
                 if data_source is None:
                     self.logger.warning(f"Failed to load data from {file_path}")
@@ -81,6 +98,7 @@ class ConfigurationAdapter:
                     
             except Exception as e:
                 self.logger.error(f"Error loading data from {file_path}: {e}")
+
         
         # If integration is enabled, integrate the datasets
         if hasattr(self.config_manager.input_config, '_integrate') and self.config_manager.input_config._integrate:

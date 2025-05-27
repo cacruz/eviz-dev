@@ -42,7 +42,7 @@ def parse_command_line() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description='Arguments being passed')
 
     parser.add_argument('-s', '--sources', type=str, nargs='+', required=False,
-                        help='Sources of data input')
+                         help='Source type (gridded, wrf, omi, grib, etc.)')
     parser.add_argument('--compare', '-m', action='store_true',
                         help='Perform comparison for specified exp_name(s)')
     parser.add_argument('--file', nargs='+', required=False, default=None,
@@ -53,6 +53,8 @@ def parse_command_line() -> argparse.Namespace:
                         help='Enter the full config file path, default=None')
     parser.add_argument('--config', '-c', nargs='+', required=False, default=None,
                         help='Enter the directory wherein YAML specifications can be found, default=None')
+    parser.add_argument('--format', type=str, default=None,
+                        help='Override format for all files (netcdf, csv, grib, etc.)')
     parser.add_argument('--verbose', '-v', nargs='+', required=False, default=1,
                         help='Set logging verbosity to DEBUG (2) or ERROR(0), default=1 (INFO)')
     parser.add_argument('--log', '-l', nargs='+', required=False, default=1,
@@ -74,33 +76,22 @@ def main():
     """
     Main driver for the autoviz plotting tool.
     
-    This function:
-    
-    1. Parses command-line arguments
-    2. Handles metadata extraction if --file option is used
-    3. Sets up logging with appropriate verbosity
-    4. Initializes the Autoviz instance with specified sources
-    5. Executes the visualization process
-    6. Reports the total execution time
-    
     The function supports two main execution paths:
     
     - Metadata extraction: When --file is specified, it invokes metadump.py to extract
       metadata from the file, optionally focusing on specific variables if --vars is provided
     - Visualization generation: Otherwise, it creates an Autoviz instance with the
       specified sources and runs the visualization process
-    
-    Execution time is measured and reported at the end of the process.
-    
+        
     Example::
 
         # Generate visualizations for gridded data
         >>> python autoviz.py -s gridded
         >>> python autoviz.py -s gridded -c /path/to/config
         >>> python autoviz.py -s gridded -f /path/to/config/my_config.yaml
-        # Extract metadata from a file
+        # Use metadata to extract and generate metadata from a file
         >>> python autoviz.py --file data.nc
-        # Extract metadata for specific variables
+        # Extract specific variables
         >>> python autoviz.py --file data.nc --vars temperature humidity
     """
     start_time = time.time()

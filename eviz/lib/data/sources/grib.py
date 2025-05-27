@@ -37,7 +37,6 @@ class GRIBDataSource(DataSource):
         try:
             # Try to open with xarray's cfgrib engine
             try:
-                import cfgrib
                 dataset = xr.open_dataset(file_path, engine="cfgrib")
                 self.logger.info(f"Loaded GRIB file using cfgrib engine: {file_path}")
             except ImportError:

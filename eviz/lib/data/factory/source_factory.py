@@ -52,7 +52,7 @@ class DataSourceFactory:
             file_path: Path to the data file or URL
             model_name: Optional name of the model this data source belongs to
             reader_type: Optional explicit reader type (e.g., 'CSV', 'NetCDF')
-            file_format: Optional explicit file format (e.g., 'netcdf', 'csv')
+            file_format: Optional explicit file format (e.g., 'netcdf', 'csv', 'grib')
             
         Returns:
             A data source instance for the specified file

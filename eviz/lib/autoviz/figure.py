@@ -372,6 +372,27 @@ class Figure(mfigure.Figure):
             central_lat = self._ax_opts['central_lat']
             
         options = {
+            'mercator': ccrs.Mercator(
+                central_longitude=central_lon,
+                central_latitude=central_lat,
+                standard_parallels=(extent[2], extent[3])
+            ),
+            'robinson': ccrs.Robinson(
+                central_longitude=central_lon,
+                central_latitude=central_lat,
+                standard_parallels=(extent[2], extent[3])
+            ),
+            'orthographic': ccrs.Orthographic(
+                central_longitude=central_lon,
+                central_latitude=central_lat,
+                standard_parallels=(extent[2], extent[3])
+            ),
+            'mollweide': ccrs.Mollweide(
+                central_longitude=central_lon,
+                central_latitude=central_lat,
+                standard_parallels=(extent[2], extent[3])
+            ),
+
             'lambert': ccrs.LambertConformal(
                 central_longitude=central_lon,
                 central_latitude=central_lat,
