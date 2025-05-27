@@ -311,7 +311,7 @@ def axis_tick_font_size(panels=None):
 
 def bar_font_size(panels=None):
     if panels == (1, 1):  # single image on a page
-        font_size = 12
+        font_size = 10
     elif panels == (3, 1):
         font_size = 10
     elif panels == (2, 2):
@@ -362,7 +362,7 @@ def cbar_pad(panels=None):
     Fraction of original axes between colorbar and new image axes
     """
     if panels == (1, 1):  # single image on a page
-        pad = 0.05
+        pad = 0.1
     elif panels == (3, 1):
         pad = 0.03
     elif panels == (2, 2):

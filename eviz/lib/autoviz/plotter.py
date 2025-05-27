@@ -922,7 +922,7 @@ def _single_xt_plot(config: ConfigManager, data_to_plot: tuple) -> None:
 
 
 def _time_series_plot(config, ax, ax_opts, fig, data2d, field_name, findex):
-    with mpl.rc_context(ax_opts['time_series_plot_linestyle']):
+    with mpl.rc_context(rc=ax_opts.get('rc_params', {})):
         dmin = data2d.min(skipna=True).values
         dmax = data2d.max(skipna=True).values
         logger.debug(f"dmin: {dmin}, dmax: {dmax}")
@@ -1038,14 +1038,6 @@ def _time_series_plot(config, ax, ax_opts, fig, data2d, field_name, findex):
 
         ax.set_ylabel(units)
 
-        ylabels = ax.get_yticklabels()
-        for label in ylabels:
-            label.set_fontsize(pu.axis_tick_font_size(fig.subplots))
-
-        xlabels = ax.get_xticklabels()
-        for label in xlabels:
-            label.set_fontsize(pu.axis_tick_font_size(fig.subplots))
-
         if ax_opts['add_grid']:
             ax.grid()
 
@@ -1102,198 +1094,179 @@ def _single_tx_plot(config: ConfigManager, data_to_plot: tuple) -> None:
     data2d, _, _, field_name, plot_type, findex, fig, ax_temp = data_to_plot
     if data2d is None:
         return
-
     ax_opts = config.ax_opts
 
-    # gs = mgridspec.GridSpec(nrows=2, ncols=1, height_ratios=[1, 5], hspace=0.1)
-    gs = mgridspec.GridSpec(nrows=2, ncols=1, height_ratios=[1, 6], hspace=0.1)
-    ax = list()
-    ax.append(
-        fig.add_subplot(gs[0, 0], projection=ccrs.PlateCarree(central_longitude=180)))
-    ax.append((fig.add_subplot(gs[1, 0])))
+    with mpl.rc_context(rc=ax_opts.get('rc_params', {})):
+        # gs = mgridspec.GridSpec(nrows=2, ncols=1, height_ratios=[1, 5], hspace=0.1)
+        gs = mgridspec.GridSpec(nrows=2, ncols=1, height_ratios=[1, 6], hspace=0.01)
+        ax = list()
+        ax.append(
+            fig.add_subplot(gs[0, 0], projection=ccrs.PlateCarree(central_longitude=180)))
+        ax.append((fig.add_subplot(gs[1, 0])))
 
-    ax_opts = fig.update_ax_opts(field_name, ax, 'tx')
+        ax_opts = fig.update_ax_opts(field_name, ax, 'tx')
 
-    dmin = data2d.min(skipna=True).values
-    dmax = data2d.max(skipna=True).values
-    logger.debug(f"Field: {field_name}; Min:{dmin}; Max:{dmax}")
+        dmin = data2d.min(skipna=True).values
+        dmax = data2d.max(skipna=True).values
+        logger.debug(f"Field: {field_name}; Min:{dmin}; Max:{dmax}")
 
-    _create_clevs(field_name, ax_opts, data2d)
-    extend_value = "both"
-    if config.ax_opts['clevs'][0] == 0:
-        extend_value = "max"
+        _create_clevs(field_name, ax_opts, data2d)
+        extend_value = "both"
+        if config.ax_opts['clevs'][0] == 0:
+            extend_value = "max"
 
-    norm = colors.BoundaryNorm(ax_opts['clevs'], ncolors=256, clip=False)
+        norm = colors.BoundaryNorm(ax_opts['clevs'], ncolors=256, clip=False)
 
-    vtimes = data2d.time.values.astype('datetime64[ms]').astype('O')
-    lon_dim = config.get_model_dim_name('xc')
+        vtimes = data2d.time.values.astype('datetime64[ms]').astype('O')
+        lon_dim = config.get_model_dim_name('xc')
 
-    try:
-        if lon_dim:
-            lons = get_data_coords(data2d, lon_dim)
-        else:
-            if 'lon' in data2d.dims:
-                lons = data2d.lon.values
-            elif 'longitude' in data2d.dims:
-                lons = data2d.longitude.values
-            elif 'x' in data2d.dims:
-                lons = data2d.x.values
+        try:
+            if lon_dim:
+                lons = get_data_coords(data2d, lon_dim)
             else:
-                lons = np.arange(data2d.shape[1])
-    except Exception as e:
-        logger.error(f"Error getting longitude coordinates: {e}")
-        lons = np.arange(data2d.shape[1])
-
-    try:
-        if len(data2d.shape) > 2:
-            if data2d.shape[0] == len(vtimes):
-                # data shape is (time, level, lon), we need to average over level
-                if len(data2d.shape) == 3 and data2d.shape[2] == len(lons):
-                    # average over the middle dimension (level)
-                    data2d_reduced = data2d.mean(axis=1)
-
-                # data shape is (time, lat, lon), we need to average over lat
-                elif len(data2d.shape) == 3 and data2d.shape[2] == len(lons):
-                    # average over the middle dimension (lat)
-                    data2d_reduced = data2d.mean(axis=1)
-
+                if 'lon' in data2d.dims:
+                    lons = data2d.lon.values
+                elif 'longitude' in data2d.dims:
+                    lons = data2d.longitude.values
+                elif 'x' in data2d.dims:
+                    lons = data2d.x.values
                 else:
-                    dim_names = list(data2d.dims)
-                    time_dim_idx = None
-                    lon_dim_idx = None
-
-                    for i, dim in enumerate(dim_names):
-                        if dim in ['time', 't', 'TIME']:
-                            time_dim_idx = i
-                            break
-
-                    for i, dim in enumerate(dim_names):
-                        if dim in ['lon', 'longitude', 'x']:
-                            lon_dim_idx = i
-                            break
-
-                    if time_dim_idx is not None and lon_dim_idx is not None:
-                        dims_to_avg = [i for i in range(len(dim_names))
-                                       if i != time_dim_idx and i != lon_dim_idx]
-
-                        data2d_reduced = data2d.copy()
-                        for dim_idx in sorted(dims_to_avg, reverse=True):
-                            data2d_reduced = data2d_reduced.mean(axis=dim_idx)
-
-                        # transpose if needed to get (time, lon) order
-                        if time_dim_idx > lon_dim_idx:
-                            data2d_reduced = data2d_reduced.T
-                    else:
-                        # flatten all dimensions except time
-                        data2d_reduced = data2d.reshape(data2d.shape[0], -1).mean(axis=1)
-                        lons = np.arange(data2d_reduced.shape[1])
-            else:
-                data2d_reduced = data2d
-                if len(vtimes) != data2d.shape[0]:
-                    vtimes = np.arange(data2d.shape[0])
-                if len(lons) != data2d.shape[1]:
                     lons = np.arange(data2d.shape[1])
-        else:
-            data2d_reduced = data2d
-
-            if data2d.shape != (len(vtimes), len(lons)):
-                if data2d.shape == (len(lons), len(vtimes)):
-                    data2d_reduced = data2d.T
-                else:
-                    vtimes = np.arange(data2d.shape[0])
-                    lons = np.arange(data2d.shape[1])
-    except Exception as e:
-        logger.error(f"Error processing data for Hovmoller plot: {e}")
-        data2d_reduced = data2d
-        if len(data2d.shape) >= 2:
-            vtimes = np.arange(data2d.shape[0])
+        except Exception as e:
+            logger.error(f"Error getting longitude coordinates: {e}")
             lons = np.arange(data2d.shape[1])
 
-    if hasattr(data2d_reduced, 'shape') and len(data2d_reduced.shape) >= 2:
-        if data2d_reduced.shape[0] != len(vtimes) or data2d_reduced.shape[1] != len(lons):
-            vtimes = np.arange(data2d_reduced.shape[0])
-            lons = np.arange(data2d_reduced.shape[1])
-
-    x_tick_labels = [u'0\N{DEGREE SIGN}E', u'90\N{DEGREE SIGN}E',
-                     u'180\N{DEGREE SIGN}E', u'90\N{DEGREE SIGN}W',
-                     u'0\N{DEGREE SIGN}E']
-
-    ax[0].set_extent([0, 357.5, 35, 65], ccrs.PlateCarree(central_longitude=180))
-    ax[0].set_yticks([40, 60])
-    ax[0].set_yticklabels([u'40\N{DEGREE SIGN}N', u'60\N{DEGREE SIGN}N'])
-    ax[0].set_xticks([-180, -90, 0, 90, 180])
-    ax[0].set_xticklabels(x_tick_labels)
-    ax[0].grid(linestyle='dotted', linewidth=2)
-
-    ax[0].add_feature(cfeature.COASTLINE.with_scale('50m'))
-    ax[0].add_feature(cfeature.LAKES.with_scale('50m'), color='black', linewidths=0.5)
-    fig.plot_text(field_name=field_name, ax=ax[0], pid='tx', data=data2d, fontsize=10,
-                  loc='left')
-
-    if ax_opts['torder']:
-        ax[1].invert_yaxis()  # Reverse the time order
-
-    try:
-        cfilled = ax[1].contourf(lons, vtimes, data2d_reduced, ax_opts['clevs'],
-                                 norm=norm,
-                                 cmap=ax_opts['use_cmap'], extend=extend_value)
-    except Exception as e:
-        logger.error(f"Error creating contour plot: {e}")
         try:
-            logger.info("Falling back to pcolormesh")
-            lon_mesh, time_mesh = np.meshgrid(lons, vtimes)
-            cfilled = ax[1].pcolormesh(lon_mesh, time_mesh, data2d_reduced,
-                                       norm=norm, cmap=ax_opts['use_cmap'])
-        except Exception as e2:
-            logger.error(f"Error creating pcolormesh plot: {e2}")
-            # just show something
-            cfilled = ax[1].imshow(data2d_reduced, aspect='auto', origin='lower',
-                                   norm=norm, cmap=ax_opts['use_cmap'])
+            if len(data2d.shape) > 2:
+                if data2d.shape[0] == len(vtimes):
+                    # data shape is (time, level, lon), we need to average over level
+                    if len(data2d.shape) == 3 and data2d.shape[2] == len(lons):
+                        # average over the middle dimension (level)
+                        data2d_reduced = data2d.mean(axis=1)
 
-    ax[1].set_xlabel("Longitude")
-    ax[1].set_ylabel("Time")
-    ax[1].grid(linestyle='dotted', linewidth=0.5)
+                    # data shape is (time, lat, lon), we need to average over lat
+                    elif len(data2d.shape) == 3 and data2d.shape[2] == len(lons):
+                        # average over the middle dimension (lat)
+                        data2d_reduced = data2d.mean(axis=1)
 
-    try:
-        _line_contours(fig, ax[1], ax_opts, lons, vtimes, data2d_reduced)
-    except Exception as e:
-        logger.error(f"Error adding contour lines: {e}")
+                    else:
+                        dim_names = list(data2d.dims)
+                        time_dim_idx = None
+                        lon_dim_idx = None
 
-    cbar = fig.colorbar(cfilled, orientation='horizontal', pad=0.1, aspect=70,
-                        extendrect=True)
-    cbar.set_label('m $s^{-1}$')
+                        for i, dim in enumerate(dim_names):
+                            if dim in ['time', 't', 'TIME']:
+                                time_dim_idx = i
+                                break
 
-    if lons[0] <= -179:
-        ax[1].set_xticks([-180, -90, 0, 90, 180])
-    else:
-        ax[1].set_xticks([0, 90, 180, 270, 360])
-    ax[1].set_xticklabels(x_tick_labels)
+                        for i, dim in enumerate(dim_names):
+                            if dim in ['lon', 'longitude', 'x']:
+                                lon_dim_idx = i
+                                break
 
-    try:
-        if len(vtimes) > 8:
-            step = len(vtimes) // 8
-            ax[1].set_yticks(vtimes[::step])
-            ax[1].set_yticklabels(vtimes[::step])
+                        if time_dim_idx is not None and lon_dim_idx is not None:
+                            dims_to_avg = [i for i in range(len(dim_names))
+                                        if i != time_dim_idx and i != lon_dim_idx]
+
+                            data2d_reduced = data2d.copy()
+                            for dim_idx in sorted(dims_to_avg, reverse=True):
+                                data2d_reduced = data2d_reduced.mean(axis=dim_idx)
+
+                            # transpose if needed to get (time, lon) order
+                            if time_dim_idx > lon_dim_idx:
+                                data2d_reduced = data2d_reduced.T
+                        else:
+                            # flatten all dimensions except time
+                            data2d_reduced = data2d.reshape(data2d.shape[0], -1).mean(axis=1)
+                            lons = np.arange(data2d_reduced.shape[1])
+                else:
+                    data2d_reduced = data2d
+                    if len(vtimes) != data2d.shape[0]:
+                        vtimes = np.arange(data2d.shape[0])
+                    if len(lons) != data2d.shape[1]:
+                        lons = np.arange(data2d.shape[1])
+            else:
+                data2d_reduced = data2d
+
+                if data2d.shape != (len(vtimes), len(lons)):
+                    if data2d.shape == (len(lons), len(vtimes)):
+                        data2d_reduced = data2d.T
+                    else:
+                        vtimes = np.arange(data2d.shape[0])
+                        lons = np.arange(data2d.shape[1])
+        except Exception as e:
+            logger.error(f"Error processing data for Hovmoller plot: {e}")
+            data2d_reduced = data2d
+            if len(data2d.shape) >= 2:
+                vtimes = np.arange(data2d.shape[0])
+                lons = np.arange(data2d.shape[1])
+
+        if hasattr(data2d_reduced, 'shape') and len(data2d_reduced.shape) >= 2:
+            if data2d_reduced.shape[0] != len(vtimes) or data2d_reduced.shape[1] != len(lons):
+                vtimes = np.arange(data2d_reduced.shape[0])
+                lons = np.arange(data2d_reduced.shape[1])
+
+        x_tick_labels = [u'0\N{DEGREE SIGN}E', u'90\N{DEGREE SIGN}E',
+                        u'180\N{DEGREE SIGN}E', u'90\N{DEGREE SIGN}W',
+                        u'0\N{DEGREE SIGN}E']
+
+        ax[0].set_extent([0, 357.5, 35, 65], ccrs.PlateCarree(central_longitude=180))
+        ax[0].set_yticks([40, 60])
+        ax[0].set_yticklabels([u'40\N{DEGREE SIGN}N', u'60\N{DEGREE SIGN}N'])
+        ax[0].set_xticks([-180, -90, 0, 90, 180])
+        ax[0].set_xticklabels(x_tick_labels)
+        ax[0].grid(linestyle='dotted', linewidth=2)
+
+        ax[0].add_feature(cfeature.COASTLINE.with_scale('50m'))
+        ax[0].add_feature(cfeature.LAKES.with_scale('50m'), color='black', linewidths=0.5)
+        fig.plot_text(field_name=field_name, ax=ax[0], pid='tx', data=data2d, fontsize=10,
+                    loc='left')
+
+        if ax_opts['torder']:
+            ax[1].invert_yaxis()  # Reverse the time order
+
+        try:
+            cfilled = ax[1].contourf(lons, vtimes, data2d_reduced, ax_opts['clevs'],
+                                    norm=norm,
+                                    cmap=ax_opts['use_cmap'], extend=extend_value)
+        except Exception as e:
+            logger.error(f"Error creating contour plot: {e}")
+            try:
+                logger.info("Falling back to pcolormesh")
+                lon_mesh, time_mesh = np.meshgrid(lons, vtimes)
+                cfilled = ax[1].pcolormesh(lon_mesh, time_mesh, data2d_reduced,
+                                        norm=norm, cmap=ax_opts['use_cmap'])
+            except Exception as e2:
+                logger.error(f"Error creating pcolormesh plot: {e2}")
+                # just show something
+                cfilled = ax[1].imshow(data2d_reduced, aspect='auto', origin='lower',
+                                    norm=norm, cmap=ax_opts['use_cmap'])
+
+        ax[1].set_xlabel("Longitude")
+        ax[1].set_ylabel("Time")
+        ax[1].grid(linestyle='dotted', linewidth=0.5)
+
+        try:
+            _line_contours(fig, ax[1], ax_opts, lons, vtimes, data2d_reduced)
+        except Exception as e:
+            logger.error(f"Error adding contour lines: {e}")
+
+        cbar = fig.colorbar(cfilled, orientation='horizontal', pad=0.1, aspect=70,
+                            extendrect=True)
+        cbar.set_label('m $s^{-1}$')
+
+        if lons[0] <= -179:
+            ax[1].set_xticks([-180, -90, 0, 90, 180])
         else:
-            ax[1].set_yticks(vtimes)
-            ax[1].set_yticklabels(vtimes)
+            ax[1].set_xticks([0, 90, 180, 270, 360])
+        ax[1].set_xticklabels(x_tick_labels)
 
-        y_labels = ax[1].get_yticklabels()
-        if len(y_labels) > 1:
-            y_labels[1].set_visible(False)  # hide first label
+        if ax_opts['add_grid']:
+            kwargs = {'linestyle': '-', 'linewidth': 2}
+            ax[1].grid(**kwargs)
 
-        for i, label in enumerate(y_labels):
-            label.set_rotation(45)
-            label.set_ha('right')
-    except Exception as e:
-        logger.error(f"Error setting time ticks: {e}")
-
-    if ax_opts['add_grid']:
-        kwargs = {'linestyle': '-', 'linewidth': 2}
-        ax[1].grid(**kwargs)
-
-    if fig.subplots != (1, 1):
-        fig.squeeze_fig_aspect(fig)
+        if fig.subplots != (1, 1):
+            fig.squeeze_fig_aspect(fig)
 
 
 def _single_box_plot(config: ConfigManager, data_to_plot: tuple) -> None:
