@@ -281,9 +281,8 @@ class Gridded(Root):
                              time_levels: list, levels: dict, plotter):
         """Process plots for specific vertical levels."""
         self.logger.debug(f' -> Processing {len(time_levels)} time levels')
-        zc_dim = self.config_manager.get_model_dim_name('zc') or 'lev'  # Default to 'lev'
-        tc_dim = self.config_manager.get_model_dim_name(
-            'tc') or 'time'  # Default to 'time'
+        zc_dim = self.config_manager.get_model_dim_name('zc') or 'lev'
+        tc_dim = self.config_manager.get_model_dim_name('tc') or 'time'
 
         has_vertical_dim = zc_dim and zc_dim in data_array.dims
 

@@ -61,6 +61,7 @@ class ConfigManager:
     def __post_init__(self):
         """Initialize the ConfigManager after construction."""
         self.logger.info("Starting ConfigManager initialization")
+        self.input_config.config_manager = self  # CC: Is this necessary?
         self.setup_comparison()
 
     @property

@@ -61,7 +61,8 @@ class DataPipeline:
     def process_file(self, file_path: str, model_name: Optional[str] = None,
                     process: bool = True, transform: bool = False,
                     transform_params: Optional[Dict[str, Any]] = None,
-                    metadata: Optional[Dict[str, Any]] = None) -> DataSource:
+                    metadata: Optional[Dict[str, Any]] = None,
+                    file_format: Optional[str] = None) -> DataSource:
         """Process a single file through the pipeline.
         
         Args:
@@ -71,21 +72,20 @@ class DataPipeline:
             transform: Whether to apply data transformation
             transform_params: Parameters for data transformation
             metadata: Optional metadata to attach to the data source
+            file_format: Optional format of the file
             
         Returns:
             A processed data source
         """
         self.logger.debug(f"Processing file: {file_path}")
         
-        # Get format if available from config_manager
-        file_format = None
-        if self.config_manager and hasattr(self.config_manager, 'get_file_format'):
-            file_format = self.config_manager.get_file_format(file_path)
-            if file_format:
-                self.logger.debug(f"Using format '{file_format}' for file: {file_path}")
-        
-        # Pass the file_format to read_file
-        data_source = self.reader.read_file(file_path, model_name, file_format=file_format)
+        # Get the data source
+        if file_format:
+            # If file_format is provided, pass it to the reader
+            data_source = self.reader.read_file(file_path, model_name, file_format=file_format)
+        else:
+            # For backward compatibility
+            data_source = self.reader.read_file(file_path, model_name)
 
         # Attach metadata if provided
         if metadata and hasattr(data_source, 'metadata'):
@@ -98,6 +98,7 @@ class DataPipeline:
         self.data_sources[file_path] = data_source
         
         return data_source
+
 
     def process_files(self, file_paths: List[str], model_name: Optional[str] = None,
                      process: bool = True, transform: bool = False,

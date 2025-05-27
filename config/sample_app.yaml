@@ -9,6 +9,8 @@ inputs:
      exp_id    : BenchmarkFc180
      # If provided, will be used in the plot title (replaces exp_name)
      description : GMI free-running simulation, with GOCART aerosols and TR passive tracers
+     # Optional: specify data source format. Note this is auto-detected based on file extension
+     format       : netcdf
      # Specify list of fields to plot
      to_plot       :
         # Specify field (as it appears in file metadata) and plot type

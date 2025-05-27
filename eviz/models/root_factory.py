@@ -2,6 +2,7 @@ from dataclasses import dataclass
 from eviz.lib.config.config_manager import ConfigManager
 from eviz.models.esm.crest import Crest
 from eviz.models.esm.gridded import Gridded
+from eviz.models.esm.grib import Grib
 from eviz.models.esm.geos import Geos
 from eviz.models.esm.lis import Lis
 from eviz.models.esm.wrf import Wrf
@@ -46,6 +47,19 @@ class GriddedFactory(RootFactory):
     def create_root_instance(self, config_manager: ConfigManager):
         return Gridded(config_manager)
 
+
+@dataclass
+class GribFactory(RootFactory):
+    """
+    Factory for creating Gridded model instances for GRIB data.
+    
+    Used for GRIB format weather and climate data from sources like ERA5, GFS, etc.
+    """
+
+    def create_root_instance(self, config_manager: ConfigManager):
+        # For now, we can use the Gridded model since GRIB data is gridded
+        # Later, you might want to create a specialized model for GRIB data if needed
+        return Grib(config_manager)
 
 @dataclass
 class GeosFactory(RootFactory):

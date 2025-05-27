@@ -28,6 +28,7 @@ class InputConfig:
     _use_sphum_conv: bool = False
     _file_reader_mapping: Dict[str, str] = field(default_factory=dict)
     _file_format_mapping: Dict[str, str] = field(default_factory=dict) 
+    config_manager: Optional[Any] = None  # CC: Is this necessary?
 
     _compare: bool = field(default=False, init=False)
     _compare_diff: bool = field(default=False, init=False)
@@ -216,6 +217,8 @@ class InputConfig:
             return 'HDF5'
         elif format_lower in ['hdf4', 'hdf']:
             return 'HDF4'
+        elif format_lower in ['grib', 'grib2']: 
+            return 'GRIB' 
         else:
             self.logger.warning(f"Unknown format: {format_str}, defaulting to NetCDF")
             return 'NetCDF'

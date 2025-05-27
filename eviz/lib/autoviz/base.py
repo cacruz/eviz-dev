@@ -7,7 +7,7 @@ from dataclasses import dataclass, field
 from eviz.lib.config.config import Config
 from eviz.lib.config.config_manager import ConfigManager
 from eviz.lib.config.configuration_adapter import ConfigurationAdapter
-from eviz.models.root_factory import (GriddedFactory,
+from eviz.models.root_factory import (GribFactory, GriddedFactory,
                                       WrfFactory,
                                       LisFactory,
                                       AirnowFactory,
@@ -111,7 +111,7 @@ def get_factory_from_user_input(inputs):
     
     Supported sources include:
     - 'test': GriddedFactory (for unit tests)
-    - 'gridded': GriddedFactory (for generic NetCDF data)
+    - 'gridded': GriddedFactory (for generic NetCDF data and GRIB)
     - 'geos': GriddedFactory (for MERRA data)
     - 'ccm', 'cf': GriddedFactory (for special streams)
     - 'lis': LisFactory (for Land Information System data)
@@ -124,10 +124,11 @@ def get_factory_from_user_input(inputs):
     """
     mappings = {
         "test": GriddedFactory(),  # for unit tests
-        "gridded": GriddedFactory(),  # gridded is NetCDF
-        "geos": GriddedFactory(),  # use this for MERRA
-        "ccm": GriddedFactory(),  # CCM and CF are "special" streams
-        "cf": GriddedFactory(),  #
+        "gridded": GriddedFactory(),  # default for all gridded data such as NetCDF
+        "geos": GriddedFactory(),  # special alias for GEOS datasets such as MERRA
+        "ccm": GriddedFactory(),  # special alias for GEOS datasets CCM 
+        "cf": GriddedFactory(),  # and CF
+        "grib": GribFactory(),  # for Grib data sources like ERA5, GFS, etc.
         # "crest": CrestFactory(),     #
         "lis": LisFactory(),  # LIS and WRF are gridded but require special
         "wrf": WrfFactory(),  # "treatment" due to the "regional" nature of the data
@@ -137,7 +138,7 @@ def get_factory_from_user_input(inputs):
         "mopitt": MopittFactory(),  # HDF5
         "landsat": LandsatFactory(),  # HDF4
         # Add other mappings for other subclasses
-        # Need MODIS, GRIB, CEDS, EDGAR
+        # Need MODIS, CEDS, EDGAR
     }
     factories = []
     for i in inputs:
