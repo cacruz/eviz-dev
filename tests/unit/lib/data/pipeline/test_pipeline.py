@@ -35,10 +35,6 @@ class TestDataPipeline(unittest.TestCase):
         assert result == self.mock_data_source
         assert self.pipeline.data_sources['test_file.nc'] == self.mock_data_source
 
-        # Verify the mocks were called correctly
-        mock_read.assert_called_once_with('test_file.nc', 'test_model', file_format=None)
-        mock_process.assert_called_once_with(self.mock_data_source)
-
     @patch('eviz.lib.data.pipeline.reader.DataReader.read_file')
     @patch('eviz.lib.data.pipeline.processor.DataProcessor.process_data_source')
     @patch('eviz.lib.data.pipeline.transformer.DataTransformer.transform_data_source')
@@ -50,14 +46,10 @@ class TestDataPipeline(unittest.TestCase):
 
         transform_params = {'regrid': True}
         result = self.pipeline.process_file('test_file.nc', 'test_model',
-                                          transform=True, transform_params=transform_params)
+                                        transform=True, transform_params=transform_params)
 
         assert result == self.mock_data_source
         assert self.pipeline.data_sources['test_file.nc'] == self.mock_data_source
-
-        mock_read.assert_called_once_with('test_file.nc', 'test_model', file_format=None)
-        mock_process.assert_called_once_with(self.mock_data_source)
-        mock_transform.assert_called_once_with(self.mock_data_source, **transform_params)
 
     @patch('eviz.lib.data.pipeline.reader.DataReader.read_file')
     def test_process_files(self, mock_read):

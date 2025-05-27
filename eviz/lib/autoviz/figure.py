@@ -259,6 +259,8 @@ class Figure(mfigure.Figure):
 
     def _create_subplots_crs(self):
         """Create subplots with cartopy projections."""
+        # TODO : need to set projection options based on field_name and plot_type
+        # Not available at this time, so use PlateCarree as default
         if 'projection' in self._ax_opts:
             map_projection = self.get_projection(self._ax_opts['projection'])
         else:
@@ -374,25 +376,17 @@ class Figure(mfigure.Figure):
         options = {
             'mercator': ccrs.Mercator(
                 central_longitude=central_lon,
-                central_latitude=central_lat,
-                standard_parallels=(extent[2], extent[3])
             ),
             'robinson': ccrs.Robinson(
                 central_longitude=central_lon,
-                central_latitude=central_lat,
-                standard_parallels=(extent[2], extent[3])
             ),
             'orthographic': ccrs.Orthographic(
                 central_longitude=central_lon,
                 central_latitude=central_lat,
-                standard_parallels=(extent[2], extent[3])
             ),
             'mollweide': ccrs.Mollweide(
                 central_longitude=central_lon,
-                central_latitude=central_lat,
-                standard_parallels=(extent[2], extent[3])
             ),
-
             'lambert': ccrs.LambertConformal(
                 central_longitude=central_lon,
                 central_latitude=central_lat,

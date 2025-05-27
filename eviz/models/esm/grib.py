@@ -222,10 +222,11 @@ class Grib(Gridded):
 
     def _set_lis_extents(self, xs, ys):
         """Set LIS-specific map extents."""
-        latN = max(ys[:])
-        latS = min(ys[:])
-        lonW = min(xs[:])
-        lonE = max(xs[:])
+
+        latN = max(ys)
+        latS = min(ys)
+        lonW = min(xs)
+        lonE = max(xs)
         self.config_manager.ax_opts['extent'] = [lonW, lonE, latS, latN]
         self.config_manager.ax_opts['central_lon'] = np.mean([lonW, lonE])
         self.config_manager.ax_opts['central_lat'] = np.mean([latS, latN])
@@ -266,8 +267,8 @@ class Grib(Gridded):
             # The plotter functions for these types will need to extract them from data2d
             pass
         else:
-            x_values = data_array.coords['lon']
-            y_values = data_array.coords['lat']            
+            x_values = data_array.coords['lon'].values
+            y_values = data_array.coords['lat'].values    
             self._set_lis_extents(x_values, y_values)
         # Return the prepared data and coordinates in the expected tuple format
         return data2d, x_values, y_values, field_name, plot_type, file_index, figure, ax

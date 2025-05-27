@@ -45,7 +45,7 @@ class GriddedFactory(RootFactory):
     """
 
     def create_root_instance(self, config_manager: ConfigManager):
-        return Grib(config_manager)
+        return Gridded(config_manager)
 
 
 @dataclass
@@ -59,7 +59,7 @@ class GribFactory(RootFactory):
     def create_root_instance(self, config_manager: ConfigManager):
         # For now, we can use the Gridded model since GRIB data is gridded
         # Later, you might want to create a specialized model for GRIB data if needed
-        return Gridded(config_manager)
+        return Grib(config_manager)
 
 @dataclass
 class GeosFactory(RootFactory):
