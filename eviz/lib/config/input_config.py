@@ -403,8 +403,16 @@ class InputConfig:
         self._comp_panels = for_inputs.get('comp_panels', (1, 1))
         self._subplot_specs = for_inputs.get('subplot_specs', (1, 1))
 
+        # Parse for_inputs to set _compare and _compare_diff
         self._parse_for_inputs(for_inputs)
 
+        # Ensure compare and compare_diff are mutually exclusive
+        if self._compare and self._compare_diff:
+            self.logger.warning("Both 'compare' and 'compare_diff' are set to True. "
+                            "Setting 'compare' to False to make them mutually exclusive.")
+            self._compare = False
+
+        # Now handle the specific settings for each mode
         if self._compare_diff:
             # Check for extra_diff in both places
             extra_diff = (
@@ -421,7 +429,7 @@ class InputConfig:
             self.logger.debug(
                 f"Compare diff settings: extra_diff={extra_diff}, comp_panels={self._comp_panels}")
 
-        if self._compare:
+        elif self._compare:
             self._profile = for_inputs.get('compare', {}).get('profile', False)
             self._cmap = for_inputs.get('compare', {}).get('cmap', 'rainbow')
             self._comp_panels = get_subplot_shape(len(self._compare_exp_ids))
@@ -431,17 +439,18 @@ class InputConfig:
             self._set_trop_height_file_list()  # Custom method for trop_height logic
 
         self.logger.debug(f"Initialized for_inputs with: "
-                          f"compare={self._compare}, "
-                          f"compare_diff={self._compare_diff}, "
-                          f"compare_exp_ids={self._compare_exp_ids}, "
-                          f"extra_diff_plot={self._extra_diff_plot}, "
-                          f"profile={self._profile}, "
-                          f"cmap={self._cmap}, "
-                          f"comp_panels={self._comp_panels}, "
-                          f"use_trop_height={self._use_trop_height}, "
-                          f"subplot_specs={self._subplot_specs}, "
-                          f"use_cartopy={self._use_cartopy}")
+                        f"compare={self._compare}, "
+                        f"compare_diff={self._compare_diff}, "
+                        f"compare_exp_ids={self._compare_exp_ids}, "
+                        f"extra_diff_plot={self._extra_diff_plot}, "
+                        f"profile={self._profile}, "
+                        f"cmap={self._cmap}, "
+                        f"comp_panels={self._comp_panels}, "
+                        f"use_trop_height={self._use_trop_height}, "
+                        f"subplot_specs={self._subplot_specs}, "
+                        f"use_cartopy={self._use_cartopy}")
 
+        
     def get_all_variables(self, source_name: str) -> Dict[str, Any]:
         """
         Get all available variables across all readers for a source.
