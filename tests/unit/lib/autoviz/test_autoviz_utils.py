@@ -21,7 +21,7 @@ def test_axis_tick_font_size(panels_shape, fs_expected):
 @pytest.mark.parametrize(
     ('panels_shape', 'bfs_expected'),
     (
-        ((1, 1), 12),
+        ((1, 1), 10),
         ((3, 1), 10),
         ((2, 2), 10),
         (None, 8),

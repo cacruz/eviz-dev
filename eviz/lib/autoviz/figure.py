@@ -56,6 +56,8 @@ class Figure(mfigure.Figure):
         self._panel_dict = {"left": [], "right": [], "bottom": [], "top": []}
         self._subplot_dict = {}  # subplots indexed by number
         self._subplot_counter = 0  # avoid add_subplot() returning an existing subplot
+        self._projection = None
+        self._subplots = (1, 1)
 
         # Initialize eViz-specific attributes
         self.config_manager = config_manager
@@ -70,8 +72,6 @@ class Figure(mfigure.Figure):
         # If nrows and ncols are provided, use them to set _subplots
         if nrows is not None and ncols is not None:
             self._subplots = (nrows, ncols)
-        else:
-            self._subplots = (1, 1)
             
         self._use_cartopy = False
         self.gs = None
@@ -92,7 +92,7 @@ class Figure(mfigure.Figure):
             self.EVIZ_LOGO = plt.imread('eviz/lib/_static/ASTG_logo.png')
         
         self._init_frame()
-        self._set_axes()
+        # self.set_axes()
 
     @property
     def logger(self) -> logging.Logger:
@@ -162,7 +162,7 @@ class Figure(mfigure.Figure):
             self.logger.warning(f"Error setting subplot layout: {str(e)}, using default")
             self._subplots = (1, 1)
 
-    def _set_axes(self):
+    def set_axes(self):
         """
         Set figure axes objects based on required subplots.
 
@@ -259,12 +259,30 @@ class Figure(mfigure.Figure):
 
     def _create_subplots_crs(self):
         """Create subplots with cartopy projections."""
-        # TODO : need to set projection options based on field_name and plot_type
-        # Not available at this time, so use PlateCarree as default
-        if 'projection' in self._ax_opts:
+        # Determine the projection to use
+        map_projection = None
+        # Check if we have a field_name and can get projection from spec_data
+        if hasattr(self, 'field_name') and self.field_name:
+            if (self.config_manager.spec_data and
+                self.field_name in self.config_manager.spec_data):
+                # Check for projection at the top level of the field spec
+                if 'projection' in self.config_manager.spec_data[self.field_name]:
+                    projection_name = self.config_manager.spec_data[self.field_name]['projection']
+                    map_projection = self.get_projection(projection_name)
+                    self._logger.debug(f"Using projection '{projection_name}' for field {self.field_name}")
+                # Also check in the plot-type specific section
+                elif 'projection' in self.config_manager.spec_data[self.field_name].get(f"{self.plot_type[:2]}plot", {}):
+                    projection_name = self.config_manager.spec_data[self.field_name][f"{self.plot_type[:2]}plot"]['projection']
+                    map_projection = self.get_projection(projection_name)
+                    self._logger.debug(f"Using projection '{projection_name}' for field {self.field_name}")
+
+        # If no projection found from field_name, check ax_opts
+        if map_projection is None and 'projection' in self._ax_opts:
             map_projection = self.get_projection(self._ax_opts['projection'])
-        else:
-            map_projection = ccrs.PlateCarree()
+
+        # Default to PlateCarree if no projection specified
+        if map_projection is None:
+            map_projection = self.get_projection()
 
         for i in range(self._subplots[0]):
             for j in range(self._subplots[1]):
@@ -277,17 +295,11 @@ class Figure(mfigure.Figure):
             gl.ylabels_right = False
             gl.xformatter = LONGITUDE_FORMATTER
             gl.yformatter = LATITUDE_FORMATTER
-            
+
             ax.coastlines()
             ax.add_feature(cfeature.BORDERS, linestyle=':')
             ax.add_feature(cfeature.LAND, edgecolor='black')
             ax.add_feature(cfeature.LAKES, edgecolor='black')
-            
-            if 'extent' in self._ax_opts:
-                extent = self._ax_opts['extent']
-                if extent == 'conus':
-                    extent = [-120, -70, 24, 50.5]
-                ax.set_extent(extent, crs=ccrs.PlateCarree())
 
         return self
 
@@ -354,25 +366,34 @@ class Figure(mfigure.Figure):
 
     def get_projection(self, projection=None):
         """Get projection parameter."""
-        if not projection:
+        # Default values for extent and central coordinates
+        extent = [-180, 180, -90, 90]  # global default
+        central_lon = 0.0
+        central_lat = 0.0
+
+        # Try to get extent from config_manager.ax_opts
+        if hasattr(self.config_manager, 'ax_opts') and self.config_manager.ax_opts:
+            if 'extent' in self.config_manager.ax_opts:
+                extent = self.config_manager.ax_opts['extent']
+            if 'central_lon' in self.config_manager.ax_opts:
+                central_lon = self.config_manager.ax_opts['central_lon']
+            if 'central_lat' in self.config_manager.ax_opts:
+                central_lat = self.config_manager.ax_opts['central_lat']
+        # Also check in _ax_opts
+        elif 'extent' in self._ax_opts:
+            if self._ax_opts['extent'.lower()] == 'conus':
+                extent = [-120, -70, 24, 50.5]
+            else:
+                extent = self._ax_opts['extent']
+            # Calculate central coordinates from extent if not provided
+            central_lon = np.mean(extent[:2])
+            central_lat = np.mean(extent[2:])
+
+        if projection is None:
+            self._ax_opts['extent'] = extent
+            self._projection = ccrs.PlateCarree()
             return ccrs.PlateCarree()
-            
-        if 'extent' not in self._ax_opts:
-            self._ax_opts['extent'] = [-140, -40, 15, 65]  # conus default            
-        extent = self._ax_opts['extent']
-        if extent == 'conus':
-            extent = [-120, -70, 24, 50.5]
-            
-        # Calculate central coordinates
-        central_lon = np.mean(extent[:2])
-        central_lat = np.mean(extent[2:])
         
-        # Override with explicit values if provided
-        if 'central_lon' in self._ax_opts:
-            central_lon = self._ax_opts['central_lon']
-        if 'central_lat' in self._ax_opts:
-            central_lat = self._ax_opts['central_lat']
-            
         options = {
             'mercator': ccrs.Mercator(
                 central_longitude=central_lon,
@@ -406,10 +427,12 @@ class Figure(mfigure.Figure):
                 central_longitude=central_lon
             ),
             'polar': ccrs.NorthPolarStereo(central_longitude=central_lon),
-            'mercator': ccrs.Mercator()
         }
-        
-        return options.get(projection, ccrs.PlateCarree())
+        self._ax_opts['extent'] = extent
+        self._projection = options.get(projection)
+
+        return self._projection
+
 
     def create_subplots_crs(self, gs):
         axes = []
@@ -456,19 +479,59 @@ class Figure(mfigure.Figure):
         spec = self.config_manager.spec_data.get(field_name, {}).get(f"{plot_type}plot", {})
         defaults = {
             'rc_params': None,
-            'boundary': None, 'use_pole': 'north', 'profile_dim': None, 'zsum': None, 'zave': None, 'tave': None,
-            'taverange': 'all', 'cmap_set_over': None, 'cmap_set_under': None, 'use_cmap': self.config_manager.input_config._cmap,
-            'use_diff_cmap': self.config_manager.input_config._cmap, 'cscale': None, 'zscale': 'linear', 'cbar_sci_notation': False,
-            'custom_title': False, 'add_grid': False, 'line_contours': True, 'add_tropp_height': False,
-            'torder': None, 'add_trend': False, 'projection': None, 'extent': [-180, 180, -90, 90],
-            'central_lon': 0.0, 'central_lat': 0.0, 'num_clevs': 10, 'time_lev': 0, 'is_diff_field': False,
-            'add_extra_field_type': False, 'clabel': None, 'create_clevs': False, 'clevs_prec': 0,
-            'clevs': None, 'plot_title': None, 'extend_value': 'both', 'norm': 'both',
+            'boundary': None,
+            'use_pole': 'north',
+            'profile_dim': None,
+            'zsum': None,
+            'zave': None,
+            'tave': None,
+            'taverange': 'all',
+            'cmap_set_over': None,
+            'cmap_set_under': None,
+            'use_cmap': self.config_manager.input_config._cmap,
+            'use_diff_cmap': self.config_manager.input_config._cmap,
+            'cscale': None,
+            'zscale': 'linear',
+            'cbar_sci_notation': False,
+            'custom_title': False,
+            'add_grid': False,
+            'line_contours': True,
+            'add_tropp_height': False,
+            'torder': None,
+            'add_trend': False,
+            'projection': None,
+            'num_clevs': 10,
+            'time_lev': 0,
+            'is_diff_field': False,
+            'add_extra_field_type': False,
+            'clabel': None,
+            'create_clevs': False,
+            'clevs_prec': 0,
+            'clevs': None,
+            'plot_title': None,
+            'extend_value': 'both',
+            'norm': 'both',
             'overlay': False,
-            'contour_linestyle': {'lines.linewidth': 0.5, 'lines.linestyle': 'solid'},
-            'time_series_plot_linestyle': {'lines.linewidth': 1, 'lines.linestyle': 'solid'},
-            'colorbar_fontsize': {'colorbar.fontsize': 8}, 'axes_fontsize': {'axes.fontsize': 10},
-            'title_fontsize': {'title.fontsize': 10}, 'subplot_title_fontsize': {'subplot_title.fontsize': 12}
+            'contour_linestyle': {
+                'lines.linewidth': 0.5,
+                'lines.linestyle': 'solid'
+            },
+            'time_series_plot_linestyle': {
+                'lines.linewidth': 1,
+                'lines.linestyle': 'solid'
+            },
+            'colorbar_fontsize': {
+                'colorbar.fontsize': 8
+            },
+            'axes_fontsize': {
+                'axes.fontsize': 10
+            },
+            'title_fontsize': {
+                'title.fontsize': 10
+            },
+            'subplot_title_fontsize': {
+                'subplot_title.fontsize': 12
+            }
         }
         self._ax_opts = {key: spec.get(key, defaults[key]) for key in defaults}
         
@@ -512,6 +575,10 @@ class Figure(mfigure.Figure):
         return cbar
 
     @property
+    def projection(self) -> ccrs.Projection:
+        return self._projection
+
+    @property
     def frame_params(self):
         return self._frame_params
 
@@ -539,7 +606,7 @@ class Figure(mfigure.Figure):
         Returns:
             Updated axes internal state
         """
-        if not self.config_manager.input_config.compare:
+        if not self.config_manager.compare or not self.config_manager.compare_diff:
             return self._update_single_plot(field_name, pid, level)
 
         geom = get_subplot_geometry(ax)
@@ -560,15 +627,8 @@ class Figure(mfigure.Figure):
 
         # Optionally, update rc_params if new ones are found in the spec
         plot_type = "polar" if self.plot_type.startswith("po") else self.plot_type[:2]
-        spec = self.config_manager.spec_data.get(field_name, {}).get(f"{plot_type}plot", {})
-        rc_params_from_yaml = spec.get('rc_params', {})
-        rc_keys = set(mpl.rcParams.keys())
-        filtered_rc_params = {k: v for k, v in rc_params_from_yaml.items() if k in rc_keys}
-        if filtered_rc_params:
-            if self._ax_opts.get('rc_params'):
-                self._ax_opts['rc_params'].update(filtered_rc_params)
-            else:
-                self._ax_opts['rc_params'] = filtered_rc_params
+        self.config_manager.spec_data.get(field_name, {}).get(f"{plot_type}plot", {})
+
         return self._ax_opts
     
     def _update_single_plot(self, field_name, pid, level):

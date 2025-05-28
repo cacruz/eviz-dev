@@ -53,7 +53,6 @@ class Wrf(NuWrf):
     def _get_field_to_plot(self, field_name, file_index, plot_type, figure, time_level,
                            level=None):
         """WRF-specific field processing."""
-        ax = figure.get_axes()
         dim1, dim2 = self.coord_names(self.source_name, self.source_data, field_name,
                                       plot_type)
         data2d = None
@@ -69,20 +68,20 @@ class Wrf(NuWrf):
             data2d = self._get_xy(d, level=level, time_lev=time_level)
 
         return self._process_coordinates(data2d, dim1, dim2, field_name, plot_type,
-                                         file_index, figure, ax)
+                                         file_index, figure)
 
     def _process_coordinates(self, data2d, dim1, dim2, field_name, plot_type, file_index,
-                             figure, ax):
+                             figure):
         """Process coordinates for WRF plots"""
         if 'xt' in plot_type or 'tx' in plot_type:
-            return data2d, None, None, field_name, plot_type, file_index, figure, ax
+            return data2d, None, None, field_name, plot_type, file_index, figure
         elif 'yz' in plot_type:
             xs = np.array(self._get_field(dim1[0], data2d)[0, :][:, 0])
             ys = self.levs
             latN = max(xs[:])
             latS = min(xs[:])
             self.config_manager.ax_opts['extent'] = [None, None, latS, latN]
-            return data2d, xs, ys, field_name, plot_type, file_index, figure, ax
+            return data2d, xs, ys, field_name, plot_type, file_index, figure
         else:
             xs = np.array(self._get_field(dim1[0], data2d)[0, :])
             ys = np.array(self._get_field(dim2[0], data2d)[:, 0])
@@ -93,7 +92,7 @@ class Wrf(NuWrf):
             self.config_manager.ax_opts['extent'] = [lonW, lonE, latS, latN]
             self.config_manager.ax_opts['central_lon'] = np.mean([lonW, lonE])
             self.config_manager.ax_opts['central_lat'] = np.mean([latS, latN])
-            return data2d, xs, ys, field_name, plot_type, file_index, figure, ax
+            return data2d, xs, ys, field_name, plot_type, file_index, figure
 
     def _get_field_for_simple_plot(self, field_name, plot_type):
         data2d = None

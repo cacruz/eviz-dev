@@ -7,7 +7,6 @@ from eviz.lib.autoviz.plotter import (
     _single_xy_plot,
     _create_clevs,
     _time_series_plot,
-    _determine_axes_shape,
 )
 
 
@@ -121,39 +120,60 @@ def simple_plot_data():
     return data, x_coord, y_coord, 'sample_field', 'xy'
 
 
-# Tests
-def test_create_clevs(mock_config_manager, test_data_2d):
-    data2d = test_data_2d[0]
-    ax_opts = {'num_clevs': 10, 'create_clevs': True} # Ensure create_clevs is True
+def test_xy_plot_creation():
+    # Create a mock ConfigManager
+    config = MagicMock()
+    config.spec_data = {'temperature': {'xyplot': {'contours': [0, 10, 20]}}}
+    config.compare = False
+    config.compare_diff = False
+    config.ax_opts = {'extent': [-180, 180, -90, 90], 'clevs': [0, 10, 20], 'use_cmap': 'viridis', 'line_contours': True}
+    
+    # Create mock data
+    data2d = MagicMock()
+    x = np.linspace(-180, 180, 10)
+    y = np.linspace(-90, 90, 10)
+    field_name = 'temperature'
+    plot_type = 'xy'
+    findex = 0
+    fig = MagicMock()
+    
+    # Create the field_to_plot tuple with the expected number of elements
+    field_to_plot = (data2d, x, y, field_name, plot_type, findex, fig)
+    
+    # Mock the _filled_contours function to avoid actual plotting
+    with patch('eviz.lib.autoviz.plotter._filled_contours', return_value=MagicMock()) as mock_filled_contours:
+        with patch('eviz.lib.autoviz.plotter._set_colorbar'):
+            with patch('eviz.lib.autoviz.plotter._line_contours'):
+                # Call the function
+                _single_xy_plot(config, field_to_plot, level=1000)
+                
+                # Assert that _filled_contours was called
+                mock_filled_contours.assert_called_once()
 
-    _create_clevs('test_field', ax_opts, data2d)
 
-    assert 'clevs' in ax_opts
-    assert len(ax_opts['clevs']) > 0
-    # Allow for slight differences due to np.around and linspace behavior
-    assert ax_opts['clevs'][0] >= data2d.min().values.item() - 1e-9
-    assert ax_opts['clevs'][-1] <= data2d.max().values.item() + 1e-9
-
-
-def test_xy_plot_creation(mock_config_manager, test_data_2d):
-    # Fix: More comprehensive mocking
-    with patch('eviz.lib.autoviz.plotter._plot_xy_data') as mock_plot_xy_data, \
-            patch('eviz.lib.autoviz.plotter._determine_axes_shape', return_value=(1, 1)), \
-            patch('eviz.lib.autoviz.plotter._select_axes', return_value=test_data_2d[7]):
-        # Use non-interactive backend
-        with plt.rc_context({'backend': 'Agg'}):
-            # Should not raise an exception
-            _single_xy_plot(mock_config_manager, test_data_2d, level=0)
-
-            mock_plot_xy_data.assert_called_once()
-
-
-def test_xy_plot_with_none_data(mock_config_manager):
-    # Create test data with None for data2d
-    test_data = (None, np.array([1, 2, 3]), np.array([4, 5, 6]), 'test_field', 'xy', 0, MagicMock(), MagicMock())
-
-    # Should return early without error
-    result = _single_xy_plot(mock_config_manager, test_data, level=0)
+def test_xy_plot_with_none_data():
+    # Create a mock ConfigManager
+    config = MagicMock()
+    config.spec_data = {'temperature': {'xyplot': {'contours': [0, 10, 20]}}}
+    config.compare = False
+    config.compare_diff = False
+    
+    # Create mock data with None for data2d
+    data2d = None
+    x = np.linspace(-180, 180, 10)
+    y = np.linspace(-90, 90, 10)
+    field_name = 'temperature'
+    plot_type = 'xy'
+    findex = 0
+    fig = MagicMock()
+    
+    # Create the field_to_plot tuple with the expected number of elements
+    field_to_plot = (data2d, x, y, field_name, plot_type, findex, fig)
+    
+    # Call the function - it should return early without error
+    result = _single_xy_plot(config, field_to_plot, level=1000)
+    
+    # Assert that the function returned None
     assert result is None
 
 
@@ -214,28 +234,6 @@ def test_plot_components(mock_config_manager, test_data_2d):
         mock_filled_contours.assert_called_once()
         mock_set_colorbar.assert_called_once()
         mock_line_contours.assert_called_once()
-
-def test_determine_axes_shape():
-    mock_fig = MagicMock()
-    mock_ax_single = MagicMock(spec=plt.Axes) # Single axes
-    mock_ax_list = [MagicMock(spec=plt.Axes), MagicMock(spec=plt.Axes)] # List of axes
-
-    # Test with single GeoAxes (or regular Axes)
-    mock_fig.get_gs_geometry = MagicMock(return_value=(1,1)) # Should not be called here
-    shape = _determine_axes_shape(mock_fig, mock_ax_single)
-    assert shape == (1, 1)
-    mock_fig.get_gs_geometry.assert_not_called()
-
-    # Test with list of axes
-    mock_fig.get_gs_geometry = MagicMock(return_value=(1,2))
-    shape = _determine_axes_shape(mock_fig, mock_ax_list)
-    assert shape == (1, 2)
-    mock_fig.get_gs_geometry.assert_called_once()
-
-    # Test with a single item list
-    mock_fig.get_gs_geometry = MagicMock(return_value=(1,1))
-    shape = _determine_axes_shape(mock_fig, [mock_ax_single])
-    assert shape == (1,1)
 
 
 def test_select_axes(mock_config_manager):

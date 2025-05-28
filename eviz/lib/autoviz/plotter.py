@@ -256,9 +256,11 @@ def _single_scat_plot(config: ConfigManager, data_to_plot: tuple) -> None:
         config (Config) : configuration used to specify data sources
         data_to_plot (tuple) : dict with plotted data and specs
     """
-    data2d, x, y, field_name, plot_type, findex, fig, ax_temp = data_to_plot
+    data2d, x, y, field_name, plot_type, findex, fig = data_to_plot
     ax_opts = config.ax_opts
-    ax = ax_temp
+
+    fig.set_axes()
+    ax = fig.get_axes()
     if isinstance(ax, (list, tuple, np.ndarray)):
         ax = ax[0]
 
@@ -295,24 +297,6 @@ def _single_scat_plot(config: ConfigManager, data_to_plot: tuple) -> None:
 
         ax.set_title(f'{field_name}')
 
-
-def _determine_axes_shape(fig, ax_temp):
-    """Determine the shape of the axes."""
-    if isinstance(ax_temp, list):
-        print('LIST')
-        # If ax_temp is a list of axes, determine the shape from the list
-        num_axes = len(ax_temp)
-        print(f"Number of axes: {num_axes}")
-        if num_axes == 1:
-            return 1, 1
-        else:
-            return fig.get_gs_geometry()
-    else:
-        print('NOT LIST')
-        # If ax_temp is a single GeoAxes, assume shape is (1, 1)
-        return 1, 1
-
-
 def _select_axes(ax_temp, axes_shape, ax_opts, axindex):
     """Select the appropriate axes based on the shape and options."""
     if axes_shape == (3, 1):
@@ -338,11 +322,15 @@ def _single_xy_plot(config: ConfigManager, data_to_plot: tuple, level: int) -> N
         data_to_plot (tuple) : dict with plotted data and specs
         level (int) : vertical level
     """
-    data2d, x, y, field_name, plot_type, findex, fig, ax_temp = data_to_plot
-
+    data2d, x, y, field_name, plot_type, findex, fig = data_to_plot
+    
     ax_opts = config.ax_opts
-    ax = ax_temp
-    axes_shape = fig.get_gs_geometry()
+    if not config.compare and not config.compare_diff:
+        fig.set_axes()
+    
+    ax_temp = fig.get_axes()
+    axes_shape = fig.subplots
+
     if axes_shape == (3, 1):
         if ax_opts['is_diff_field']:
             ax = ax_temp[2]
@@ -355,8 +343,15 @@ def _single_xy_plot(config: ConfigManager, data_to_plot: tuple, level: int) -> N
                 ax = ax_temp[3]
         else:
             ax = ax_temp[config.axindex]
-    elif axes_shape == (1, 2):
-        ax = ax_temp
+    elif axes_shape == (1, 2) or axes_shape == (1, 3):
+        if isinstance(ax_temp, list):
+            ax = ax_temp[config.axindex]  # Use the correct axis based on axindex
+        else:
+            ax = ax_temp
+    else:
+        ax = ax_temp[0]
+    
+
     if data2d is None:
         return
 
@@ -377,14 +372,6 @@ def _single_xy_plot(config: ConfigManager, data_to_plot: tuple, level: int) -> N
 def _plot_xy_data(config, ax, data2d, x, y, field_name, fig, ax_opts, level,
                   plot_type, findex):
     """Helper function to plot XY data on a single axes."""
-    if ax_opts['extent']:
-        if ax_opts['extent'] == 'conus':
-            extent = [-140, -40, 15, 65]  # [lonW, lonE, latS, latN]
-        else:
-            extent = ax_opts['extent']
-    else:
-        extent = [-180, 180, -90, 90]
-
     if 'fill_value' in config.spec_data[field_name]['xyplot']:
         fill_value = config.spec_data[field_name]['xyplot']['fill_value']
         data2d = data2d.where(data2d != fill_value, np.nan)
@@ -398,11 +385,17 @@ def _plot_xy_data(config, ax, data2d, x, y, field_name, fig, ax_opts, level,
 
     if fig.use_cartopy and is_cartopy_axis:
         # Only pass transform if using Cartopy GeoAxes
-        ax.set_extent(extent, crs=ccrs.PlateCarree())
+        # Check if extent exists in ax_opts before using it
+        if 'extent' in ax_opts:
+            ax.set_extent(ax_opts['extent'], crs=fig.projection)
+        else:
+            # Use default global extent if not specified
+            ax.set_extent([-180, 180, -90, 90], crs=fig.projection)
         cfilled = _filled_contours(config, field_name, ax, x, y, data2d,
-                                   transform=ccrs.PlateCarree())
+                               transform=ccrs.PlateCarree())
     else:
         cfilled = _filled_contours(config, field_name, ax, x, y, data2d)
+
 
     if cfilled is None:
         _set_const_colorbar(cfilled, fig, ax)
@@ -454,7 +447,7 @@ def _single_yz_plot(config: ConfigManager, data_to_plot: tuple) -> None:
         config (ConfigManager) : configuration used to specify data sources
         data_to_plot (tuple) : dict with plotted data and specs
     """
-    data2d, x, y, field_name, plot_type, findex, fig, ax_temp = data_to_plot
+    data2d, x, y, field_name, plot_type, findex, fig = data_to_plot
 
     zc = config.get_model_dim_name('zc')
     vertical_coord = None
@@ -489,8 +482,12 @@ def _single_yz_plot(config: ConfigManager, data_to_plot: tuple) -> None:
             vertical_coord = np.arange(data2d.shape[0])
 
     ax_opts = config.ax_opts
-    ax = ax_temp
-    axes_shape = fig.get_gs_geometry()
+    if not config.compare and not config.compare_diff:
+        fig.set_axes()
+    
+    ax_temp = fig.get_axes()
+    axes_shape = fig.subplots
+
     if axes_shape == (3, 1):
         if ax_opts['is_diff_field']:
             ax = ax_temp[2]
@@ -503,15 +500,22 @@ def _single_yz_plot(config: ConfigManager, data_to_plot: tuple) -> None:
                 ax = ax_temp[3]
         else:
             ax = ax_temp[config.axindex]
-    elif axes_shape == (1, 2):
-        ax = ax_temp
+    elif axes_shape == (1, 2) or axes_shape == (1, 3):  # Caon only handle 2 and 3 column layouts
+        if isinstance(ax_temp, list):
+            ax = ax_temp[config.axindex]  # Use the correct axis based on axindex
+        else:
+            # If ax_temp is not a list ...
+            ax = ax_temp
+    else:
+        ax = ax_temp[0]
+
 
     if data2d is None:
         return
 
     ax_opts = fig.update_ax_opts(field_name, ax, 'yz')
     fig.plot_text(field_name, ax, 'yz', level=None, data=data2d)
-    # Handle single axes or list of axes
+
     if isinstance(ax, list):
         for single_ax in ax:
             _plot_yz_data(config, single_ax, data2d, x, y, field_name, fig, ax_opts,
@@ -759,13 +763,15 @@ def _single_polar_plot(config: ConfigManager, data_to_plot: tuple) -> None:
         data_to_plot (tuple) : dict with plotted data and specs
     """
     source_name = config.source_names[config.ds_index]
-    data2d, x, y, field_name, plot_type, findex, fig, ax_temp = data_to_plot
+    data2d, x, y, field_name, plot_type, findex, fig = data_to_plot
     if data2d is None:
         return
     ax_opts = config.ax_opts
 
-    ax = ax_temp
-    axes_shape = fig.get_gs_geometry()
+    fig.set_axes()
+    ax_temp = fig.get_axes()
+
+    axes_shape = fig.subplots
     if axes_shape == (3, 1):
         if ax_opts['is_diff_field']:
             ax = ax_temp[2]
@@ -773,6 +779,8 @@ def _single_polar_plot(config: ConfigManager, data_to_plot: tuple) -> None:
             ax = ax_temp[config.axindex]
     elif axes_shape == (1, 2):
         ax = ax_temp
+    else:
+        ax = ax_temp[0]
 
     ax_opts = fig.update_ax_opts(field_name, ax, 'polar', level=0)
 
@@ -892,8 +900,11 @@ def _single_xt_plot(config: ConfigManager, data_to_plot: tuple) -> None:
         config (Config) : configuration used to specify data sources
         data_to_plot (tuple) : dict with plotted data and specs
     """
-    data2d, _, _, field_name, plot_type, findex, fig, ax_temp = data_to_plot
+    data2d, _, _, field_name, plot_type, findex, fig = data_to_plot
     ax_opts = config.ax_opts
+
+    fig.set_axes()
+    ax_temp = fig.get_axes()
 
     # Handle different axes configurations
     if isinstance(ax_temp, list):
@@ -1091,7 +1102,7 @@ def _single_tx_plot(config: ConfigManager, data_to_plot: tuple) -> None:
     Reference:
         https://unidata.github.io/python-gallery/examples/Hovmoller_Diagram.html
     """
-    data2d, _, _, field_name, plot_type, findex, fig, ax_temp = data_to_plot
+    data2d, _, _, field_name, plot_type, findex, fig = data_to_plot
     if data2d is None:
         return
     ax_opts = config.ax_opts
@@ -1587,18 +1598,8 @@ class ComparisonPlotter:
         self.logger.info("Start init")
 
     def comparison_plots(self, config: ConfigManager, field_to_plot: tuple,
-                         level: int = None):
-        self.plot(config, field_to_plot, level)
-
-    @staticmethod
-    def plot(config, field_to_plot, level):
-        """ Create a single plot using specs data
-        Parameters:
-            config: ConfigManager
-            field_to_plot: tuple (data2d, dim1, dim2, field_name, plot_type, findex, map_params)
-            level: int (optional)
-        """
-        # data2d, dim1, dim2, field_name, plot_type, findex, map_params = field_to_plot
+                        level: int = None):
+        """Create a comparison plot directly without calling plot()."""
         plot_type = field_to_plot[4] + 'plot'
         if plot_type not in ['xyplot', 'yzplot', 'polarplot', 'scplot']:
             plot_type = field_to_plot[2]
@@ -1616,7 +1617,4 @@ class ComparisonPlotter:
         elif plot_type == 'scplot':
             _single_scat_plot(config, field_to_plot)
         else:
-            logger.error(f'{plot_type} is not implemented')
-        # TODO: for user defined functions you need to do the following:
-        # elif plot_type == constants.myplot:
-        #     self._myplot_subplot(config, field_to_plot)
+            self.logger.error(f'{plot_type} is not implemented')

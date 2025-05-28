@@ -144,16 +144,14 @@ class Grib(Gridded):
                 figure = Figure.create_eviz_figure(self.config_manager, plot_type)
                 self.config_manager.ax_opts = figure.init_ax_opts(field_name)
 
-                ax = figure.get_axes()
-
                 # If the data doesn't have a vertical dimension, we can't select a level
                 # In this case, we'll just use the data as is
                 if not has_vertical_dim:
-                    field_to_plot = self._get_field_to_plot(ax, data_at_time, field_name,
+                    field_to_plot = self._get_field_to_plot(data_at_time, field_name,
                                                             file_index, plot_type, figure,
                                                             t)
                 else:
-                    field_to_plot = self._get_field_to_plot(ax, data_at_time, field_name,
+                    field_to_plot = self._get_field_to_plot(data_at_time, field_name,
                                                             file_index, plot_type, figure,
                                                             t,
                                                             level=level_val)
@@ -182,11 +180,10 @@ class Grib(Gridded):
         else:
             time_levels = [0]
 
-        ax = figure.get_axes()
         # Assuming these plot types (xt, tx) might not need time slicing here,
         # or slicing is handled within _get_field_to_plot
         # Pass the full data_array and let _get_field_to_plot handle slicing if needed
-        field_to_plot = self._get_field_to_plot(ax, data_array, field_name, file_index,
+        field_to_plot = self._get_field_to_plot(data_array, field_name, file_index,
                                                 plot_type, figure,
                                                 time_level=time_level_config)
         if field_to_plot:
@@ -212,7 +209,7 @@ class Grib(Gridded):
                 data_at_time = data_array.squeeze()  # Assume single time if no time dim
 
             self._set_time_config(t, data_at_time)
-            field_to_plot = self._get_field_to_plot(None, data_at_time, field_name,
+            field_to_plot = self._get_field_to_plot(data_at_time, field_name,
                                                     # Pass None for ax initially
                                                     file_index, plot_type, figure, t)
             if field_to_plot:
@@ -231,7 +228,7 @@ class Grib(Gridded):
         self.config_manager.ax_opts['central_lon'] = np.mean([lonW, lonE])
         self.config_manager.ax_opts['central_lat'] = np.mean([latS, latN])
 
-    def _get_field_to_plot(self, ax, data_array: xr.DataArray, field_name: str,
+    def _get_field_to_plot(self, data_array: xr.DataArray, field_name: str,
                            file_index: int, plot_type: str, figure, time_level,
                            level=None) -> tuple:
         """Prepare the data array and coordinates for plotting."""
@@ -271,7 +268,7 @@ class Grib(Gridded):
             y_values = data_array.coords['lat'].values    
             self._set_lis_extents(x_values, y_values)
         # Return the prepared data and coordinates in the expected tuple format
-        return data2d, x_values, y_values, field_name, plot_type, file_index, figure, ax
+        return data2d, x_values, y_values, field_name, plot_type, file_index, figure
     
     def get_field_dim_name(self, source_name: str, source_data: dict, dim_name: str):
         field_dims = list(source_data.dims)

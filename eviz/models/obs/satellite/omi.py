@@ -112,8 +112,7 @@ class Omi(Root):
         else:
             time_levels = [0]
 
-        ax = figure.get_axes()
-        field_to_plot = self._get_field_to_plot(ax, ds_short, field_name, file_index,
+        field_to_plot = self._get_field_to_plot(ds_short, field_name, file_index,
                                                 plot_type, figure,
                                                 time_level=time_level_config)
         if field_to_plot:
@@ -121,21 +120,20 @@ class Omi(Root):
             pu.print_map(self.config_manager, plot_type, self.config_manager.findex,
                          figure)
 
-    def _get_field_to_plot(self, ax, ds_short: xr.Dataset, field_name: str,
+    def _get_field_to_plot(self, ds_short: xr.Dataset, field_name: str,
                            file_index: int, plot_type: str, figure, time_level=None,
                            level=None) -> tuple:
-        ax = figure.get_axes()
         self.config_manager.ax_opts = figure.init_ax_opts(field_name)
 
         data2d, lats, lons = extract_field_with_coords(ds_short, field_name)
 
-        self.config_manager.ax_opts['extent'] = [-180, 180, -90, 90]
-        self.config_manager.ax_opts['central_lon'] = np.mean(self.config_manager.ax_opts['extent'][:2])
-        self.config_manager.ax_opts['central_lat'] = np.mean(self.config_manager.ax_opts['extent'][2:])
+        # self.config_manager.ax_opts['extent'] = [-180, 180, -90, 90]
+        # self.config_manager.ax_opts['central_lon'] = np.mean(self.config_manager.ax_opts['extent'][:2])
+        # self.config_manager.ax_opts['central_lat'] = np.mean(self.config_manager.ax_opts['extent'][2:])
 
         if 'xt' in plot_type or 'tx' in plot_type:
-            return data2d, None, None, field_name, plot_type, file_index, figure, ax
-        return data2d, lons, lats, field_name, plot_type, file_index, figure, ax
+            return data2d, None, None, field_name, plot_type, file_index, figure
+        return data2d, lons, lats, field_name, plot_type, file_index, figure
         
 
 def extract_field_with_coords(ds, field_name, 
