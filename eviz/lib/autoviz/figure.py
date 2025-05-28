@@ -92,7 +92,6 @@ class Figure(mfigure.Figure):
             self.EVIZ_LOGO = plt.imread('eviz/lib/_static/ASTG_logo.png')
         
         self._init_frame()
-        # self.set_axes()
 
     @property
     def logger(self) -> logging.Logger:
@@ -228,6 +227,11 @@ class Figure(mfigure.Figure):
 
     def create_subplot_grid(self):
         """Create a grid of subplots based on the figure frame layout."""
+        # Hack to distinguish regional plots, which look better in square aspect ratio
+        if ('tx' in self.plot_type or 'sc' in self.plot_type or 'xy' in self.plot_type) and  'extent' in self._ax_opts:
+            if self._ax_opts['extent'] != [-180, 180, -90, 90]:
+                self._frame_params[self._rindex][2] = 8
+                self._frame_params[self._rindex][3] = 8
         if self._frame_params[self._rindex][2] and self._frame_params[self._rindex][3]:
             figsize = (self._frame_params[self._rindex][2], self._frame_params[self._rindex][3])
             self.set_size_inches(figsize)
@@ -290,12 +294,6 @@ class Figure(mfigure.Figure):
                 self.axes_array.append(ax)
 
         for ax in self.axes_array:
-            gl = ax.gridlines(draw_labels=True, linewidth=1, color='gray', alpha=0.5, linestyle='--')
-            gl.xlabels_top = False
-            gl.ylabels_right = False
-            gl.xformatter = LONGITUDE_FORMATTER
-            gl.yformatter = LATITUDE_FORMATTER
-
             ax.coastlines()
             ax.add_feature(cfeature.BORDERS, linestyle=':')
             ax.add_feature(cfeature.LAND, edgecolor='black')
@@ -432,30 +430,6 @@ class Figure(mfigure.Figure):
         self._projection = options.get(projection)
 
         return self._projection
-
-
-    def create_subplots_crs(self, gs):
-        axes = []
-        if 'projection' in self._ax_opts:
-            map_projection = self.get_projection(self._ax_opts['projection'])
-        else:
-            map_projection = ccrs.PlateCarree()
-
-        for i in range(self._subplots[0]):
-            for j in range(self._subplots[1]):
-                ax = plt.subplot(gs[i, j], projection=map_projection)
-                axes.append(ax)
-                # Add gridlines
-                gl = ax.gridlines(draw_labels=True, linewidth=1, color='gray', alpha=0.5, linestyle='--')
-                gl.xlabels_top = False
-                gl.ylabels_right = False
-                gl.xformatter = LONGITUDE_FORMATTER
-                gl.yformatter = LATITUDE_FORMATTER
-                ax.coastlines()
-                ax.add_feature(cfeature.BORDERS, linestyle=':')
-                ax.add_feature(cfeature.LAND, edgecolor='black')
-                ax.add_feature(cfeature.LAKES, edgecolor='black')
-        return axes
 
     def set_ax_opts_diff_field(self, ax):
         """ Modify axes internal state based on user-defined options

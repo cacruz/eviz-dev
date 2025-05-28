@@ -8,7 +8,7 @@ import matplotlib.pyplot as plt
 import math
 import pandas as pd
 from matplotlib import colors
-from matplotlib.ticker import FormatStrFormatter
+from matplotlib.ticker import FixedLocator, FormatStrFormatter
 from matplotlib.ticker import NullFormatter
 import matplotlib.gridspec as mgridspec
 import matplotlib.ticker as mticker
@@ -16,6 +16,7 @@ import matplotlib.path as mpath
 import matplotlib as mpl
 import cartopy.crs as ccrs
 import cartopy.feature as cfeature
+import cartopy.mpl.ticker as cticker
 import networkx as nx
 from cartopy.mpl.geoaxes import GeoAxes
 from sklearn.metrics import mean_squared_error
@@ -383,25 +384,25 @@ def _plot_xy_data(config, ax, data2d, x, y, field_name, fig, ax_opts, level,
     except ImportError:
         pass
 
+    data_transform = ccrs.PlateCarree()
     if fig.use_cartopy and is_cartopy_axis:
-        # Only pass transform if using Cartopy GeoAxes
-        # Check if extent exists in ax_opts before using it
+        cfilled = _filled_contours(config, field_name, ax, x, y, data2d, transform=data_transform)
         if 'extent' in ax_opts:
-            ax.set_extent(ax_opts['extent'], crs=fig.projection)
+            _set_cartopy_ticks(ax, ax_opts['extent'])
         else:
-            # Use default global extent if not specified
-            ax.set_extent([-180, 180, -90, 90], crs=fig.projection)
-        cfilled = _filled_contours(config, field_name, ax, x, y, data2d,
-                               transform=ccrs.PlateCarree())
+            _set_cartopy_ticks(ax, [-180, 180, -90, 90])
     else:
         cfilled = _filled_contours(config, field_name, ax, x, y, data2d)
-
 
     if cfilled is None:
         _set_const_colorbar(cfilled, fig, ax)
     else:
         _set_colorbar(config, cfilled, fig, ax, ax_opts, findex, field_name, data2d)
-        _line_contours(fig, ax, ax_opts, x, y, data2d)
+        if 	ax_opts.get('line_contours', False):
+            if fig.use_cartopy and is_cartopy_axis:
+                _line_contours(fig, ax, ax_opts, x, y, data2d, transform=data_transform)
+            else:
+                _line_contours(fig, ax, ax_opts, x, y, data2d)  
 
     if config.compare or config.compare_diff:
         name = field_name
@@ -1282,15 +1283,52 @@ def _single_tx_plot(config: ConfigManager, data_to_plot: tuple) -> None:
 
 def _single_box_plot(config: ConfigManager, data_to_plot: tuple) -> None:
     """ Create a single box plot using SPECS data"""
+    pass
 
 
-def _line_contours(fig, ax, ax_opts, x, y, data2d):
-    with mpl.rc_context(ax_opts['contour_linestyle']):
+def _set_cartopy_ticks(ax, extent, labelsize=10):
+    """
+    Adds gridlines and tick labels to a Cartopy GeoAxes with a non-rectangular projection.
+    """
+    if not extent or len(extent) != 4:
+        logger.warning(f"Invalid extent {extent}, using default")
+        extent = [-180, 180, -90, 90]
+    
+    try:
+        ax.set_extent(extent, crs=ccrs.PlateCarree())
+    except Exception as e:
+        logger.warning(f"Could not set extent: {e}")
+    
+    try:
+        gl = ax.gridlines(
+            crs=ccrs.PlateCarree(),
+            draw_labels=True,
+            linewidth=0.8, 
+            color='gray', 
+            alpha=0.6, 
+            linestyle='--'
+        )
+        
+        gl.top_labels = False
+        gl.bottom_labels = True
+        gl.left_labels = True
+        gl.right_labels = False
+        
+        gl.xlabel_style = {'size': labelsize, 'rotation': 0}
+        gl.ylabel_style = {'size': labelsize, 'rotation': 0}
+        
+        return True
+    except Exception as e:
+        logger.error(f"Could not set ticks and labels: {e}")
+        return False
+
+def _line_contours(fig, ax, ax_opts, x, y, data2d, transform=None):
+    with mpl.rc_context(rc=ax_opts.get('rc_params', {})):
         contour_format = pu.contour_format_from_levels(
             pu.formatted_contours(ax_opts['clevs']),
             scale=ax_opts['cscale'])
         clines = ax.contour(x, y, data2d, levels=ax_opts['clevs'], colors="black",
-                            alpha=0.5)
+                            alpha=0.5, transform=transform)
         if len(clines.allsegs) == 0 or all(len(seg) == 0 for seg in clines.allsegs):
             logger.warning("No contours were generated. Skipping contour labeling.")
             return
@@ -1360,7 +1398,6 @@ def _filled_contours(config, field_name, ax, x, y, data2d, transform=None):
     try:
         if np.all(np.diff(config.ax_opts['clevs']) > 0):
             cfilled = ax.contourf(x, y, data2d,
-                                  robust=True,
                                   levels=config.ax_opts['clevs'],
                                   cmap=cmap_str,
                                   extend=config.ax_opts['extend_value'],
@@ -1370,6 +1407,7 @@ def _filled_contours(config, field_name, ax, x, y, data2d, transform=None):
                 cfilled.cmap.set_under(config.ax_opts['cmap_set_under'])
             if config.ax_opts['cmap_set_over']:
                 cfilled.cmap.set_over(config.ax_opts['cmap_set_over'])
+            ax.set_aspect('auto')
             return cfilled
         else:
             raise ValueError("Contour levels must be increasing")
