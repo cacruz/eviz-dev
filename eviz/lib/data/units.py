@@ -103,26 +103,20 @@ def calculate_total_mass(airmass):
 
 def calculate_total_area(data):
     """
-    Calculates the total surface area
+    Calculates the total surface area for a regular lat-lon grid.
 
     Parameters:
         data (xarray.DataArray): The input data array.
 
     Returns:
-        float: The total area over which the data array is defined.
+        xarray.DataArray: An array with the same shape as data containing cell areas in m^2.
     """
-    # Calculate the latitudinal and longitudinal spacing
-    # Assumes 'lat' and 'lon' dim names!
-    dlat = np.deg2rad(data.lat.diff('lat').mean())
-    dlon = np.deg2rad(data.lon.diff('lon').mean())
+    dlat = np.deg2rad(data.coords['lat'].diff('lat').mean().item())
+    dlon = np.deg2rad(data.coords['lon'].diff('lon').mean().item())
 
-    # Calculate the area of each grid cell
     area = constants.R_EARTH_M ** 2 * dlat * dlon * np.cos(np.deg2rad(data.lat))
 
-    # Broadcast area to match the shape of field
-    area_expanded = area.broadcast_like(data)
-
-    return area_expanded
+    return area.broadcast_like(data)
 
 
 def adjust_units(units):
