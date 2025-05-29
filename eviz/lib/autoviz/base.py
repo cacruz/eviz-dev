@@ -64,7 +64,6 @@ def create_config(args):
     config_dir = args.config
     config_file = args.configfile
 
-    # Instantiate PathsConfig to get default paths
     paths = PathsConfig()
 
     if config_file:
@@ -78,7 +77,7 @@ def create_config(args):
             config_dir = get_config_path_from_env()
             if not config_dir:
                 # No configuration directory specified. Using eviz default.
-                config_dir = paths.config_path  # Use PathsConfig for the default
+                config_dir = paths.config_path
             config_files = [os.path.join(config_dir, source_name, f"{source_name}.yaml")
                             for source_name in source_names]
         config = Config(source_names=source_names, config_files=config_files)
@@ -261,7 +260,7 @@ class Autoviz:
         _start_time = time.time()
         self._config_manager.input_config.start_time = _start_time
 
-        self._check_input_files()  # Check if input files exist
+        self._check_input_files()
 
         self.config_adapter = ConfigurationAdapter(self._config_manager)
 
@@ -306,11 +305,9 @@ class Autoviz:
                         model.plot_composite_field(field1, field2, operation)
                     return
 
-            # Normal plotting
             for factory in self.factory_sources:
                 model = factory.create_root_instance(self._config_manager)
 
-                # Ensure map_params are available to the model
                 if hasattr(model, 'set_map_params') and self._config_manager.map_params:
                     self.logger.info(
                         f"Setting map_params with {len(self._config_manager.map_params)} entries")
@@ -357,7 +354,7 @@ class Autoviz:
         missing_files = []
         for i, entry in enumerate(self._config_manager.app_data.inputs):
             file_path = os.path.join(entry.get('location', ''), entry.get('name', ''))
-            # PATCH: Handle wildcards
+
             if '*' in file_path or '?' in file_path or '[' in file_path:
                 matched_files = glob.glob(file_path)
                 if not matched_files:

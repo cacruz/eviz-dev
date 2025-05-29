@@ -57,26 +57,13 @@ class Gridded(Root):
         
         This method is required by AbstractRoot but is now a no-op since data sources
         are managed by the pipeline. It's kept for backward compatibility.
-        
-        Args:
-            file_path: Path to the data file
-            data_source: The data source to add
         """
-        self.logger.warning(
-            "add_data_source is deprecated. Data sources are now managed by the pipeline.")
-        # No need to do anything, as data sources are managed by the pipeline
+        pass
 
     def get_data_source(self, file_path):
         """
         Get a data source from the model.
-        
         This method is required by AbstractRoot but now delegates to the pipeline.
-        
-        Args:
-            file_path: Path to the data file
-            
-        Returns:
-            The data source for the file path, or None if not found
         """
         return self.config_manager.pipeline.get_data_source(file_path)
 
@@ -87,13 +74,15 @@ class Gridded(Root):
         This method is required by AbstractRoot but is now a no-op since data sources
         are loaded by the ConfigurationAdapter. It's kept for backward compatibility.
         """
-        self.logger.warning(
-            "load_data_sources is deprecated. Data sources are now loaded by the ConfigurationAdapter.")
-        # No need to do anything, as data sources are loaded by the ConfigurationAdapter
+        pass
 
-    # SIMPLE PLOTS METHODS (no SPECS file)
-    # --------------------------------------------------------------------------
     def _simple_plots(self, plotter):
+        """
+        Generate simple plots for all fields in the dataset when no SPECS file is provided
+
+        Args:
+            plotter: The plotter object to use for generating plots
+        """
         map_params = self.config_manager.map_params
         field_num = 0
         self.config_manager.findex = 0
@@ -120,7 +109,17 @@ class Gridded(Root):
     # Simple plots do not use configurations in SPECS file
     def _get_field_for_simple_plot(self, data_array: xr.DataArray, field_name: str,
                                    plot_type: str) -> tuple:
-        """Prepare data for simple plots."""
+        """Prepare data for simple plots. This method is used when no SPECS file is provided.
+        It extracts the appropriate slice of data for the given plot type.
+        Args:
+            data_array (xr.DataArray): The data array to process.
+            field_name (str): The name of the field.
+            plot_type (str): The type of plot to generate.
+        
+        Returns:
+            tuple: A tuple containing the 2D data array, dimension names, and plot type.
+            Returns None if the plot type is not supported.
+        """
         if data_array is None:
             return None
         data2d = None
@@ -199,10 +198,13 @@ class Gridded(Root):
             data2d = data2d.mean(dim=xc_dim)
         return data2d
 
-    # SINGLE PLOTS METHODS (using SPECS file)
-    # --------------------------------------------------------------------------
     def _single_plots(self, plotter):
-        """Generate single plots for each source and field according to configuration."""
+        """Generate single plots for each source and field according to configuration.
+        This method is responsible for creating individual plots for each data source and field
+ 
+        Args:
+            plotter (instance of SimplePlotter)
+        """
         self.logger.info("Generating single plots")
 
         all_data_sources = self.config_manager.pipeline.get_all_data_sources()
@@ -210,7 +212,6 @@ class Gridded(Root):
             self.logger.error("No data sources available for single plotting.")
             return
 
-        # Iterate through map_params to generate plots
         for idx, params in self.config_manager.map_params.items():
             field_name = params.get('field')
             if not field_name:
@@ -258,7 +259,7 @@ class Gridded(Root):
                          plot_type: str, figure, plotter):
         """Process xy or polar plot types."""
         levels = self.config_manager.get_levels(field_name, plot_type + 'plot')
-        do_zsum = self.config_manager.ax_opts.get('zsum', False)  # Use .get with default
+        do_zsum = self.config_manager.ax_opts.get('zsum', False)
 
         time_level_config = self.config_manager.ax_opts.get('time_lev', 0)
         tc_dim = self.config_manager.get_model_dim_name('tc') or 'time'
@@ -286,7 +287,7 @@ class Gridded(Root):
 
         has_vertical_dim = zc_dim and zc_dim in data_array.dims
 
-        for level_val in levels.keys():  # Iterate through level values
+        for level_val in levels.keys():
             self.config_manager.level = level_val
             for t in time_levels:
                 if tc_dim in data_array.dims:
@@ -380,7 +381,6 @@ class Gridded(Root):
         dim1_name, dim2_name = self.config_manager.get_dim_names(plot_type)
         data2d = None
 
-        # Apply slicing and processing based on plot type
         if 'yz' in plot_type:
             data2d = self._get_yz(data_array, time_lev=time_level)
         elif 'xt' in plot_type:
@@ -443,10 +443,12 @@ class Gridded(Root):
         # Return the prepared data and coordinates in the expected tuple format
         return data2d, x_values, y_values, field_name, plot_type, file_index, figure
 
-    # COMPARE_DIFF METHODS (always need SPECS file)
-    # --------------------------------------------------------------------------
     def _comparison_plots(self, plotter):
-        """Generate comparison plots for paired data sources according to configuration."""
+        """Generate comparison plots for paired data sources according to configuration.
+
+        Args:
+            plotter (instance of ComparisonPlotter): The plotter instance to use for generating plots.
+        """
         self.logger.info("Generating comparison plots")
         current_field_index = 0
 
@@ -455,7 +457,6 @@ class Gridded(Root):
             self.logger.error("No data sources available for comparison plotting.")
             return
 
-        # Get the file indices for the two files being compared
         if not self.config_manager.a_list or not self.config_manager.b_list:
             self.logger.error("a_list or b_list is empty, cannot perform comparison.")
             return
@@ -588,8 +589,6 @@ class Gridded(Root):
         figure = Figure.create_eviz_figure(self.config_manager, plot_type, nrows=nrows,
                                            ncols=ncols)
         figure.set_axes()
-        # ax = figure.get_axes()
-        # axes_shape = figure.get_gs_geometry()
         self.config_manager.level = None
 
         if figure.subplots == (3, 1):
@@ -767,6 +766,13 @@ class Gridded(Root):
     # SIDE-BY-SIDE COMPARE METHODS (always need SPECS file)
     # --------------------------------------------------------------------------
     def _side_by_side_plots(self, plotter):
+        """
+        Generate side-by-side comparison plots for the given plotter.
+
+        Args:
+            plotter (instance of ComparisonPlotter): The plotter instance to use for generating plots.
+
+        """
         self.logger.info("Generating side-by-side comparison plots")
         current_field_index = 0
         self.data2d_list = []
@@ -857,13 +863,11 @@ class Gridded(Root):
         nrows = 1
         ncols = num_plots
 
-        # Get levels for the plots
         levels = self.config_manager.get_levels(field_name1, plot_type + 'plot')
         if not levels:
             return
 
         for level_val in levels:
-            # Create figure with appropriate number of subplots
             figure = Figure.create_eviz_figure(self.config_manager, plot_type,
                                                nrows=nrows, ncols=ncols)
             figure.set_axes()
@@ -873,19 +877,16 @@ class Gridded(Root):
             is_regional = hasattr(self, 'source_name') and self.source_name in ['lis',
                                                                                 'wrf']
             if is_regional:
-                # For regional domains, store coordinates for consistent plotting
                 if hasattr(sdat1_dataset, 'lon') and hasattr(sdat1_dataset, 'lat'):
                     self.lon = sdat1_dataset.lon
                     self.lat = sdat1_dataset.lat
 
-            # Create the side-by-side plot
             self._create_xy_side_by_side_plot(plotter,
                                               current_field_index,
                                               field_name1, field_name2, figure,
                                               plot_type, sdat1_dataset, sdat2_dataset,
                                               level_val)
 
-            # Print the map with appropriate level information
             pu.print_map(self.config_manager, plot_type, self.config_manager.findex,
                          figure, level=level_val)
 
@@ -974,7 +975,7 @@ class Gridded(Root):
         """Process a single plot for side-by-side comparison."""
         self.config_manager.findex = file_index
         self.config_manager.pindex = current_field_index
-        self.config_manager.axindex = ax_index  # This is crucial - it tells which subplot to use
+        self.config_manager.axindex = ax_index
         self.config_manager.ax_opts = figure.init_ax_opts(field_name)
         
         field_to_plot = self._get_field_to_plot_compare(data_array, field_name,
@@ -986,10 +987,8 @@ class Gridded(Root):
             self.data2d_list.append(field_to_plot[0])
 
         if field_to_plot:
-            # Use only one plotting method based on priority
             if hasattr(plotter, 'comparison_plots'):
                 plotter.comparison_plots(self.config_manager, field_to_plot, level=level)
-            # Don't check for other methods - this ensures only one plotting call
 
     def _get_field_to_plot_compare(self, data_array, field_name, file_index, plot_type,
                                    figure, level=None) -> tuple:
@@ -1028,40 +1027,30 @@ class Gridded(Root):
 
         # Process coordinates based on domain type
         try:
-            # Determine if this is a regional domain
             is_regional = hasattr(self, 'source_name') and self.source_name in ['lis',
                                                                                 'wrf']
             if is_regional:
-                # Handle regional domain coordinates (LIS/WRF specific)
                 if hasattr(self, '_process_coordinates'):
-                    # Use model-specific coordinate processing if available
                     return self._process_coordinates(data2d, dim1_name, dim2_name,
                                                      field_name,
                                                      plot_type, file_index, figure)
                 else:
-                    # Fallback for regional domains without specific processing
                     xs = np.array(self._get_field(dim1_name, data2d)[0, :])
                     ys = np.array(self._get_field(dim2_name, data2d)[:, 0])
-
-                    # Calculate domain extent
                     latN = max(ys[:])
                     latS = min(ys[:])
                     lonW = min(xs[:])
                     lonE = max(xs[:])
-
-                    # Set plot extent and central coordinates
                     self.config_manager.ax_opts['extent'] = [lonW, lonE, latS, latN]
                     self.config_manager.ax_opts['central_lon'] = np.mean([lonW, lonE])
                     self.config_manager.ax_opts['central_lat'] = np.mean([latS, latN])
 
                     return data2d, xs, ys, field_name, plot_type, file_index, figure
             else:
-                # Handle global domain coordinates
                 x = data2d[dim1_name].values if dim1_name in data2d.coords else None
                 y = data2d[dim2_name].values if dim2_name in data2d.coords else None
 
                 if x is None or y is None:
-                    # Fallback to using dimensions if coordinates are not available
                     dims = list(data2d.dims)
                     if len(dims) >= 2:
                         x = data2d[dims[0]].values
@@ -1078,7 +1067,6 @@ class Gridded(Root):
             return None
 
     # DATA SLICE PROCESSING METHODS
-    # --------------------------------------------------------------------------
     def _get_yz(self, data_array, time_lev):
         """ Extract YZ slice (zonal mean) from a DataArray
 
@@ -1229,7 +1217,7 @@ class Gridded(Root):
             self.logger.debug(
                 f"Output contains NaN values: {np.sum(np.isnan(data2d.values))} NaNs")
         data2d.attrs = data_array.attrs.copy()
-        
+
         return apply_conversion(self.config_manager, data2d, data_array.name)
 
     def _get_xt(self, data_array, time_lev):

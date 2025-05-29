@@ -12,7 +12,7 @@ import json
 import sys
 import random
 import string
-from typing import Optional, Dict, List, Set, Tuple, Any, Union
+from typing import Optional, Dict, List, Set, Any
 from dataclasses import dataclass
 import logging
 import textwrap
@@ -96,7 +96,6 @@ class MetadataExtractor:
         if self.config.app_output:
             self._write_app_yaml(app_dict)
 
-        # Print plottable variables if no output files specified
         if not (self.config.specs_output or self.config.app_output):
             filtered_vars = self.get_plottable_vars()
             logger.info(f"Plottable variables: {filtered_vars}")

@@ -79,15 +79,11 @@ class DataPipeline:
         """
         self.logger.debug(f"Processing file: {file_path}")
         
-        # Get the data source
         if file_format:
-            # If file_format is provided, pass it to the reader
             data_source = self.reader.read_file(file_path, model_name, file_format=file_format)
         else:
-            # For backward compatibility
             data_source = self.reader.read_file(file_path, model_name)
 
-        # Attach metadata if provided
         if metadata and hasattr(data_source, 'metadata'):
             data_source.metadata.update(metadata)
 

@@ -45,23 +45,11 @@ def test_get_field_for_simple_plot_xy():
     assert tup is None
 
 
-def test_add_data_source_warns(caplog):
-    g = Gridded(config_manager=make_config_manager())
-    g.add_data_source('foo', 'bar')
-    assert "deprecated" in caplog.text
-
-
 def test_get_data_source_delegates():
     cm = make_config_manager()
     cm.pipeline.get_data_source.return_value = "ds"
     g = Gridded(config_manager=cm)
     assert g.get_data_source("foo") == "ds"
-
-
-def test_load_data_sources_warns(caplog):
-    g = Gridded(config_manager=make_config_manager())
-    g.load_data_sources()
-    assert "deprecated" in caplog.text
 
 
 def test_get_yz_simple_basic():

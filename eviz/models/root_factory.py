@@ -55,18 +55,15 @@ class GribFactory(RootFactory):
     
     Used for GRIB format weather and climate data from sources like ERA5, GFS, etc.
     """
-
     def create_root_instance(self, config_manager: ConfigManager):
-        # For now, we can use the Gridded model since GRIB data is gridded
-        # Later, you might want to create a specialized model for GRIB data if needed
         return Grib(config_manager)
+
 
 @dataclass
 class GeosFactory(RootFactory):
     """
     Factory for creating Geos model instances for GEOS data processing.
     """
-
     def create_root_instance(self, config_manager: ConfigManager):
         return Geos(config_manager)
 
@@ -78,7 +75,6 @@ class WrfFactory(RootFactory):
     
     Handles regional model data that requires special treatment.
     """
-
     def create_root_instance(self, config_manager: ConfigManager):
         return Wrf(config_manager)
 
@@ -90,7 +86,6 @@ class LisFactory(RootFactory):
     
     Handles regional model data that requires special treatment.
     """
-
     def create_root_instance(self, config_manager: ConfigManager):
         return Lis(config_manager)
 
@@ -100,7 +95,6 @@ class AirnowFactory(RootFactory):
     """
     Factory for creating Airnow model instances for processing AirNow CSV data.
     """
-
     def create_root_instance(self, config_manager: ConfigManager):
         return Airnow(config_manager)
 
@@ -110,7 +104,6 @@ class OmiFactory(RootFactory):
     """
     Factory for creating Omi model instances for processing OMI HDF5 satellite data.
     """
-
     def create_root_instance(self, config_manager: ConfigManager):
         return Omi(config_manager)
 
@@ -120,7 +113,6 @@ class MopittFactory(RootFactory):
     """
     Factory for creating Mopitt model instances for processing MOPITT HDF5 satellite data.
     """
-
     def create_root_instance(self, config_manager: ConfigManager):
         return Mopitt(config_manager)
 

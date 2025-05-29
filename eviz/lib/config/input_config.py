@@ -111,8 +111,6 @@ class InputConfig:
             DataSource: The created data source
         """        
         factory = DataSourceFactory(self.config_manager)
-        
-        # Get format if available
         file_format = self._file_format_mapping.get(file_path)
         
         return factory.create_data_source(
@@ -269,27 +267,24 @@ class InputConfig:
         if file_extension in ['.nc', '.nc4', '']:
             return 'NetCDF'
         elif file_extension in ['.csv', '.dat']:
-            # This is reached if HDF5/HDF4 was not inferred by name for a .dat file
             return 'CSV'
-        elif file_extension in ['.h5', '.he5']:  # Explicit HDF5 extensions
+        elif file_extension in ['.h5', '.he5']:
             return 'HDF5'
-        elif file_extension == '.hdf':  # Explicit HDF4 extension
+        elif file_extension == '.hdf': 
             return 'HDF4'
         elif file_extension.startswith('.wrf'):  # e.g., .wrf-arw, .wrf-arw-nmp
             return 'NetCDF'
         else:
-            # Fallback inference for truly unrecognized extensions
             self.logger.warning(
                 f"Unrecognized extension: {file_extension} in {file_path}, attempting to infer type from name as a last resort.")
             if any(x in path_lower for x in ['netcdf', 'nc']):
                 return 'NetCDF'
             elif any(x in path_lower for x in ['csv', 'data', 'txt']):
                 return 'CSV'
-            # HDF5/HDF4 name inference was already attempted and prioritized.
 
         self.logger.error(
             f"Unsupported file extension: {file_extension} for file {file_path}. Defaulting to NetCDF.")
-        return 'NetCDF'  # Default fallback
+        return 'NetCDF'
 
     def _determine_data_types(self) -> Dict[str, bool]:
         """Determine the data types needed based on file extensions."""
@@ -335,7 +330,6 @@ class InputConfig:
             if source_name in self.readers and reader_type in self.readers[source_name]:
                 return self.readers[source_name][reader_type]
 
-        # Fall back to the first available reader
         if source_name in self.readers and self.readers[source_name]:
             return next(iter(self.readers[source_name].values()))
 
@@ -375,7 +369,6 @@ class InputConfig:
         dummy_path = f"dummy{file_extension}"
         
         try:
-            # Use our new helper method
             return self._create_data_source(
                 file_path=dummy_path,
                 source_name=source_name,
@@ -412,15 +405,12 @@ class InputConfig:
                             "Setting 'compare' to False to make them mutually exclusive.")
             self._compare = False
 
-        # Now handle the specific settings for each mode
         if self._compare_diff:
-            # Check for extra_diff in both places
             extra_diff = (
-                    for_inputs.get('extra_diff') or  # Check top level first
+                    for_inputs.get('extra_diff') or
                     for_inputs.get('compare_diff', {}).get(
-                        '_extra_diff_plot') or  # Then check under compare_diff
+                        '_extra_diff_plot') or
                     for_inputs.get('compare_diff', {}).get('extra_diff', False)
-                # Also check without underscore
             )
             self._extra_diff_plot = extra_diff
             self._profile = for_inputs.get('compare_diff', {}).get('profile', False)
@@ -468,7 +458,6 @@ class InputConfig:
                     # Assuming each reader has a method to list variables
                     vars_dict = reader.get_variables()
                     for var_name, var_data in vars_dict.items():
-                        # Add source information to track which reader provided this variable
                         var_data['source_reader'] = reader_type
                         all_vars[var_name] = var_data
                 except Exception as e:

@@ -16,8 +16,7 @@ import logging
 @dataclass
 class DataSourceFactory:
     """Factory for creating data source instances."""
-    config_manager: Optional[
-        object] = None  # Replace 'object' with actual config manager type
+    config_manager: Optional[object] = None
     registry: DataSourceRegistry = field(init=False)
 
     def __post_init__(self):
@@ -31,9 +30,8 @@ class DataSourceFactory:
 
     def _register_default_data_sources(self) -> None:
         """Register the default data source implementations."""
-        self.registry.register(
-            ['nc', 'nc4', 'netcdf', 'netcdf4', 'opendap', 'dods', 'dap'],
-            NetCDFDataSource)
+        self.registry.register(['nc', 'nc4', 'netcdf', 'netcdf4', 'opendap', 'dods', 'dap'], 
+                               NetCDFDataSource)
         self.registry.register(['h5', 'he5', 'hdf5', 'hdf'], HDF5DataSource)
         self.registry.register(['csv', 'dat', 'txt'], CSVDataSource)
         self.registry.register(['grib', 'grib2'], GRIBDataSource)
@@ -46,7 +44,8 @@ class DataSourceFactory:
     def create_data_source(self, file_path: str, model_name: Optional[str] = None,
                         reader_type: Optional[str] = None, 
                         file_format: Optional[str] = None) -> DataSource:
-        """Create a data source instance for the specified file or URL, with optional explicit reader_type or format.
+        """ Create a data source instance for the specified file or URL, with optional explicit 
+            reader_type or format.
         
         Args:
             file_path: Path to the data file or URL
@@ -60,7 +59,6 @@ class DataSourceFactory:
         Raises:
             ValueError: If the file type is not supported
         """
-        # If explicit reader_type is provided, use it
         if reader_type is not None:
             reader_type = reader_type.strip().lower()
         # If file_format is provided but reader_type is not, use file_format to determine reader_type
@@ -78,7 +76,6 @@ class DataSourceFactory:
             else:
                 self.logger.warning(f"Unknown format: {file_format}, attempting to infer from file path")
         
-        # Process reader_type if available
         if reader_type is not None:
             if reader_type == 'csv':
                 return CSVDataSource(model_name, self.config_manager)
@@ -92,7 +89,6 @@ class DataSourceFactory:
                 self.logger.error(f"Unsupported explicit reader type: {reader_type}")
                 raise ValueError(f"Unsupported explicit reader type: {reader_type}")
 
-        # Check if it's an OpenDAP URL
         if is_opendap_url(file_path):
             return NetCDFDataSource(model_name, self.config_manager)
 

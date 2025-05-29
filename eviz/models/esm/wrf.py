@@ -461,17 +461,15 @@ class Wrf(NuWrf):
         Get the source name for a given file index.
         This handles the case where multiple files come from the same source.
         """
-        # Try to get source name from file_list
         if hasattr(self.config_manager,
                    'file_list') and file_index in self.config_manager.file_list:
             return self.config_manager.file_list[file_index].get('source_name', 'wrf')
 
-        # Try to get source name from map_params
         if hasattr(self.config_manager, 'map_params'):
             for param_key, param_config in self.config_manager.map_params.items():
                 if param_key == file_index or param_config.get(
                         'file_index') == file_index:
                     return param_config.get('source_name', 'wrf')
 
-        # If we can't find the source name, default to 'wrf' since we're in the Wrf class
+        # If we can't find the source name, default to 'wrf' since we're in the Wrf class!
         return 'wrf'

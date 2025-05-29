@@ -151,7 +151,7 @@ class YAMLParser:
                         'description': description,
                         'ignore': to_ignore,
                         'exp_id': exp_id,
-                        'exp_name': exp_name,  # Add exp_name field
+                        'exp_name': exp_name,
                         'to_plot': to_plot_values,
                         'compare': is_in_compare,
                         'compare_diff': is_in_compare_diff,
@@ -180,7 +180,7 @@ class YAMLParser:
         return {
             "config_files": self.config_files,
             "source_names": self.source_names,
-            "app_data": self.app_data,  # Already a dictionary
-            "spec_data": self.spec_data,  # Already a dictionary
-            "map_params": self._map_params,  # Already a dictionary
+            "app_data": self.app_data,
+            "spec_data": self.spec_data, 
+            "map_params": self._map_params,
         }

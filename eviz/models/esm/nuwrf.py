@@ -78,7 +78,6 @@ class NuWrf(Gridded):
             filename = map_params[i]['filename']
             file_index = self.config_manager.get_file_index(filename)
             
-            # Load source data
             self.source_data = self._load_source_data(source_name, filename)
             if not self.source_data:
                 continue
@@ -112,7 +111,6 @@ class NuWrf(Gridded):
                     filename = map_params[i]['filename']
                     file_index = field_num
                     
-                    # Load source data
                     self.source_data = self._load_source_data(source_name, filename)
                     if not self.source_data:
                         continue
@@ -137,7 +135,6 @@ class NuWrf(Gridded):
         for plot_type in field_config['to_plot']:
             self.logger.info(f"Plotting {field_name}, {plot_type} plot")
             
-            # Initialize plot configuration
             temp_figure = Figure(self.config_manager, plot_type)
             self.config_manager.ax_opts = temp_figure.init_ax_opts(field_name)
             
@@ -173,7 +170,6 @@ class NuWrf(Gridded):
         figure = Figure.create_eviz_figure(self.config_manager, plot_type)
         self.config_manager.ax_opts = figure.init_ax_opts(field_name)
         
-        # Set time-related configuration
         self.config_manager.time_level = time_step
         self.config_manager.real_time = self._get_time_string(data_array, time_step)
         
@@ -189,7 +185,6 @@ class NuWrf(Gridded):
         
         plt.close(figure)
 
-    # Abstract/hook methods for subclasses to override
     def _init_model_specific_data(self):
         """Hook for model-specific initialization. Override in subclasses."""
         pass
@@ -223,7 +218,6 @@ class NuWrf(Gridded):
             time_dim = self._get_time_dimension_name(data_array)
             time_value = None
             
-            # Try different approaches to get the time value
             if hasattr(data_array, 'XTIME') and time_dim in data_array.XTIME.dims:
                 time_value = data_array.XTIME.isel({time_dim: time_index}).values
             elif time_dim and time_dim in data_array.coords:
@@ -248,7 +242,6 @@ class NuWrf(Gridded):
                 else:
                     return pd.to_datetime(time_value).strftime('%Y-%m-%d %H:%M')
             
-            # Fallback
             base_time = pd.Timestamp('2000-01-01')
             synthetic_time = base_time + pd.Timedelta(days=time_index)
             return synthetic_time.strftime('%Y-%m-%d %H:%M')
@@ -313,7 +306,7 @@ class NuWrf(Gridded):
                 if name in field.coords.keys():
                     coords.append((name, self.get_model_dim_name(source_name, 'yc')+ysuf))
                     break
-        else:  # 'lis'
+        else:
             xc = self.get_model_dim_name(source_name, 'xc')
             if xc:
                 coords.append(xc)
