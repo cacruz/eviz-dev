@@ -61,7 +61,7 @@ class Wrf(NuWrf):
         if 'yz' in plot_type:
             data2d = self._get_yz(d, time_lev=time_level)
         elif 'xt' in plot_type:
-            pass  # TODO!
+            data2d = self._get_xt(d, level=level, time_lev=time_level)
         elif 'tx' in plot_type:
             pass  # TODO!
         elif 'xy' in plot_type or 'polar' in plot_type:
@@ -179,18 +179,18 @@ class Wrf(NuWrf):
         data2d = eval(
             f"d.isel({self.get_model_dim_name(self.source_name, 'tc')}=time_lev)")
         data2d = data2d.squeeze()
-        zname = self.get_field_dim_name('wrf', d, 'zc')
+
+        zname = self.find_matching_dimension(d.dims, 'zc')
         if zname in data2d.dims:
-            # TODO: Make soil_layer configurable
-            soil_layer = 0
             if 'soil' in zname:
-                data2d = eval(f"data2d.isel({zname}=soil_layer)")
+                data2d = data2d.isel(zname=0)
             else:
                 difference_array = np.absolute(self.levs - level)
                 index = difference_array.argmin()
                 lev_to_plot = self.levs[index]
                 self.logger.debug(f'Level to plot: {lev_to_plot} at index {index}')
-                data2d = eval(f"data2d.isel({zname}=index)")
+                data2d = data2d.isel(zname=index)
+
         return apply_conversion(self.config_manager, data2d, d.name)
 
     def _get_yz(self, d, time_lev=0):
@@ -215,7 +215,7 @@ class Wrf(NuWrf):
             data2d = data2d.mean(dim=self.get_model_dim_name(self.source_name, 'xc'))
         return apply_conversion(self.config_manager, data2d, d.name)
 
-    def _get_xt(self, d, name, time_lev, level=None):
+    def _get_xt(self, d, time_lev, level=None):
         """ Extract time-series from a DataArray
 
         Note:
@@ -226,66 +226,65 @@ class Wrf(NuWrf):
         if d_temp is None:
             return
 
-        xtime = d.XTIME
-
+        xtime = d.XTIME.values
         num_times = xtime.size
-        self.logger.info(f"'{name}' field has {num_times} time levels")
-        print(xr.ALL_DIMS)
+        self.logger.info(f"'{d.name}' field has {num_times} time levels")
+
         if isinstance(time_lev, list):
             self.logger.info(f"Computing time series on {time_lev} time range")
-            data2d = eval(
-                f"d_temp.isel({self.config.get_model_dim_name('tc')}=slice(time_lev))")
+            data2d = d_temp.isel(Time=slice(time_lev))
         else:
             data2d = d_temp.squeeze()
 
-        if 'mean_type' in self.config.spec_data[name]['xtplot']:
-            mean_type = self.config.spec_data[name]['xtplot']['mean_type']
+        if 'mean_type' in self.config.spec_data[d.name]['xtplot']:
+            mean_type = self.config.spec_data[d.name]['xtplot']['mean_type']
             self.logger.info(f"Averaging method: {mean_type}")
             # annual:
             if mean_type == 'point_sel':
-                xc = self.config.spec_data[name]['xtplot']['point_sel'][0]
-                yc = self.config.spec_data[name]['xtplot']['point_sel'][1]
+                xc = self.config.spec_data[d.name]['xtplot']['point_sel'][0]
+                yc = self.config.spec_data[d.name]['xtplot']['point_sel'][1]
                 data2d = data2d.sel(lon=xc, lat=yc, method='nearest')
             elif mean_type == 'area_sel':
-                x1 = self.config.spec_data[name]['xtplot']['area_sel'][0]
-                x2 = self.config.spec_data[name]['xtplot']['area_sel'][1]
-                y1 = self.config.spec_data[name]['xtplot']['area_sel'][2]
-                y2 = self.config.spec_data[name]['xtplot']['area_sel'][3]
+                x1 = self.config.spec_data[d.name]['xtplot']['area_sel'][0]
+                x2 = self.config.spec_data[d.name]['xtplot']['area_sel'][1]
+                y1 = self.config.spec_data[d.name]['xtplot']['area_sel'][2]
+                y2 = self.config.spec_data[d.name]['xtplot']['area_sel'][3]
                 data2d = data2d.sel(lon=np.arange(x1, x2, 0.5),
                                     lat=np.arange(y1, y2, 0.5), method='nearest')
-                data2d = data2d.mean(dim=(self.config.get_model_dim_name('xc'),
-                                          self.config.get_model_dim_name('yc')))
+                data2d = data2d.mean(dim=(self.find_matching_dimension(d.dims, 'xc'),
+                                          self.find_matching_dimension(d.dims, 'yc')))
             elif mean_type in ['year', 'season', 'month']:
                 data2d = data2d.groupby(
-                    self.config.get_model_dim_name('tc') + '.' + mean_type).mean(
-                    dim=self.config.get_model_dim_name('tc'), keep_attrs=True)
+                    self.find_matching_dimension(d.dims, 'tc') + '.' + mean_type).mean(
+                    dim=self.find_matching_dimension(d.dims, 'tc'), keep_attrs=True)
             else:
-                data2d = data2d.groupby(self.config.get_model_dim_name('tc')).mean(
+                data2d = data2d.groupby(self.find_matching_dimension(d.dims, 'tc')).mean(
                     dim=xr.ALL_DIMS, keep_attrs=True)
-                if 'mean_type' in self.config.spec_data[name]['xtplot']:
-                    if self.config.spec_data[name]['xtplot']['mean_type'] == 'rolling':
+                if 'mean_type' in self.config.spec_data[d.name]['xtplot']:
+                    if self.config.spec_data[d.name]['xtplot']['mean_type'] == 'rolling':
                         window_size = 5
-                        if 'window_size' in self.config.spec_data[name]['xtplot']:
-                            window_size = self.config.spec_data[name]['xtplot'][
+                        if 'window_size' in self.config.spec_data[d.name]['xtplot']:
+                            window_size = self.config.spec_data[d.name]['xtplot'][
                                 'window_size']
                         self.logger.info(f" -- smoothing window size: {window_size}")
                         kernel = np.ones(window_size) / window_size
                         convolved_data = np.convolve(data2d, kernel, mode="same")
                         data2d = xr.DataArray(convolved_data,
-                                              dims=self.config.get_model_dim_name('tc'),
+                                              dims=self.find_matching_dimension(d.dims, 'tc'),
                                               coords=data2d.coords)
 
         else:
-            data2d = data2d.groupby(self.config.get_model_dim_name('tc')).mean(
+            data2d = data2d.groupby(self.find_matching_dimension(d.dims, 'tc')).mean(
                 dim=xr.ALL_DIMS, keep_attrs=True)
 
-        if 'level' in self.config.spec_data[name]['xtplot']:
-            level = int(self.config.spec_data[name]['xtplot']['level'])
+        if 'level' in self.config.spec_data[d.name]['xtplot']:
+            level = int(self.config.spec_data[d.name]['xtplot']['level'])
             lev_to_plot = int(np.where(
-                data2d.coords[self.config.get_model_dim_name('zc')].values == level)[0])
+                data2d.coords[self.find_matching_dimension(d.dims, 'zc')].values == level)[0])
             data2d = data2d[:, lev_to_plot].squeeze()
 
-        return apply_conversion(self.config, data2d, name)
+        data2d.attrs = d.attrs.copy()
+        return apply_conversion(self.config, data2d, d.name)
 
     def _select_yrange(self, data2d, name):
         """ Select a range of vertical levels"""
@@ -298,7 +297,7 @@ class Wrf(NuWrf):
                 self.logger.error(
                     f"Upper level value ({hi_z}) must be less than low level value ({lo_z})")
                 return
-            lev = self.get_model_dim_name(self.source_name, 'zc')
+            lev = self.find_matching_dimension(data2d.dims, 'zc')
             min_index, max_index = 0, len(data2d.coords[lev].values) - 1
             for k, v in enumerate(data2d.coords[lev]):
                 if data2d.coords[lev].values[k] == lo_z:

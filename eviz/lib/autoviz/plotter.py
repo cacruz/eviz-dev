@@ -1291,7 +1291,7 @@ def _create_clevs(field_name, ax_opts, data2d):
             clevs = np.array([dmin, dmax])
 
     # Ensure strictly increasing
-    clevs = np.sort(clevs)
+    clevs = np.unique(clevs)  # Remove duplicates, again
     ax_opts['clevs'] = clevs
 
     logger.debug(f'Created contour levels for {field_name}: {ax_opts["clevs"]}')

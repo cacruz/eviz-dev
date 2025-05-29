@@ -1,6 +1,7 @@
 import logging
 import warnings
 from dataclasses import dataclass
+import matplotlib
 import numpy as np
 import pandas as pd
 from matplotlib import pyplot as plt
@@ -11,6 +12,47 @@ from eviz.lib.autoviz.utils import print_map, create_gif
 warnings.filterwarnings("ignore")
 
 logger = logging.getLogger(__name__)
+
+
+params = {
+    'image.origin': 'lower',
+    'image.interpolation': 'nearest',
+    'image.cmap': 'gray',
+    'axes.grid': False,
+    'savefig.dpi': 150,  # to adjust notebook inline plot size
+    'axes.labelsize': 10, # fontsize for x and y labels (was 10)
+    'axes.titlesize': 14,
+    'font.size': 10, # was 10
+    'legend.fontsize': 6, # was 10
+    'xtick.labelsize': 8,
+    'ytick.labelsize': 8,
+#    'text.usetex': True,
+    'figure.figsize': [3.39, 2.10],
+    'font.family': 'serif',
+}
+matplotlib.rcParams.update(params)
+
+
+_COORD_PAIR_MAP = {"XLAT": ("XLAT", "XLONG"),
+                   "XLONG": ("XLAT", "XLONG"),
+                   "XLAT_M": ("XLAT_M", "XLONG_M"),
+                   "XLONG_M": ("XLAT_M", "XLONG_M"),
+                   "XLAT_U": ("XLAT_U", "XLONG_U"),
+                   "XLONG_U": ("XLAT_U", "XLONG_U"),
+                   "XLAT_V": ("XLAT_V", "XLONG_V"),
+                   "XLONG_V": ("XLAT_V", "XLONG_V"),
+                   "CLAT": ("CLAT", "CLONG"),
+                   "CLONG": ("CLAT", "CLONG")}
+
+
+_COORD_VARS = ("XLAT", "XLONG", "XLAT_M", "XLONG_M", "XLAT_U", "XLONG_U",
+               "XLAT_V", "XLONG_V", "CLAT", "CLONG")
+
+_LAT_COORDS = ("XLAT", "XLAT_M", "XLAT_U", "XLAT_V", "CLAT")
+
+_LON_COORDS = ("XLONG", "XLONG_M", "XLONG_U", "XLONG_V", "CLONG")
+
+_TIME_COORD_VARS = ("XTIME",)
 
 
 @dataclass
@@ -394,4 +436,20 @@ class NuWrf(Gridded):
         except Exception as e:
             self.logger.error('key error: %s, not found' % str(e))
             return None
-    
+
+    def find_matching_dimension(self, field_dims, dim_name):
+        """
+        Returns the first matching dimension name found in `field_dims` 
+        that is also in the meta_coords dictionary for the given `dim_name`.
+        
+        Parameters:
+        - field_dims: tuple of dimension names (e.g., from xarray.DataArray.dims)
+        - dim_name: str
+        
+        Returns:
+        - matched dimension name (str) or None
+        """
+        for dim in field_dims:
+            if dim in self.config_manager.meta_coords[dim_name][self.source_name]['dim']:
+                return dim
+        return None

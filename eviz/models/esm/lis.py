@@ -1,6 +1,7 @@
 import warnings
 from dataclasses import dataclass
 import numpy as np
+import xarray as xr
 from eviz.lib.data.utils import apply_mean
 from eviz.lib.data.utils import apply_conversion
 from eviz.models.esm.nuwrf import NuWrf
@@ -25,7 +26,7 @@ class Lis(NuWrf):
         d = self.source_data['vars'][field_name]
         
         if 'xt' in plot_type:
-            data2d = self._get_xt(d, field_name, time_lev=time_level)
+            data2d = self._get_xt(d, time_lev=time_level, level=None)
         elif 'xy' in plot_type:
             data2d = self._get_xy(d, level=level, time_lev=time_level)
 
@@ -71,7 +72,7 @@ class Lis(NuWrf):
         time_lev = 0
         
         if 'xt' in plot_type:
-            data2d = self._get_xt(d, field_name, time_lev=self.ax_opts['time_lev'])
+            data2d = self._get_xt(d, time_lev=self.ax_opts['time_lev'], level=None)
         elif 'tx' in plot_type:
             data2d = self._get_tx(d, field_name, level=None, time_lev=self.ax_opts['time_lev'])
         elif 'xy' in plot_type:
@@ -123,7 +124,7 @@ class Lis(NuWrf):
         if dlength == 4:
             return d[0, 0, :, :]
 
-    def _process_coordinates(self, data2d, dim1, dim2, field_name, plot_type, file_index, figure, ax):
+    def _process_coordinates(self, data2d, dim1, dim2, field_name, plot_type, file_index, figure):
         """
         Process coordinates for LIS plots, handling NaN values in coordinates.
         """
@@ -136,7 +137,7 @@ class Lis(NuWrf):
         self.config_manager.ax_opts['extent'] = [lonW, lonE, latS, latN]
         self.config_manager.ax_opts['central_lon'] = np.mean([lonW, lonE])
         self.config_manager.ax_opts['central_lat'] = np.mean([latS, latN])
-        return data2d, xr, yr, field_name, plot_type, file_index, figure, ax
+        return data2d, xr, yr, field_name, plot_type, file_index, figure
 
     def _apply_vertical_level_selection(self, data2d, field_name, level):
         """
@@ -189,8 +190,8 @@ class Lis(NuWrf):
 
         data2d = data_array.squeeze()
         tc_dim = self.config_manager.get_model_dim_name('tc')
-        zc_dim = self.config_manager.get_model_dim_name('zc')
-        
+        zc_dim = self.find_matching_dimension(data_array.dims, 'zc')
+
         if zc_dim in data2d.dims:
             data2d = data2d.isel({zc_dim: level})
         if tc_dim in data2d.dims:
@@ -203,4 +204,75 @@ class Lis(NuWrf):
                 data2d = data2d.isel({tc_dim: time_lev})
 
         return apply_conversion(self.config_manager, data2d, data_array.name)
+
+    def _get_xt(self, d, time_lev, level=None):
+        """ Extract time-series from a DataArray
+
+        Note:
+            Assume input DataArray is at most 4-dimensional (time, lev, lon, lat)
+            and return a 1D (time) series
+        """
+        d_temp = d
+        if d_temp is None:
+            return
+
+        xtime = d.time.values
+        num_times = xtime.size
+        self.logger.info(f"'{d.name}' field has {num_times} time levels")
+
+        if isinstance(time_lev, list):
+            self.logger.info(f"Computing time series on {time_lev} time range")
+            data2d = d_temp.isel(time=slice(time_lev))
+        else:
+            data2d = d_temp.squeeze()
+
+        if 'mean_type' in self.config.spec_data[d.name]['xtplot']:
+            mean_type = self.config.spec_data[d.name]['xtplot']['mean_type']
+            self.logger.info(f"Averaging method: {mean_type}")
+            # annual:
+            if mean_type == 'point_sel':
+                xc = self.config.spec_data[d.name]['xtplot']['point_sel'][0]
+                yc = self.config.spec_data[d.name]['xtplot']['point_sel'][1]
+                data2d = data2d.sel(lon=xc, lat=yc, method='nearest')
+            elif mean_type == 'area_sel':
+                x1 = self.config.spec_data[d.name]['xtplot']['area_sel'][0]
+                x2 = self.config.spec_data[d.name]['xtplot']['area_sel'][1]
+                y1 = self.config.spec_data[d.name]['xtplot']['area_sel'][2]
+                y2 = self.config.spec_data[d.name]['xtplot']['area_sel'][3]
+                data2d = data2d.sel(lon=np.arange(x1, x2, 0.5),
+                                    lat=np.arange(y1, y2, 0.5), method='nearest')
+                data2d = data2d.mean(dim=(self.find_matching_dimension(d.dims, 'xc'),
+                                          self.find_matching_dimension(d.dims, 'yc')))
+            elif mean_type in ['year', 'season', 'month']:
+                data2d = data2d.groupby(
+                    self.find_matching_dimension(d.dims, 'tc') + '.' + mean_type).mean(
+                    dim=self.find_matching_dimension(d.dims, 'tc'), keep_attrs=True)
+            else:
+                data2d = data2d.groupby(self.find_matching_dimension(d.dims, 'tc')).mean(
+                    dim=xr.ALL_DIMS, keep_attrs=True)
+                if 'mean_type' in self.config.spec_data[d.name]['xtplot']:
+                    if self.config.spec_data[d.name]['xtplot']['mean_type'] == 'rolling':
+                        window_size = 5
+                        if 'window_size' in self.config.spec_data[d.name]['xtplot']:
+                            window_size = self.config.spec_data[d.name]['xtplot'][
+                                'window_size']
+                        self.logger.info(f" -- smoothing window size: {window_size}")
+                        kernel = np.ones(window_size) / window_size
+                        convolved_data = np.convolve(data2d, kernel, mode="same")
+                        data2d = xr.DataArray(convolved_data,
+                                              dims=self.find_matching_dimension(d.dims, 'tc'),
+                                              coords=data2d.coords)
+
+        else:
+            data2d = data2d.groupby(self.find_matching_dimension(d.dims, 'tc')).mean(
+                dim=xr.ALL_DIMS, keep_attrs=True)
+
+        if 'level' in self.config.spec_data[d.name]['xtplot']:
+            level = int(self.config.spec_data[d.name]['xtplot']['level'])
+            lev_to_plot = int(np.where(
+                data2d.coords[self.find_matching_dimension(d.dims, 'zc')].values == level)[0])
+            data2d = data2d[:, lev_to_plot].squeeze()
+
+        data2d.attrs = d.attrs.copy()
+        return apply_conversion(self.config, data2d, d.name)
 
