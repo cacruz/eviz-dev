@@ -1110,11 +1110,12 @@ def _single_tx_plot(config: ConfigManager, data_to_plot: tuple) -> None:
 
     with mpl.rc_context(rc=ax_opts.get('rc_params', {})):
         # gs = mgridspec.GridSpec(nrows=2, ncols=1, height_ratios=[1, 5], hspace=0.1)
-        gs = mgridspec.GridSpec(nrows=2, ncols=1, height_ratios=[1, 6], hspace=0.01)
+        gs = mgridspec.GridSpec(nrows=2, ncols=1, height_ratios=[1, 6], hspace=0.05)
         ax = list()
         ax.append(
             fig.add_subplot(gs[0, 0], projection=ccrs.PlateCarree(central_longitude=180)))
         ax.append((fig.add_subplot(gs[1, 0])))
+        fig.set_size_inches(12, 10, forward=True)
 
         ax_opts = fig.update_ax_opts(field_name, ax, 'tx')
 
@@ -1231,7 +1232,7 @@ def _single_tx_plot(config: ConfigManager, data_to_plot: tuple) -> None:
 
         ax[0].add_feature(cfeature.COASTLINE.with_scale('50m'))
         ax[0].add_feature(cfeature.LAKES.with_scale('50m'), color='black', linewidths=0.5)
-        fig.plot_text(field_name=field_name, ax=ax[0], pid='tx', data=data2d, fontsize=10,
+        fig.plot_text(field_name=field_name, ax=ax[0], pid='tx', data=data2d, fontsize=8,
                     loc='left')
 
         if ax_opts['torder']:
@@ -1257,7 +1258,7 @@ def _single_tx_plot(config: ConfigManager, data_to_plot: tuple) -> None:
         ax[1].set_xlabel("Longitude")
         ax[1].set_ylabel("Time")
         ax[1].grid(linestyle='dotted', linewidth=0.5)
-
+    
         try:
             _line_contours(fig, ax[1], ax_opts, lons, vtimes, data2d_reduced)
         except Exception as e:
@@ -1266,16 +1267,21 @@ def _single_tx_plot(config: ConfigManager, data_to_plot: tuple) -> None:
         cbar = fig.colorbar(cfilled, orientation='horizontal', pad=0.1, aspect=70,
                             extendrect=True)
         cbar.set_label('m $s^{-1}$')
-
         if lons[0] <= -179:
             ax[1].set_xticks([-180, -90, 0, 90, 180])
         else:
             ax[1].set_xticks([0, 90, 180, 270, 360])
-        ax[1].set_xticklabels(x_tick_labels)
+        ax[1].set_xticklabels(x_tick_labels, fontsize=10)
 
-        if ax_opts['add_grid']:
-            kwargs = {'linestyle': '-', 'linewidth': 2}
-            ax[1].grid(**kwargs)
+        y_labels = ax[1].get_yticklabels()
+        y_labels[0].set_visible(False)  # hide first label
+        for i, label in enumerate(y_labels):
+            label.set_rotation(45)
+            label.set_ha('right')
+
+        # if ax_opts['add_grid']:
+        #     kwargs = {'linestyle': '-', 'linewidth': 2}
+        #     ax[1].grid(**kwargs)
 
         if fig.subplots != (1, 1):
             fig.squeeze_fig_aspect(fig)

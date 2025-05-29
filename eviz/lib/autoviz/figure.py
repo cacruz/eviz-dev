@@ -13,7 +13,6 @@ import numpy as np
 
 from eviz.lib.autoviz.utils import get_subplot_geometry
 import eviz.lib.autoviz.utils as pu
-from cartopy.mpl.gridliner import LONGITUDE_FORMATTER, LATITUDE_FORMATTER
 
 
 class Figure(mfigure.Figure):
