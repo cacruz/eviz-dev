@@ -8,7 +8,7 @@ import matplotlib.pyplot as plt
 import math
 import pandas as pd
 from matplotlib import colors
-from matplotlib.ticker import FormatStrFormatter
+from matplotlib.ticker import FormatStrFormatter, FixedLocator, FuncFormatter
 from matplotlib.ticker import NullFormatter
 import matplotlib.gridspec as mgridspec
 import matplotlib.ticker as mticker
@@ -18,6 +18,8 @@ import cartopy.crs as ccrs
 import cartopy.feature as cfeature
 import networkx as nx
 from cartopy.mpl.geoaxes import GeoAxes
+from cartopy.mpl.ticker import LongitudeFormatter, LatitudeFormatter
+
 from sklearn.metrics import mean_squared_error
 import eviz.lib.autoviz.utils as pu
 import eviz.lib.utils as u
@@ -264,35 +266,25 @@ def _single_scat_plot(config: ConfigManager, data_to_plot: tuple) -> None:
     if isinstance(ax, (list, tuple, np.ndarray)):
         ax = ax[0]
 
-    logger.debug(f'Plotting {field_name}')
     with mpl.rc_context(rc=ax_opts.get('rc_params', {})):
-        # TODO: Need set extent function!
-        if ax_opts['extent']:
-            if ax_opts['extent'] == 'conus':
-                extent = [-140, -40, 15, 65]  # [lonW, lonE, latS, latN]
-            else:
-                extent = ax_opts['extent']
-        else:
-            extent = [-180, 180, -90, 90]
-
         is_cartopy_axis = False
         try:
             is_cartopy_axis = isinstance(ax, GeoAxes)
         except ImportError:
             pass
-
+        
         if fig.use_cartopy and is_cartopy_axis:
-            # Only pass transform if using Cartopy GeoAxes
-            ax.set_extent(extent, crs=ccrs.PlateCarree())
-            ax.stock_img()
+            # ax.stock_img()
             scat = ax.scatter(x, y, c=data2d, cmap=ax_opts['use_cmap'], s=5,
                               transform=ccrs.PlateCarree())
         else:
             scat = ax.scatter(x, y, c=data2d, cmap=ax_opts['use_cmap'], s=2)
 
         if scat is None:
-            pass
+            logger.error("Scatter plot failed")
+            return 
         else:
+            _set_cartopy_ticks_alt(ax, ax_opts['extent'])
             _set_colorbar(config, scat, fig, ax, ax_opts, findex, field_name, data2d)
 
         ax.set_title(f'{field_name}')
@@ -1207,6 +1199,71 @@ def _single_box_plot(config: ConfigManager, data_to_plot: tuple) -> None:
     pass
 
 
+def _set_cartopy_ticks_alt(ax, extent, labelsize=10):
+    """
+    Adds gridlines and tick labels (in degrees) outside the map for Lambert and PlateCarree.
+    Places longitude labels below the map, latitude on the left.
+    """
+    import numpy as np
+
+    if not extent or len(extent) != 4:
+        logger.warning(f"Invalid extent {extent}, using default")
+        extent = [-180, 180, -90, 90]
+
+    try:
+        ax.set_extent(extent, crs=ccrs.PlateCarree())
+    except Exception as e:
+        logger.warning(f"Could not set extent: {e}")
+
+    try:
+        xticks_deg = np.arange(extent[0], extent[1] + 1, 10)
+        yticks_deg = np.arange(extent[2], extent[3] + 1, 10)
+
+        # Use Cartopy's gridlines just for visual grid, no labels
+        gl = ax.gridlines(
+            crs=ccrs.PlateCarree(),
+            draw_labels=False,
+            linewidth=0.8,
+            color='gray',
+            alpha=0.6,
+            linestyle='--'
+        )
+        gl.xlocator = FixedLocator(xticks_deg)
+        gl.ylocator = FixedLocator(yticks_deg)
+
+        # Compute projected x/y positions of tick lines
+        x_tick_positions = []
+        for lon in xticks_deg:
+            try:
+                x, _ = ax.projection.transform_point(lon, extent[2], ccrs.PlateCarree())
+                x_tick_positions.append(x)
+            except:
+                continue
+
+        y_tick_positions = []
+        for lat in yticks_deg:
+            try:
+                _, y = ax.projection.transform_point(extent[0], lat, ccrs.PlateCarree())
+                y_tick_positions.append(y)
+            except:
+                continue
+
+        # Now map projected positions to geographic labels using the original values
+        ax.set_xticks(x_tick_positions)
+        ax.set_xticklabels([f"{lon}°" for lon in xticks_deg], fontsize=labelsize)
+        ax.tick_params(axis='x', direction='out', pad=5)
+
+        ax.set_yticks(y_tick_positions)
+        ax.set_yticklabels([f"{lat}°" for lat in yticks_deg], fontsize=labelsize)
+        ax.tick_params(axis='y', direction='out', pad=5)
+
+        return True
+
+    except Exception as e:
+        logger.error(f"Could not set ticks and labels: {e}")
+        return False
+
+
 def _set_cartopy_ticks(ax, extent, labelsize=10):
     """
     Adds gridlines and tick labels to a Cartopy GeoAxes with a non-rectangular projection.
@@ -1242,6 +1299,7 @@ def _set_cartopy_ticks(ax, extent, labelsize=10):
     except Exception as e:
         logger.error(f"Could not set ticks and labels: {e}")
         return False
+
 
 def _line_contours(fig, ax, ax_opts, x, y, data2d, transform=None):
     with mpl.rc_context(rc=ax_opts.get('rc_params', {})):
