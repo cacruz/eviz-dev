@@ -71,13 +71,27 @@ class NetCDFDataSource(DataSource):
                     keep = [v for v in vars_to_keep if v in available]
                     return ds[keep]
 
-                dataset = xr.open_mfdataset(
-                    files,
-                    decode_cf=True,
-                    combine="by_coords",
-                    parallel=True,
-                    preprocess=drop_unneeded_vars
-                )
+                try:
+                    # First attempt: combine by coordinates
+                    dataset = xr.open_mfdataset(
+                        files,
+                        decode_cf=True,
+                        combine="by_coords",
+                        parallel=True,
+                        preprocess=drop_unneeded_vars
+                    )
+                except (ValueError, xr.MergeError) as e:
+                    self.logger.warning(f"Combining with 'by_coords' failed with error: {e}")
+                    self.logger.warning("Retrying with 'nested' + concat_dim='time'...")
+
+                    dataset = xr.open_mfdataset(
+                        files,
+                        decode_cf=True,
+                        combine="nested",
+                        concat_dim="time",  # assumes 'time' is the dimension to concatenate, but...
+                        parallel=True,
+                        preprocess=drop_unneeded_vars
+                    )
 
                 # No-op:
                 # dataset = xr.open_mfdataset(file_path, decode_cf=True, engine='netcdf4')
