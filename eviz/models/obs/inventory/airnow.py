@@ -107,6 +107,7 @@ class Airnow(Root):
         self.logger.info(f"Plotting {field_name}, {plot_type} plot")
         figure = Figure.create_eviz_figure(self.config_manager, plot_type)
         self.config_manager.ax_opts = figure.init_ax_opts(field_name)
+
         self._process_obs_plot(data_array, field_name, file_index, plot_type, figure, plotter)
 
     def _process_obs_plot(self, data_array: pd.DataFrame, field_name: str,
@@ -126,7 +127,6 @@ class Airnow(Root):
 
     def _get_field_to_plot(self, data_array: pd.DataFrame, field_name: str, file_index: int,
                            plot_type: str, figure, time_level=None,) -> tuple:
-        ax = figure.get_axes()
         self.config_manager.ax_opts = figure.init_ax_opts(field_name)
         data2d = None
 
@@ -142,14 +142,14 @@ class Airnow(Root):
             data2d = self._get_xy_simple(data_array, field_name, 0)
         elif 'sc' in plot_type:
             data2d = data_array.data
-            return data2d, lon, lat, field_name, plot_type, file_index, figure, ax
+            return data2d, lon, lat, field_name, plot_type, file_index, figure
         else:
             pass
 
         if 'xt' in plot_type or 'tx' in plot_type:
-            return data2d, None, None, field_name, plot_type, file_index, figure, ax
-        return data2d, data2d[dim1].values, data2d[dim2].values, field_name, plot_type, file_index, figure, ax
-        
+            return data2d, None, None, field_name, plot_type, file_index, figure
+        return data2d, data2d[dim1].values, data2d[dim2].values, field_name, plot_type, file_index, figure
+    
     def _get_field_for_simple_plot(self, field_name, plot_type):
         dim1, dim2 = self.config_manager.get_dim_names(plot_type)
         d = self.source_data[field_name]

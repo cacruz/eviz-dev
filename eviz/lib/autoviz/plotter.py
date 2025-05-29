@@ -8,7 +8,7 @@ import matplotlib.pyplot as plt
 import math
 import pandas as pd
 from matplotlib import colors
-from matplotlib.ticker import FormatStrFormatter
+from matplotlib.ticker import FixedLocator, FormatStrFormatter
 from matplotlib.ticker import NullFormatter
 import matplotlib.gridspec as mgridspec
 import matplotlib.ticker as mticker
@@ -16,6 +16,7 @@ import matplotlib.path as mpath
 import matplotlib as mpl
 import cartopy.crs as ccrs
 import cartopy.feature as cfeature
+import cartopy.mpl.ticker as cticker
 import networkx as nx
 from cartopy.mpl.geoaxes import GeoAxes
 from sklearn.metrics import mean_squared_error
@@ -256,9 +257,11 @@ def _single_scat_plot(config: ConfigManager, data_to_plot: tuple) -> None:
         config (Config) : configuration used to specify data sources
         data_to_plot (tuple) : dict with plotted data and specs
     """
-    data2d, x, y, field_name, plot_type, findex, fig, ax_temp = data_to_plot
+    data2d, x, y, field_name, plot_type, findex, fig = data_to_plot
     ax_opts = config.ax_opts
-    ax = ax_temp
+
+    fig.set_axes()
+    ax = fig.get_axes()
     if isinstance(ax, (list, tuple, np.ndarray)):
         ax = ax[0]
 
@@ -295,24 +298,6 @@ def _single_scat_plot(config: ConfigManager, data_to_plot: tuple) -> None:
 
         ax.set_title(f'{field_name}')
 
-
-def _determine_axes_shape(fig, ax_temp):
-    """Determine the shape of the axes."""
-    if isinstance(ax_temp, list):
-        print('LIST')
-        # If ax_temp is a list of axes, determine the shape from the list
-        num_axes = len(ax_temp)
-        print(f"Number of axes: {num_axes}")
-        if num_axes == 1:
-            return 1, 1
-        else:
-            return fig.get_gs_geometry()
-    else:
-        print('NOT LIST')
-        # If ax_temp is a single GeoAxes, assume shape is (1, 1)
-        return 1, 1
-
-
 def _select_axes(ax_temp, axes_shape, ax_opts, axindex):
     """Select the appropriate axes based on the shape and options."""
     if axes_shape == (3, 1):
@@ -338,11 +323,15 @@ def _single_xy_plot(config: ConfigManager, data_to_plot: tuple, level: int) -> N
         data_to_plot (tuple) : dict with plotted data and specs
         level (int) : vertical level
     """
-    data2d, x, y, field_name, plot_type, findex, fig, ax_temp = data_to_plot
-
+    data2d, x, y, field_name, plot_type, findex, fig = data_to_plot
+    
     ax_opts = config.ax_opts
-    ax = ax_temp
-    axes_shape = fig.get_gs_geometry()
+    if not config.compare and not config.compare_diff:
+        fig.set_axes()
+    
+    ax_temp = fig.get_axes()
+    axes_shape = fig.subplots
+
     if axes_shape == (3, 1):
         if ax_opts['is_diff_field']:
             ax = ax_temp[2]
@@ -355,8 +344,15 @@ def _single_xy_plot(config: ConfigManager, data_to_plot: tuple, level: int) -> N
                 ax = ax_temp[3]
         else:
             ax = ax_temp[config.axindex]
-    elif axes_shape == (1, 2):
-        ax = ax_temp
+    elif axes_shape == (1, 2) or axes_shape == (1, 3):
+        if isinstance(ax_temp, list):
+            ax = ax_temp[config.axindex]  # Use the correct axis based on axindex
+        else:
+            ax = ax_temp
+    else:
+        ax = ax_temp[0]
+    
+
     if data2d is None:
         return
 
@@ -377,14 +373,6 @@ def _single_xy_plot(config: ConfigManager, data_to_plot: tuple, level: int) -> N
 def _plot_xy_data(config, ax, data2d, x, y, field_name, fig, ax_opts, level,
                   plot_type, findex):
     """Helper function to plot XY data on a single axes."""
-    if ax_opts['extent']:
-        if ax_opts['extent'] == 'conus':
-            extent = [-140, -40, 15, 65]  # [lonW, lonE, latS, latN]
-        else:
-            extent = ax_opts['extent']
-    else:
-        extent = [-180, 180, -90, 90]
-
     if 'fill_value' in config.spec_data[field_name]['xyplot']:
         fill_value = config.spec_data[field_name]['xyplot']['fill_value']
         data2d = data2d.where(data2d != fill_value, np.nan)
@@ -396,11 +384,13 @@ def _plot_xy_data(config, ax, data2d, x, y, field_name, fig, ax_opts, level,
     except ImportError:
         pass
 
+    data_transform = ccrs.PlateCarree()
     if fig.use_cartopy and is_cartopy_axis:
-        # Only pass transform if using Cartopy GeoAxes
-        ax.set_extent(extent, crs=ccrs.PlateCarree())
-        cfilled = _filled_contours(config, field_name, ax, x, y, data2d,
-                                   transform=ccrs.PlateCarree())
+        cfilled = _filled_contours(config, field_name, ax, x, y, data2d, transform=data_transform)
+        if 'extent' in ax_opts:
+            _set_cartopy_ticks(ax, ax_opts['extent'])
+        else:
+            _set_cartopy_ticks(ax, [-180, 180, -90, 90])
     else:
         cfilled = _filled_contours(config, field_name, ax, x, y, data2d)
 
@@ -408,7 +398,11 @@ def _plot_xy_data(config, ax, data2d, x, y, field_name, fig, ax_opts, level,
         _set_const_colorbar(cfilled, fig, ax)
     else:
         _set_colorbar(config, cfilled, fig, ax, ax_opts, findex, field_name, data2d)
-        _line_contours(fig, ax, ax_opts, x, y, data2d)
+        if 	ax_opts.get('line_contours', False):
+            if fig.use_cartopy and is_cartopy_axis:
+                _line_contours(fig, ax, ax_opts, x, y, data2d, transform=data_transform)
+            else:
+                _line_contours(fig, ax, ax_opts, x, y, data2d)  
 
     if config.compare or config.compare_diff:
         name = field_name
@@ -454,7 +448,7 @@ def _single_yz_plot(config: ConfigManager, data_to_plot: tuple) -> None:
         config (ConfigManager) : configuration used to specify data sources
         data_to_plot (tuple) : dict with plotted data and specs
     """
-    data2d, x, y, field_name, plot_type, findex, fig, ax_temp = data_to_plot
+    data2d, x, y, field_name, plot_type, findex, fig = data_to_plot
 
     zc = config.get_model_dim_name('zc')
     vertical_coord = None
@@ -489,8 +483,12 @@ def _single_yz_plot(config: ConfigManager, data_to_plot: tuple) -> None:
             vertical_coord = np.arange(data2d.shape[0])
 
     ax_opts = config.ax_opts
-    ax = ax_temp
-    axes_shape = fig.get_gs_geometry()
+    if not config.compare and not config.compare_diff:
+        fig.set_axes()
+    
+    ax_temp = fig.get_axes()
+    axes_shape = fig.subplots
+
     if axes_shape == (3, 1):
         if ax_opts['is_diff_field']:
             ax = ax_temp[2]
@@ -503,15 +501,22 @@ def _single_yz_plot(config: ConfigManager, data_to_plot: tuple) -> None:
                 ax = ax_temp[3]
         else:
             ax = ax_temp[config.axindex]
-    elif axes_shape == (1, 2):
-        ax = ax_temp
+    elif axes_shape == (1, 2) or axes_shape == (1, 3):  # Caon only handle 2 and 3 column layouts
+        if isinstance(ax_temp, list):
+            ax = ax_temp[config.axindex]  # Use the correct axis based on axindex
+        else:
+            # If ax_temp is not a list ...
+            ax = ax_temp
+    else:
+        ax = ax_temp[0]
+
 
     if data2d is None:
         return
 
     ax_opts = fig.update_ax_opts(field_name, ax, 'yz')
     fig.plot_text(field_name, ax, 'yz', level=None, data=data2d)
-    # Handle single axes or list of axes
+
     if isinstance(ax, list):
         for single_ax in ax:
             _plot_yz_data(config, single_ax, data2d, x, y, field_name, fig, ax_opts,
@@ -759,13 +764,15 @@ def _single_polar_plot(config: ConfigManager, data_to_plot: tuple) -> None:
         data_to_plot (tuple) : dict with plotted data and specs
     """
     source_name = config.source_names[config.ds_index]
-    data2d, x, y, field_name, plot_type, findex, fig, ax_temp = data_to_plot
+    data2d, x, y, field_name, plot_type, findex, fig = data_to_plot
     if data2d is None:
         return
     ax_opts = config.ax_opts
 
-    ax = ax_temp
-    axes_shape = fig.get_gs_geometry()
+    fig.set_axes()
+    ax_temp = fig.get_axes()
+
+    axes_shape = fig.subplots
     if axes_shape == (3, 1):
         if ax_opts['is_diff_field']:
             ax = ax_temp[2]
@@ -773,6 +780,8 @@ def _single_polar_plot(config: ConfigManager, data_to_plot: tuple) -> None:
             ax = ax_temp[config.axindex]
     elif axes_shape == (1, 2):
         ax = ax_temp
+    else:
+        ax = ax_temp[0]
 
     ax_opts = fig.update_ax_opts(field_name, ax, 'polar', level=0)
 
@@ -892,8 +901,11 @@ def _single_xt_plot(config: ConfigManager, data_to_plot: tuple) -> None:
         config (Config) : configuration used to specify data sources
         data_to_plot (tuple) : dict with plotted data and specs
     """
-    data2d, _, _, field_name, plot_type, findex, fig, ax_temp = data_to_plot
+    data2d, _, _, field_name, plot_type, findex, fig = data_to_plot
     ax_opts = config.ax_opts
+
+    fig.set_axes()
+    ax_temp = fig.get_axes()
 
     # Handle different axes configurations
     if isinstance(ax_temp, list):
@@ -1091,18 +1103,19 @@ def _single_tx_plot(config: ConfigManager, data_to_plot: tuple) -> None:
     Reference:
         https://unidata.github.io/python-gallery/examples/Hovmoller_Diagram.html
     """
-    data2d, _, _, field_name, plot_type, findex, fig, ax_temp = data_to_plot
+    data2d, _, _, field_name, plot_type, findex, fig = data_to_plot
     if data2d is None:
         return
     ax_opts = config.ax_opts
 
     with mpl.rc_context(rc=ax_opts.get('rc_params', {})):
         # gs = mgridspec.GridSpec(nrows=2, ncols=1, height_ratios=[1, 5], hspace=0.1)
-        gs = mgridspec.GridSpec(nrows=2, ncols=1, height_ratios=[1, 6], hspace=0.01)
+        gs = mgridspec.GridSpec(nrows=2, ncols=1, height_ratios=[1, 6], hspace=0.05)
         ax = list()
         ax.append(
             fig.add_subplot(gs[0, 0], projection=ccrs.PlateCarree(central_longitude=180)))
         ax.append((fig.add_subplot(gs[1, 0])))
+        fig.set_size_inches(12, 10, forward=True)
 
         ax_opts = fig.update_ax_opts(field_name, ax, 'tx')
 
@@ -1219,7 +1232,7 @@ def _single_tx_plot(config: ConfigManager, data_to_plot: tuple) -> None:
 
         ax[0].add_feature(cfeature.COASTLINE.with_scale('50m'))
         ax[0].add_feature(cfeature.LAKES.with_scale('50m'), color='black', linewidths=0.5)
-        fig.plot_text(field_name=field_name, ax=ax[0], pid='tx', data=data2d, fontsize=10,
+        fig.plot_text(field_name=field_name, ax=ax[0], pid='tx', data=data2d, fontsize=8,
                     loc='left')
 
         if ax_opts['torder']:
@@ -1245,7 +1258,7 @@ def _single_tx_plot(config: ConfigManager, data_to_plot: tuple) -> None:
         ax[1].set_xlabel("Longitude")
         ax[1].set_ylabel("Time")
         ax[1].grid(linestyle='dotted', linewidth=0.5)
-
+    
         try:
             _line_contours(fig, ax[1], ax_opts, lons, vtimes, data2d_reduced)
         except Exception as e:
@@ -1254,16 +1267,21 @@ def _single_tx_plot(config: ConfigManager, data_to_plot: tuple) -> None:
         cbar = fig.colorbar(cfilled, orientation='horizontal', pad=0.1, aspect=70,
                             extendrect=True)
         cbar.set_label('m $s^{-1}$')
-
         if lons[0] <= -179:
             ax[1].set_xticks([-180, -90, 0, 90, 180])
         else:
             ax[1].set_xticks([0, 90, 180, 270, 360])
-        ax[1].set_xticklabels(x_tick_labels)
+        ax[1].set_xticklabels(x_tick_labels, fontsize=10)
 
-        if ax_opts['add_grid']:
-            kwargs = {'linestyle': '-', 'linewidth': 2}
-            ax[1].grid(**kwargs)
+        y_labels = ax[1].get_yticklabels()
+        y_labels[0].set_visible(False)  # hide first label
+        for i, label in enumerate(y_labels):
+            label.set_rotation(45)
+            label.set_ha('right')
+
+        # if ax_opts['add_grid']:
+        #     kwargs = {'linestyle': '-', 'linewidth': 2}
+        #     ax[1].grid(**kwargs)
 
         if fig.subplots != (1, 1):
             fig.squeeze_fig_aspect(fig)
@@ -1271,15 +1289,52 @@ def _single_tx_plot(config: ConfigManager, data_to_plot: tuple) -> None:
 
 def _single_box_plot(config: ConfigManager, data_to_plot: tuple) -> None:
     """ Create a single box plot using SPECS data"""
+    pass
 
 
-def _line_contours(fig, ax, ax_opts, x, y, data2d):
-    with mpl.rc_context(ax_opts['contour_linestyle']):
+def _set_cartopy_ticks(ax, extent, labelsize=10):
+    """
+    Adds gridlines and tick labels to a Cartopy GeoAxes with a non-rectangular projection.
+    """
+    if not extent or len(extent) != 4:
+        logger.warning(f"Invalid extent {extent}, using default")
+        extent = [-180, 180, -90, 90]
+    
+    try:
+        ax.set_extent(extent, crs=ccrs.PlateCarree())
+    except Exception as e:
+        logger.warning(f"Could not set extent: {e}")
+    
+    try:
+        gl = ax.gridlines(
+            crs=ccrs.PlateCarree(),
+            draw_labels=True,
+            linewidth=0.8, 
+            color='gray', 
+            alpha=0.6, 
+            linestyle='--'
+        )
+        
+        gl.top_labels = False
+        gl.bottom_labels = True
+        gl.left_labels = True
+        gl.right_labels = False
+        
+        gl.xlabel_style = {'size': labelsize, 'rotation': 0}
+        gl.ylabel_style = {'size': labelsize, 'rotation': 0}
+        
+        return True
+    except Exception as e:
+        logger.error(f"Could not set ticks and labels: {e}")
+        return False
+
+def _line_contours(fig, ax, ax_opts, x, y, data2d, transform=None):
+    with mpl.rc_context(rc=ax_opts.get('rc_params', {})):
         contour_format = pu.contour_format_from_levels(
             pu.formatted_contours(ax_opts['clevs']),
             scale=ax_opts['cscale'])
         clines = ax.contour(x, y, data2d, levels=ax_opts['clevs'], colors="black",
-                            alpha=0.5)
+                            alpha=0.5, transform=transform)
         if len(clines.allsegs) == 0 or all(len(seg) == 0 for seg in clines.allsegs):
             logger.warning("No contours were generated. Skipping contour labeling.")
             return
@@ -1349,7 +1404,6 @@ def _filled_contours(config, field_name, ax, x, y, data2d, transform=None):
     try:
         if np.all(np.diff(config.ax_opts['clevs']) > 0):
             cfilled = ax.contourf(x, y, data2d,
-                                  robust=True,
                                   levels=config.ax_opts['clevs'],
                                   cmap=cmap_str,
                                   extend=config.ax_opts['extend_value'],
@@ -1359,6 +1413,7 @@ def _filled_contours(config, field_name, ax, x, y, data2d, transform=None):
                 cfilled.cmap.set_under(config.ax_opts['cmap_set_under'])
             if config.ax_opts['cmap_set_over']:
                 cfilled.cmap.set_over(config.ax_opts['cmap_set_over'])
+            ax.set_aspect('auto')
             return cfilled
         else:
             raise ValueError("Contour levels must be increasing")
@@ -1587,18 +1642,8 @@ class ComparisonPlotter:
         self.logger.info("Start init")
 
     def comparison_plots(self, config: ConfigManager, field_to_plot: tuple,
-                         level: int = None):
-        self.plot(config, field_to_plot, level)
-
-    @staticmethod
-    def plot(config, field_to_plot, level):
-        """ Create a single plot using specs data
-        Parameters:
-            config: ConfigManager
-            field_to_plot: tuple (data2d, dim1, dim2, field_name, plot_type, findex, map_params)
-            level: int (optional)
-        """
-        # data2d, dim1, dim2, field_name, plot_type, findex, map_params = field_to_plot
+                        level: int = None):
+        """Create a comparison plot directly without calling plot()."""
         plot_type = field_to_plot[4] + 'plot'
         if plot_type not in ['xyplot', 'yzplot', 'polarplot', 'scplot']:
             plot_type = field_to_plot[2]
@@ -1616,7 +1661,4 @@ class ComparisonPlotter:
         elif plot_type == 'scplot':
             _single_scat_plot(config, field_to_plot)
         else:
-            logger.error(f'{plot_type} is not implemented')
-        # TODO: for user defined functions you need to do the following:
-        # elif plot_type == constants.myplot:
-        #     self._myplot_subplot(config, field_to_plot)
+            self.logger.error(f'{plot_type} is not implemented')

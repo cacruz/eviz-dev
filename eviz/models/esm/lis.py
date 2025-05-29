@@ -20,7 +20,6 @@ class Lis(NuWrf):
 
     def _get_field_to_plot(self, field_name, file_index, plot_type, figure, time_level, level=None):
         """LIS-specific field processing."""
-        ax = figure.get_axes()
         self.config_manager.ax_opts = figure.init_ax_opts(field_name)
         data2d = None
         d = self.source_data['vars'][field_name]
@@ -31,7 +30,7 @@ class Lis(NuWrf):
             data2d = self._get_xy(d, level=level, time_lev=time_level)
 
         if 'xt' in plot_type or 'tx' in plot_type:
-            return data2d, None, None, field_name, plot_type, file_index, figure, ax
+            return data2d, None, None, field_name, plot_type, file_index, figure
         else:
             lon = self.source_data['vars'][self.get_model_coord_name(self.source_name, 'xc')]
             lat = self.source_data['vars'][self.get_model_coord_name(self.source_name, 'yc')]
@@ -42,7 +41,7 @@ class Lis(NuWrf):
             self._fix_nan_coordinates(xs, ys)
             self._set_lis_extents(xs, ys)
             
-            return data2d, xs, ys, field_name, plot_type, file_index, figure, ax
+            return data2d, xs, ys, field_name, plot_type, file_index, figure
 
     def _fix_nan_coordinates(self, xs, ys):
         """Fix NaN values in LIS coordinates."""

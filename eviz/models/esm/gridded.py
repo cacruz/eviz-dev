@@ -300,16 +300,14 @@ class Gridded(Root):
                 figure = Figure.create_eviz_figure(self.config_manager, plot_type)
                 self.config_manager.ax_opts = figure.init_ax_opts(field_name)
 
-                ax = figure.get_axes()
-
                 # If the data doesn't have a vertical dimension, we can't select a level
                 # In this case, we'll just use the data as is
                 if not has_vertical_dim:
-                    field_to_plot = self._get_field_to_plot(ax, data_at_time, field_name,
+                    field_to_plot = self._get_field_to_plot(data_at_time, field_name,
                                                             file_index, plot_type, figure,
                                                             t)
                 else:
-                    field_to_plot = self._get_field_to_plot(ax, data_at_time, field_name,
+                    field_to_plot = self._get_field_to_plot(data_at_time, field_name,
                                                             file_index, plot_type, figure,
                                                             t,
                                                             level=level_val)
@@ -338,11 +336,7 @@ class Gridded(Root):
         else:
             time_levels = [0]
 
-        ax = figure.get_axes()
-        # Assuming these plot types (xt, tx) might not need time slicing here,
-        # or slicing is handled within _get_field_to_plot
-        # Pass the full data_array and let _get_field_to_plot handle slicing if needed
-        field_to_plot = self._get_field_to_plot(ax, data_array, field_name, file_index,
+        field_to_plot = self._get_field_to_plot(data_array, field_name, file_index,
                                                 plot_type, figure,
                                                 time_level=time_level_config)
         if field_to_plot:
@@ -368,15 +362,14 @@ class Gridded(Root):
                 data_at_time = data_array.squeeze()  # Assume single time if no time dim
 
             self._set_time_config(t, data_at_time)
-            field_to_plot = self._get_field_to_plot(None, data_at_time, field_name,
-                                                    # Pass None for ax initially
+            field_to_plot = self._get_field_to_plot(data_at_time, field_name,
                                                     file_index, plot_type, figure, t)
             if field_to_plot:
                 plotter.single_plots(self.config_manager, field_to_plot=field_to_plot)
                 pu.print_map(self.config_manager, plot_type, self.config_manager.findex,
                              figure)
 
-    def _get_field_to_plot(self, ax, data_array: xr.DataArray, field_name: str,
+    def _get_field_to_plot(self, data_array: xr.DataArray, field_name: str,
                            file_index: int, plot_type: str, figure, time_level,
                            level=None) -> tuple:
         """Prepare the data array and coordinates for plotting."""
@@ -448,7 +441,7 @@ class Gridded(Root):
                 # data2d = data2d.fillna(0)
 
         # Return the prepared data and coordinates in the expected tuple format
-        return data2d, x_values, y_values, field_name, plot_type, file_index, figure, ax
+        return data2d, x_values, y_values, field_name, plot_type, file_index, figure
 
     # COMPARE_DIFF METHODS (always need SPECS file)
     # --------------------------------------------------------------------------
@@ -482,10 +475,10 @@ class Gridded(Root):
         num_pairs = min(len(fields_file1), len(fields_file2))
         field_pairs = list(zip(fields_file1[:num_pairs], fields_file2[:num_pairs]))
 
-        self.logger.info(f"Comparing files {idx1} and {idx2}")
-        self.logger.info(f"Fields in file 1: {fields_file1}")
-        self.logger.info(f"Fields in file 2: {fields_file2}")
-        self.logger.info(f"Field pairs to compare: {field_pairs}")
+        self.logger.debug(f"Comparing files {idx1} and {idx2}")
+        self.logger.debug(f"Fields in file 1: {fields_file1}")
+        self.logger.debug(f"Fields in file 2: {fields_file2}")
+        self.logger.debug(f"Field pairs to compare: {field_pairs}")
 
         for field1, field2 in field_pairs:
             # Find map_params for this field in both files
@@ -561,20 +554,19 @@ class Gridded(Root):
         for level_val in levels:
             figure = Figure.create_eviz_figure(self.config_manager, plot_type,
                                                nrows=nrows, ncols=ncols)
-            ax = figure.get_axes()
-            axes_shape = figure.get_gs_geometry()
+            figure.set_axes()
             self.config_manager.level = level_val
 
-            if axes_shape == (3, 1):
+            if figure.subplots == (3, 1):
                 self._create_3x1_comparison_plot(plotter, file_indices,
                                                  current_field_index,
-                                                 field_name1, field_name2, figure, ax,
+                                                 field_name1, field_name2, figure,
                                                  plot_type, sdat1_dataset, sdat2_dataset,
                                                  level_val)
-            elif axes_shape == (2, 2):
+            elif figure.subplots == (2, 2):
                 self._create_2x2_comparison_plot(plotter, file_indices,
                                                  current_field_index,
-                                                 field_name1, field_name2, figure, ax,
+                                                 field_name1, field_name2, figure,
                                                  plot_type, sdat1_dataset, sdat2_dataset,
                                                  level_val)
 
@@ -595,17 +587,18 @@ class Gridded(Root):
 
         figure = Figure.create_eviz_figure(self.config_manager, plot_type, nrows=nrows,
                                            ncols=ncols)
-        ax = figure.get_axes()
-        axes_shape = figure.get_gs_geometry()
+        figure.set_axes()
+        # ax = figure.get_axes()
+        # axes_shape = figure.get_gs_geometry()
         self.config_manager.level = None
 
-        if axes_shape == (3, 1):
+        if figure.subplots == (3, 1):
             self._create_3x1_comparison_plot(plotter, file_indices, current_field_index,
-                                             field_name1, field_name2, figure, ax,
+                                             field_name1, field_name2, figure,
                                              plot_type, sdat1_dataset, sdat2_dataset)
-        elif axes_shape == (2, 2):
+        elif figure.subplots == (2, 2):
             self._create_2x2_comparison_plot(plotter, file_indices, current_field_index,
-                                             field_name1, field_name2, figure, ax,
+                                             field_name1, field_name2, figure,
                                              plot_type, sdat1_dataset, sdat2_dataset)
 
         self.config_manager.findex = file_index1
@@ -613,20 +606,20 @@ class Gridded(Root):
         self.comparison_plot = False  # Reset comparison flag
 
     def _create_3x1_comparison_plot(self, plotter, file_indices, current_field_index,
-                                    field_name1, field_name2, figure, ax,
+                                    field_name1, field_name2, figure,
                                     plot_type, sdat1_dataset, sdat2_dataset, level=None):
         """Create a 3x1 comparison plot."""
         file_index1, file_index2 = file_indices
 
         # Plot the first dataset
         self._process_3x1_comparison_plot(plotter, file_index1, current_field_index,
-                                          field_name1, figure, ax, 0,
+                                          field_name1, figure, 0,
                                           sdat1_dataset[field_name1], plot_type,
                                           level=level)
 
         # Plot the second dataset
         self._process_3x1_comparison_plot(plotter, file_index2, current_field_index,
-                                          field_name2, figure, ax, 1,
+                                          field_name2, figure, 1,
                                           sdat2_dataset[field_name2], plot_type,
                                           level=level)
 
@@ -635,13 +628,13 @@ class Gridded(Root):
         # For the comparison, we need to pass both datasets
         # The _process_comparison_plot method will need to handle this special case
         self._process_3x1_comparison_plot(plotter, file_index1, current_field_index,
-                                          field_name1, figure, ax, 2,
+                                          field_name1, figure, 2,
                                           (sdat1_dataset[field_name1],
                                            sdat2_dataset[field_name2]),
                                           plot_type, level=level)
 
     def _create_2x2_comparison_plot(self, plotter, file_indices, current_field_index,
-                                    field_name1, field_name2, figure, ax,
+                                    field_name1, field_name2, figure,
                                     plot_type, sdat1_dataset, sdat2_dataset, level=None):
         """Create a 2x2 comparison plot."""
         file_index1, file_index2 = file_indices
@@ -677,7 +670,7 @@ class Gridded(Root):
 
     def _process_3x1_comparison_plot(self, plotter, file_index, current_field_index,
                                      field_name,
-                                     figure, ax, ax_index, data_array, plot_type,
+                                     figure, ax_index, data_array, plot_type,
                                      level=None):
         """Process a comparison plot."""
         self.config_manager.findex = file_index
@@ -687,9 +680,6 @@ class Gridded(Root):
 
         if ax_index == 2:  # Third panel in 3x1 layout is the difference
             self.config_manager.ax_opts['is_diff_field'] = True
-
-        figure.set_ax_opts_diff_field(ax[ax_index])
-
         if ax_index == 2:
             # Compute and plot the difference field
             if len(self.data2d_list) == 2:
@@ -706,7 +696,7 @@ class Gridded(Root):
                     field_to_plot = None
                 else:
                     field_to_plot = (diff_result, diff_x, diff_y, field_name, plot_type,
-                                     file_index, figure, ax)
+                                     file_index, figure)
             else:
                 self.logger.error("Not enough data for difference plot")
                 field_to_plot = None
@@ -759,7 +749,7 @@ class Gridded(Root):
                     field_to_plot = None
                 else:
                     field_to_plot = (diff_result, diff_x, diff_y, field_name, plot_type,
-                                     file_index, figure, ax)
+                                     file_index, figure)
             else:
                 self.logger.error("Not enough data for difference plot")
                 field_to_plot = None
@@ -802,11 +792,6 @@ class Gridded(Root):
         num_pairs = min(len(fields_file1), len(fields_file2))
         field_pairs = list(zip(fields_file1[:num_pairs], fields_file2[:num_pairs]))
 
-        self.logger.info(f"Comparing files {idx1} and {idx2}")
-        self.logger.info(f"Fields in file 1: {fields_file1}")
-        self.logger.info(f"Fields in file 2: {fields_file2}")
-        self.logger.info(f"Field pairs to compare: {field_pairs}")
-
         for field1, field2 in field_pairs:
             # Find map_params for this field in both files
             idx1_field = next((i for i, params in self.config_manager.map_params.items()
@@ -838,7 +823,7 @@ class Gridded(Root):
             if sdat1_dataset is None or sdat2_dataset is None:
                 continue
 
-            file_indices = (idx1_field, idx2_field)
+            self.file_indices = (idx1_field, idx2_field)
 
             self.field_names = (field1, field2)
 
@@ -850,13 +835,13 @@ class Gridded(Root):
                 self.logger.info(f"Plotting {field1} vs {field2} , {plot_type} plot")
 
                 if 'xy' in plot_type or 'polar' in plot_type:
-                    self._process_xy_side_by_side_plots(plotter, file_indices,
+                    self._process_xy_side_by_side_plots(plotter,
                                                         current_field_index,
                                                         field1, field2,
                                                         plot_type,
                                                         sdat1_dataset, sdat2_dataset)
                 else:
-                    self._process_other_side_by_side_plots(plotter, file_indices,
+                    self._process_other_side_by_side_plots(plotter,
                                                            current_field_index,
                                                            field1, field2,
                                                            plot_type, sdat1_dataset,
@@ -864,7 +849,7 @@ class Gridded(Root):
 
             current_field_index += 1
 
-    def _process_xy_side_by_side_plots(self, plotter, file_indices, current_field_index,
+    def _process_xy_side_by_side_plots(self, plotter, current_field_index,
                                        field_name1, field_name2, plot_type, sdat1_dataset,
                                        sdat2_dataset):
         """Process side-by-side comparison plots for xy or polar plot types."""
@@ -881,7 +866,7 @@ class Gridded(Root):
             # Create figure with appropriate number of subplots
             figure = Figure.create_eviz_figure(self.config_manager, plot_type,
                                                nrows=nrows, ncols=ncols)
-            ax = figure.get_axes()
+            figure.set_axes()
             self.config_manager.level = level_val
 
             # Store domain information for regional plots if available
@@ -894,9 +879,9 @@ class Gridded(Root):
                     self.lat = sdat1_dataset.lat
 
             # Create the side-by-side plot
-            self._create_xy_side_by_side_plot(plotter, file_indices,
+            self._create_xy_side_by_side_plot(plotter,
                                               current_field_index,
-                                              field_name1, field_name2, figure, ax,
+                                              field_name1, field_name2, figure,
                                               plot_type, sdat1_dataset, sdat2_dataset,
                                               level_val)
 
@@ -904,42 +889,8 @@ class Gridded(Root):
             pu.print_map(self.config_manager, plot_type, self.config_manager.findex,
                          figure, level=level_val)
 
-    def _process_xy_side_by_side_plots_old(self, plotter, file_indices,
-                                           current_field_index,
-                                           field_name1, field_name2, plot_type,
-                                           sdat1_dataset,
-                                           sdat2_dataset):
-        """Process side-by-side comparison plots for xy or polar plot types."""
-        num_plots = len(self.config_manager.compare_exp_ids)
-
-        nrows = 1
-        ncols = num_plots  # This will be 3 for three variables
-
-        levels = self.config_manager.get_levels(field_name1, plot_type + 'plot')
-        if not levels:
-            return
-
-        for level_val in levels.keys():
-            figure = Figure.create_eviz_figure(self.config_manager, plot_type,
-                                               nrows=nrows, ncols=ncols)
-            ax = figure.get_axes()
-            self.config_manager.level = level_val
-
-            # This is needed for regional plots later on
-            self.lon = sdat1_dataset.lon
-            self.lat = sdat1_dataset.lat
-
-            self._create_xy_side_by_side_plot(plotter, file_indices,
-                                              current_field_index,
-                                              field_name1, field_name2, figure, ax,
-                                              plot_type, sdat1_dataset, sdat2_dataset,
-                                              level_val)
-
-            pu.print_map(self.config_manager, plot_type, self.config_manager.findex,
-                         figure, level=level_val)
-
-    def _create_xy_side_by_side_plot(self, plotter, file_indices, current_field_index,
-                                     field_name1, field_name2, figure, ax,
+    def _create_xy_side_by_side_plot(self, plotter, current_field_index,
+                                     field_name1, field_name2, figure,
                                      plot_type, sdat1_dataset, sdat2_dataset, level=None):
         """
         Create a side-by-side comparison plot for the given data.
@@ -949,15 +900,7 @@ class Gridded(Root):
         - Middle subplot: Second dataset
         - Right subplot: Third dataset (if present)
         """
-        # Ensure ax is a list with enough elements for all plots
-        if not isinstance(ax, list):
-            ax = [ax]
         num_plots = len(self.config_manager.compare_exp_ids)
-        if len(ax) < num_plots:
-            self.logger.debug(
-                f"Not enough axes for {num_plots}-way comparison. Using the first axis.")
-            ax = [ax[0]] * num_plots
-
         self.comparison_plot = False
 
         # Plot first dataset (from a_list)
@@ -971,30 +914,33 @@ class Gridded(Root):
         # Plot remaining datasets (from b_list)
         for i, file_idx in enumerate(self.config_manager.b_list, start=1):
             if i < num_plots:  # Only plot if we have a corresponding axis
+                self.logger.debug(f"Plotting dataset {i} to axis {i}")
                 self._process_side_by_side_plot(plotter, file_idx,
                                                 current_field_index,
                                                 field_name2, figure, i,
                                                 sdat2_dataset[field_name2], plot_type,
                                                 level=level)
 
-    def _process_other_side_by_side_plots(self, plotter, file_indices,
-                                          current_field_index,
-                                          field_name1, field_name2, plot_type,
-                                          sdat1_dataset, sdat2_dataset):
+    def _process_other_side_by_side_plots(self, plotter,
+                                        current_field_index,
+                                        field_name1, field_name2, plot_type,
+                                        sdat1_dataset, sdat2_dataset):
         """Process side-by-side comparison plots for other plot types."""
         nrows, ncols = self.config_manager.input_config._comp_panels
 
         figure = Figure.create_eviz_figure(self.config_manager, plot_type, nrows=nrows,
-                                           ncols=ncols)
+                                        ncols=ncols)
+        figure.set_axes()
         self.config_manager.level = None
 
-        self._create_other_side_by_side_plot(plotter, file_indices, current_field_index,
-                                             field_name1, field_name2, figure,
-                                             plot_type, sdat1_dataset, sdat2_dataset)
+        self._create_other_side_by_side_plot(plotter, current_field_index,
+                                            field_name1, field_name2, figure,
+                                            plot_type, sdat1_dataset, sdat2_dataset)
 
         pu.print_map(self.config_manager, plot_type, self.config_manager.findex, figure)
 
-    def _create_other_side_by_side_plot(self, plotter, file_indices, current_field_index,
+
+    def _create_other_side_by_side_plot(self, plotter, current_field_index,
                                         field_name1, field_name2, figure,
                                         plot_type, sdat1_dataset, sdat2_dataset,
                                         level=None):
@@ -1006,7 +952,7 @@ class Gridded(Root):
         - Right subplot: Second dataset
         - etc... up to 3x1
         """
-        file_index1, file_index2 = file_indices
+        file_index1, file_index2 = self.file_indices
 
         # Plot the first dataset in the left subplot
         self.comparison_plot = False
@@ -1021,16 +967,16 @@ class Gridded(Root):
                                         figure, 1, sdat2_dataset[field_name2],
                                         plot_type, level=level)
 
+
     def _process_side_by_side_plot(self, plotter, file_index, current_field_index,
-                                   field_name,
-                                   figure, ax_index, data_array, plot_type,
-                                   level=None):
+                                field_name, figure, ax_index, data_array, plot_type,
+                                level=None):
         """Process a single plot for side-by-side comparison."""
         self.config_manager.findex = file_index
         self.config_manager.pindex = current_field_index
-        self.config_manager.axindex = ax_index
+        self.config_manager.axindex = ax_index  # This is crucial - it tells which subplot to use
         self.config_manager.ax_opts = figure.init_ax_opts(field_name)
-
+        
         field_to_plot = self._get_field_to_plot_compare(data_array, field_name,
                                                         file_index,
                                                         plot_type, figure,
@@ -1040,17 +986,10 @@ class Gridded(Root):
             self.data2d_list.append(field_to_plot[0])
 
         if field_to_plot:
-            if hasattr(plotter, 'single_plots'):
-                plotter.single_plots(self.config_manager, field_to_plot, level=level)
-            elif hasattr(plotter, 'comparison_plots'):
+            # Use only one plotting method based on priority
+            if hasattr(plotter, 'comparison_plots'):
                 plotter.comparison_plots(self.config_manager, field_to_plot, level=level)
-            else:
-                # Unknown plotter type
-                if hasattr(plotter, 'plot'):
-                    plotter.plot(self.config_manager, field_to_plot, level=level)
-                else:
-                    self.logger.error(
-                        f"Plotter {type(plotter).__name__} has no plot method.")
+            # Don't check for other methods - this ensures only one plotting call
 
     def _get_field_to_plot_compare(self, data_array, field_name, file_index, plot_type,
                                    figure, level=None) -> tuple:
@@ -1058,17 +997,12 @@ class Gridded(Root):
         dim1_name, dim2_name = self.config_manager.get_dim_names(plot_type)
         data2d = None
 
-        ax = figure.get_axes()
-        # Handle comparison plots layout
-        if figure.get_gs_geometry() == (1, 2) or figure.get_gs_geometry() == (1, 3):
-            ax = ax[self.config_manager.axindex]
-
         # Handle difference field for comparison plots
         if self.config_manager.ax_opts.get('is_diff_field', False) and len(
                 self.data2d_list) >= 2:
             proc = self.processor
             data2d, x, y = proc.regrid(plot_type)
-            return data2d, x, y, self.field_names[0], plot_type, file_index, figure, ax
+            return data2d, x, y, self.field_names[0], plot_type, file_index, figure
 
         # Process single plots based on plot type
         if 'yz' in plot_type:
@@ -1090,7 +1024,7 @@ class Gridded(Root):
 
         # For time series plots, return without coordinates
         if 'xt' in plot_type or 'tx' in plot_type:
-            return data2d, None, None, field_name, plot_type, file_index, figure, ax
+            return data2d, None, None, field_name, plot_type, file_index, figure
 
         # Process coordinates based on domain type
         try:
@@ -1103,7 +1037,7 @@ class Gridded(Root):
                     # Use model-specific coordinate processing if available
                     return self._process_coordinates(data2d, dim1_name, dim2_name,
                                                      field_name,
-                                                     plot_type, file_index, figure, ax)
+                                                     plot_type, file_index, figure)
                 else:
                     # Fallback for regional domains without specific processing
                     xs = np.array(self._get_field(dim1_name, data2d)[0, :])
@@ -1120,7 +1054,7 @@ class Gridded(Root):
                     self.config_manager.ax_opts['central_lon'] = np.mean([lonW, lonE])
                     self.config_manager.ax_opts['central_lat'] = np.mean([latS, latN])
 
-                    return data2d, xs, ys, field_name, plot_type, file_index, figure, ax
+                    return data2d, xs, ys, field_name, plot_type, file_index, figure
             else:
                 # Handle global domain coordinates
                 x = data2d[dim1_name].values if dim1_name in data2d.coords else None
@@ -1137,7 +1071,7 @@ class Gridded(Root):
                             "Dataset has fewer than 2 dimensions, cannot plot")
                         return None
 
-                return data2d, x, y, field_name, plot_type, file_index, figure, ax
+                return data2d, x, y, field_name, plot_type, file_index, figure
 
         except Exception as e:
             self.logger.error(f"Error processing coordinates for {field_name}: {e}")

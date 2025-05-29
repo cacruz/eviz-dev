@@ -170,7 +170,7 @@ class NuWrf(Gridded):
     def _create_single_plot(self, field_name, plot_type, data_array, time_step, plotter, level=None):
         """Create a single plot for the given parameters."""
         # Create new figure for each time level
-        figure = Figure(self.config_manager, plot_type)
+        figure = Figure.create_eviz_figure(self.config_manager, plot_type)
         self.config_manager.ax_opts = figure.init_ax_opts(field_name)
         
         # Set time-related configuration
