@@ -736,7 +736,7 @@ class Units:
             self.logger.warning(
                 f"Units are identical {from_unit} == {to_unit}...returning.")
             return data
-        self.logger.info(f"Convert {species_name} units from {from_unit} to {to_unit}")
+        self.logger.debug(f"Convert {species_name} units from {from_unit} to {to_unit}")
 
         conversion_functions = {
             'mb': {

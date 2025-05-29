@@ -1033,7 +1033,7 @@ def _single_tx_plot(config: ConfigManager, data_to_plot: tuple) -> None:
 
         _create_clevs(field_name, ax_opts, data2d)
         extend_value = "both"
-        if config.ax_opts['clevs'][0] == 0:
+        if ax_opts['clevs'][0] == 0:
             extend_value = "max"
 
         norm = colors.BoundaryNorm(ax_opts['clevs'], ncolors=256, clip=False)
@@ -1258,6 +1258,8 @@ def _line_contours(fig, ax, ax_opts, x, y, data2d, transform=None):
 
 
 def _create_clevs(field_name, ax_opts, data2d):
+    if ax_opts['clevs']:
+        return
     dmin = data2d.min(skipna=True).values
     dmax = data2d.max(skipna=True).values
     logger.debug(f"dmin: {dmin}, dmax: {dmax}")
@@ -1301,7 +1303,6 @@ def _filled_contours(config, field_name, ax, x, y, data2d, transform=None):
     """ Plot filled contours"""
     _create_clevs(field_name, config.ax_opts, data2d)
     norm = colors.BoundaryNorm(config.ax_opts['clevs'], ncolors=256, clip=False)
-
     if config.compare:  # and config.comparison_plot:
         cmap_str = config.ax_opts['use_diff_cmap']
     else:

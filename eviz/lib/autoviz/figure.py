@@ -618,6 +618,10 @@ class Figure(mfigure.Figure):
 
     def _set_clevs(self, field_name, ptype, ctype):
         """ Helper function for update_ax_opts(): sets contour levels """
+        if 'contours' in self.config_manager.spec_data[field_name][ptype]:
+            self._ax_opts['clevs'] = self.config_manager.spec_data[field_name][ptype]['contours']
+            return
+
         if isinstance(ctype, int):
             if ctype in self.config_manager.spec_data[field_name][ptype]['levels']:
                 self._ax_opts['clevs'] = self.config_manager.spec_data[field_name][ptype]['levels'][ctype]
