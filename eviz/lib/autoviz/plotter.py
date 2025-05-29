@@ -8,7 +8,7 @@ import matplotlib.pyplot as plt
 import math
 import pandas as pd
 from matplotlib import colors
-from matplotlib.ticker import FixedLocator, FormatStrFormatter
+from matplotlib.ticker import FormatStrFormatter
 from matplotlib.ticker import NullFormatter
 import matplotlib.gridspec as mgridspec
 import matplotlib.ticker as mticker
@@ -16,7 +16,6 @@ import matplotlib.path as mpath
 import matplotlib as mpl
 import cartopy.crs as ccrs
 import cartopy.feature as cfeature
-import cartopy.mpl.ticker as cticker
 import networkx as nx
 from cartopy.mpl.geoaxes import GeoAxes
 from sklearn.metrics import mean_squared_error
@@ -298,22 +297,6 @@ def _single_scat_plot(config: ConfigManager, data_to_plot: tuple) -> None:
 
         ax.set_title(f'{field_name}')
 
-def _select_axes(ax_temp, axes_shape, ax_opts, axindex):
-    """Select the appropriate axes based on the shape and options."""
-    if axes_shape == (3, 1):
-        if ax_opts['is_diff_field']:
-            return ax_temp[2]
-        else:
-            return ax_temp[axindex]
-    elif axes_shape == (2, 2):
-        if ax_opts['is_diff_field']:
-            if ax_opts['add_extra_field_type']:
-                return ax_temp[3]
-            return ax_temp[2]
-        else:
-            return ax_temp[axindex]
-    return ax_temp
-
 
 def _single_xy_plot(config: ConfigManager, data_to_plot: tuple, level: int) -> None:
     """ Create a single xy (lat-lon) plot using SPECS data
@@ -542,12 +525,15 @@ def _plot_yz_data(config, ax, data2d, x, y, field_name, fig, ax_opts, vertical_u
         prof_dim = ax_opts['profile_dim']
         data2d = data2d.mean(dim=config.get_model_dim_name(prof_dim))
         _single_prof_plot(config, data2d, fig, ax, ax_opts, (prof_dim, dep_var))
-        # TODO: Refactor
+
+        # TODO: Fix units issue (missing sometimes)
         if 'units' in config.spec_data[field_name]:
             units = config.spec_data[field_name]['units']
         else:
             try:
-                units = data2d.units
+                units = data2d.attrs['units']
+                if units == '':
+                    units = "n.a."
             except Exception as e:
                 logger.error(f"{e}: Please specify {field_name} units in specs file")
                 units = "n.a."
@@ -683,77 +669,6 @@ def _set_ax_ranges(config, field_name, fig, ax, ax_opts, y, units):
     ax.set_ylabel("Pressure (" + units + ")", size=pu.axes_label_font_size(fig.subplots))
     if ax_opts['add_grid']:
         ax.grid()
-
-
-# Fix the wrapped lines problem in POLAR plots
-#
-# Function z_masked_overlap()
-#
-# The function z_masked_overlap was taken from
-# https://github.com/SciTools/cartopy/issues/1421 from htonchia
-def z_masked_overlap(axe, X, Y, Z, source_projection=None):
-    """
-    for data in projection axe.projection
-    find and mask the overlaps (more 1/2 the axe.projection range)
-
-    X, Y either the coordinates in axe.projection or longitudes latitudes
-    Z the data
-    operation one of 'pcorlor', 'pcolormesh', 'countour', 'countourf'
-
-    if source_projection is a geodetic CRS data is in geodetic coordinates
-    and should first be projected in axe.projection
-
-    X, Y are 2D same dimension as Z for contour and contourf
-    same dimension as Z or with an extra row and column for pcolor
-    and pcolormesh
-
-    return ptx, pty, Z
-    """
-    if not hasattr(axe, 'projection'):
-        return X, Y, Z
-    if not isinstance(axe.projection, ccrs.Projection):
-        return X, Y, Z
-    if len(X.shape) != 2 or len(Y.shape) != 2:
-        return X, Y, Z
-    if (source_projection is not None and
-            isinstance(source_projection, ccrs.Geodetic)):
-        transformed_pts = axe.projection.transform_points(
-            source_projection, X, Y)
-        ptx, pty = transformed_pts[..., 0], transformed_pts[..., 1]
-    else:
-        ptx, pty = X, Y
-
-    with np.errstate(invalid='ignore'):
-        # diagonals have one less row and one less columns
-        diagonal0_lengths = np.hypot(
-            ptx[1:, 1:] - ptx[:-1, :-1],
-            pty[1:, 1:] - pty[:-1, :-1])
-        diagonal1_lengths = np.hypot(
-            ptx[1:, :-1] - ptx[:-1, 1:],
-            pty[1:, :-1] - pty[:-1, 1:])
-        to_mask = ((diagonal0_lengths > (
-            abs(axe.projection.x_limits[1]
-                - axe.projection.x_limits[0])) / 2) |
-                   np.isnan(diagonal0_lengths) |
-                   (diagonal1_lengths > (
-                       abs(axe.projection.x_limits[1]
-                           - axe.projection.x_limits[0])) / 2) |
-                   np.isnan(diagonal1_lengths))
-        # TODO check if we need to do something about surrounding vertices
-        # add one extra colum and row for contour and contourf
-        if (to_mask.shape[0] == Z.shape[0] - 1 and
-                to_mask.shape[1] == Z.shape[1] - 1):
-            to_mask_extended = np.zeros(Z.shape, dtype=bool)
-            to_mask_extended[:-1, :-1] = to_mask
-            to_mask_extended[-1, :] = to_mask_extended[-2, :]
-            to_mask_extended[:, -1] = to_mask_extended[:, -2]
-            to_mask = to_mask_extended
-        if np.any(to_mask):
-            Z_mask = getattr(Z, 'mask', None)
-            to_mask = to_mask if Z_mask is None else to_mask | Z_mask
-            Z = np.ma.masked_where(to_mask, Z)
-
-        return ptx, pty, Z
 
 
 def _single_polar_plot(config: ConfigManager, data_to_plot: tuple) -> None:
@@ -938,16 +853,8 @@ def _time_series_plot(config, ax, ax_opts, fig, data2d, field_name, findex):
         dmin = data2d.min(skipna=True).values
         dmax = data2d.max(skipna=True).values
         logger.debug(f"dmin: {dmin}, dmax: {dmax}")
-
+        tc_dim = config.get_model_dim_name('tc')
         try:
-            tc_dim = config.get_model_dim_name('tc')
-
-            if tc_dim is None or tc_dim not in data2d.coords:
-                for time_dim in ['time', 't', 'TIME', 'Time']:
-                    if time_dim in data2d.coords:
-                        tc_dim = time_dim
-                        break
-
             if tc_dim and tc_dim in data2d.coords:
                 time_coords = data2d.coords[tc_dim].values
             else:
@@ -983,7 +890,8 @@ def _time_series_plot(config, ax, ax_opts, fig, data2d, field_name, findex):
             ax.plot(time_coords[window_size:end_idx], data2d[window_size:end_idx])
         else:
             ax.plot(time_coords, data2d)
-
+    
+        # TODO: Need to fix trend line for windowed series (not showing!)
         if 'add_trend' in config.spec_data[field_name]['xtplot']:
             logger.debug('Adding trend')
             if config.spec_data[field_name]['xtplot']['add_trend']:
@@ -1260,13 +1168,20 @@ def _single_tx_plot(config: ConfigManager, data_to_plot: tuple) -> None:
         ax[1].grid(linestyle='dotted', linewidth=0.5)
     
         try:
-            _line_contours(fig, ax[1], ax_opts, lons, vtimes, data2d_reduced)
+            if ax_opts['line_contours']:
+                _line_contours(fig, ax[1], ax_opts, lons, vtimes, data2d_reduced)
         except Exception as e:
             logger.error(f"Error adding contour lines: {e}")
 
         cbar = fig.colorbar(cfilled, orientation='horizontal', pad=0.1, aspect=70,
                             extendrect=True)
-        cbar.set_label('m $s^{-1}$')
+        
+        if hasattr(data2d, 'attrs') and 'units' in data2d.attrs:
+            units = data2d.attrs['units']
+        elif hasattr(data2d, 'units'):
+            units = data2d.units
+        cbar.set_label(units)
+
         if lons[0] <= -179:
             ax[1].set_xticks([-180, -90, 0, 90, 180])
         else:
@@ -1279,9 +1194,9 @@ def _single_tx_plot(config: ConfigManager, data_to_plot: tuple) -> None:
             label.set_rotation(45)
             label.set_ha('right')
 
-        # if ax_opts['add_grid']:
-        #     kwargs = {'linestyle': '-', 'linewidth': 2}
-        #     ax[1].grid(**kwargs)
+        if ax_opts['add_grid']:
+            kwargs = {'linestyle': '-', 'linewidth': 2}
+            ax[1].grid(**kwargs)
 
         if fig.subplots != (1, 1):
             fig.squeeze_fig_aspect(fig)
@@ -1365,7 +1280,7 @@ def _create_clevs(field_name, ax_opts, data2d):
     # Check if levels are strictly increasing
     # If not enough unique levels, regenerate with more precision or fallback
     if len(set(clevs)) <= 2:
-        logger.warning(f"Not enough unique contour levels for {field_name}.")
+        logger.debug(f"Not enough unique contour levels for {field_name}.")
         # Try with more levels and higher precision
         clevs = np.linspace(dmin, dmax, 10)
         clevs = np.unique(np.around(clevs, decimals=6))
@@ -1643,7 +1558,13 @@ class ComparisonPlotter:
 
     def comparison_plots(self, config: ConfigManager, field_to_plot: tuple,
                         level: int = None):
-        """Create a comparison plot directly without calling plot()."""
+        """Create a comparison plot using specs data
+
+        Parameters:
+            config: ConfigManager
+            field_to_plot: tuple
+            level: int (optional)
+        """
         plot_type = field_to_plot[4] + 'plot'
         if plot_type not in ['xyplot', 'yzplot', 'polarplot', 'scplot']:
             plot_type = field_to_plot[2]

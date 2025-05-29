@@ -1105,8 +1105,6 @@ class Gridded(Root):
                 f"Could not find any longitude dimension for zonal mean in {data_array.name}")
             return None
 
-        zonal_mean.attrs = data_array.attrs.copy()
-
         if tc_dim and tc_dim in zonal_mean.dims:
             num_times = zonal_mean[tc_dim].size
             if self.config_manager.ax_opts.get('tave', False) and num_times > 1:
@@ -1121,6 +1119,7 @@ class Gridded(Root):
             zonal_mean = zonal_mean.squeeze()
 
         zonal_mean = self._select_yrange(zonal_mean, data_array.name)
+        zonal_mean.attrs = data_array.attrs.copy()
 
         return apply_conversion(self.config_manager, zonal_mean, data_array.name)
 
@@ -1209,11 +1208,13 @@ class Gridded(Root):
             if num_tc > 1:
                 self.logger.debug(f"Averaging over {num_tc} time levels.")
                 data2d = apply_mean(self.config_manager, data2d, level)
+                data2d.attrs = data_array.attrs.copy()
                 return apply_conversion(self.config_manager, data2d, data_array.name)
 
         if self.config_manager.ax_opts.get('zave', False):
             self.logger.debug("Averaging over vertical levels.")
             data2d = apply_mean(self.config_manager, data2d, level='all')
+            data2d.attrs = data_array.attrs.copy()
             return apply_conversion(self.config_manager, data2d, data_array.name)
 
         if self.config_manager.ax_opts.get('zsum', False):
@@ -1221,12 +1222,14 @@ class Gridded(Root):
             data2d_zsum = apply_zsum(self.config_manager, data2d)
             self.logger.debug(
                 "Min: {data2d_zsum.min().values}, Max: {data2d_zsum.max().values}")
+            data2d.attrs = data_array.attrs.copy()
             return apply_conversion(self.config_manager, data2d_zsum, data_array.name)
 
         if np.isnan(data2d.values).any():
             self.logger.debug(
                 f"Output contains NaN values: {np.sum(np.isnan(data2d.values))} NaNs")
-
+        data2d.attrs = data_array.attrs.copy()
+        
         return apply_conversion(self.config_manager, data2d, data_array.name)
 
     def _get_xt(self, data_array, time_lev):
@@ -1243,36 +1246,7 @@ class Gridded(Root):
         zc_dim = self.config_manager.get_model_dim_name('zc') or 'lev'
         xc_dim = self.config_manager.get_model_dim_name('xc') or 'lon'
         yc_dim = self.config_manager.get_model_dim_name('yc') or 'lat'
-
-        try:
-            if tc_dim in data_array.dims:
-                num_times = data_array[tc_dim].size
-            else:
-                if 'time' in data_array.dims:
-                    num_times = data_array.time.size
-                    tc_dim = 'time'
-                else:
-                    time_dims = [dim for dim in data_array.dims if 'time' in dim.lower()]
-                    if time_dims:
-                        tc_dim = time_dims[0]
-                        num_times = data_array[tc_dim].size
-                    else:
-                        if hasattr(data_array, 'shape') and len(data_array.shape) > 0:
-                            num_times = data_array.shape[
-                                0]  # Assume time is the first dimension
-                        else:
-                            self.logger.error(
-                                f"Cannot determine time dimension for {data_array.name}")
-                            return None
-        except (AttributeError, KeyError) as e:
-            self.logger.error(f"Error determining time dimension: {e}")
-            if hasattr(data_array, 'shape') and len(data_array.shape) > 0:
-                num_times = data_array.shape[0]  # Assume time is the first dimension
-            else:
-                self.logger.error(
-                    f"Cannot determine time dimension for {data_array.name}")
-                return None
-
+        num_times = data_array[tc_dim].size
         self.logger.debug(f"'{data_array.name}' field has {num_times} time levels")
 
         data2d = data_array.copy()
@@ -1293,7 +1267,7 @@ class Gridded(Root):
             spec = self.config_manager.spec_data[data_array.name]
             if 'xtplot' in spec and 'mean_type' in spec['xtplot']:
                 mean_type = spec['xtplot']['mean_type']
-                self.logger.debug(f"Averaging method: {mean_type}")
+                self.logger.info(f"Averaging method: {mean_type}")
 
                 if mean_type == 'point_sel':
                     # Select a single point
@@ -1347,13 +1321,11 @@ class Gridded(Root):
                     try:
                         if tc_dim in data2d.dims:
                             time_attr = f"{tc_dim}.{mean_type}"
-                            data2d = data2d.groupby(time_attr).mean(dim=tc_dim,
-                                                                    keep_attrs=True)
+                            data2d = data2d.groupby(time_attr).mean(dim=tc_dim)
                         else:
                             if 'time' in data2d.dims:
                                 time_attr = f"time.{mean_type}"
-                                data2d = data2d.groupby(time_attr).mean(dim='time',
-                                                                        keep_attrs=True)
+                                data2d = data2d.groupby(time_attr).mean(dim='time')
                             else:
                                 self.logger.error(
                                     "Could not find time dimension for grouping")
@@ -1458,7 +1430,7 @@ class Gridded(Root):
             if time_dim:
                 non_time_dims = [dim for dim in dims if dim != time_dim]
                 if non_time_dims:
-                    self.logger.info(
+                    self.logger.debug(
                         f"Averaging over non-time dimensions: {non_time_dims}")
                     data2d = data2d.mean(dim=non_time_dims)
             else:
@@ -1468,6 +1440,7 @@ class Gridded(Root):
                     data2d = data2d.mean(dim=other_dims)
 
         data2d = data2d.squeeze()
+        data2d.attrs = data_array.attrs.copy()
 
         if np.isnan(data2d.values).any():
             self.logger.debug(
@@ -1591,6 +1564,8 @@ class Gridded(Root):
         if np.isnan(data2d.values).any():
             self.logger.debug(
                 f"Output contains NaN values: {np.sum(np.isnan(data2d.values))} NaNs")
+            
+        data2d.attrs = data_array.attrs.copy()
 
         return apply_conversion(self.config_manager, data2d, data_array.name)
 

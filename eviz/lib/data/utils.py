@@ -28,14 +28,6 @@ def apply_conversion(config, data2d, name):
     For comparison plots, we rely on the "target" units specified in the specs file and the unit
     conversion is provided by the Units conversion module.
     """
-    logger.debug(
-        f"apply_conversion input for {name}: shape={data2d.shape}, dims={data2d.dims}")
-    try:
-        logger.debug(
-            f"apply_conversion input stats: min={data2d.min().values}, max={data2d.max().values}")
-    except Exception as e:
-        logger.warning(f"Could not compute min/max for {name}: {e}")
-
     # Check if spec_data exists and contains the field name
     if not hasattr(config, 'spec_data') or config.spec_data is None:
         logger.warning(f"No spec_data found in config for {name}")
@@ -44,36 +36,26 @@ def apply_conversion(config, data2d, name):
     if name not in config.spec_data:
         logger.warning(f"Field {name} not found in spec_data")
         return data2d
-
+    
     # A user specifies units AND unitconversion factor:
     if 'units' in config.spec_data[name] and 'unitconversion' in config.spec_data[name]:
-        logger.debug(
-            f"Applying unit conversion with factor: {config.spec_data[name]['unitconversion']}")
         if "AOA" in name.upper():
             data2d = data2d / np.timedelta64(1, 'ns') / 1000000000 / 86400
         else:
             data2d = data2d * float(config.spec_data[name]['unitconversion'])
     # A user specifies units AND no unitconversion factor, in that case we use units module
-    elif 'units' in config.spec_data[name] and 'unitconversion' not in config.spec_data[
-        name]:
-        logger.debug(
-            f"Using units module for conversion to: {config.spec_data[name]['units']}")
+    elif 'units' in config.spec_data[name] and 'unitconversion' not in config.spec_data[name]:
         # If field name is a chemical species...
         if hasattr(config,
                    'species_db') and config.species_db and name in config.species_db.keys():
-            data2d = config.units.convert_chem(data2d, name,
-                                               config.spec_data[name]['units'])
+            data2d = config.units.convert_chem(data2d, name, config.spec_data[name]['units'])
         else:
-            # Check if units attribute exists in config
             if hasattr(config, 'units') and config.units:
                 try:
-                    data2d = config.units.convert(data2d, name,
-                                                  config.spec_data[name]['units'])
+                    data2d = config.units.convert(data2d, name, config.spec_data[name]['units'])
                 except Exception as e:
                     logger.error(f"Error converting units for {name}: {e}")
-                    # If conversion fails, just return the original data
-                    logger.warning(
-                        f"Returning original data for {name} without unit conversion")
+                    logger.warning(f"Returning original data for {name} without unit conversion")
             else:
                 logger.warning(f"No units module found in config for {name}")
     else:
@@ -82,14 +64,6 @@ def apply_conversion(config, data2d, name):
             data2d = data2d / np.timedelta64(1, 'ns') / 1000000000 / 86400
         msg = f"No units found for {name}. Will use the given 'dataset' units."
         logger.debug(msg)
-
-    try:
-        logger.debug(
-            f"apply_conversion output for {name}: shape={data2d.shape}, dims={data2d.dims}")
-        logger.debug(
-            f"apply_conversion output stats: min={data2d.min().values}, max={data2d.max().values}")
-    except Exception as e:
-        logger.warning(f"Could not compute min/max for output {name}: {e}")
 
     return data2d
 
