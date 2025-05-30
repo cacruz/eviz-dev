@@ -929,14 +929,19 @@ class Gridded(Root):
         """Process side-by-side comparison plots for other plot types."""
         nrows, ncols = self.config_manager.input_config._comp_panels
 
+        # Check if we should use overlay mode
+        use_overlay = self.config_manager.should_overlay_plots(field_name1, plot_type[:2])
+        if use_overlay:
+            ncols = 1  # Use a single plot for overlay
+
         figure = Figure.create_eviz_figure(self.config_manager, plot_type, nrows=nrows,
                                         ncols=ncols)
         figure.set_axes()
         self.config_manager.level = None
 
         self._create_other_side_by_side_plot(plotter, current_field_index,
-                                            field_name1, field_name2, figure,
-                                            plot_type, sdat1_dataset, sdat2_dataset)
+                                        field_name1, field_name2, figure,
+                                        plot_type, sdat1_dataset, sdat2_dataset)
 
         pu.print_map(self.config_manager, plot_type, self.config_manager.findex, figure)
 
@@ -961,11 +966,18 @@ class Gridded(Root):
                                         field_name1,
                                         figure, 0, sdat1_dataset[field_name1],
                                         plot_type, level=level)
+        
+        # Check if we should use overlay mode
+        use_overlay = self.config_manager.should_overlay_plots(field_name1, plot_type[:2])
+        if use_overlay:
+            axes_index = 0
+        else:
+            axes_index = 1
 
         # Plot the second dataset in the right subplot
         self._process_side_by_side_plot(plotter, file_index2, current_field_index,
                                         field_name2,
-                                        figure, 1, sdat2_dataset[field_name2],
+                                        figure, axes_index, sdat2_dataset[field_name2],
                                         plot_type, level=level)
 
 

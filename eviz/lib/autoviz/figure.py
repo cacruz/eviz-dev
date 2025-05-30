@@ -57,6 +57,7 @@ class Figure(mfigure.Figure):
         self._subplot_counter = 0  # avoid add_subplot() returning an existing subplot
         self._projection = None
         self._subplots = (1, 1)
+        self.overlay_mode = False  # Default to non-overlay mode
 
         # Initialize eViz-specific attributes
         self.config_manager = config_manager
@@ -247,6 +248,45 @@ class Figure(mfigure.Figure):
             
         return self
 
+    @staticmethod
+    def create_eviz_figure(config_manager, plot_type, field_name=None, nrows=None, ncols=None):
+        """
+        Factory method to create an eViz Figure instance.
+        
+        Args:
+            config_manager (ConfigManager): Configuration manager
+            plot_type (str): Type of plot
+            field_name (str, optional): Name of the field being plotted
+            nrows (int, optional): Number of rows in the subplot grid
+            ncols (int, optional): Number of columns in the subplot grid
+        
+        Returns:
+            Figure: An instance of the eViz Figure class
+        """
+        # Check if we should use overlay mode for comparison
+        use_overlay = False
+        if config_manager.compare and field_name:
+            use_overlay = config_manager.should_overlay_plots(field_name, plot_type[:2])
+        
+        # If using overlay mode, create a single subplot
+        if use_overlay:
+            nrows, ncols = 1, 1
+        # Otherwise, determine layout based on configuration
+        elif nrows is None or ncols is None:
+            if config_manager.compare and not config_manager.compare_diff:
+                # For side-by-side comparison, use 1x2 layout
+                nrows, ncols = 1, 2
+            elif config_manager.compare_diff:
+                # For comparison with difference, use layout from config
+                nrows, ncols = config_manager.input_config._comp_panels
+            else:
+                # For single plots, use 1x1 layout
+                nrows, ncols = 1, 1
+        
+        fig = Figure(config_manager, plot_type, nrows=nrows, ncols=ncols)
+        fig.overlay_mode = use_overlay
+        return fig
+
     def create_subplots(self):
         """
         Create subplots based on the gridspec (subplot grid) and projection requirements.
@@ -301,7 +341,7 @@ class Figure(mfigure.Figure):
         return self
 
     @staticmethod
-    def create_eviz_figure(config_manager, plot_type, nrows=None, ncols=None):
+    def create_eviz_figure2(config_manager, plot_type, nrows=None, ncols=None):
         """
         Factory method to create an eViz Figure instance.
         

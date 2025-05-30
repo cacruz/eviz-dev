@@ -62,8 +62,9 @@ fieldname:
         time_lev: all   # number of times to average (default is to use all), or specify range [tmin, tmax]
         grid: yes   # plot grid (default is no)
         # Average data over point, area, or time (year, season, month)
-        mean_type: point_sel  # point_sel, area_sel, year, season, month
-        point_sel: [0.5, 7.5]   # lon, lat
+        mean_type: rolling  # point_sel, area_sel, year, season, month
+        window_size: 10  # number of time steps to average over, used with mean_type=rolling
+        point_sel: [0.5, 7.5]   # lon, lat, used with mean_type=point_sel
         area_sel: [-10.5, 10.5, 5, 25]  # lon1, lon2, lat1, lat2  # default delta = 0.5
         # Note: if year, season, month is selected, then average is over the specified time
         # If 3D data, select vertical level (in model units)

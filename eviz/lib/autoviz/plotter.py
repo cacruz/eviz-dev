@@ -437,7 +437,7 @@ def _single_yz_plot(config: ConfigManager, data_to_plot: tuple) -> None:
     # Test applying rcparams to the figure via specification in specs
     # fig.apply_rc_params()
 
-    if not config.compare and not config.compare_diff:
+    if not config.compare and not config.compare_diff and not config.overlay:
         fig.set_axes()
     
     ax_temp = fig.get_axes()
@@ -520,6 +520,7 @@ def _plot_yz_data(config, ax, data2d, x, y, field_name, fig, ax_opts, vertical_u
     source_name = config.source_names[config.ds_index]
     prof_dim = None
     if ax_opts['profile_dim']:
+        logger.debug(f"Creating profile plot for {field_name}")
         prof_dim = ax_opts['profile_dim']
         dep_var = None
         if prof_dim == 'yc':

@@ -34,9 +34,15 @@ inputs:
 
 # Entries here are applied to the inputs above
 for_inputs:
-    # If compare is specified then comparison plots (simple difference) will be created between files
-    # identified in exp_list
+    overlay_comparison:   # to overlay line plots (only works with xt and yc profiles)
+      ids: BenchmarkFc180,RefD1  # IDs associated with input exp_id values in inputs section.
+    # If compare is specified then side-by-side comparison plots will be created between files
+    # identified in ids
     compare:
+      ids: BenchmarkFc180,RefD1  # IDs associated with input exp_id values in inputs section.
+    # If compare_diff is specified then comparison plots (simple difference) will be created between files
+    # identified in ids
+    compare_diff:
       ids: BenchmarkFc180,RefD1  # IDs associated with input exp_id values in inputs section.
       # Note they are comma-separated
       # Some plot have an additional comparison plot, 4 types: ratio, percc, percd, profile
@@ -45,7 +51,7 @@ for_inputs:
       #   ratio = percent difference of 2 fields
       #   profile = profile comparison of 2 or more fields
       #             must be 3D fields, else eviz will skip the comparison
-      extra_diff: ratio
+      extra_diff: ratio  # only works with compare_diff
       # Use different colormap for comparison plots
       # These are matplotlib colormaps: https://matplotlib.org/stable/users/explain/colors/colormaps.html
       cmap: coolwarm

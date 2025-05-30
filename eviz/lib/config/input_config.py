@@ -22,6 +22,7 @@ class InputConfig:
     readers: Dict[str, Dict[str, Any]] = field(default_factory=dict)
     compare: bool = False
     compare_diff: bool = False
+    overlay: bool = False
     _trop_height_file_list: dict = field(default_factory=dict)
     _sphum_conv_file_list: dict = field(default_factory=dict)
     _use_trop_height: bool = False
@@ -30,8 +31,10 @@ class InputConfig:
     _file_format_mapping: Dict[str, str] = field(default_factory=dict) 
     config_manager: Optional[Any] = None  # CC: Is this necessary?
 
+    _overlay: bool = field(default=False, init=False)
     _compare: bool = field(default=False, init=False)
     _compare_diff: bool = field(default=False, init=False)
+    _overlay_exp_ids: List[str] = field(default_factory=list, init=False)
     _compare_exp_ids: List[str] = field(default_factory=list, init=False)
     _extra_diff_plot: bool = field(default=False, init=False)
     _profile: bool = field(default=False, init=False)
@@ -45,6 +48,7 @@ class InputConfig:
         """Initialize input configuration."""
         self._compare = self.compare
         self._compare_diff = self.compare_diff
+        self._overlay = self.overlay
 
         self._get_file_list()
         self._init_file_list_to_plot()
@@ -424,11 +428,17 @@ class InputConfig:
             self._cmap = for_inputs.get('compare', {}).get('cmap', 'rainbow')
             self._comp_panels = get_subplot_shape(len(self._compare_exp_ids))
 
+        # Sanity check
+        if self.overlay and (self._compare or self._compare_diff):
+            self._compare = False
+            self._compare_diff = False
+
         self._use_trop_height = 'trop_height' in for_inputs
         if self._use_trop_height:
             self._set_trop_height_file_list()  # Custom method for trop_height logic
 
         self.logger.debug(f"Initialized for_inputs with: "
+                        f"overlay={self._overlay}, "
                         f"compare={self._compare}, "
                         f"compare_diff={self._compare_diff}, "
                         f"compare_exp_ids={self._compare_exp_ids}, "
@@ -491,9 +501,17 @@ class InputConfig:
         if not for_inputs:
             return
 
+        self._overlay = False
         self._compare = False
         self._compare_diff = False
         self._compare_exp_ids = []
+
+        if 'overlay' in for_inputs:
+            self._overlay = True
+            overlay_config = for_inputs['overlay']
+
+            if 'ids' in overlay_config:
+                self._overlay_exp_ids = overlay_config['ids'].split(',')
 
         if 'compare' in for_inputs:
             self._compare = True
@@ -524,6 +542,7 @@ class InputConfig:
             "readers": {key: str(reader) for key, reader in self.readers.items()},
             "compare": self.compare,
             "compare_diff": self.compare_diff,
+            "overlay_exp_ids": getattr(self, "_overlay_exp_ids", None),
             "compare_exp_ids": getattr(self, "_compare_exp_ids", None),
             "extra_diff_plot": getattr(self, "_extra_diff_plot", None),
             "profile": getattr(self, "_profile", None),

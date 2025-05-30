@@ -67,12 +67,15 @@ class Root(AbstractRoot):
             plotter = SimplePlotter()
             self._simple_plots(plotter)
         else:
-            if self.config_manager.compare:
+            if self.config_manager.compare and not self.config_manager.compare_diff:
                 plotter = ComparisonPlotter(self.config_manager.compare_exp_ids)
                 self._side_by_side_plots(plotter)
             elif self.config_manager.compare_diff:
                 plotter = ComparisonPlotter(self.config_manager.compare_exp_ids)
                 self._comparison_plots(plotter)
+            elif self.config_manager.overlay:
+                plotter = ComparisonPlotter(self.config_manager.overlay_exp_ids)
+                self._side_by_side_plots(plotter)
             else:
                 plotter = SinglePlotter()
                 self._single_plots(plotter)

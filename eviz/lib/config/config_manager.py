@@ -186,6 +186,30 @@ class ConfigManager:
         raise AttributeError(
             f"'{self.__class__.__name__}' object has no attribute '{name}'")
 
+    def should_overlay_plots(self, field_name, plot_type):
+        """
+        Determine if comparison plots for this field should be overlaid on the same axes.
+        
+        Args:
+            field_name (str): The name of the field
+            plot_type (str): The type of plot (e.g., 'yz', 'xt')
+            
+        Returns:
+            bool: True if plots should be overlaid, False otherwise
+        """
+        # Only consider overlaying for profile plots and time series
+        if plot_type not in ['yz', 'xt']:
+            return False
+            
+        # Sanity check
+        is_profile = False
+        if plot_type == 'yz' and field_name in self.spec_data:
+            is_profile = 'profile_dim' in self.spec_data[field_name].get('yzplot', {})
+        
+        # Return True if this is a profile or time series and overlay is requested
+        return (is_profile or plot_type == 'xt') and self.overlay
+
+
     def get_file_format(self, file_path: str) -> Optional[str]:
         """
         Get the format for a specific file.
@@ -357,11 +381,11 @@ class ConfigManager:
         self.a_list = []
         self.b_list = []
 
-        if not (self.input_config._compare or self.input_config._compare_diff):
+        if not (self.input_config._compare or self.input_config._compare_diff or self.input_config._overlay):
             self.logger.debug("Comparison not enabled")
             return
 
-        compare_ids = self.input_config._compare_exp_ids
+        compare_ids = self.input_config._compare_exp_ids or self.input_config._overlay_exp_ids or []
         if not compare_ids:
             return
 
@@ -524,6 +548,11 @@ class ConfigManager:
         return self.config.map_params
 
     @property
+    def overlay(self):
+        """Flag indicating if overlay mode is active."""
+        return self.input_config._overlay
+
+    @property
     def compare(self):
         """Flag indicating if comparison mode is active."""
         return self.input_config._compare
@@ -652,6 +681,11 @@ class ConfigManager:
     def to_plot(self):
         """The fields to plot."""
         return self.input_config._to_plot
+
+    @property
+    def overlay_exp_ids(self):
+        """The experiment IDs to overlay."""
+        return self.input_config._overlay_exp_ids
 
     @property
     def compare_exp_ids(self):
