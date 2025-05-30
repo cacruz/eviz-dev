@@ -2,6 +2,7 @@ from dataclasses import dataclass
 import cftime
 import logging
 import warnings
+import matplotlib
 import numpy as np
 import xarray as xr
 import matplotlib.pyplot as plt
@@ -379,7 +380,7 @@ def _plot_xy_data(config, ax, data2d, x, y, field_name, fig, ax_opts, level,
             else:
                 _line_contours(fig, ax, ax_opts, x, y, data2d)  
 
-    if config.compare or config.compare_diff:
+    if config.compare_diff:
         name = field_name
         if 'name' in config.spec_data[field_name]:
             name = config.spec_data[field_name]['name']
@@ -401,10 +402,18 @@ def _plot_xy_data(config, ax, data2d, x, y, field_name, fig, ax_opts, level,
 
         if level_text:
             name = name + level_text
-        plt.suptitle(
-            name, fontweight='bold',
-            fontstyle='italic',
-            fontsize=pu.image_font_size(fig.subplots))
+
+        fig.suptitle_eviz(name, 
+                          fontweight='bold',
+                          fontstyle='italic',
+                          fontsize=pu.image_font_size(fig.subplots))        
+        
+    elif config.compare:
+
+        fig.suptitle_eviz(text=config.map_params[findex].get('field', 'No name'), 
+                          fontweight='bold',
+                          fontstyle='italic',
+                          fontsize=pu.image_font_size(fig.subplots))        
 
     if config.add_logo:
         ax0 = fig.get_axes()[0]
@@ -458,6 +467,9 @@ def _single_yz_plot(config: ConfigManager, data_to_plot: tuple) -> None:
             vertical_coord = np.arange(data2d.shape[0])
 
     ax_opts = config.ax_opts
+    # Test applying rcparams to the figure via specification in specs
+    # fig.apply_rc_params()
+
     if not config.compare and not config.compare_diff:
         fig.set_axes()
     
@@ -500,6 +512,9 @@ def _single_yz_plot(config: ConfigManager, data_to_plot: tuple) -> None:
     else:
         _plot_yz_data(config, ax, data2d, x, y, field_name, fig, ax_opts, vertical_units,
                       plot_type, findex)
+
+    # reset rc params to default
+    # matplotlib.rcParams.update(matplotlib.rcParamsDefault)
 
 
 def _plot_yz_data(config, ax, data2d, x, y, field_name, fig, ax_opts, vertical_units,
@@ -563,7 +578,7 @@ def _plot_yz_data(config, ax, data2d, x, y, field_name, fig, ax_opts, vertical_u
     #     # The following is temporary, while the TODO above is not done.
     #     config.use_trop_height = None
 
-    if config.compare and config.ax_opts['is_diff_field']:
+    if config.compare_diff and config.ax_opts['is_diff_field']:
         try:
             if 'name' in config.spec_data[field_name]:
                 name = config.spec_data[field_name]['name']
@@ -598,13 +613,28 @@ def _plot_yz_data(config, ax, data2d, x, y, field_name, fig, ax_opts, vertical_u
             logger.warning(f"Error getting field name: {e}")
             name = field_name
 
-        plt.suptitle(
-            name, fontweight='bold',
-            fontstyle='italic',
-            fontsize=pu.image_font_size(fig.subplots))
+        fig.suptitle_eviz(name, 
+                          fontweight='bold',
+                          fontstyle='italic',
+                          fontsize=pu.image_font_size(fig.subplots))        
+        
+    elif config.compare:
 
-    if config.add_logo:
-        pu.add_logo(fig, fig.EVIZ_LOGO)
+        fig.suptitle_eviz(text=config.map_params[findex].get('field', 'No name'), 
+                          fontweight='bold',
+                          fontstyle='italic',
+                          fontsize=pu.image_font_size(fig.subplots))        
+
+        # fig.text(0.5, 0.98, name,
+        #         fontweight='bold',
+        #         fontstyle='italic',
+        #         fontsize=pu.image_font_size(fig.subplots),
+        #         ha='center',
+        #         va='top',
+        #         transform=fig.transFigure)
+
+        if config.add_logo:
+            pu.add_logo_ax(fig, desired_width_ratio=0.05)
 
 
 def _set_ax_ranges(config, field_name, fig, ax, ax_opts, y, units):
@@ -1417,7 +1447,7 @@ def _set_colorbar(config, cfilled, fig, ax, ax_opts, findex, field_name, data2d)
         else:
             cbar = fig.colorbar(cfilled, ax=ax,
                                 orientation='vertical' if config.compare or config.compare_diff else 'horizontal',
-                                extendfrac=True if config.compare else 'auto',
+                                # extendfrac=True if config.compare else 'auto',
                                 pad=pu.cbar_pad(fig.subplots),
                                 fraction=pu.cbar_fraction(fig.subplots),
                                 ticks=ax_opts.get('clevs', None),

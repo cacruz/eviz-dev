@@ -393,7 +393,7 @@ def image_font_size(panels=None):
     elif panels == (2, 2):
         font_size = 14
     else:
-        font_size = 'small'
+        font_size = 14
     return font_size
 
 
@@ -587,59 +587,129 @@ def colorbar(mappable):
     return cbar
 
 
-def image_scaling(image, num_rows, num_cols):
+def add_logo(fig):
     """
-    Scale the image to desired length(num_rows) and width (num_cols)
+    Adds image logo to figure, positioned at the top left
+    
+    Parameters:
+        fig: The matplotlib Figure object
     """
-    number_rows = len(image)  # source number of rows
-    number_columns = len(image[0])  # source number of columns
-    return [[image[int(number_rows * r / num_rows)][int(number_columns * c / num_cols)]
-             for c in range(num_cols)] for r in range(num_rows)]
+    try:
+        # Try multiple possible paths to find the logo
+        logo_paths = [
+            'docs/static/ASTG_logo_simple.png',
+            'docs//static/ASTG_logo_simple.png',
+            'eviz/lib/_static/ASTG_logo.png',
+            './docs/static/ASTG_logo_simple.png'
+        ]
+        
+        logo = None
+        used_path = None
+        
+        for path in logo_paths:
+            try:
+                logo = plt.imread(path)
+                used_path = path
+                print(f"Successfully loaded logo from: {path}")
+                break
+            except FileNotFoundError:
+                continue
+        
+        if logo is None:
+            print("Could not find logo file in any of the expected locations")
+            return
+            
+        # Get figure dimensions
+        fig_width, fig_height = fig.get_size_inches() * fig.dpi
+        
+        # Calculate logo dimensions (make it about 10% of the figure width)
+        # Using smaller size for top left corner placement
+        logo_height, logo_width = logo.shape[:2]
+        scale_factor = (fig_width * 0.10) / logo_width  # Reduced from 0.15 to 0.10
+        new_width = int(logo_width * scale_factor)
+        new_height = int(logo_height * scale_factor)
+        
+        # Resize logo if needed
+        if scale_factor != 1.0:
+            try:
+                from PIL import Image
+                import numpy as np
+                
+                # Convert to PIL Image, resize, and convert back to numpy array
+                pil_img = Image.fromarray((logo * 255).astype(np.uint8))
+                pil_img = pil_img.resize((new_width, new_height), Image.LANCZOS)
+                logo = np.array(pil_img) / 255.0
+                print(f"Resized logo to {new_width}x{new_height}")
+            except ImportError:
+                print("PIL not available for resizing, using original size")
+        
+        # Position in the top left with padding
+        x_pos = 10  # 10 pixels from left edge
+        y_pos = fig_height*2.6   #- new_height - 10  # 10 pixels from top edge
+        
+        # Add the logo to the figure
+        fig.figimage(logo, x_pos, y_pos, zorder=3, alpha=0.7)
+        print(f"Added logo at position ({x_pos}, {y_pos}) with dimensions {new_width}x{new_height}")
+        
+    except Exception as e:
+        print(f"Error adding logo: {e}")
 
 
-def add_logo_xy(logo, ax, x0, y0, scale=50):
+def add_logo_ax(fig, desired_width_ratio=0.10):
     """
-    adds image logo and positions it on the figure
-    at position x0, y0
+    Adds image logo to figure using axes coordinates with proper scaling
+    
+    Parameters:
+        fig: The matplotlib Figure object
+        desired_width_ratio: Width of logo as a fraction of figure width (default: 0.10 or 10%)
     """
-    # scale Image
-    logo = image_scaling(logo, scale, scale)
-    ax.figure.figimage(logo, x0, y0, alpha=1.0, zorder=1, origin="upper")
-
-
-def add_logo_anchor(ax, logo, label=None, logo_loc='upper left', alpha=0.5):
-    """
-    adds image logo and optionally, text
-    """
-    image_box = OffsetImage(logo, alpha=alpha, zoom=0.05)
-    if label:
-        textbox = TextArea(label, textprops=dict(alpha=alpha))
-        packer = VPacker(children=[image_box, textbox], mode='fixed', pad=0, sep=0,
-                         align='center')
-        ao = AnchoredOffsetbox(logo_loc, pad=0, borderpad=0, child=packer)
-    else:
-        ao = AnchoredOffsetbox(logo_loc, pad=0.01, borderpad=0, child=image_box)
-        ao.patch.set_alpha(0)
-    ax.add_artist(ao)
-
-
-def add_logo_fig(fig, logo):
-    """
-    adds image logo to a figure
-    """
-    # (x, y, width, height)
-    imax = fig.add_axes([0.9, 0.9, 0.1, 0.1])
-    # remove ticks & the box from imax
-    imax.set_axis_off()
-    # print the logo with aspect="equal" to avoid distorting the logo
-    imax.imshow(logo, aspect="equal", alpha=1)
-
-
-def add_logo(ax, logo):
-    """
-    adds image logo to axes
-    """
-    ax.figure.figimage(logo, 1, 1, zorder=3, alpha=.5)
+    try:
+        # Try multiple possible paths to find the logo
+        logo_paths = [
+            'docs/static/ASTG_logo_simple.png',
+            'docs//static/ASTG_logo_simple.png',
+            'eviz/lib/_static/ASTG_logo.png',
+            './docs/static/ASTG_logo_simple.png'
+        ]
+        
+        logo = None
+        for path in logo_paths:
+            try:
+                logo = plt.imread(path)
+                print(f"Successfully loaded logo from: {path}")
+                break
+            except FileNotFoundError:
+                continue
+                
+        if logo is None:
+            print("Could not find logo file")
+            return
+        
+        # Get logo dimensions and calculate aspect ratio
+        logo_height, logo_width = logo.shape[:2]
+        aspect_ratio = logo_height / logo_width
+        
+        # Calculate width and height in figure coordinates (0-1)
+        width_in_fig_coords = desired_width_ratio  # e.g., 10% of figure width
+        height_in_fig_coords = width_in_fig_coords * aspect_ratio
+        
+        # Position in top left with small margins
+        left = 0.02  # 2% from left edge
+        top = 0.98   # 2% from top edge
+        bottom = top - height_in_fig_coords
+        
+        # Create a new axes for the logo
+        logo_ax = fig.add_axes([left, bottom, width_in_fig_coords, height_in_fig_coords], zorder=10)
+        logo_ax.imshow(logo)
+        logo_ax.axis('off')  # Hide axes
+        
+        # Make background transparent
+        logo_ax.patch.set_alpha(0.0)
+        
+        print(f"Added logo with dimensions {width_in_fig_coords:.2f} x {height_in_fig_coords:.2f} in figure coordinates")
+        
+    except Exception as e:
+        print(f"Error adding logo: {e}")
 
 
 def output_basic(config, name):

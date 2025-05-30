@@ -1,7 +1,6 @@
 import logging
 import warnings
 from dataclasses import dataclass
-import matplotlib
 import numpy as np
 import pandas as pd
 from matplotlib import pyplot as plt
@@ -12,25 +11,6 @@ from eviz.lib.autoviz.utils import print_map, create_gif
 warnings.filterwarnings("ignore")
 
 logger = logging.getLogger(__name__)
-
-
-params = {
-    'image.origin': 'lower',
-    'image.interpolation': 'nearest',
-    'image.cmap': 'gray',
-    'axes.grid': False,
-    'savefig.dpi': 150,  # to adjust notebook inline plot size
-    'axes.labelsize': 10, # fontsize for x and y labels (was 10)
-    'axes.titlesize': 14,
-    'font.size': 10, # was 10
-    'legend.fontsize': 6, # was 10
-    'xtick.labelsize': 8,
-    'ytick.labelsize': 8,
-#    'text.usetex': True,
-    'figure.figsize': [3.39, 2.10],
-    'font.family': 'serif',
-}
-matplotlib.rcParams.update(params)
 
 
 _COORD_PAIR_MAP = {"XLAT": ("XLAT", "XLONG"),

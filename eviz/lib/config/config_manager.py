@@ -596,7 +596,7 @@ class ConfigManager:
     @property
     def add_logo(self):
         """Flag indicating if a logo should be added to plots."""
-        return getattr(self.config, '_add_logo', False)
+        return self.app_data.outputs['add_logo']
 
     @property
     def print_to_file(self):

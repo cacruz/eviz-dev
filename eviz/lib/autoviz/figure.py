@@ -785,6 +785,12 @@ class Figure(mfigure.Figure):
             return self.config_manager.get_file_description(findex)
         elif self.config_manager.get_file_exp_name(findex):
             return self.config_manager.get_file_exp_name(findex)
+        elif self.config_manager.get_file_exp_id(findex):
+            return self.config_manager.get_file_exp_id(findex)
+        # elif self.config_manager.map_params[findex].get('filename', None):
+        #     return self.config_manager.map_params[findex]['filename']        
+        elif self.config_manager.map_params[findex].get('field', None):
+            return self.config_manager.map_params[findex]['field']
         else:
             if self.config_manager.ax_opts['custom_title']:
                 return self.config_manager.ax_opts['custom_title']
@@ -846,6 +852,43 @@ class Figure(mfigure.Figure):
             self.logger.warning(f"Error getting field name for {field_name}: {e}")
             return field_name
  
+    def apply_rc_params(self, default_params=None):
+        """
+        Apply matplotlib rcParams from a config dictionary.
+
+        Parameters:
+            config (dict): Dictionary with a nested 'rc_params' key.
+            default_params (dict, optional): Base set of rcParams to start with.
+        """
+        if default_params is None:
+            default_params = {
+                'image.origin': 'lower',
+                'image.interpolation': 'nearest',
+                'image.cmap': 'gray',
+                'axes.grid': False,
+                'savefig.dpi': 150,
+                'axes.labelsize': 10,
+                'axes.titlesize': 14,
+                'font.size': 10,
+                'legend.fontsize': 6,
+                'xtick.labelsize': 8,
+                'ytick.labelsize': 8,
+                'figure.figsize': [3.39, 2.10],
+                'font.family': 'serif',
+            }
+
+        # Update with user-specific overrides
+        if self.ax_opts['rc_params']:
+            rc_params = self.ax_opts['rc_params']
+        else:
+            rc_params = default_params
+        updated_params = default_params.copy()
+        updated_params.update(rc_params)
+
+        # Apply to matplotlib
+        mpl.rcParams.update(updated_params)
+
+
     @staticmethod
     def get_default_plot_params() -> Dict[str, Any]:
         """
@@ -868,3 +911,9 @@ class Figure(mfigure.Figure):
             'ytick.labelsize': 8,
             'font.family': 'sans-serif',
         }
+    
+    def suptitle_eviz(self, text, **kwargs):
+        """Custom suptitle method that ensures proper placement."""
+        # Make sure top margin is adjusted
+        self.subplots_adjust(top=0.9)
+        return self.suptitle(text, **kwargs)
