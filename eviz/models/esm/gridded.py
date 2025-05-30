@@ -988,6 +988,19 @@ class Gridded(Root):
         self.config_manager.findex = file_index
         self.config_manager.pindex = current_field_index
         self.config_manager.axindex = ax_index
+
+        # Track which dataset we're currently plotting and how many total
+        if self.config_manager.should_overlay_plots(field_name, plot_type[:2]):
+            if file_index in self.config_manager.a_list:
+                dataset_index = self.config_manager.a_list.index(file_index)
+            elif file_index in self.config_manager.b_list:
+                dataset_index = len(self.config_manager.a_list) + self.config_manager.b_list.index(file_index)
+            else:
+                dataset_index = 0
+                
+            self.config_manager.current_dataset_index = dataset_index
+            self.config_manager.total_datasets = len(self.config_manager.a_list) + len(self.config_manager.b_list)
+        
         self.config_manager.ax_opts = figure.init_ax_opts(field_name)
         
         field_to_plot = self._get_field_to_plot_compare(data_array, field_name,
@@ -1445,7 +1458,7 @@ class Gridded(Root):
         if np.isnan(data2d.values).any():
             self.logger.debug(
                 f"Output contains NaN values: {np.sum(np.isnan(data2d.values))} NaNs")
-
+            
         return apply_conversion(self.config_manager, data2d, data_array.name)
 
     def _get_tx(self, data_array, level=None, time_lev=0):

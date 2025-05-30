@@ -518,6 +518,8 @@ def _plot_yz_data(config, ax, data2d, x, y, field_name, fig, ax_opts, vertical_u
                   plot_type, findex):
     """Helper function to plot YZ data on a single axes."""
     source_name = config.source_names[config.ds_index]
+
+    # Check if profile plot is requested
     prof_dim = None
     if ax_opts['profile_dim']:
         logger.debug(f"Creating profile plot for {field_name}")
@@ -529,7 +531,58 @@ def _plot_yz_data(config, ax, data2d, x, y, field_name, fig, ax_opts, vertical_u
             dep_var = 'yc'
         prof_dim = ax_opts['profile_dim']
         data2d = data2d.mean(dim=config.get_model_dim_name(prof_dim))
-        _single_prof_plot(config, data2d, fig, ax, ax_opts, (prof_dim, dep_var))
+        
+        # TODO: Put in rcParams
+        line_color = None
+        line_style = '-'
+        line_width = 1.5
+        marker = None
+        if config.overlay:
+            colors = ['blue', 'orange', 'green', 'purple', 'brown', 'pink', 'gray', 'red',]
+            styles = ['-', '--', '-.', ':']
+            
+            dataset_index = 0
+            if hasattr(config, 'current_dataset_index'):
+                dataset_index = config.current_dataset_index
+            
+            line_color = colors[dataset_index]
+            # line_style = styles[(dataset_index // len(colors)) % len(styles)]
+            line_style = styles[dataset_index]
+            logger.info(f"line_color: {line_color}, line_style: {line_style}")
+
+            label = None
+            if hasattr(config, 'a_list') and hasattr(config, 'b_list'):
+                if findex in config.a_list:
+                    list_idx = config.a_list.index(findex)
+                    list_name = 'a_list'
+                elif findex in config.b_list:
+                    list_idx = config.b_list.index(findex)
+                    list_name = 'b_list'
+                else:
+                    list_idx = 0
+                    list_name = 'unknown'
+                
+                # Try to get a meaningful label
+                label = config.get_file_exp_name(findex) or config.get_file_exp_id(findex)
+                if not label:
+                    label = f"Dataset {list_name}[{list_idx}]"
+            else:
+                label = f"Dataset {dataset_index}"
+        
+        if config.overlay and label:
+            _single_prof_plot(config, data2d, fig, ax, ax_opts, (prof_dim, dep_var), 
+                             color=line_color, linestyle=line_style, linewidth=line_width, 
+                             marker=marker, label=label)
+        else:
+            _single_prof_plot(config, data2d, fig, ax, ax_opts, (prof_dim, dep_var))
+
+        if config.overlay:
+            all_plotted = config.current_dataset_index == config.total_datasets - 1            
+            if all_plotted or ax_opts.get('force_legend', False):
+                legend = ax.legend(loc='best', fontsize=pu.legend_font_size(fig.subplots))                
+                frame = legend.get_frame()
+                frame.set_alpha(0.7)
+                frame.set_edgecolor('gray')
 
         # TODO: Fix units issue (missing sometimes)
         if 'units' in config.spec_data[field_name]:
@@ -548,6 +601,7 @@ def _plot_yz_data(config, ax, data2d, x, y, field_name, fig, ax_opts, vertical_u
                           size=pu.axes_label_font_size(fig.subplots))
 
     else:
+        # Regular contour plot code...
         cfilled = _filled_contours(config, field_name, ax, x, y, data2d)
 
         ylabels = ax.get_yticklabels()
@@ -839,7 +893,7 @@ def _single_xt_plot(config: ConfigManager, data_to_plot: tuple) -> None:
     data2d, _, _, field_name, plot_type, findex, fig = data_to_plot
     
     ax_opts = config.ax_opts
-    if not config.compare and not config.compare_diff:
+    if not config.compare and not config.compare_diff and not config.overlay:
         fig.set_axes()
     
     ax_temp = fig.get_axes()
@@ -872,30 +926,68 @@ def _single_xt_plot(config: ConfigManager, data_to_plot: tuple) -> None:
     ax_opts = fig.update_ax_opts(field_name, ax, 'xt', level=0)
     fig.plot_text(field_name, ax, 'xt', data=data2d)
 
-    _time_series_plot(config, ax, ax_opts, fig, data2d, field_name, findex)
+    if config.overlay:
+        # TODO: use style sheet?
+        colors = ['blue', 'orange', 'green', 'purple', 'brown', 'pink', 'gray', 'red']
+        styles = ['-', '--', '-.', ':']
+        dataset_index = getattr(config, 'current_dataset_index', 0)
 
+        line_color = colors[dataset_index % len(colors)]
+        line_style = styles[dataset_index % len(styles)]
+        line_width = 1.5
+        marker = None
+
+        logger.info(f"line_color: {line_color}, line_style: {line_style}")
+
+        label = f"Dataset {dataset_index}"
+        if hasattr(config, 'a_list') and hasattr(config, 'b_list'):
+            if findex in config.a_list:
+                list_idx = config.a_list.index(findex)
+                list_name = 'a_list'
+            elif findex in config.b_list:
+                list_idx = config.b_list.index(findex)
+                list_name = 'b_list'
+            else:
+                list_idx = 0
+                list_name = 'unknown'
+            label = config.get_file_exp_name(findex) or config.get_file_exp_id(findex) or f"Dataset {list_name}[{list_idx}]"
+
+        _plot_xt_data(config, ax, ax_opts, fig, data2d, field_name, findex,
+                    color=line_color, linestyle=line_style, linewidth=line_width,
+                    marker=marker, label=label)
+    else:
+        _plot_xt_data(config, ax, ax_opts, fig, data2d, field_name, findex)
+
+    # Legend
+    if config.overlay and (
+        getattr(config, 'current_dataset_index', 0) == getattr(config, 'total_datasets', 1) - 1 or 
+        ax_opts.get('force_legend', False)
+    ):
+        legend = ax.legend(loc='best', fontsize=pu.legend_font_size(fig.subplots))
+        frame = legend.get_frame()
+        frame.set_alpha(0.7)
+        frame.set_edgecolor('gray')
+
+    # Title
+    title_text = None
     if config.compare_diff:
-        name = field_name
-        if 'name' in config.spec_data[field_name]:
-            name = config.spec_data[field_name]['name']
-
-        fig.suptitle_eviz(name, 
-                          fontweight='bold',
-                          fontstyle='italic',
-                          fontsize=pu.image_font_size(fig.subplots))        
-        
+        title_text = config.spec_data[field_name].get('name', field_name)
     elif config.compare:
+        title_text = config.map_params[findex].get('field', 'No name')
 
-        fig.suptitle_eviz(text=config.map_params[findex].get('field', 'No name'), 
-                          fontweight='bold',
-                          fontstyle='italic',
-                          fontsize=pu.image_font_size(fig.subplots))        
+    if title_text:
+        fig.suptitle_eviz(title_text, 
+                        fontweight='bold', fontstyle='italic',
+                        fontsize=pu.image_font_size(fig.subplots))
 
-        if config.add_logo:
+        if config.compare and config.add_logo:
             pu.add_logo_ax(fig, desired_width_ratio=0.05)
 
 
-def _time_series_plot(config, ax, ax_opts, fig, data2d, field_name, findex):
+
+def _plot_xt_data(config, ax, ax_opts, fig, data2d, field_name, findex,
+                  color=None, linestyle='-', linewidth=1.5, marker=None, label=None) -> None:
+    """ Helper method that plots the time series (xt) data"""
     with mpl.rc_context(rc=ax_opts.get('rc_params', {})):
         dmin = data2d.min(skipna=True).values
         dmax = data2d.max(skipna=True).values
@@ -934,9 +1026,19 @@ def _time_series_plot(config, ax, ax_opts, fig, data2d, field_name, findex):
 
         if window_size > 0 and len(data2d) > 2 * window_size:
             end_idx = max(0, len(time_coords) - window_size - 1)
-            ax.plot(time_coords[window_size:end_idx], data2d[window_size:end_idx])
+            if color or label:
+                ax.plot(time_coords[window_size:end_idx], data2d[window_size:end_idx],
+                    color=color, linestyle=linestyle, linewidth=linewidth, 
+                    marker=marker, label=label)
+            else:
+                ax.plot(time_coords[window_size:end_idx], data2d[window_size:end_idx])
         else:
-            ax.plot(time_coords, data2d)
+            if color or label:
+                ax.plot(time_coords, data2d,
+                    color=color, linestyle=linestyle, linewidth=linewidth, 
+                    marker=marker, label=label)
+            else:
+                ax.plot(time_coords, data2d)
     
         # TODO: Need to fix trend line for windowed series (not showing!)
         if 'add_trend' in config.spec_data[field_name]['xtplot']:
@@ -1009,17 +1111,23 @@ def _time_series_plot(config, ax, ax_opts, fig, data2d, field_name, findex):
             ax.grid()
 
 
-def _single_prof_plot(config, data2d, fig, ax, ax_opts, ax_dims) -> None:
+def _single_prof_plot(config, data2d, fig, ax, ax_opts, ax_dims, 
+                     color=None, linestyle='-', linewidth=1.5, marker=None, label=None) -> None:
     """ Create a single prof (vertical profile) plot using SPECS data"""
-    if ax_dims[0] == 'zc':
-        y0 = data2d.coords[config.get_model_dim_name(ax_dims[1])][0].values
-        y1 = data2d.coords[config.get_model_dim_name(ax_dims[1])][-1].values
-        ax.plot(data2d, data2d.coords[config.get_model_dim_name('yc')])
-        ax.set_ylim(y0, y1)
-    elif ax_dims[0] == 'yc':
-        y0 = data2d.coords[config.get_model_dim_name(ax_dims[1])][0].values
-        y1 = data2d.coords[config.get_model_dim_name(ax_dims[1])][-1].values
-        ax.plot(data2d, data2d.coords[config.get_model_dim_name('zc')])
+    if ax_dims[0] in ('zc', 'yc'):
+        other_dim = config.get_model_dim_name(ax_dims[1])
+        y_coord = config.get_model_dim_name('yc' if ax_dims[0] == 'zc' else 'zc')
+
+        y0 = data2d.coords[other_dim][0].values
+        y1 = data2d.coords[other_dim][-1].values
+
+        if color or label:
+            ax.plot(data2d, data2d.coords[y_coord],
+                    color=color, linestyle=linestyle, linewidth=linewidth, 
+                    marker=marker, label=label)
+        else:
+            ax.plot(data2d, data2d.coords[y_coord])
+
         ax.set_ylim(y0, y1)
 
     ax.set_yscale(ax_opts['zscale'])
@@ -1039,8 +1147,6 @@ def _single_prof_plot(config, data2d, fig, ax, ax_opts, ax_dims) -> None:
     for label in xlabels:
         label.set_fontsize(pu.axis_tick_font_size(fig.subplots))
 
-    if ax_opts['add_grid']:
-        ax.grid()
 
 
 def _single_tx_plot(config: ConfigManager, data_to_plot: tuple) -> None:

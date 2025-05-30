@@ -280,6 +280,16 @@ def print_map(
     logger.debug("Clearing figure")
 
 
+def legend_font_size(subplots):
+    """Determine appropriate font size for legends based on subplot layout."""
+    if subplots == (1, 1):
+        return 10
+    elif subplots[0] * subplots[1] <= 4:
+        return 8
+    else:
+        return 6
+    
+
 def formatted_contours(clevs):
     new_clevs = []
     for lev in clevs:

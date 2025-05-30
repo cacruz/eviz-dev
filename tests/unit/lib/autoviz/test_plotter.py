@@ -6,7 +6,7 @@ import xarray as xr # Import xarray
 from eviz.lib.autoviz.plotter import (
     _single_xy_plot,
     _create_clevs,
-    _time_series_plot,
+    _plot_xt_data,
 )
 
 
@@ -24,7 +24,7 @@ def mock_config_manager():
         'zave': False,
         'zsum': False,
         'extent': [],
-        'time_series_plot_linestyle': {},
+        'plot_xt_data_linestyle': {},
         'cbar_sci_notation': False,
         'clevs_prec': 1,
         'cmap_set_under': None,
@@ -176,7 +176,7 @@ def test_xy_plot_with_none_data():
     assert result is None
 
 
-def test_time_series_plot(mock_config_manager, test_data_2d):
+def test_plot_xt_data(mock_config_manager, test_data_2d):
     import pandas as pd
 
     times = pd.date_range('2020-01-01', periods=10)
@@ -204,7 +204,7 @@ def test_time_series_plot(mock_config_manager, test_data_2d):
 
 
     with patch('matplotlib.pyplot.figure'): # Keep this if figure creation is part of the tested logic
-        _time_series_plot(mock_config_manager, mock_ax, mock_config_manager.ax_opts,
+        _plot_xt_data(mock_config_manager, mock_ax, mock_config_manager.ax_opts,
                           mock_fig, data, 'test_field', 0)
 
     mock_ax.plot.assert_called_once()

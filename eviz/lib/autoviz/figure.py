@@ -821,6 +821,8 @@ class Figure(mfigure.Figure):
                     transform=ax.transAxes)
         
     def _set_axes_title(self, findex):
+        if self.config_manager.overlay:
+            return None
         if self.config_manager.get_file_description(findex):
             return self.config_manager.get_file_description(findex)
         elif self.config_manager.get_file_exp_name(findex):
