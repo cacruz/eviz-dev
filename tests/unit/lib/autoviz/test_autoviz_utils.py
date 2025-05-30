@@ -131,12 +131,14 @@ def test_add_logo_file_not_found():
     # Mock matplotlib.pyplot.imread to raise FileNotFoundError for all paths
     with mock.patch('matplotlib.pyplot.imread', side_effect=FileNotFoundError):
         # Mock print to capture output
-        with mock.patch('builtins.print') as mock_print:
+        with mock.patch('eviz.lib.autoviz.utils.logger.warning') as mock_logger_warning:
+        # with mock.patch('builtins.print') as mock_print:
             # Call the function
             pu.add_logo(fig)
             
             # Check that the appropriate message was printed
-            mock_print.assert_any_call("Could not find logo file in any of the expected locations")
+            # mock_print.assert_any_call("Could not find logo file in any of the expected locations")
+            mock_logger_warning.assert_called_once_with("Could not find logo file in any of the expected locations")
     
     plt.close(fig)
 
@@ -148,12 +150,12 @@ def test_add_logo_ax_file_not_found():
     # Mock matplotlib.pyplot.imread to raise FileNotFoundError for all paths
     with mock.patch('matplotlib.pyplot.imread', side_effect=FileNotFoundError):
         # Mock print to capture output
-        with mock.patch('builtins.print') as mock_print:
+        with mock.patch('eviz.lib.autoviz.utils.logger.warning') as mock_logger_warning:
             # Call the function
             pu.add_logo_ax(fig)
             
             # Check that the appropriate message was printed
-            mock_print.assert_any_call("Could not find logo file")
+            mock_logger_warning.assert_any_call("Could not find logo file")
     
     plt.close(fig)
 

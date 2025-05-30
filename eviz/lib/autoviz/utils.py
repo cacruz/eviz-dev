@@ -598,25 +598,20 @@ def add_logo(fig):
         # Try multiple possible paths to find the logo
         logo_paths = [
             'docs/static/ASTG_logo_simple.png',
-            'docs//static/ASTG_logo_simple.png',
             'eviz/lib/_static/ASTG_logo.png',
             './docs/static/ASTG_logo_simple.png'
         ]
         
-        logo = None
-        used_path = None
-        
+        logo = None        
         for path in logo_paths:
             try:
                 logo = plt.imread(path)
-                used_path = path
-                print(f"Successfully loaded logo from: {path}")
                 break
             except FileNotFoundError:
                 continue
         
         if logo is None:
-            print("Could not find logo file in any of the expected locations")
+            logger.warning("Could not find logo file in any of the expected locations")
             return
             
         # Get figure dimensions
@@ -639,9 +634,9 @@ def add_logo(fig):
                 pil_img = Image.fromarray((logo * 255).astype(np.uint8))
                 pil_img = pil_img.resize((new_width, new_height), Image.LANCZOS)
                 logo = np.array(pil_img) / 255.0
-                print(f"Resized logo to {new_width}x{new_height}")
+                logger.debug(f"Resized logo to {new_width}x{new_height}")
             except ImportError:
-                print("PIL not available for resizing, using original size")
+                logger.warning("PIL not available for resizing, using original size")
         
         # Position in the top left with padding
         x_pos = 10  # 10 pixels from left edge
@@ -649,10 +644,10 @@ def add_logo(fig):
         
         # Add the logo to the figure
         fig.figimage(logo, x_pos, y_pos, zorder=3, alpha=0.7)
-        print(f"Added logo at position ({x_pos}, {y_pos}) with dimensions {new_width}x{new_height}")
+        logger.debug(f"Added logo at position ({x_pos}, {y_pos}) with dimensions {new_width}x{new_height}")
         
     except Exception as e:
-        print(f"Error adding logo: {e}")
+        logger.error(f"Error adding logo: {e}")
 
 
 def add_logo_ax(fig, desired_width_ratio=0.10):
@@ -667,7 +662,6 @@ def add_logo_ax(fig, desired_width_ratio=0.10):
         # Try multiple possible paths to find the logo
         logo_paths = [
             'docs/static/ASTG_logo_simple.png',
-            'docs//static/ASTG_logo_simple.png',
             'eviz/lib/_static/ASTG_logo.png',
             './docs/static/ASTG_logo_simple.png'
         ]
@@ -676,13 +670,12 @@ def add_logo_ax(fig, desired_width_ratio=0.10):
         for path in logo_paths:
             try:
                 logo = plt.imread(path)
-                print(f"Successfully loaded logo from: {path}")
                 break
             except FileNotFoundError:
                 continue
                 
         if logo is None:
-            print("Could not find logo file")
+            logger.warning("Could not find logo file")
             return
         
         # Get logo dimensions and calculate aspect ratio
@@ -706,10 +699,10 @@ def add_logo_ax(fig, desired_width_ratio=0.10):
         # Make background transparent
         logo_ax.patch.set_alpha(0.0)
         
-        print(f"Added logo with dimensions {width_in_fig_coords:.2f} x {height_in_fig_coords:.2f} in figure coordinates")
+        logger.debug(f"Added logo with dimensions {width_in_fig_coords:.2f} x {height_in_fig_coords:.2f} in figure coordinates")
         
     except Exception as e:
-        print(f"Error adding logo: {e}")
+        logger.error(f"Error adding logo: {e}")
 
 
 def output_basic(config, name):
