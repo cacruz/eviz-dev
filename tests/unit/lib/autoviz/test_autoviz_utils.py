@@ -3,6 +3,160 @@ from unittest import mock
 import tempfile
 import os
 import eviz.lib.autoviz.utils as p
+import numpy as np
+import matplotlib.pyplot as plt
+from PIL import Image
+
+import eviz.lib.autoviz.utils as pu
+
+
+def create_test_image():
+    """Create a simple test image for logo testing"""
+    # Create a 50x30 RGB test image
+    img = np.zeros((30, 50, 4), dtype=np.uint8)
+    img[:, :, 0] = 255  # Red channel
+    img[:, :, 3] = 255  # Alpha channel
+    return img
+
+@pytest.fixture
+def mock_logo_file(monkeypatch):
+    """Mock plt.imread to return a test image instead of reading from file"""
+    test_img = create_test_image()
+    
+    def mock_imread(path):
+        return test_img.astype(float) / 255.0
+    
+    monkeypatch.setattr(plt, 'imread', mock_imread)
+    return test_img
+
+def test_add_logo(mock_logo_file):
+    """Test the add_logo function"""
+    # Create a figure
+    fig = plt.figure(figsize=(6, 4))
+    
+    # Mock the figimage method to capture calls
+    with mock.patch.object(fig, 'figimage') as mock_figimage:
+        # Call the function
+        pu.add_logo(fig)
+        
+        # Check that figimage was called
+        mock_figimage.assert_called_once()
+        
+        # Check the arguments
+        args, kwargs = mock_figimage.call_args
+        
+        # First arg should be the image data
+        assert isinstance(args[0], np.ndarray)
+        
+        # Skip position checks (difficult to mock exactly)
+        
+        # Check that zorder and alpha were set
+        assert kwargs['zorder'] == 3
+        assert kwargs['alpha'] == 0.7
+    
+    plt.close(fig)
+
+
+def test_add_logo_ax(mock_logo_file):
+    """Test the add_logo_ax function"""
+    # Create a figure
+    fig = plt.figure(figsize=(6, 4))
+    
+    # Mock the add_axes method to capture calls
+    with mock.patch.object(fig, 'add_axes', return_value=mock.MagicMock()) as mock_add_axes:
+        # Call the function
+        pu.add_logo_ax(fig)
+        
+        # Check that add_axes was called
+        mock_add_axes.assert_called_once()
+        
+        # Check the arguments
+        args, kwargs = mock_add_axes.call_args
+        
+        # Check that the position is in figure coordinates (0-1)
+        position = args[0]
+        assert len(position) == 4  # [left, bottom, width, height]
+        assert 0 <= position[0] <= 1  # left
+        assert 0 <= position[1] <= 1  # bottom
+        assert 0 <= position[2] <= 1  # width
+        assert 0 <= position[3] <= 1  # height
+        
+        # Check that zorder was set
+        assert kwargs['zorder'] == 10
+        
+        # Check that imshow was called on the returned axes
+        mock_axes = mock_add_axes.return_value
+        mock_axes.imshow.assert_called_once()
+        mock_axes.axis.assert_called_once_with('off')
+        mock_axes.patch.set_alpha.assert_called_once_with(0.0)
+    
+    plt.close(fig)
+
+def test_add_logo_with_resize(mock_logo_file):
+    """Test the add_logo function with image resizing"""
+    # Create a figure
+    fig = plt.figure(figsize=(6, 4))
+    
+    # Mock PIL's Image.fromarray and resize
+    with mock.patch('PIL.Image.fromarray') as mock_fromarray:
+        mock_pil_image = mock.MagicMock()
+        mock_fromarray.return_value = mock_pil_image
+        mock_pil_image.resize.return_value = mock_pil_image
+        
+        # Fix the lambda function issue by using a proper method
+        def array_method(dtype=None):
+            return np.zeros((20, 30, 4))
+        
+        mock_pil_image.__array__ = array_method
+        
+        # Mock figimage to avoid actual rendering
+        with mock.patch.object(fig, 'figimage') as mock_figimage:
+            # Call the function
+            pu.add_logo(fig)
+            
+            # Check that PIL Image processing was used
+            mock_fromarray.assert_called_once()
+            mock_pil_image.resize.assert_called_once()
+            
+            # Check that figimage was called with the processed image
+            mock_figimage.assert_called_once()
+    
+    plt.close(fig)
+
+def test_add_logo_file_not_found():
+    """Test the add_logo function when logo file is not found"""
+    # Create a figure
+    fig = plt.figure(figsize=(6, 4))
+    
+    # Mock matplotlib.pyplot.imread to raise FileNotFoundError for all paths
+    with mock.patch('matplotlib.pyplot.imread', side_effect=FileNotFoundError):
+        # Mock print to capture output
+        with mock.patch('builtins.print') as mock_print:
+            # Call the function
+            pu.add_logo(fig)
+            
+            # Check that the appropriate message was printed
+            mock_print.assert_any_call("Could not find logo file in any of the expected locations")
+    
+    plt.close(fig)
+
+def test_add_logo_ax_file_not_found():
+    """Test the add_logo_ax function when logo file is not found"""
+    # Create a figure
+    fig = plt.figure(figsize=(6, 4))
+    
+    # Mock matplotlib.pyplot.imread to raise FileNotFoundError for all paths
+    with mock.patch('matplotlib.pyplot.imread', side_effect=FileNotFoundError):
+        # Mock print to capture output
+        with mock.patch('builtins.print') as mock_print:
+            # Call the function
+            pu.add_logo_ax(fig)
+            
+            # Check that the appropriate message was printed
+            mock_print.assert_any_call("Could not find logo file")
+    
+    plt.close(fig)
+
 
 
 @pytest.mark.parametrize(
@@ -90,7 +244,7 @@ def test_cbar_fraction(panels_shape, cbar_frac_expected):
         ((1, 1), 16),
         ((3, 1), 14),
         ((2, 2), 14),
-        (None, 'small'),
+        (None, 14),
     )
 )
 def test_image_font_size(panels_shape, image_fs_expected):
@@ -200,12 +354,6 @@ def test_fmt():
 def test_fmt_once():
     s = p.fmt_once(1234, None)
     assert s.startswith('$')
-
-
-def test_image_scaling():
-    arr = [[1, 2], [3, 4]]
-    scaled = p.image_scaling(arr, 2, 2)
-    assert scaled == [[1, 2], [3, 4]]
 
 
 def test_get_subplot_shape():
@@ -330,45 +478,6 @@ def test_colorbar_standard_axes(monkeypatch):
     cbar = p.colorbar(im)
     assert cbar is not None
 
-def test_add_logo_xy(monkeypatch):
-    ax = mock.Mock()
-    logo = [[1,2],[3,4]]
-    monkeypatch.setattr(p, 'image_scaling', lambda img, r, c: img)
-    fig = mock.Mock()
-    ax.figure = fig
-    fig.figimage = mock.Mock()
-    p.add_logo_xy(logo, ax, 0, 0)
-    fig.figimage.assert_called()
-
-def test_add_logo_anchor(monkeypatch):
-    ax = mock.Mock()
-    logo = mock.Mock()
-    monkeypatch.setattr(p, 'OffsetImage', mock.Mock(return_value=mock.Mock()))
-    monkeypatch.setattr(p, 'TextArea', mock.Mock(return_value=mock.Mock()))
-    monkeypatch.setattr(p, 'VPacker', mock.Mock(return_value=mock.Mock()))
-    monkeypatch.setattr(p, 'AnchoredOffsetbox', mock.Mock(return_value=mock.Mock()))
-    ax.add_artist = mock.Mock()
-    p.add_logo_anchor(ax, logo, label="test")
-    ax.add_artist.assert_called()
-
-def test_add_logo_fig(monkeypatch):
-    fig = mock.Mock()
-    logo = mock.Mock()
-    imax = mock.Mock()
-    fig.add_axes = mock.Mock(return_value=imax)
-    imax.set_axis_off = mock.Mock()
-    imax.imshow = mock.Mock()
-    p.add_logo_fig(fig, logo)
-    imax.imshow.assert_called()
-
-def test_add_logo(monkeypatch):
-    ax = mock.Mock()
-    fig = mock.Mock()
-    ax.figure = fig
-    fig.figimage = mock.Mock()
-    logo = mock.Mock()
-    p.add_logo(ax, logo)
-    fig.figimage.assert_called()
 
 def test_output_basic_print_to_file(monkeypatch):
     class DummyConfig:

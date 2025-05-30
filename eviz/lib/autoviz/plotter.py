@@ -415,9 +415,8 @@ def _plot_xy_data(config, ax, data2d, x, y, field_name, fig, ax_opts, level,
                           fontstyle='italic',
                           fontsize=pu.image_font_size(fig.subplots))        
 
-    if config.add_logo:
-        ax0 = fig.get_axes()[0]
-        pu.add_logo_fig(fig, fig.EVIZ_LOGO)
+        if config.add_logo:
+            pu.add_logo_ax(fig, desired_width_ratio=0.05)
 
     # This works well in xy (i.e. lat-lon) plots
     # fig.squeeze_fig_aspect(fig.fig)

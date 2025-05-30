@@ -57,7 +57,6 @@ def mock_config_manager():
     mock.get_dim_names = MagicMock(return_value=('dim1_name', 'dim2_name'))
     mock.cmap = 'viridis' 
     mock.add_logo = False
-    mock.EVIZ_LOGO = 'dummy_logo_path' # For pu.add_logo_fig
     return mock
 
 
@@ -102,7 +101,7 @@ def test_data_2d():
     })
     fig.plot_text = MagicMock()
     fig.subplots = (1, 1)
-    fig.EVIZ_LOGO = 'dummy_logo_path' # For pu.add_logo_fig
+    fig.EVIZ_LOGO = 'dummy_logo_path'
 
     return data, x_np, y_np, 'test_field', 'xy', 0, fig, ax
 
