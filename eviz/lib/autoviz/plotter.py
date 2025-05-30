@@ -432,7 +432,44 @@ def _single_yz_plot(config: ConfigManager, data_to_plot: tuple) -> None:
         data_to_plot (tuple) : dict with plotted data and specs
     """
     data2d, x, y, field_name, plot_type, findex, fig = data_to_plot
+    
+    ax_opts = config.ax_opts
+    # Test applying rcparams to the figure via specification in specs
+    # fig.apply_rc_params()
 
+    if not config.compare and not config.compare_diff:
+        fig.set_axes()
+    
+    ax_temp = fig.get_axes()
+    axes_shape = fig.subplots
+
+    if axes_shape == (3, 1):
+        if ax_opts['is_diff_field']:
+            ax = ax_temp[2]
+        else:
+            ax = ax_temp[config.axindex]
+    elif axes_shape == (2, 2):
+        if ax_opts['is_diff_field']:
+            ax = ax_temp[2]
+            if config.ax_opts['add_extra_field_type']:
+                ax = ax_temp[3]
+        else:
+            ax = ax_temp[config.axindex]
+    elif axes_shape == (1, 2) or axes_shape == (1, 3):
+        if isinstance(ax_temp, list):
+            ax = ax_temp[config.axindex]  # Use the correct axis based on axindex
+        else:
+            ax = ax_temp
+    else:
+        ax = ax_temp[0]
+
+    if data2d is None:
+        return
+
+    ax_opts = fig.update_ax_opts(field_name, ax, 'yz')
+    fig.plot_text(field_name, ax, 'yz', level=None, data=data2d)
+
+    # Determine the vertical coordinate and its units
     zc = config.get_model_dim_name('zc')
     vertical_coord = None
     vertical_units = 'n.a.'
@@ -457,51 +494,12 @@ def _single_yz_plot(config: ConfigManager, data_to_plot: tuple) -> None:
                     vertical_coord = data2d.coords[dim_name]
                     break
 
-    # If we found a vertical coordinate, get its units
     if vertical_coord is not None:
         vertical_units = vertical_coord.attrs.get('units', 'n.a.')
     else:
         if len(data2d.shape) >= 2:
             # Assume first dimension is vertical in a YZ plot
             vertical_coord = np.arange(data2d.shape[0])
-
-    ax_opts = config.ax_opts
-    # Test applying rcparams to the figure via specification in specs
-    # fig.apply_rc_params()
-
-    if not config.compare and not config.compare_diff:
-        fig.set_axes()
-    
-    ax_temp = fig.get_axes()
-    axes_shape = fig.subplots
-
-    if axes_shape == (3, 1):
-        if ax_opts['is_diff_field']:
-            ax = ax_temp[2]
-        else:
-            ax = ax_temp[config.axindex]
-    elif axes_shape == (2, 2):
-        if ax_opts['is_diff_field']:
-            ax = ax_temp[2]
-            if config.ax_opts['add_extra_field_type']:
-                ax = ax_temp[3]
-        else:
-            ax = ax_temp[config.axindex]
-    elif axes_shape == (1, 2) or axes_shape == (1, 3):  # Caon only handle 2 and 3 column layouts
-        if isinstance(ax_temp, list):
-            ax = ax_temp[config.axindex]  # Use the correct axis based on axindex
-        else:
-            # If ax_temp is not a list ...
-            ax = ax_temp
-    else:
-        ax = ax_temp[0]
-
-
-    if data2d is None:
-        return
-
-    ax_opts = fig.update_ax_opts(field_name, ax, 'yz')
-    fig.plot_text(field_name, ax, 'yz', level=None, data=data2d)
 
     if isinstance(ax, list):
         for single_ax in ax:
@@ -838,24 +836,34 @@ def _single_xt_plot(config: ConfigManager, data_to_plot: tuple) -> None:
         data_to_plot (tuple) : dict with plotted data and specs
     """
     data2d, _, _, field_name, plot_type, findex, fig = data_to_plot
+    
     ax_opts = config.ax_opts
-
-    fig.set_axes()
+    if not config.compare and not config.compare_diff:
+        fig.set_axes()
+    
     ax_temp = fig.get_axes()
+    axes_shape = fig.subplots
 
-    # Handle different axes configurations
-    if isinstance(ax_temp, list):
-        if len(ax_temp) == 3:
-            ax = ax_temp[2] if ax_opts['is_diff_field'] else ax_temp[findex]
-        elif len(ax_temp) == 4:  # 2x2 grid
-            if ax_opts['is_diff_field']:
-                ax = ax_temp[3] if ax_opts['add_extra_field_type'] else ax_temp[2]
-            else:
-                ax = ax_temp[findex]
+    if axes_shape == (3, 1):
+        if ax_opts['is_diff_field']:
+            ax = ax_temp[2]
         else:
-            ax = ax_temp[0]  # Default to first axis if structure is unknown
+            ax = ax_temp[config.axindex]
+    elif axes_shape == (2, 2):
+        if ax_opts['is_diff_field']:
+            ax = ax_temp[2]
+            if config.ax_opts['add_extra_field_type']:
+                ax = ax_temp[3]
+        else:
+            ax = ax_temp[config.axindex]
+    elif axes_shape == (1, 2) or axes_shape == (1, 3):
+        if isinstance(ax_temp, list):
+            ax = ax_temp[config.axindex]  # Use the correct axis based on axindex
+        else:
+            ax = ax_temp
     else:
-        ax = ax_temp  # Single axis case
+        ax = ax_temp[0]
+    
 
     if data2d is None:
         return
@@ -865,8 +873,25 @@ def _single_xt_plot(config: ConfigManager, data_to_plot: tuple) -> None:
 
     _time_series_plot(config, ax, ax_opts, fig, data2d, field_name, findex)
 
-    if fig.subplots != (1, 1):
-        fig.squeeze_fig_aspect(fig)
+    if config.compare_diff:
+        name = field_name
+        if 'name' in config.spec_data[field_name]:
+            name = config.spec_data[field_name]['name']
+
+        fig.suptitle_eviz(name, 
+                          fontweight='bold',
+                          fontstyle='italic',
+                          fontsize=pu.image_font_size(fig.subplots))        
+        
+    elif config.compare:
+
+        fig.suptitle_eviz(text=config.map_params[findex].get('field', 'No name'), 
+                          fontweight='bold',
+                          fontstyle='italic',
+                          fontsize=pu.image_font_size(fig.subplots))        
+
+        if config.add_logo:
+            pu.add_logo_ax(fig, desired_width_ratio=0.05)
 
 
 def _time_series_plot(config, ax, ax_opts, fig, data2d, field_name, findex):
@@ -1654,7 +1679,7 @@ class ComparisonPlotter:
             level: int (optional)
         """
         plot_type = field_to_plot[4] + 'plot'
-        if plot_type not in ['xyplot', 'yzplot', 'polarplot', 'scplot']:
+        if plot_type not in ['xyplot', 'yzplot', 'xtplot', 'polarplot', 'scplot']:
             plot_type = field_to_plot[2]
 
         if plot_type == 'yzplot':
