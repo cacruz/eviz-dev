@@ -38,6 +38,8 @@ def mock_config():
 def mock_input_config():
     """Create a mock InputConfig object."""
     input_config = MagicMock(spec=InputConfig)
+    input_config._overlay = False
+    input_config._overlay_exp_ids = None
     input_config._compare = True
     input_config._compare_diff = False
     input_config._compare_exp_ids = ["exp1", "exp2"]
@@ -147,28 +149,47 @@ class TestConfigManager:
         with pytest.raises(AttributeError):
             _ = config_manager.non_existent_attr
             
-    def test_setup_comparison(self, config_manager, mock_input_config):
-        """Test the setup_comparison method."""
+    @pytest.mark.parametrize("compare, compare_diff, overlay, compare_exp_ids, overlay_exp_ids, expected_a, expected_b", [
+        # Test with comparison enabled
+        (True, False, False, ["exp1", "exp2", "non_existent"], None, [0], [1]),
+        
+        # Test with comparison_diff enabled
+        (False, True, False, ["exp1", "exp2", "non_existent"], None, [0], [1]),
+        
+        # Test with overlay enabled
+        (False, False, True, None, ["exp1", "exp2", "non_existent"], [0], [1]),
+        
+        # Test with overlay enabled but using compare_exp_ids as fallback
+        (False, False, True, ["exp1", "exp2", "non_existent"], None, [0], [1]),
+        
+        # Test with both overlay and compare enabled (should use compare_exp_ids)
+        (True, False, True, ["exp1", "exp2"], ["exp3", "exp4"], [0], [1]),
+        
+        # Test with both overlay and compare_diff enabled (should use compare_exp_ids)
+        (False, True, True, ["exp1", "exp2"], ["exp3", "exp4"], [0], [1]),
+        
+        # Test with comparison disabled
+        (False, False, False, None, None, [], []),
+    ])
+    def test_setup_comparison(self, config_manager, mock_input_config, 
+                              compare, compare_diff, overlay, 
+                              compare_exp_ids, overlay_exp_ids,
+                              expected_a, expected_b):
+        """Test the setup_comparison method with different configurations."""
         # Reset comparison settings
         config_manager.a_list = []
         config_manager.b_list = []
         
-        # Test with comparison enabled
-        mock_input_config._compare = True
-        mock_input_config._compare_exp_ids = ["exp1", "exp2", "non_existent"]
+        # Configure the input config
+        mock_input_config._compare = compare
+        mock_input_config._compare_diff = compare_diff
+        mock_input_config._overlay = overlay
+        mock_input_config._compare_exp_ids = compare_exp_ids
+        mock_input_config._overlay_exp_ids = overlay_exp_ids
         
+        # Run the method
         config_manager.setup_comparison()
         
-        assert config_manager.a_list == [0]
-        assert config_manager.b_list == [1]
-        
-        # Test with comparison disabled
-        mock_input_config._compare = False
-        mock_input_config._compare_diff = False
-        
-        config_manager.a_list = []
-        config_manager.b_list = []
-        config_manager.setup_comparison()
-        
-        assert config_manager.a_list == []
-        assert config_manager.b_list == []
+        # Check results
+        assert config_manager.a_list == expected_a
+        assert config_manager.b_list == expected_b

@@ -62,6 +62,7 @@ def test_root_plot_single(monkeypatch):
     called = {}
     monkeypatch.setattr(r, "_single_plots", lambda plotter: called.setdefault("single", True))
     r.config_manager.spec_data = {"foo": "bar"}
+    r.config_manager.overlay = False
     r.config_manager.compare = False
     r.config_manager.compare_diff = False
     r.plot()
