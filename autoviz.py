@@ -120,11 +120,9 @@ def main():
     # Process each source separately to ensure proper file-to-source mapping
     for source in input_sources:
         print(f"Processing source: {source}")
-        # Create a modified args object with just this source
         source_args = argparse.Namespace(**vars(args))
-        source_args.sources = [source]  # Replace with single source
+        source_args.sources = [source] 
         
-        # Create and run Autoviz for this source
         autoviz = Autoviz([source], args=source_args)
         autoviz.run()
     

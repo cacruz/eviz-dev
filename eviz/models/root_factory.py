@@ -6,7 +6,9 @@ from eviz.models.esm.grib import Grib
 from eviz.models.esm.geos import Geos
 from eviz.models.esm.lis import Lis
 from eviz.models.esm.wrf import Wrf
+from eviz.models.obs.ungridded import Ungridded
 from eviz.models.obs.inventory.airnow import Airnow
+from eviz.models.obs.inventory.ghg import Ghg
 from eviz.models.obs.inventory.fluxnet import Fluxnet
 from eviz.models.obs.satellite.landsat import Landsat
 from eviz.models.obs.satellite.mopitt import Mopitt
@@ -88,6 +90,24 @@ class LisFactory(RootFactory):
     """
     def create_root_instance(self, config_manager: ConfigManager):
         return Lis(config_manager)
+
+
+@dataclass
+class GhgFactory(RootFactory):
+    """
+    Factory for creating Ghg model instances
+    """
+    def create_root_instance(self, config_manager: ConfigManager):
+        return Ghg(config_manager)
+
+
+@dataclass
+class UngriddedFactory(RootFactory):
+    """
+    Factory for creating Ungridded model instances
+    """
+    def create_root_instance(self, config_manager: ConfigManager):
+        return Ungridded(config_manager)
 
 
 @dataclass

@@ -11,7 +11,7 @@ from eviz.lib.config.configuration_adapter import ConfigurationAdapter
 from eviz.models.root_factory import (GribFactory, GriddedFactory,
                                       WrfFactory,
                                       LisFactory,
-                                      AirnowFactory,
+                                      UngriddedFactory,
                                       MopittFactory,
                                       LandsatFactory,
                                       OmiFactory,
@@ -104,7 +104,8 @@ def get_factory_from_user_input(inputs) -> list:
     - 'lis': LisFactory (for Land Information System data)
     - 'wrf': WrfFactory (for Weather Research and Forecasting model data)
     - 'grib': GribFactory (for GRIB data)
-    - 'airnow': AirnowFactory (for AirNow CSV data)
+    - 'airnow': UngriddedFactory (for AirNow CSV data)
+    - 'ghg': UngriddedFactory (for GHG inventories, e.g. NOAA GML)
     - 'fluxnet': FluxnetFactory (for FluxNet CSV data)
     - 'omi': OmiFactory (for OMI HDF5 data)
     - 'mopitt': MopittFactory (for MOPITT HDF5 data)
@@ -120,7 +121,8 @@ def get_factory_from_user_input(inputs) -> list:
         # "crest": CrestFactory(),     #
         "lis": LisFactory(),  # LIS and WRF are gridded but require special
         "wrf": WrfFactory(),  # "treatment" due to the "regional" nature of the data
-        "airnow": AirnowFactory(),  # CSV
+        "airnow": UngriddedFactory(),  # CSV
+        "ghg": UngriddedFactory(),  # CSV
         "fluxnet": FluxnetFactory(),  # CSV
         "omi": OmiFactory(),  # HDF5
         "mopitt": MopittFactory(),  # HDF5
