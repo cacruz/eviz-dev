@@ -35,12 +35,12 @@ if [ $skip -eq 1 ]; then
 	    exit 1
 	fi
     fi
-    files=$(find "$EVIZ_CONFIG_PATH" -name \*.yaml -print)
+#    files=$(find "$EVIZ_CONFIG_PATH" -name \*.yaml -print)
 
-    for f in "${files[@]}"; do
-	sed -i -r 's@EVIZ_DATA_PATH@'"$EVIZ_DATA_PATH"'@' "$f"
-	sed -i -r 's@EVIZ_OUTPUT_PATH@'"$EVIZ_OUTPUT_PATH"'@' "$f"
-    done
+#    for f in "${files[@]}"; do
+#	sed -i -r 's@EVIZ_DATA_PATH@'"$EVIZ_DATA_PATH"'@' "$f"
+#	sed -i -r 's@EVIZ_OUTPUT_PATH@'"$EVIZ_OUTPUT_PATH"'@' "$f"
+#    done
 
 fi
 #---------------------------------------------------
@@ -72,13 +72,6 @@ echo "Using configfile -f $f_option"
 python autoviz.py -s gridded -f $f_option -v 0
 echo
 
-# Use -f option (would override EVIZ_CONFIG_PATH)
-f_option=/Users/ccruz/projects/Eviz/config/simple_spec/sample.yaml
-echo "Using configfile -f $f_option"
-echo "and its associated spec file"
-python autoviz.py -s gridded -f $f_option -v 0
-echo
-
 # Use -c option (would override EVIZ_CONFIG_PATH)
 c_option=/Users/ccruz/projects/Eviz/config
 echo "Using config -c $c_option"
@@ -107,9 +100,9 @@ echo "Source: ccm, 2 files and unit conversions"
 python autoviz.py -s ccm -v 0 -f /Users/ccruz/projects/Eviz/config/ccm/ccm_multiple.yaml
 echo
 
-echo "Source: cf, with 3 files"
-python autoviz.py -s cf -v 0
-echo
+#echo "Source: cf, with 3 files"
+#python autoviz.py -s cf -v 0
+#echo
 
 echo "Source: wrf, with 1 file"
 python autoviz.py -s wrf -v 0

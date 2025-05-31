@@ -13,3 +13,4 @@ This page includes a :doc:`quickstart guide <usage/quickstart>` describing insta
    usage/autoviz.use
    usage/data_sources
    api/eviz.api
+   tutorial/index

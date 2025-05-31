@@ -11,7 +11,27 @@
 # documentation root, use os.path.abspath to make it absolute, like shown here.
 #
 import os
+# conf.py
 import sys
+from unittest.mock import MagicMock
+
+class Mock(MagicMock):
+    @classmethod
+    def __getattr__(cls, name):
+        return MagicMock()
+
+# Mock modules that might cause import errors
+MOCK_MODULES = ['xarray', 'numpy', 'pandas']
+sys.modules.update((mod_name, Mock()) for mod_name in MOCK_MODULES)
+
+# Add autodoc_type_aliases for modern type annotations
+autodoc_type_aliases = {
+    'xr.Dataset | None': 'Optional[xarray.Dataset]',
+}
+
+# Add autodoc_typehints_format to handle modern type annotations
+autodoc_typehints_format = 'fully-qualified'
+
 
 sys.path.insert(0, os.path.abspath('.'))
 sys.path.insert(0, os.path.abspath('..'))
@@ -37,6 +57,8 @@ extensions = [
     'sphinx.ext.autodoc',  # autodocument
     'sphinx.ext.napoleon',  # google and numpy doc string support
     'sphinx.ext.mathjax',  # latex rendering of equations using MathJax
+    'myst_parser',
+    'sphinxcontrib.mermaid',
 ]
 # 'sphinx.ext.viewcode',  # add links to view code
 

@@ -14,10 +14,10 @@ Subpackages
 Submodules
 ----------
 
-eviz.lib.const module
----------------------
+eviz.lib.constants module
+-------------------------
 
-.. automodule:: eviz.lib.const
+.. automodule:: eviz.lib.constants
    :members:
    :undoc-members:
    :show-inheritance:
