@@ -93,6 +93,8 @@ def main():
         >>> python autoviz.py --file data.nc
         # Extract specific variables
         >>> python autoviz.py --file data.nc --vars temperature humidity
+        # Process multiple sources
+        >>> python autoviz.py -s wrf,lis
     """
     start_time = time.time()
     args = parse_command_line()
@@ -112,10 +114,20 @@ def main():
     log = int(args.log[0] if isinstance(args.log, list) else '1')
     logger_setup('autoviz', log=log, verbose=verbose)
 
+    # Parse comma-separated sources into a list
     input_sources = [s.strip() for s in args.sources[0].split(',')]
-
-    autoviz = Autoviz(input_sources, args=args)
-    autoviz.run()
+    
+    # Process each source separately to ensure proper file-to-source mapping
+    for source in input_sources:
+        print(f"Processing source: {source}")
+        # Create a modified args object with just this source
+        source_args = argparse.Namespace(**vars(args))
+        source_args.sources = [source]  # Replace with single source
+        
+        # Create and run Autoviz for this source
+        autoviz = Autoviz([source], args=source_args)
+        autoviz.run()
+    
     print(f"Time taken = {timer(start_time, time.time())}")
 
 
