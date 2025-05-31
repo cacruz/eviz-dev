@@ -19,14 +19,8 @@ from eviz.models.root_factory import (GribFactory, GriddedFactory,
 from eviz.lib.config.paths_config import PathsConfig
 
 
-def get_config_path_from_env():
+def get_config_path_from_env() -> str | None:
     """
-    Retrieve the configuration path from environment variables.
-    
-    Returns:
-        str or None: The path specified in the EVIZ_CONFIG_PATH environment variable,
-                    or None if the variable is not set.
-    
     This function checks for the EVIZ_CONFIG_PATH environment variable, which should
     point to the directory containing source-specific configuration files.
     """
@@ -34,7 +28,7 @@ def get_config_path_from_env():
     return os.environ.get(env_var_name)
 
 
-def create_config(args):
+def create_config(args) -> ConfigManager:
     """
     Create a ConfigManager instance from command-line arguments.
     
@@ -48,13 +42,6 @@ def create_config(args):
     Returns:
         ConfigManager: A fully initialized configuration manager with input, output,
                       system, and history configurations.
-    
-    This function handles the configuration initialization process, including:
-    1. Parsing source names from command-line arguments
-    2. Locating configuration files (from specified paths or environment variables)
-    3. Creating a Config instance with appropriate source-specific configurations
-    4. Initializing sub-configurations (input, output, system, history)
-    5. Creating and returning a ConfigManager that encapsulates all configuration data
     
     If no configuration directory is specified, it attempts to use the EVIZ_CONFIG_PATH
     environment variable. If that is not set, it falls back to the default path defined
@@ -92,7 +79,7 @@ def create_config(args):
                          config=config)
 
 
-def get_factory_from_user_input(inputs):
+def get_factory_from_user_input(inputs) -> list:
     """
     Return factory classes associated with user input sources.
     
@@ -110,11 +97,12 @@ def get_factory_from_user_input(inputs):
     
     Supported sources include:
     - 'test': GriddedFactory (for unit tests)
-    - 'gridded': GriddedFactory (for generic NetCDF data and GRIB)
+    - 'gridded': GriddedFactory (for generic NetCDF data)
     - 'geos': GriddedFactory (for MERRA data)
     - 'ccm', 'cf': GriddedFactory (for special streams)
     - 'lis': LisFactory (for Land Information System data)
     - 'wrf': WrfFactory (for Weather Research and Forecasting model data)
+    - 'grib': GribFactory (for GRIB data)
     - 'airnow': AirnowFactory (for AirNow CSV data)
     - 'fluxnet': FluxnetFactory (for FluxNet CSV data)
     - 'omi': OmiFactory (for OMI HDF5 data)
@@ -199,12 +187,7 @@ class Autoviz:
     def __post_init__(self):
         """
         Initialize the Autoviz instance after dataclass initialization.
-        
-        This method:
-        1. Sets up default arguments if none are provided
-        2. Creates factory instances for the specified sources
-        3. Initializes the configuration manager
-        
+
         Raises:
             ValueError: If no factories are found for the specified sources.
         """
@@ -228,34 +211,11 @@ class Autoviz:
             raise ValueError(f"No factories found for sources: {self.source_names}")
         self._config_manager = create_config(
             self.args)  # Use ConfigManager instead of Config
-        # TODO: Associate each model with its corresponding data directory
-        #  Note that data can be in local disk or even in a remote locations
         # TODO: enable processing of S3 buckets
 
     def run(self):
         """
         Execute the visualization process.
-        
-        This method:
-        1. Records the start time for performance tracking
-        2. Checks for existence of input files
-        3. Creates a ConfigurationAdapter to process the configuration
-        4. Enables data integration if specified
-        5. Processes the configuration to load and prepare data
-        6. Creates and executes appropriate visualization based on configuration:
-
-           - Composite field visualization if composite option is specified
-           - Normal plotting through the appropriate factory models
-        
-        The method handles various plotting modes including:
-
-        - Simple plots (without detailed specifications)
-        - Single plots (with detailed specifications)
-        - Side-by-side comparison plots
-        - Difference comparison plots
-        
-        It also provides informative messages about missing data sources and
-        output file locations.
         """
         _start_time = time.time()
         self._config_manager.input_config.start_time = _start_time
@@ -285,13 +245,10 @@ class Autoviz:
             if not all_data_sources:
                 self.logger.error(
                     "No data sources were loaded. Check if the input files exist and are accessible.")
-                print(
-                    "No data sources were loaded. Check if the input files exist and are accessible.")
-                print("Input files specified in the configuration:")
                 for i, entry in enumerate(self._config_manager.app_data.inputs):
                     file_path = os.path.join(entry.get('location', ''),
                                              entry.get('name', ''))
-                    print(f"  {i + 1}. {file_path}")
+                    self.logger.debug(f"  {i + 1}. {file_path}")
                 return
 
             if hasattr(self.args, 'composite') and self.args.composite:
@@ -321,20 +278,17 @@ class Autoviz:
         finally:
             self.config_adapter.close()
 
-    def set_data(self, input_files):
+    def set_data(self, input_files) -> None:
         """
         Assign model input files as specified in model config file.
         
         Args:
             input_files (list): Names of input files to be processed.
-            
-        This method updates the input configuration with the specified input files,
-        allowing for dynamic modification of data sources.
         """
         config = self._config_manager.input_config
         config.set_input_files(input_files)
 
-    def _check_input_files(self):
+    def _check_input_files(self) -> None:
         """
         Check if input files exist and provide warnings for missing files.
 
@@ -372,15 +326,12 @@ class Autoviz:
                 print(f"  {i + 1}. {file_path}")
             print("The application will attempt to continue, but plotting may fail.")
 
-    def set_output(self, output_dir):
+    def set_output(self, output_dir) -> str:
         """
         Assign model output directory as specified in model config file.
         
         Args:
             output_dir (str): Path to the directory where output files should be saved.
-            
-        This method updates the output configuration with the specified output directory,
-        allowing for dynamic modification of the visualization output location.
         """
         config = self._config_manager.output_config
         config.set_output_dir(output_dir)

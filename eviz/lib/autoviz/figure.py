@@ -23,12 +23,6 @@ class Figure(mfigure.Figure):
     config_manager (ConfigManager): Representation of the model configuration 
     plot_type (str): Type of plot to be created
     
-    Attributes:
-    - _rindex: Row index for multiple subplots
-    - _ax_opts: Dictionary of axis options
-    - _frame_params: Dictionary of frame parameters
-    - _subplots: Tuple defining subplot layout
-    - _use_cartopy: Flag to indicate use of Cartopy projection
     """
     def __init__(self, config_manager, plot_type, 
         *,
@@ -57,14 +51,12 @@ class Figure(mfigure.Figure):
         self._subplot_counter = 0  # avoid add_subplot() returning an existing subplot
         self._projection = None
         self._subplots = (1, 1)
-        self.overlay_mode = False  # Default to non-overlay mode
 
         # Initialize eViz-specific attributes
         self.config_manager = config_manager
         self.plot_type = plot_type
         self._logger = logging.getLogger(__name__)
         
-        # Initialization defaults
         self._rindex = 0
         self._ax_opts = {}
         self._frame_params = {}
@@ -84,18 +76,8 @@ class Figure(mfigure.Figure):
             del kwargs['ncols']
             
         super().__init__(**kwargs)
-        
-        # Post-initialization setup
-        self._logger.debug("Create figure, axes")
-        
-        if self.config_manager.add_logo:
-            self.EVIZ_LOGO = plt.imread('eviz/lib/_static/ASTG_logo.png')
-        
+                            
         self._init_frame()
-
-    @property
-    def logger(self) -> logging.Logger:
-        return logging.getLogger(__name__)
 
     def _init_frame(self):
         """Set shape and size for pre-defined figure frames."""
@@ -161,12 +143,12 @@ class Figure(mfigure.Figure):
             self.logger.warning(f"Error setting subplot layout: {str(e)}, using default")
             self._subplots = (1, 1)
 
-    def set_axes(self):
+    def set_axes(self) -> "Figure":
         """
         Set figure axes objects based on required subplots.
 
         Returns:
-            tuple: (figure, axes) objects for the given plot type
+            self: The Figure object itself.
         """
         if 'tx' in self.plot_type or 'sc' in self.plot_type or 'xy' in self.plot_type:
             self._use_cartopy = True
@@ -196,16 +178,14 @@ class Figure(mfigure.Figure):
                 self.delaxes(cbar_ax)  
 
         ax.set_title("")
-
-        # apply changes
         self.canvas.draw_idle()
 
-    def _get_fig_ax(self):
+    def _get_fig_ax(self) -> "Figure":
         """
         Initialize figure and axes objects for all plots based on plot type.
 
         Returns:
-            tuple: (figure, axes) objects for the given plot type
+            self: The Figure object itself.
         """
         if "po" in self.plot_type:
             return self
@@ -221,11 +201,11 @@ class Figure(mfigure.Figure):
     def get_fig_ax(self):
         return self._get_fig_ax()
 
-    def get_axes(self):
+    def get_axes(self) -> list:
         # Always return a list of axes, even for a single axes
         return self.axes_array
 
-    def create_subplot_grid(self):
+    def create_subplot_grid(self) -> "Figure":
         """Create a grid of subplots based on the figure frame layout."""
         # Hack to distinguish regional plots, which look better in square aspect ratio
         if ('tx' in self.plot_type or 'sc' in self.plot_type or 'xy' in self.plot_type) and  'extent' in self._ax_opts:
@@ -249,7 +229,9 @@ class Figure(mfigure.Figure):
         return self
 
     @staticmethod
-    def create_eviz_figure(config_manager, plot_type, field_name=None, nrows=None, ncols=None):
+    def create_eviz_figure(config_manager, 
+                           plot_type, 
+                           field_name=None, nrows=None, ncols=None) -> "Figure":
         """
         Factory method to create an eViz Figure instance.
         
@@ -284,7 +266,6 @@ class Figure(mfigure.Figure):
                 nrows, ncols = 1, 1
         
         fig = Figure(config_manager, plot_type, nrows=nrows, ncols=ncols)
-        fig.overlay_mode = use_overlay
         return fig
 
     def create_subplots(self):
@@ -300,7 +281,7 @@ class Figure(mfigure.Figure):
                     self.axes_array.append(ax)
             return self
 
-    def _create_subplots_crs(self):
+    def _create_subplots_crs(self) -> "Figure":
         """Create subplots with cartopy projections."""
         # Determine the projection to use
         map_projection = None
@@ -340,34 +321,6 @@ class Figure(mfigure.Figure):
 
         return self
 
-    @staticmethod
-    def create_eviz_figure2(config_manager, plot_type, nrows=None, ncols=None):
-        """
-        Factory method to create an eViz Figure instance.
-        
-        Args:
-            config_manager (ConfigManager): Configuration manager
-            plot_type (str): Type of plot
-            nrows (int, optional): Number of rows in the subplot grid
-            ncols (int, optional): Number of columns in the subplot grid
-        
-        Returns:
-            Figure: An instance of the eViz Figure class
-        """
-        # If nrows and ncols are not provided, determine them based on the configuration
-        if nrows is None or ncols is None:
-            if config_manager.compare and not config_manager.compare_diff:
-                # For side-by-side comparison, use 1x2 layout
-                nrows, ncols = 1, 2
-            elif config_manager.compare_diff:
-                # For comparison with difference, use layout from config
-                nrows, ncols = config_manager.input_config._comp_panels
-            else:
-                # For single plots, use 1x1 layout
-                nrows, ncols = 1, 1
-        
-        return Figure(config_manager, plot_type, nrows=nrows, ncols=ncols)
-
     def get_gs_geometry(self):
         if self.gs:
             return self.gs.get_geometry()
@@ -401,7 +354,7 @@ class Figure(mfigure.Figure):
         plt.show(*args, **kwargs)
         # Any custom post-show processing
 
-    def get_projection(self, projection=None):
+    def get_projection(self, projection=None) -> ccrs.Projection | None:
         """Get projection parameter."""
         # Default values for extent and central coordinates
         extent = [-180, 180, -90, 90]  # global default
@@ -486,7 +439,7 @@ class Figure(mfigure.Figure):
                 self._ax_opts['is_diff_field'] = True
                 self._ax_opts['add_extra_field_type'] = True
 
-    def init_ax_opts(self, field_name):
+    def init_ax_opts(self, field_name) -> Dict[str, Any]:
         """Initialize map options for a given field."""
         plot_type = "polar" if self.plot_type.startswith("po") else self.plot_type[:2]
         spec = self.config_manager.spec_data.get(field_name, {}).get(f"{plot_type}plot", {})
@@ -587,27 +540,7 @@ class Figure(mfigure.Figure):
         plt.sca(last_axes)
         return cbar
 
-    @property
-    def projection(self) -> ccrs.Projection:
-        return self._projection
-
-    @property
-    def frame_params(self):
-        return self._frame_params
-
-    @property
-    def subplots(self):
-        return self._subplots
-
-    @property
-    def use_cartopy(self):
-        return self._use_cartopy
-
-    @property
-    def ax_opts(self):
-        return self._ax_opts
-
-    def update_ax_opts(self, field_name, ax, pid, level=None):
+    def update_ax_opts(self, field_name, ax, pid, level=None) -> Dict[str, Any]:
         """ Set (or reset) some map options
 
         Parameters:
@@ -959,3 +892,28 @@ class Figure(mfigure.Figure):
         # Make sure top margin is adjusted
         self.subplots_adjust(top=0.9)
         return self.suptitle(text, **kwargs)
+
+    @property
+    def logger(self) -> logging.Logger:
+        return logging.getLogger(__name__)
+
+    @property
+    def projection(self) -> ccrs.Projection:
+        return self._projection
+
+    @property
+    def frame_params(self):
+        return self._frame_params
+
+    @property
+    def subplots(self):
+        return self._subplots
+
+    @property
+    def use_cartopy(self):
+        return self._use_cartopy
+
+    @property
+    def ax_opts(self):
+        return self._ax_opts
+

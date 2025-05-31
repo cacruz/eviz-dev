@@ -18,7 +18,6 @@ import glob
 from PIL import Image
 
 from numpy import e
-from matplotlib.offsetbox import (OffsetImage, TextArea, AnchoredOffsetbox, VPacker)
 import eviz.lib.utils as u
 from eviz.lib.utils import timer
 
@@ -127,16 +126,13 @@ def create_gif(config):
             ic_files = glob.glob(os.path.join(img_path, ic_file_pattern))
 
             if ic_files:
-                # Remove the first matching IC file
                 ic_file_to_remove = ic_files[0]
                 logger.debug(f"Removing IC file: {ic_file_to_remove}")
                 os.remove(ic_file_to_remove)
 
-                # Remove it from the files list as well
                 if ic_file_to_remove in files:
                     files.remove(ic_file_to_remove)
                 else:
-                    # If not found by exact match, find by basename
                     ic_basename = os.path.basename(ic_file_to_remove)
                     files = [f for f in files if os.path.basename(f) != ic_basename]
             else:
@@ -597,15 +593,14 @@ def colorbar(mappable):
     return cbar
 
 
-def add_logo(fig):
+def add_logo(fig) -> None:
     """
     Adds image logo to figure, positioned at the top left
     
     Parameters:
-        fig: The matplotlib Figure object
+        fig: The eviz Figure object
     """
     try:
-        # Try multiple possible paths to find the logo
         logo_paths = [
             'docs/static/ASTG_logo_simple.png',
             'eviz/lib/_static/ASTG_logo.png',
@@ -624,23 +619,20 @@ def add_logo(fig):
             logger.warning("Could not find logo file in any of the expected locations")
             return
             
-        # Get figure dimensions
         fig_width, fig_height = fig.get_size_inches() * fig.dpi
         
         # Calculate logo dimensions (make it about 10% of the figure width)
         # Using smaller size for top left corner placement
         logo_height, logo_width = logo.shape[:2]
-        scale_factor = (fig_width * 0.10) / logo_width  # Reduced from 0.15 to 0.10
+        scale_factor = (fig_width * 0.10) / logo_width
         new_width = int(logo_width * scale_factor)
         new_height = int(logo_height * scale_factor)
         
-        # Resize logo if needed
         if scale_factor != 1.0:
             try:
                 from PIL import Image
                 import numpy as np
                 
-                # Convert to PIL Image, resize, and convert back to numpy array
                 pil_img = Image.fromarray((logo * 255).astype(np.uint8))
                 pil_img = pil_img.resize((new_width, new_height), Image.LANCZOS)
                 logo = np.array(pil_img) / 255.0
@@ -650,9 +642,8 @@ def add_logo(fig):
         
         # Position in the top left with padding
         x_pos = 10  # 10 pixels from left edge
-        y_pos = fig_height*2.6   #- new_height - 10  # 10 pixels from top edge
+        y_pos = fig_height*2.6
         
-        # Add the logo to the figure
         fig.figimage(logo, x_pos, y_pos, zorder=3, alpha=0.7)
         logger.debug(f"Added logo at position ({x_pos}, {y_pos}) with dimensions {new_width}x{new_height}")
         
@@ -660,16 +651,15 @@ def add_logo(fig):
         logger.error(f"Error adding logo: {e}")
 
 
-def add_logo_ax(fig, desired_width_ratio=0.10):
+def add_logo_ax(fig, desired_width_ratio=0.10) -> None:
     """
     Adds image logo to figure using axes coordinates with proper scaling
     
     Parameters:
-        fig: The matplotlib Figure object
+        fig: The eviz Figure object
         desired_width_ratio: Width of logo as a fraction of figure width (default: 0.10 or 10%)
     """
     try:
-        # Try multiple possible paths to find the logo
         logo_paths = [
             'docs/static/ASTG_logo_simple.png',
             'eviz/lib/_static/ASTG_logo.png',
@@ -688,12 +678,10 @@ def add_logo_ax(fig, desired_width_ratio=0.10):
             logger.warning("Could not find logo file")
             return
         
-        # Get logo dimensions and calculate aspect ratio
         logo_height, logo_width = logo.shape[:2]
         aspect_ratio = logo_height / logo_width
         
-        # Calculate width and height in figure coordinates (0-1)
-        width_in_fig_coords = desired_width_ratio  # e.g., 10% of figure width
+        width_in_fig_coords = desired_width_ratio
         height_in_fig_coords = width_in_fig_coords * aspect_ratio
         
         # Position in top left with small margins
@@ -701,15 +689,10 @@ def add_logo_ax(fig, desired_width_ratio=0.10):
         top = 0.98   # 2% from top edge
         bottom = top - height_in_fig_coords
         
-        # Create a new axes for the logo
         logo_ax = fig.add_axes([left, bottom, width_in_fig_coords, height_in_fig_coords], zorder=10)
         logo_ax.imshow(logo)
-        logo_ax.axis('off')  # Hide axes
-        
-        # Make background transparent
+        logo_ax.axis('off')  # Hide axes        
         logo_ax.patch.set_alpha(0.0)
-        
-        logger.debug(f"Added logo with dimensions {width_in_fig_coords:.2f} x {height_in_fig_coords:.2f} in figure coordinates")
         
     except Exception as e:
         logger.error(f"Error adding logo: {e}")
