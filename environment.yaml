@@ -40,8 +40,8 @@ dependencies:
   - sphinx-autobuild >=2024.4.16
   - sphinx-autodoc-typehints
   - sphinx-design
+  - myst-parser
   - conda-forge::scikit-learn=1.5.2
   - pip:
       - sphinx_rtd_theme
-      - myst-parser
       - sphinxcontrib-mermaid
