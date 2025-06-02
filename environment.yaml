@@ -43,4 +43,5 @@ dependencies:
   - conda-forge::scikit-learn=1.5.2
   - pip:
       - sphinx_rtd_theme
+      - myst-parser
       - sphinxcontrib-mermaid
