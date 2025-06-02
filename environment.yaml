@@ -1,6 +1,4 @@
-# Hard requirements for all aspects of eviz code development, i.e. tools and tests
 # Use this environment for development under MAC-OS and Linux
-# WARNING: Keep this up-to-date!
 name: viz
 channels:
   - conda-forge
@@ -46,4 +44,4 @@ dependencies:
   - pip:
       - sphinx_rtd_theme
       - myst-parser
-
+      - sphinxcontrib-mermaid
