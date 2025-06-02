@@ -63,9 +63,10 @@ jobs:
           fi
           
       - name: Build documentation
-        run: |
+        run: 
           eval "$(conda shell.bash hook)"
           conda activate viz
+          pip install myst-parser
           sphinx-build -b html docs public
 
       - name: Upload documentation
