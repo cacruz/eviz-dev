@@ -1,5 +1,5 @@
 import logging
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 import matplotlib as mpl
 import matplotlib.figure as mfigure
 import matplotlib.pyplot as plt
@@ -354,7 +354,7 @@ class Figure(mfigure.Figure):
         plt.show(*args, **kwargs)
         # Any custom post-show processing
 
-    def get_projection(self, projection=None) -> ccrs.Projection | None:
+    def get_projection(self, projection=None) -> Optional[ccrs.Projection]:
         """Get projection parameter."""
         # Default values for extent and central coordinates
         extent = [-180, 180, -90, 90]  # global default

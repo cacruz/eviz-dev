@@ -11,6 +11,7 @@ eviz.lib.data.sources.base module
    :members:
    :show-inheritance:
    :undoc-members:
+   :noindex:
 
 eviz.lib.data.sources.csv module
 --------------------------------
