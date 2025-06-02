@@ -237,7 +237,7 @@ class DataProcessor:
         except Exception as e:
             self.logger.error(f"Error converting {species_name}: {e}")
 
-    def _process_dataset(self, dataset: xr.Dataset) -> xr.Dataset | None:
+    def _process_dataset(self, dataset: xr.Dataset) -> Optional[xr.Dataset]:
         """Process a Xarray dataset.
 
         Args:

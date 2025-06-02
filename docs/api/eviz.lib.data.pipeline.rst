@@ -19,6 +19,7 @@ eviz.lib.data.pipeline.pipeline module
    :members:
    :show-inheritance:
    :undoc-members:
+   :noindex:
 
 eviz.lib.data.pipeline.processor module
 ---------------------------------------

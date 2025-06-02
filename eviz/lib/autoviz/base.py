@@ -2,6 +2,7 @@ import glob
 import os
 import logging
 import time
+from typing import Optional
 from argparse import Namespace
 from dataclasses import dataclass, field
 from eviz.lib.config.config import Config
@@ -19,7 +20,7 @@ from eviz.models.root_factory import (GribFactory, GriddedFactory,
 from eviz.lib.config.paths_config import PathsConfig
 
 
-def get_config_path_from_env() -> str | None:
+def get_config_path_from_env() -> Optional[str]:
     """
     This function checks for the EVIZ_CONFIG_PATH environment variable, which should
     point to the directory containing source-specific configuration files.
