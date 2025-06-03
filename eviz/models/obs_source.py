@@ -1,12 +1,8 @@
 from dataclasses import dataclass
 import logging
 import warnings
-import numpy as np
-import pandas as pd
-import xarray as xr
 from eviz.lib.data.pipeline.processor import DataProcessor
 from eviz.models.source_base import GenericSource
-from eviz.lib.data.utils import apply_conversion, apply_mean
 import eviz.lib.autoviz.utils as pu
 from eviz.lib.autoviz.figure import Figure
 
