@@ -102,19 +102,18 @@ class Omi(Root):
         """Process non-xy and non-polar plot types."""
         self.config_manager.level = None
         time_level_config = self.config_manager.ax_opts.get('time_lev', 0)
-        tc_dim = self.config_manager.get_model_dim_name('tc') or 'time'
+        tc_dim = self.config_manager.get_model_dim_name('tc')
 
         if tc_dim in ds_short.dims:
             num_times = ds_short[tc_dim].size
-            # TODO: Handle yx_plot Gifs
-            time_levels = range(num_times) if time_level_config == 'all' else [
+            time_level = range(num_times) if time_level_config == 'all' else [
                 time_level_config]
         else:
-            time_levels = [0]
+            time_level = [0]
 
         field_to_plot = self._get_field_to_plot(ds_short, field_name, file_index,
                                                 plot_type, figure,
-                                                time_level=time_level_config)
+                                                time_level=time_level)
         if field_to_plot:
             plotter.single_plots(self.config_manager, field_to_plot=field_to_plot)
             pu.print_map(self.config_manager, plot_type, self.config_manager.findex,
@@ -126,10 +125,6 @@ class Omi(Root):
         self.config_manager.ax_opts = figure.init_ax_opts(field_name)
 
         data2d, lats, lons = extract_field_with_coords(ds_short, field_name)
-
-        # self.config_manager.ax_opts['extent'] = [-180, 180, -90, 90]
-        # self.config_manager.ax_opts['central_lon'] = np.mean(self.config_manager.ax_opts['extent'][:2])
-        # self.config_manager.ax_opts['central_lat'] = np.mean(self.config_manager.ax_opts['extent'][2:])
 
         if 'xt' in plot_type or 'tx' in plot_type:
             return data2d, None, None, field_name, plot_type, file_index, figure

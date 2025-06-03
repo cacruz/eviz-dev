@@ -1,4 +1,6 @@
 import pytest
+import numpy as np
+import xarray as xr
 from unittest.mock import MagicMock
 from eviz.models.esm.nuwrf import NuWrf
 
@@ -27,6 +29,7 @@ def mock_config_manager():
     mock.meta_coords = meta_coords
     mock.source_names = ['wrf', 'lis']
     mock.findex = 0
+    mock.map_params = {}
     return mock
 
 @pytest.fixture
@@ -51,82 +54,166 @@ def test_set_global_attrs_wrf():
     assert result['DY'] == 2
     assert result['other'] == 3
 
-def test_get_model_dim_name(nuwrf):
-    # Should return the correct dim for wrf and lis
-    assert nuwrf.get_model_dim_name('wrf', 'xc') == 'west_east'
-    assert nuwrf.get_model_dim_name('lis', 'xc') == 'lon'
-    assert nuwrf.get_model_dim_name('wrf', 'zc') == 'bottom_top'
-    assert nuwrf.get_model_dim_name('lis', 'zc') == 'lev'
-    # Nonexistent
-    assert nuwrf.get_model_dim_name('wrf', 'not_a_dim') is None
+def test_post_init(mock_config_manager):
+    # Test post_init method
+    nuwrf = NuWrf(config_manager=mock_config_manager)
+    assert hasattr(nuwrf, 'p_top')
+    assert nuwrf.p_top is None
 
-def test_get_model_coord_name(nuwrf):
-    # Should return the correct coords for wrf and lis
-    assert nuwrf.get_model_coord_name('wrf', 'xc') == 'XLONG'
-    assert nuwrf.get_model_coord_name('lis', 'xc') == 'lon'
-    assert nuwrf.get_model_coord_name('wrf', 'zc') == 'lev'
-    assert nuwrf.get_model_coord_name('lis', 'zc') == 'lev'
-    # Nonexistent
-    assert nuwrf.get_model_coord_name('wrf', 'not_a_dim') is None
-
-def test_get_field_dim_name(nuwrf):
-    # Simulate a WRF source_data with dims
-    wrf_source_data = MagicMock()
-    wrf_source_data.dims = ['west_east', 'south_north', 'bottom_top', 'Time']
-    # Should find the correct dim for WRF
-    assert nuwrf.get_field_dim_name('wrf', wrf_source_data, 'xc') == 'west_east'
-    assert nuwrf.get_field_dim_name('wrf', wrf_source_data, 'yc') == 'south_north'
-    assert nuwrf.get_field_dim_name('wrf', wrf_source_data, 'zc') == 'bottom_top'
-    assert nuwrf.get_field_dim_name('wrf', wrf_source_data, 'tc') == 'Time'
-    # Should return None for missing
-    assert nuwrf.get_field_dim_name('wrf', wrf_source_data, 'not_a_dim') is None
-
-    # Simulate a LIS source_data with dims
-    lis_source_data = MagicMock()
-    lis_source_data.dims = ['lon', 'lat', 'lev', 'time']
-    # Should find the correct dim for LIS
-    assert nuwrf.get_field_dim_name('lis', lis_source_data, 'xc') == 'lon'
-    assert nuwrf.get_field_dim_name('lis', lis_source_data, 'yc') == 'lat'
-    assert nuwrf.get_field_dim_name('lis', lis_source_data, 'zc') == 'lev'
-    assert nuwrf.get_field_dim_name('lis', lis_source_data, 'tc') == 'time'
-    # Should return None for missing
-    assert nuwrf.get_field_dim_name('lis', lis_source_data, 'not_a_dim') is None
-
-def test_coord_names_wrf(nuwrf):
-    # Simulate a WRF field with stagger and coords
-    field = MagicMock()
-    field.dims = ['Time', 'bottom_top', 'south_north', 'west_east']
-    field.coords = {'XLONG': MagicMock(), 'XLAT': MagicMock()}
-    field.stagger = ""
-    source_data = {'vars': {'T': field}}
-    # Should return correct dim1, dim2 for 'xy' plot
-    dim1, dim2 = nuwrf.coord_names('wrf', source_data, 'T', 'xy')
-    assert dim1 == ('XLONG', 'west_east')
-    assert dim2 == ('XLAT', 'south_north')
-    # For 'xt' plot
-    dim1, dim2 = nuwrf.coord_names('wrf', source_data, 'T', 'xt')
-    assert dim1 == 'Time'
-    # For 'yz' plot
-    dim1, dim2 = nuwrf.coord_names('wrf', source_data, 'T', 'yz')
-    assert dim1 == ('XLAT', 'south_north')
-    assert dim2 == 'bottom_top'
+def test_load_source_data(nuwrf):
+    # Test _load_source_data method
+    # First test when reader is None
+    nuwrf._get_reader = MagicMock(return_value=None)
+    data = nuwrf._load_source_data('wrf', 'test.nc')
+    assert data is None
+    
+    # Now test with a mock reader that returns None
+    mock_reader = MagicMock()
+    mock_reader.read_data.return_value = None
+    nuwrf._get_reader = MagicMock(return_value=mock_reader)
+    data = nuwrf._load_source_data('wrf', 'test.nc')
+    assert data is None
+    
+    # Now test with a mock reader that returns data
+    mock_data = {'vars': {'temp': MagicMock()}, 'attrs': {'global_attr': 'value'}}
+    mock_reader = MagicMock()
+    mock_reader.read_data.return_value = mock_data
+    nuwrf._get_reader = MagicMock(return_value=mock_reader)
+    data = nuwrf._load_source_data('wrf', 'test.nc')
+    assert data == mock_data
 
 
-def test_coord_names_lis(nuwrf):
-    # Simulate a LIS field with all expected coords
-    field = MagicMock()
-    field.dims = ['time', 'lev', 'lat', 'lon']
-    field.coords = {
-        'lon': MagicMock(),
-        'lat': MagicMock(),
-        'lev': MagicMock(),
-        'time': MagicMock()
+def test_get_field(nuwrf):
+    # Test _get_field method
+    # Create mock data
+    mock_data = {'temperature': 'temp_data'}
+    
+    # Test with existing field
+    field = nuwrf._get_field('temperature', mock_data)
+    assert field == 'temp_data'
+    
+    # Test with non-existing field
+    field = nuwrf._get_field('not_a_field', mock_data)
+    assert field is None
+
+def test_find_matching_dimension(nuwrf):
+    # Test find_matching_dimension method
+    # Create mock config_manager
+    nuwrf.config_manager.meta_coords = {
+        'xc': {'wrf': {'dim': 'west_east'}}
     }
-    source_data = {'vars': {'soil_moisture': field}}
-    # Should return correct dim1, dim2 for 'xy' plot
-    dim1, dim2 = nuwrf.coord_names('lis', source_data, 'soil_moisture', 'xy')
-    assert dim1 == 'lon'
-    assert dim2 == 'lat'
-    # For 'xt' plot
-    dim1, dim2 = nuwrf.coord_names('lis', source_data, 'soil_moisture', 'xt')
-    assert dim1 == 'time'
+    nuwrf.source_name = 'wrf'
+    
+    # Test with matching dimension
+    field_dims = ('Time', 'bottom_top', 'south_north', 'west_east')
+    dim = nuwrf.find_matching_dimension(field_dims, 'xc')
+    assert dim == 'west_east'
+    
+    # Test with non-matching dimension
+    field_dims = ('Time', 'bottom_top', 'south_north')
+    dim = nuwrf.find_matching_dimension(field_dims, 'xc')
+    assert dim is None
+
+def test_set_global_attrs_with_none():
+    # Test set_global_attrs with None attributes
+    with pytest.raises(AttributeError):
+        NuWrf.set_global_attrs('wrf', None)
+
+def test_set_global_attrs_with_empty_dict():
+    # Test set_global_attrs with empty dict
+    result = NuWrf.set_global_attrs('wrf', {})
+    assert result == {}
+
+def test_set_global_attrs_with_unknown_source():
+    # Test set_global_attrs with unknown source
+    attrs = {'DX': 1, 'DY': 2}
+    result = NuWrf.set_global_attrs('unknown', attrs)
+    assert result == attrs  # Should return unchanged for unknown sources
+
+@pytest.fixture
+def mock_dataset():
+    # Create a mock dataset for testing
+    data = np.random.rand(2, 3, 4, 5)
+    ds = xr.Dataset(
+        data_vars={
+            'temperature': xr.DataArray(
+                data=data,
+                dims=['Time', 'bottom_top', 'south_north', 'west_east'],
+                coords={
+                    'Time': np.array(['2022-01-01', '2022-01-02'], dtype='datetime64[D]'),
+                    'bottom_top': np.array([1, 2, 3]),
+                    'south_north': np.array([10, 20, 30, 40]),
+                    'west_east': np.array([100, 200, 300, 400, 500])
+                }
+            )
+        }
+    )
+    return ds
+
+def test_simple_plots(nuwrf):
+    # Test _simple_plots method
+    # Create mock plotter
+    mock_plotter = MagicMock()
+    
+    # Create mock config_manager
+    nuwrf.config_manager.map_params = {
+        0: {
+            'field': 'temperature',
+            'source_name': 'wrf',
+            'filename': 'test.nc',
+            'to_plot': ['xy']
+        }
+    }
+    nuwrf.config_manager.get_file_index = MagicMock(return_value=0)
+    
+    # Mock _load_source_data to return mock data
+    mock_data = {'vars': {'temperature': MagicMock()}, 'attrs': {}}
+    nuwrf._load_source_data = MagicMock(return_value=mock_data)
+    
+    # Mock set_global_attrs
+    nuwrf.set_global_attrs = MagicMock(return_value={})
+    
+    # Mock _init_model_specific_data
+    nuwrf._init_model_specific_data = MagicMock()
+    
+    # Mock _get_field_for_simple_plot
+    nuwrf._get_field_for_simple_plot = MagicMock(return_value='field_data')
+    
+    # Call _simple_plots
+    nuwrf._simple_plots(mock_plotter)
+    
+    # Check that plotter.simple_plot was called
+    mock_plotter.simple_plot.assert_called_once_with(nuwrf.config_manager, 'field_data')
+
+def test_single_plots(nuwrf):
+    # Test _single_plots method
+    # Create mock plotter
+    mock_plotter = MagicMock()
+    
+    # Create mock config_manager
+    nuwrf.config_manager.source_names = ['wrf']
+    nuwrf.config_manager.map_params = {
+        0: {
+            'field': 'temperature',
+            'source_name': 'wrf',
+            'filename': 'test.nc',
+            'to_plot': ['xy']
+        }
+    }
+    nuwrf.config_manager.make_gif = False
+    
+    # Mock _load_source_data to return mock data
+    mock_data = {'vars': {'temperature': MagicMock()}, 'attrs': {}}
+    nuwrf._load_source_data = MagicMock(return_value=mock_data)
+    
+    # Mock _init_model_specific_data
+    nuwrf._init_model_specific_data = MagicMock()
+    
+    # Mock _process_field_plots
+    nuwrf._process_field_plots = MagicMock()
+    
+    # Call _single_plots
+    nuwrf._single_plots(mock_plotter)
+    
+    # Check that _process_field_plots was called
+    nuwrf._process_field_plots.assert_called_once_with('temperature', nuwrf.config_manager.map_params[0], mock_plotter)

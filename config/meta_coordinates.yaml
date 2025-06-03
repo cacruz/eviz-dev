@@ -11,9 +11,10 @@ xc:
     ccm: lon
     cf: lon
     gmi: longitude_dim
+    grib: lon,longitude,im
     gridded: lon,longitude,im
     airnow: Longitude
-    omi: longitude,Longitude,Long,long,lon
+    omi: Longitude,longitude,lon
     wrf:
         dim: west_east
         coords: XLONG,XLONG_U,XLONG_V
@@ -33,6 +34,7 @@ yc:
     ccm: lat
     cf: lat
     gmi: latitude_dim
+    grib: lat,latitude,jm
     gridded: lat,latitude,jm
     airnow: Latitude
     omi: Latitude,latitude,lat
@@ -55,6 +57,7 @@ zc:
     ccm: lev
     cf: lev
     gmi: eta_dim
+    grib: lev,level,levels,plev,lm,eta_dim
     gridded: lev,level,levels,plev,lm,eta_dim
     airnow: NA
     omi: NA
@@ -72,6 +75,7 @@ tc:
     ccm: time
     cf: time
     gmi: rec_dim
+    grib: time,Time
     gridded: time,rec_dim,ntimemax
     airnow: time
     omi: Time

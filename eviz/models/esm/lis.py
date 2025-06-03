@@ -178,7 +178,7 @@ class Lis(NuWrf):
     def get_field_dim_name(self, source_data, dim_name, field_name):
         d = source_data['vars'][field_name]
         field_dims = list(d.dims) 
-        names = self.get_model_dim_name(self.source_name, dim_name).split(',')
+        names = self.get_model_dim_name(dim_name).split(',')
         common = list(set(names).intersection(field_dims))
         dim = list(common)[0] if common else None
         return dim
@@ -189,7 +189,7 @@ class Lis(NuWrf):
             return None
 
         data2d = data_array.squeeze()
-        tc_dim = self.config_manager.get_model_dim_name('tc')
+        tc_dim = self.get_model_dim_name('tc')
         zc_dim = self.find_matching_dimension(data_array.dims, 'zc')
 
         if zc_dim in data2d.dims:

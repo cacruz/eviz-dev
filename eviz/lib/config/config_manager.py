@@ -209,7 +209,6 @@ class ConfigManager:
         # Return True if this is a profile or time series and overlay is requested
         return (is_profile or plot_type == 'xt') and self.overlay
 
-
     def get_file_format(self, file_path: str) -> Optional[str]:
         """
         Get the format for a specific file.
@@ -236,56 +235,18 @@ class ConfigManager:
             return self.input_config._file_format_mapping
         return {}
 
-
     def get_model_dim_name(self, dim_name):
         """
         Get model-specific dimension name associated with the source as defined
         in meta_coordinates.yaml.
 
         Args:
-            dim_name (str): The dimension name to look up
+            dim_name (str): The generic dimension name to look up.
 
         Returns:
-            str or None: The model-specific dimension name, or None if not found
+            str or None: The model-specific dimension name, or None if not found.
         """
-        return self._get_model_dim_name(dim_name)
-
-    def _get_model_dim_name(self, dim_name):
-        """
-        Get the model-specific dimension name.
-
-        Args:
-            dim_name (str): Gridded dimension name
-
-        Returns:
-            str or None: Model-specific dimension name if available
-        """
-        if self.ds_index >= len(self.source_names):
-            self.logger.debug(
-                f"ds_index {self.ds_index} out of bounds for source_names {self.source_names}")
-            return None
-
         source = self.source_names[self.ds_index]
-
-        if dim_name not in self.meta_coords or source not in self.meta_coords.get(
-                dim_name, {}):
-            self.logger.debug(
-                f"No meta_coords mapping for dimension '{dim_name}' and source '{source}'")
-            return None
-
-        coords = self.meta_coords[dim_name][source]
-
-        if isinstance(coords, str) and ',' not in coords:
-            self.logger.debug(
-                f"Found direct mapping for '{dim_name}' in source '{source}': '{coords}'")
-            return coords
-
-        coord_candidates = []
-        if isinstance(coords, str):
-            coord_candidates = coords.split(',')
-        elif isinstance(coords, dict) and 'dim' in coords:
-            coord_candidates = [coords.get('dim')]
-
         file_path = self._get_current_file_path(source)
         if not file_path:
             return None
@@ -294,15 +255,25 @@ class ConfigManager:
         if not data_source:
             return None
 
-        available_dims = self._get_available_dimensions(data_source)
-        if not available_dims:
+        dims = self._get_available_dimensions(data_source)
+
+        if dim_name not in self.meta_coords:
+            return None
+        if source not in self.meta_coords[dim_name]:
             return None
 
-        self.logger.debug(f"Coordinate candidates for '{dim_name}': {coord_candidates}")
-        for coord in coord_candidates:
-            if coord and coord in available_dims:
-                self.logger.debug(f"Found matching coordinate: {coord}")
-                return coord
+        if source in ['wrf', 'lis']:
+            coords = self.meta_coords[dim_name][source].get('dim', '')
+        else:
+            coords = self.meta_coords[dim_name][source]
+
+        if ',' in coords:
+            coords_list = [c.strip() for c in coords.split(',')]
+            for item in coords_list:
+                if item in dims:
+                    return item
+        else:
+            return coords if coords in dims else None
 
         return None
 

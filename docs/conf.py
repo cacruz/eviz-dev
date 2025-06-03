@@ -15,10 +15,12 @@ import os
 import sys
 from unittest.mock import MagicMock
 
+
 class Mock(MagicMock):
     @classmethod
     def __getattr__(cls, name):
         return MagicMock()
+
 
 # Mock modules that might cause import errors
 MOCK_MODULES = ['xarray', 'numpy', 'pandas']
@@ -31,7 +33,6 @@ autodoc_type_aliases = {
 
 # Add autodoc_typehints_format to handle modern type annotations
 autodoc_typehints_format = 'fully-qualified'
-
 
 sys.path.insert(0, os.path.abspath('.'))
 sys.path.insert(0, os.path.abspath('..'))
@@ -130,6 +131,4 @@ autodoc_mock_imports = [
     'PIL',
 ]
 
-suppress_warnings = ['autosectionlabel.*']
-# Ignore duplicate object descriptions
-suppress_warnings.append('app.add_directive')
+suppress_warnings = ['autosectionlabel.*', 'app.add_directive']

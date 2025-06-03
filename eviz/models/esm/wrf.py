@@ -1,3 +1,4 @@
+import os
 import sys
 from dataclasses import dataclass
 import numpy as np
@@ -177,7 +178,7 @@ class Wrf(NuWrf):
 
         self.logger.debug(f"Selecting time level: {time_lev}")
         data2d = eval(
-            f"d.isel({self.get_model_dim_name(self.source_name, 'tc')}=time_lev)")
+            f"d.isel({self.get_model_dim_name('tc')}=time_lev)")
         data2d = data2d.squeeze()
 
         zname = self.find_matching_dimension(d.dims, 'zc')
@@ -196,7 +197,7 @@ class Wrf(NuWrf):
     def _get_yz(self, d, time_lev=0):
         """ Create YZ slice from N-dim data field"""
         d = d.squeeze()
-        if self.get_model_dim_name(self.source_name, 'tc') in d.dims:
+        if self.get_model_dim_name('tc') in d.dims:
             num_times = np.size(d.Time)
             if self.config_manager.ax_opts['tave'] and num_times > 1:
                 self.logger.debug(f"Averaging over {num_times} time levels.")
@@ -210,9 +211,9 @@ class Wrf(NuWrf):
         stag = d.stagger
         if stag == "X":
             data2d = data2d.mean(
-                dim=self.get_model_dim_name(self.source_name, 'xc') + "_stag")
+                dim=self.get_model_dim_name('xc') + "_stag")
         else:
-            data2d = data2d.mean(dim=self.get_model_dim_name(self.source_name, 'xc'))
+            data2d = data2d.mean(dim=self.get_model_dim_name('xc'))
         return apply_conversion(self.config_manager, data2d, d.name)
 
     def _get_xt(self, d, time_lev, level=None):
@@ -472,3 +473,13 @@ class Wrf(NuWrf):
 
         # If we can't find the source name, default to 'wrf' since we're in the Wrf class!
         return 'wrf'
+
+    def _plot_dest(self, name):
+        if self.config_manager.print_to_file:
+            output_fname = name + "." + self.config_manager.print_format
+            filename = os.path.join(self.config_manager.output_dir, output_fname)
+            plt.savefig(filename, bbox_inches='tight')
+        else:
+            plt.tight_layout()
+            plt.show()
+

@@ -1,7 +1,7 @@
 import os
 import streamlit as st
 import pandas as pd
-from subprocess import run, PIPE
+from subprocess import run
 from json import load
 from pathlib import Path
 from jinja2 import Template

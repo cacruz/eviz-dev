@@ -81,8 +81,11 @@ class YAMLParser:
             current_inputs = input_dict.get('inputs', [])
             current_outputs = input_dict.get('outputs', {})
             
-            compare_ids = get_nested_key(self.app_data, ['for_inputs', 'compare', 'ids'], default='')
-            compare_diff_ids = get_nested_key(self.app_data, ['for_inputs', 'compare_diff', 'ids'], default='')
+            compare_ids = get_nested_key(self.app_data, ['for_inputs', 'compare', 'ids'],
+                                         default='')
+            compare_diff_ids = get_nested_key(self.app_data,
+                                              ['for_inputs', 'compare_diff', 'ids'],
+                                              default='')
             
             if isinstance(compare_ids, str) and compare_ids:
                 compare_ids = compare_ids.split(',')
@@ -97,7 +100,7 @@ class YAMLParser:
             for i, input_entry in enumerate(current_inputs):
                 filename = os.path.join(input_entry.get('location', ''), input_entry.get('name', ''))
                 exp_id = input_entry.get('exp_id', '')
-                exp_name = input_entry.get('exp_name', exp_id)  # Use exp_id as fallback for exp_name
+                exp_name = input_entry.get('exp_name', exp_id)
                 source_name = input_dict.get('source', '')
                 source_reader = self.app_data.get(source_name, None)
                 description = input_entry.get('description', input_dict.get('description', ''))
@@ -110,7 +113,8 @@ class YAMLParser:
                 if not current_to_plot and 'variables' in input_entry:
                     current_to_plot = {}
                     for var_name, var_config in input_entry['variables'].items():
-                        plot_type = var_config.get('plot_type', 'xy')  # Default to xy if not specified
+                        # Default to xy if not specified
+                        plot_type = var_config.get('plot_type', 'xy')
                         current_to_plot[var_name] = plot_type
                 
                 if not current_to_plot:

@@ -15,14 +15,6 @@ class ConfigurationAdapter:
     pipeline. It interprets configuration settings, loads and processes data according to
     those settings, and provides access to the resulting data sources and datasets.
     
-    The adapter handles:
-    - Loading data from file paths specified in the configuration
-    - Associating metadata with data sources (e.g., experiment names/IDs)
-    - Managing the data pipeline for processing and transforming data
-    - Integrating multiple datasets when specified in the configuration
-    - Creating composite fields by combining variables with operations
-    - Providing access to individual data sources and the integrated dataset
-    
     Attributes:
         config_manager: The configuration manager containing app_data, input_config, etc.
         data_sources: Dictionary mapping file paths to their corresponding DataSource objects
@@ -80,7 +72,6 @@ class ConfigurationAdapter:
                 except TypeError as e:
                     # If process_file doesn't accept file_format, try without it
                     if "got an unexpected keyword argument 'file_format'" in str(e):
-                        self.logger.warning("DataPipeline.process_file() doesn't accept file_format parameter. Using without it.")
                         data_source = self.config_manager._pipeline.process_file(
                             file_path, 
                             model_name=source_name,
@@ -98,8 +89,6 @@ class ConfigurationAdapter:
             except Exception as e:
                 self.logger.error(f"Error loading data from {file_path}: {e}")
 
-        
-        # If integration is enabled, integrate the datasets
         if hasattr(self.config_manager.input_config, '_integrate') and self.config_manager.input_config._integrate:
             self.logger.debug("Integrating datasets")
             try:
@@ -111,7 +100,6 @@ class ConfigurationAdapter:
             except Exception as e:
                 self.logger.error(f"Error integrating datasets: {e}")
                 
-        # If composite is enabled, integrate variables
         if hasattr(self.config_manager.input_config, '_composite') and self.config_manager.input_config._composite:
             self.logger.debug("Creating composite field")
             try:

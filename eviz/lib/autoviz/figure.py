@@ -832,7 +832,6 @@ class Figure(mfigure.Figure):
         Apply matplotlib rcParams from a config dictionary.
 
         Parameters:
-            config (dict): Dictionary with a nested 'rc_params' key.
             default_params (dict, optional): Base set of rcParams to start with.
         """
         if default_params is None:

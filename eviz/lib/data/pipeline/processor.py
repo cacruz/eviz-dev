@@ -1,6 +1,6 @@
 import logging
 from dataclasses import dataclass
-from typing import Optional, Tuple
+from typing import Optional
 import numpy as np
 from scipy.interpolate import interp1d
 import xarray as xr
@@ -53,10 +53,17 @@ class DataProcessor:
         if not data_source.validate_data():
             self.logger.error("Data validation failed")
             return data_source
-        data_source.dataset = self._process_dataset(data_source.dataset)
-        # Apply advanced processing if config_manager is available
+        
+        # Process the dataset with the model_name from the data source
+        data_source.dataset = self._process_dataset(data_source.dataset, data_source.model_name)
+        
+        # Extract metadata after processing
+        # self._extract_metadata(data_source.dataset, data_source)
+        
+        # TODO: remove this
         if self.config_manager:
             data_source = self._apply_geos_processing(data_source)
+        
         return data_source
 
     def _apply_geos_processing(self, data_source: DataSource) -> DataSource:
@@ -237,7 +244,7 @@ class DataProcessor:
         except Exception as e:
             self.logger.error(f"Error converting {species_name}: {e}")
 
-    def _process_dataset(self, dataset: xr.Dataset) -> Optional[xr.Dataset]:
+    def _process_dataset(self, dataset: xr.Dataset, model_name: str = None) -> Optional[xr.Dataset]:
         """Process a Xarray dataset.
 
         Args:
@@ -249,62 +256,183 @@ class DataProcessor:
         if dataset is None:
             return None
 
-        dataset = self._standardize_coordinates(dataset)
+        dataset = self._standardize_coordinates(dataset, model_name)
         dataset = self._handle_missing_values(dataset)
         dataset = self._apply_unit_conversions(dataset)
 
         return dataset
 
-    def _standardize_coordinates(self, dataset: xr.Dataset) -> xr.Dataset:
-        """Standardize coordinate names and values.
 
+    def _extract_metadata(self, dataset: xr.Dataset, data_source: DataSource) -> None:
+        """Extract metadata from the dataset and store it in the data source.
+        
         Args:
-            dataset: The dataset to process
-
-        Returns:
-            The processed dataset
+            dataset: The dataset to extract metadata from
+            data_source: The data source to store metadata in
         """
-        coord_mappings = {
-            'latitude': 'lat',
-            'longitude': 'lon',
-            'level': 'lev',
-            'height': 'lev',
-            'depth': 'lev',
-            'pressure': 'lev',
-            'time_bnds': 'time_bounds',
-            'lat_bnds': 'lat_bounds',
-            'lon_bnds': 'lon_bounds',
-        }
+        if dataset is None:
+            return
+                
+        # Extract global attributes
+        data_source.metadata["global_attrs"] = dict(dataset.attrs)
+        
+        # Extract dimension information
+        data_source.metadata["dimensions"] = {dim: dataset.dims[dim] for dim in dataset.dims}
+        
+        # Extract variable information
+        data_source.metadata["variables"] = {}
+        for var_name, var in dataset.data_vars.items():
+            data_source.metadata["variables"][var_name] = {
+                "dims": var.dims,
+                "attrs": dict(var.attrs),
+                "dtype": str(var.dtype),
+                "shape": var.shape
+            }
+            
+            # Add some basic statistics for numerical variables
+            try:
+                if hasattr(var, 'dtype') and np.issubdtype(var.dtype, np.number):
+                    data_source.metadata["variables"][var_name]["stats"] = {
+                        "min": float(var.min().values),
+                        "max": float(var.max().values),
+                        "mean": float(var.mean().values),
+                        "std": float(var.std().values)
+                    }
+            except Exception as e:
+                self.logger.debug(f"Could not compute statistics for {var_name}: {e}")
+
+    def _standardize_coordinates(self, dataset: xr.Dataset, model_name: str = None) -> xr.Dataset:
+        """
+        Standardize dimension names in the dataset.
+        
+        This method renames dimensions to standard names (lon, lat, lev, time)
+        regardless of their original names in the source data.
+        
+        Args:
+            dataset: xarray Dataset to rename dimensions in
+            
+        Returns:
+            xarray Dataset with standardized dimension names
+        """
+        self.logger.info(f"Standardizing coordinates for model name {model_name}")
+
+        if model_name in ['wrf', 'lis']:
+            # Skip renaming for these special models
+            return dataset
+
+        available_dims = list(dataset.dims)
+
+        xc = self._get_model_dim_name('xc', available_dims, model_name)
+        yc = self._get_model_dim_name('yc', available_dims, model_name)
+        zc = self._get_model_dim_name('zc', available_dims, model_name)
+        tc = self._get_model_dim_name('tc', available_dims, model_name)
 
         rename_dict = {}
-        for old_name, new_name in coord_mappings.items():
-            if old_name in dataset.coords and new_name not in dataset.coords:
-                rename_dict[old_name] = new_name
+
+        # Add mappings only for dimensions that exist and need renaming
+        if xc and xc != 'lon' and xc in available_dims:
+            rename_dict[xc] = 'lon'
+
+        if yc and yc != 'lat' and yc in available_dims:
+            rename_dict[yc] = 'lat'
+
+        if zc and zc != 'lev' and zc in available_dims:
+            rename_dict[zc] = 'lev'
+
+        if tc and tc != 'time' and tc in available_dims:
+            rename_dict[tc] = 'time'
 
         if rename_dict:
-            dataset = dataset.rename(rename_dict)
-            self.logger.debug(f"Renamed coordinates: {rename_dict}")
-
-        # Ensure latitude is in the range [-90, 90]
-        if 'lat' in dataset.coords:
-            lat_values = dataset.coords['lat'].values
-            if np.any(lat_values > 90) or np.any(lat_values < -90):
-                self.logger.warning("Latitude values outside the range [-90, 90]")
-                lat_values = np.clip(lat_values, -90, 90)
-                dataset = dataset.assign_coords(lat=lat_values)
-                self.logger.debug("Normalized latitude values to the range [-90, 90]")
-
-        # Ensure longitude is in the range [-180, 180] or [0, 360]
-        if 'lon' in dataset.coords:
-            lon_values = dataset.coords['lon'].values
-            if np.any(lon_values > 360) or np.any(lon_values < -180):
-                self.logger.warning(
-                    "Longitude values outside the range [-180, 180] or [0, 360]")
-                lon_values = ((lon_values + 180) % 360) - 180
-                dataset = dataset.assign_coords(lon=lon_values)
-                self.logger.debug("Normalized longitude values to the range [-180, 180]")
+            self.logger.debug(f"Renaming dimensions: {rename_dict}")
+            try:
+                dataset = dataset.rename(rename_dict)
+            except Exception as e:
+                self.logger.error(f"Error renaming dimensions: {e}")
 
         return dataset
+
+    def _get_model_dim_name(self, gridded_dim_name, available_dims=None, model_name=None, config_manager=None):
+        """
+        Get the model-specific dimension name for a gridded dimension.
+        
+        Args:
+            gridded_dim_name (str): Gridded dimension name (e.g., 'xc', 'yc', 'zc', 'tc')
+            available_dims (list, optional): List of available dimensions in the dataset
+            model_name (str, optional): Name of the model
+            config_manager (ConfigManager, optional): Configuration manager to use
+            
+        Returns:
+            str or None: The model-specific dimension name if found, otherwise None
+        """        
+        cm = config_manager or self.config_manager
+        
+        if not cm:
+            self.logger.warning("No config_manager available to get dimension mappings")
+            return None
+            
+        if not hasattr(cm, 'meta_coords'):
+            self.logger.warning("No meta_coords available in config_manager")
+            return None
+            
+        meta_coords = cm.meta_coords
+
+        if gridded_dim_name not in meta_coords:
+            self.logger.warning(f"No mapping found for dimension '{gridded_dim_name}'")
+            return None
+        
+        self.logger.debug(f"Looking for model '{model_name}' in meta_coords['{gridded_dim_name}']")
+        self.logger.debug(f"Available models for {gridded_dim_name}: {list(meta_coords[gridded_dim_name].keys())}")
+        
+        if not model_name or model_name not in meta_coords[gridded_dim_name]:
+            # Try to use a default model if available
+            if 'gridded' in meta_coords[gridded_dim_name]:
+                self.logger.debug(f"Using 'gridded' mapping for model '{model_name}' and dimension '{gridded_dim_name}'")
+                model_name = 'gridded'
+            else:
+                self.logger.warning(f"No mapping found for model '{model_name}' and dimension '{gridded_dim_name}'")
+                return None
+        
+        coords = meta_coords[gridded_dim_name][model_name]
+            
+        if isinstance(coords, list):
+            for coord in coords:
+                if available_dims and coord in available_dims:
+                    return coord
+            return coords[0] if coords else None
+        
+        elif isinstance(coords, dict):
+            if 'dim' in coords:
+                if available_dims:
+                    if ',' in coords['dim']:
+                        dim_candidates = coords['dim'].split(',')
+                        for dim in dim_candidates:
+                            if dim in available_dims:
+                                return dim
+                        return None
+                    # Single dimension name
+                    return coords['dim'] if coords['dim'] in available_dims else None
+                return coords['dim']
+            
+            if 'coords' in coords:
+                # For coordinate names
+                return coords['coords']    
+            return None
+        
+        elif isinstance(coords, str):
+            # If coords is a string, handle comma-separated list of possible dimension names
+            if ',' in coords:
+                coord_candidates = coords.split(',')
+                if available_dims:
+                    for coord in coord_candidates:
+                        if coord in available_dims:
+                            return coord
+                    # No matching dimension found
+                    return None
+                return coord_candidates[0]
+            return coords
+        
+        self.logger.warning(f"Unexpected type for coords: {type(coords)}")
+        return None
 
     def _handle_missing_values(self, dataset: xr.Dataset) -> xr.Dataset:
         """Handle missing values in the dataset.
@@ -370,130 +498,199 @@ class DataProcessor:
 
         return dataset
 
-    def regrid(self, d1: xr.DataArray, d2: xr.DataArray,
-               dim1: str, dim2: str) -> Tuple[xr.DataArray, xr.DataArray]:
-        """Regrid two data arrays to a common grid.
+    def regrid(self,
+        d1: xr.DataArray,
+        d2: xr.DataArray,
+        dims: tuple = None,
+        method: str = "linear",
+        extrapolate: bool = True
+    ) -> xr.DataArray:
+        """
+        Regrid one of the two input arrays to match the other's grid, based on resolution.
+
+        Args:
+            d1: First data array.
+            d2: Second data array.
+            dims: Tuple of (dim1, dim2), the coordinate dimension names.
+            method: Interpolation method ('linear', 'nearest').
+            extrapolate: Whether to allow extrapolation.
+
+        Returns:
+            Regridded version of d2 that matches d1's grid.
+        """
+        if dims is None:
+
+            common_dims = set(d1.dims).intersection(set(d2.dims))
+            if len(common_dims) >= 2:
+                dims = list(common_dims)[:2]
+            else:
+                dims = (d1.dims[0], d1.dims[1])
+        
+        dim1, dim2 = dims
+        
+        self.logger.debug(f"Regridding with dimensions {dim1}, {dim2}")
+        self.logger.debug(f"d1 shape: {d1.shape}, dims: {d1.dims}")
+        self.logger.debug(f"d2 shape: {d2.shape}, dims: {d2.dims}")
+        
+        if len(d1.dims) != len(d2.dims):
+            self.logger.debug("Arrays have different number of dimensions")
+            
+            if len(d1.dims) < len(d2.dims):
+                self.logger.debug(f"d1 has fewer dimensions ({len(d1.dims)}) than d2 ({len(d2.dims)})")
+                
+                extra_dims = [dim for dim in d2.dims if dim not in d1.dims]
+                
+                for dim in extra_dims:
+                    if dim in d2.dims and d2[dim].size > 0:
+                        d2 = d2.isel({dim: 0})
+                
+                d2 = d2.squeeze()
+                
+            else:
+                self.logger.debug(f"d2 has fewer dimensions ({len(d2.dims)}) than d1 ({len(d1.dims)})")
+                
+                extra_dims = [dim for dim in d1.dims if dim not in d2.dims]
+                
+                for dim in extra_dims:
+                    if dim in d1.dims and d1[dim].size > 0:
+                        d1 = d1.isel({dim: 0})
+                
+                d1 = d1.squeeze()
+        
+        self.logger.debug("After dimension adjustment:")
+        self.logger.debug(f"d1 shape: {d1.shape}, dims: {d1.dims}")
+        self.logger.debug(f"d2 shape: {d2.shape}, dims: {d2.dims}")
+        
+        # Compute resolution for each dimension to determine which grid to use as target
+        def mean_resolution(da, dim):
+            coords = da.coords[dim].values
+            return np.mean(np.abs(np.diff(coords)))
+        
+        try:
+            d1_res = mean_resolution(d1, dim1) * mean_resolution(d1, dim2)
+            d2_res = mean_resolution(d2, dim1) * mean_resolution(d2, dim2)
+            
+            # Regrid d2 to match d1's grid (we always want to keep d1's grid)
+            d2_on_d1 = self._regrid(d2, d1, dims=(dim1, dim2), method=method, extrapolate=extrapolate)
+            
+            self.logger.debug(f"Regridded d2 shape: {d2_on_d1.shape}, dims: {d2_on_d1.dims}")
+            
+            if d1.shape != d2_on_d1.shape:
+                self.logger.warning(f"Shape mismatch after regridding: d1 {d1.shape} vs d2_on_d1 {d2_on_d1.shape}")
+                # Try to align the arrays
+                d1, d2_on_d1 = xr.align(d1, d2_on_d1, join='inner')                
+                self.logger.debug(f"After alignment: d1 {d1.shape}, d2_on_d1 {d2_on_d1.shape}")
+            
+            return d2_on_d1
+            
+        except Exception as e:
+            self.logger.error(f"Error during regridding: {e}")
+            self.logger.warning("Returning dummy array with zeros")
+            return xr.zeros_like(d1)
+
+    def _regrid(self,
+        source: xr.DataArray,
+        target: xr.DataArray,
+        dims: tuple,
+        method: str = "linear",
+        extrapolate: bool = True
+    ) -> xr.DataArray:
+        """
+        Regrid a data array to match the grid of another.
+
+        Args:
+            source: The data array to regrid.
+            target: The target grid (another data array).
+            dims: Tuple of (dim1, dim2) representing the coordinate names (e.g., ('lat', 'lon')).
+            method: Interpolation method ('linear', 'nearest').
+            extrapolate: Whether to extrapolate beyond source bounds.
+
+        Returns:
+            Regridded DataArray.
+        """
+        dim1, dim2 = dims
+        
+        if dim1 not in source.dims or dim2 not in source.dims:
+            self.logger.error(f"Source array missing required dimensions {dim1} or {dim2}")
+            return xr.zeros_like(target)
+            
+        if dim1 not in target.dims or dim2 not in target.dims:
+            self.logger.error(f"Target array missing required dimensions {dim1} or {dim2}")
+            return xr.zeros_like(target)
+        
+        new_coords = {
+            dim1: target.coords[dim1].values,
+            dim2: target.coords[dim2].values
+        }
+        
+        for coord_name, coord_values in source.coords.items():
+            if coord_name not in [dim1, dim2] and coord_name not in new_coords:
+                new_coords[coord_name] = coord_values
+        
+        try:
+            temp = source.interp({dim2: target.coords[dim2]}, method=method)
+            result = temp.interp({dim1: target.coords[dim1]}, method=method)
+            result = result.transpose(*target.dims)
+            return result
+            
+        except Exception as e:
+            self.logger.error(f"Error during interpolation: {e}")
+            return xr.zeros_like(target)
+
+    @staticmethod
+    def _interp_1d(
+        y_src: np.ndarray,
+        x_src: np.ndarray,
+        x_dest: np.ndarray,
+        method: str = "linear",
+        extrapolate: bool = True
+    ) -> np.ndarray:
+        fill = "extrapolate" if extrapolate else None
+        return interp1d(x_src, y_src, kind=method, fill_value=fill, bounds_error=not extrapolate)(x_dest)
+
+    def compute_difference(self,
+        d1: xr.DataArray,
+        d2: xr.DataArray,
+        method: str = "difference"
+    ) -> xr.DataArray:
+        """
+        Compute the difference between two data arrays.
         
         Args:
             d1: First data array
             d2: Second data array
-            dim1: Name of first dimension
-            dim2: Name of second dimension
+            method: Method to compute difference ('difference', 'percd', 'percc', 'ratio')
             
         Returns:
-            Tuple of regridded data arrays
+            DataArray containing the computed difference
         """
-        da1_size = d1.size
-        da2_size = d2.size
-        if da1_size < da2_size:
-            d2 = self._regrid(d2, d1, dim1, dim2, regrid_dims=(1, 0))
-            d2 = self._regrid(d2, d1, dim1, dim2, regrid_dims=(0, 1))
-        elif da1_size > da2_size:
-            d1 = self._regrid(d1, d2, dim1, dim2, regrid_dims=(1, 0))
-            d1 = self._regrid(d1, d2, dim1, dim2, regrid_dims=(0, 1))
-        elif da1_size == da2_size:
-            d1 = self._regrid(d1, d2, dim1, dim2, regrid_dims=(1, 0))
-            d1 = self._regrid(d1, d2, dim1, dim2, regrid_dims=(0, 1))
-            d2 = self._regrid(d2, d1, dim1, dim2, regrid_dims=(1, 0))
-            d2 = self._regrid(d2, d1, dim1, dim2, regrid_dims=(0, 1))
-
-        compute_diff = True
-        if compute_diff:
-            if self.config_manager.ax_opts['add_extra_field_type']:
-                data_diff = self._compute_diff_type(d1, d2).squeeze()
+        self.logger.debug(f"Computing difference using method: {method}")
+        self.logger.debug(f"d1 shape: {d1.shape}, dims: {d1.dims}")
+        self.logger.debug(f"d2 shape: {d2.shape}, dims: {d2.dims}")
+        
+        if d1.shape != d2.shape:
+            self.logger.warning(f"Shape mismatch in compute_difference: d1 {d1.shape} vs d2 {d2.shape}")
+            
+            try:
+                d1, d2 = xr.align(d1, d2, join='inner')
+                self.logger.debug(f"After alignment: d1 {d1.shape}, d2 {d2.shape}")
+            except Exception as e:
+                self.logger.error(f"Error aligning arrays: {e}")
+                return xr.zeros_like(d1)
+        
+        try:
+            if method == "percd":
+                # Percent difference
+                return abs(d1 - d2) / ((d1 + d2) / 2.0) * 100
+            elif method == "percc":
+                # Percent change
+                return ((d1 - d2) / d2) * 100
+            elif method == "ratio":
+                # Ratio
+                return d1 / d2
             else:
-                data_diff = (d1 - d2).squeeze()
-            coords = data_diff.coords
-            return data_diff, coords[dim1].values, coords[dim2].values
-        else:
-            return d1, d2
-
-    def _regrid(self, ref_arr: xr.DataArray, target: xr.DataArray,
-                dim1_name: str, dim2_name: str,
-                regrid_dims: Tuple[int, int]) -> xr.DataArray:
-        """Regrid a data array to match a target grid along specified dimensions.
-        
-        Args:
-            ref_arr: Array to regrid
-            target: Target grid
-            dim1_name: Name of first dimension
-            dim2_name: Name of second dimension
-            regrid_dims: Tuple indicating which dimensions to regrid
-            
-        Returns:
-            Regridded data array
-        """
-        new_arr = ref_arr
-
-        if regrid_dims[0]:
-            new_arr = xr.apply_ufunc(
-                self._interp, new_arr,
-                input_core_dims=[[dim2_name]],
-                output_core_dims=[[dim2_name]],
-                exclude_dims={dim2_name},
-                kwargs={'x_src': ref_arr[dim2_name],
-                        'x_dest': target.coords[dim2_name].values,
-                        'fill_value': "extrapolate"},
-                dask='allowed',
-                vectorize=True
-            )
-            new_arr.coords[dim2_name] = target.coords[dim2_name]
-
-        elif regrid_dims[1]:
-            new_arr = xr.apply_ufunc(
-                self._interp, new_arr,
-                input_core_dims=[[dim1_name]],
-                output_core_dims=[[dim1_name]],
-                exclude_dims={dim1_name},
-                kwargs={'x_src': ref_arr[dim1_name],
-                        'x_dest': target.coords[dim1_name].values,
-                        'fill_value': "extrapolate"},
-                dask='allowed',
-                vectorize=True
-            )
-            new_arr.coords[dim1_name] = target.coords[dim1_name]
-
-        return new_arr
-
-    def _compute_diff_type(self, d1, d2):
-        """ Compute difference between two fields based on specified type
-
-        Difference is specified in ``app`` file. It can be a percent difference, a percent change
-        or a ratio difference.
-
-        Parameters:
-            d1 (ndarray) : A 2D array of an ESM field
-            d2 (ndarray) : A 2D array of an ESM field
-
-        Returns:
-            Difference of the two fields
-        """
-        field_diff = None
-        if self.config_manager.extra_diff_plot == "percd":  # percent diff
-            num = abs(d1 - d2)
-            den = (d1 + d2) / 2.0
-            field_diff = (num / den) * 100.
-        elif self.config_manager.extra_diff_plot == "percc":  # percent change
-            field_diff = d1 - d2
-            field_diff = field_diff / d2
-            field_diff = field_diff * 100
-        elif self.config_manager.extra_diff_plot == "ratio":
-            field_diff = d1 / d2
-
-        return field_diff
-
-    @staticmethod
-    def _interp(y_src: np.ndarray, x_src: np.ndarray, x_dest: np.ndarray,
-                **kwargs) -> np.ndarray:
-        """Interpolate data to new coordinates.
-        
-        Args:
-            y_src: Source data values
-            x_src: Source coordinates
-            x_dest: Target coordinates
-            **kwargs: Additional arguments for interp1d
-            
-        Returns:
-            Interpolated data
-        """
-        return interp1d(x_src, y_src, **kwargs)(x_dest)
+                # Simple difference
+                return d1 - d2
+        except Exception as e:
+            self.logger.error(f"Error computing difference: {e}")
+            return xr.zeros_like(d1)

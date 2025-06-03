@@ -51,7 +51,7 @@ class DataPipeline:
         """
         self.logger = logging.getLogger(__name__)
         self.reader = DataReader(config_manager)
-        self.processor = DataProcessor()
+        self.processor = DataProcessor(config_manager)
         self.transformer = DataTransformer()
         self.integrator = DataIntegrator()
         self.data_sources = {}
@@ -128,7 +128,8 @@ class DataPipeline:
         """Integrate data sources into a single dataset.
         
         Args:
-            file_paths: List of paths to data files to integrate. If None, all data sources will be integrated.
+            file_paths: List of paths to data files to integrate. If None, all data sources
+                        will be integrated.
             integration_params: Parameters for data integration
             
         Returns:

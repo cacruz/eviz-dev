@@ -2,7 +2,6 @@ import os
 from dataclasses import dataclass
 import logging
 import matplotlib
-import matplotlib.pyplot as plt
 
 from eviz.lib.autoviz.plotter import SimplePlotter, ComparisonPlotter, SinglePlotter
 import eviz.lib.utils as u
@@ -177,11 +176,3 @@ class Root(AbstractRoot):
         """Generate comparison plots."""
         self.logger.info("Generating comparison plots")
 
-    def _plot_dest(self, name):
-        if self.config_manager.print_to_file:
-            output_fname = name + "." + self.config_manager.print_format
-            filename = os.path.join(self.config_manager.output_dir, output_fname)
-            plt.savefig(filename, bbox_inches='tight')
-        else:
-            plt.tight_layout()
-            plt.show()

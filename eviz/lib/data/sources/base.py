@@ -214,8 +214,7 @@ class DataSource(ABC):
             raise TypeError(f"'{self.__class__.__name__}' has no dataset loaded")
         
         return self.dataset[key]
-        
-        
+
     def _get_model_dim_name(self, gridded_dim_name, available_dims=None):
         """
         Get the model-specific dimension name for a gridded dimension.

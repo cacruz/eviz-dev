@@ -95,7 +95,7 @@ def apply_mean(config, d, level=None):
     return data2d.squeeze()
 
 
-def apply_zsum(config, data2d):
+def apply_zsum(data2d):
     """ Sum over vertical levels (column sum)"""
     data2d_zsum = data2d.sum(dim='lev')
     data2d_zsum.attrs = data2d.attrs.copy()

@@ -7,5 +7,5 @@ and support for various data sources. The models code contains specific implemen
 for supported data sources.
 """
 
-__version__ = "0.6.5"
+__version__ = "0.9"
 

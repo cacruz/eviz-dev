@@ -121,33 +121,6 @@ def get_project_root(anchor=".git"):
     return None
 
 
-def not_none(*args, default=None, **kwargs):
-    """
-    Return the first non-``None`` value. This is used with keyword arg aliases and
-    for setting default values. Use `kwargs` to issue warnings when multiple passed.
-    """
-    first = default
-    if args and kwargs:
-        raise ValueError("not_none can only be used with args or kwargs.")
-    elif args:
-        for arg in args:
-            if arg is not None:
-                first = arg
-                break
-    elif kwargs:
-        for name, arg in list(kwargs.items()):
-            if arg is not None:
-                first = arg
-                break
-        kwargs = {name: arg for name, arg in kwargs.items() if arg is not None}
-        if len(kwargs) > 1:
-            logger.warning(
-                f"Got conflicting or duplicate keyword arguments: {kwargs}. "
-                "Using the first keyword argument."
-            )
-    return first
-
-
 # ------------------------------
 # YAML Utility Functions
 # ------------------------------

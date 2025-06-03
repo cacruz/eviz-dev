@@ -321,35 +321,35 @@ class NuWrf(Gridded):
 
             for name in self.get_model_coord_name(source_name, 'xc').split(","):
                 if name in field.coords.keys():
-                    coords.append((name, self.get_model_dim_name(source_name, 'xc')+xsuf))
+                    coords.append((name, self.get_model_dim_name('xc')+xsuf))
                     break
 
             for name in self.get_model_coord_name(source_name, 'yc').split(","):
                 if name in field.coords.keys():
-                    coords.append((name, self.get_model_dim_name(source_name, 'yc')+ysuf))
+                    coords.append((name, self.get_model_dim_name('yc')+ysuf))
                     break
         else:
-            xc = self.get_model_dim_name(source_name, 'xc')
+            xc = self.get_model_dim_name('xc')
             if xc:
                 coords.append(xc)
-            yc = self.get_model_dim_name(source_name, 'yc')
+            yc = self.get_model_dim_name('yc')
             if yc:
                 coords.append(yc)
 
         if source_name == 'wrf':
-            zc = self.get_field_dim_name(source_name, field, 'zc')
+            zc = self.get_field_dim_name(field, 'zc')
             if zc:
                 coords.append(zc)
         else:
-            for name in self.get_model_dim_name(source_name, 'zc').split(","):
+            for name in self.get_model_dim_name('zc').split(","):
                 if hasattr(field, "coords") and name in field.coords.keys():
                     coords.append(name)
                     break
 
         if source_name == 'wrf':
-            tc = self.get_field_dim_name(source_name, field, 'tc')
+            tc = self.get_field_dim_name(field, 'tc')
         else:
-            tc = self.get_field_dim_name(source_name, field, 'tc')
+            tc = self.get_field_dim_name(field, 'tc')
 
         if tc:
             coords.append(tc)
@@ -378,9 +378,9 @@ class NuWrf(Gridded):
                 dim2 = coords[1]
         return dim1, dim2
 
-    def get_field_dim_name(self, source_name: str, source_data: dict, dim_name: str):
+    def get_field_dim_name(self, source_data: dict, dim_name: str):
         field_dims = list(source_data.dims)
-        model_dim = self.get_model_dim_name(source_name, dim_name)
+        model_dim = self.get_model_dim_name(dim_name)
         if not model_dim:
             return None
         names = model_dim.split(',')
@@ -388,12 +388,8 @@ class NuWrf(Gridded):
         dim = list(common)[0] if common else None
         return dim
 
-    def get_model_dim_name(self, source_name: str, dim_name: str):
-        try:
-            dim = self.config_manager.meta_coords[dim_name][source_name]['dim']
-            return dim
-        except KeyError:
-            return None
+    def get_model_dim_name(self, dim_name: str):
+        return self.config_manager.get_model_dim_name(dim_name=dim_name)
 
     def get_model_coord_name(self, source_name: str, dim_name: str):
         try:
@@ -405,7 +401,7 @@ class NuWrf(Gridded):
     def get_dd(self, source_name, source_data, dim_name, field_name):
         d = source_data['vars'][field_name]
         field_dims = d.dims
-        names = self.get_model_dim_name(source_name, dim_name)
+        names = self.get_model_dim_name(dim_name)
         for d in field_dims:
             if d in names:
                 return d

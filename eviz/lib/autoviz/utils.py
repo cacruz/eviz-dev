@@ -803,8 +803,10 @@ def archive(config, output_dir, event_stamp):
     """ Archive data for web results
 
     Parameters:
+        config (Config)
         output_dir (str) : Output directory to store images
         event_stamp (str) : Time stamp for archived web results
+
     """
     fs = [f for f in os.listdir(output_dir) if os.path.isfile(os.path.join(output_dir, f))]
     full_fs = [os.path.join(output_dir, f) for f in fs]
@@ -871,7 +873,8 @@ class FlexibleOOMFormatter(matplotlib.ticker.ScalarFormatter):
         if self._useMathText:
             self.format = r'$\mathdefault{%s}$' % self.format
 
-    def _custom_format(self, value, tick_number):
+    @staticmethod
+    def _custom_format(value, tick_number):
         if value != 0:
             exp = int(np.floor(np.log10(np.abs(value))))
             coeff = value / (10 ** exp)

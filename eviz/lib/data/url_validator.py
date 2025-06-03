@@ -1,4 +1,3 @@
-import logging
 import re
 from urllib.parse import urlparse
 
@@ -49,7 +48,3 @@ def is_opendap_url(url):
             return True
 
     return False
-
-
-def get_logger():
-    return logging.getLogger(__name__)

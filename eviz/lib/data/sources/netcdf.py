@@ -32,7 +32,6 @@ class NetCDFDataSource(DataSource):
         Load data from a NetCDF file or OpenDAP URL into an Xarray dataset.
         """
         self.logger.debug(f"Loading NetCDF data from {file_path}")
-
         try:
             # Check if it's a URL
             is_remote = is_url(file_path)
@@ -48,9 +47,9 @@ class NetCDFDataSource(DataSource):
                 files = [file_path]
 
             if is_remote:
-                self.logger.info(f"Loading remote data from URL: {file_path}")
+                self.logger.debug(f"Loading remote data from URL: {file_path}")
                 if is_opendap:
-                    self.logger.info(f"Detected OpenDAP URL: {file_path}")
+                    self.logger.debug(f"Detected OpenDAP URL: {file_path}")
                 dataset = xr.open_dataset(file_path, decode_cf=True, engine='netcdf4')
                 self.logger.debug(f"Loaded remote NetCDF data: {file_path}")
             elif len(files) == 1:
@@ -64,7 +63,7 @@ class NetCDFDataSource(DataSource):
                 for entry in self.config_manager.app_data.inputs:
                     if 'to_plot' in entry:
                         vars_to_keep.update(entry['to_plot'].keys())
-                self.logger.info(f"Variables to keep: {vars_to_keep}")
+                self.logger.debug(f"Variables to keep: {vars_to_keep}")
 
                 def drop_unneeded_vars(ds):
                     available = set(ds.data_vars)
@@ -100,11 +99,7 @@ class NetCDFDataSource(DataSource):
             else:
                 raise FileNotFoundError(f"No files found for pattern: {file_path}")
 
-            # Standardize dimension names
-            dataset = self._rename_dims(dataset)
-
             self.dataset = dataset
-            self._extract_metadata(dataset)
 
             # For URLs, use the last part of the path as the file name
             if is_remote:
@@ -134,26 +129,6 @@ class NetCDFDataSource(DataSource):
         except Exception as exc:
             self.logger.warning(
                 f"Failed to set up Dask client: {exc}. Continuing without parallel computation.")
-
-    def _extract_metadata(self, dataset: xr.Dataset) -> None:
-        """Extract metadata from the dataset.
-        
-        Args:
-            dataset: The dataset to extract metadata from
-        """
-        if dataset is None:
-            return
-
-        self.metadata["global_attrs"] = dict(dataset.attrs)
-        self.metadata["dimensions"] = {dim: dataset.dims[dim] for dim in dataset.dims}
-        self.metadata["variables"] = {}
-        for var_name, var in dataset.data_vars.items():
-            self.metadata["variables"][var_name] = {
-                "dims": var.dims,
-                "attrs": dict(var.attrs),
-                "dtype": str(var.dtype),
-                "shape": var.shape
-            }
 
     def get_dataset(self, file_name: str) -> Optional[xr.Dataset]:
         """Get a specific dataset by file name.
@@ -187,6 +162,8 @@ class NetCDFDataSource(DataSource):
         Returns:
             xarray Dataset with standardized dimension names
         """
+        self.logger.info("Renaming dimensions to standard names")
+
         if self.model_name in ['wrf', 'lis']:
             # Skip renaming for these special models
             return ds

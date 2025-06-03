@@ -624,6 +624,7 @@ class Gridded(Root):
 
         # Plot the comparison (difference)
         self.comparison_plot = True
+        self.config_manager.comparison_plot = True
         # For the comparison, we need to pass both datasets
         # The _process_comparison_plot method will need to handle this special case
         self._process_3x1_comparison_plot(plotter, file_index1, current_field_index,
@@ -652,6 +653,7 @@ class Gridded(Root):
 
         # Plot comparison in the bottom row
         self.comparison_plot = True
+        self.config_manager.comparison_plot = True
         # For the comparison, we need to pass both datasets
         self._process_2x2_comparison_plot(plotter, file_index1, current_field_index,
                                           field_name1, figure, [1, 0], 2,
@@ -668,9 +670,8 @@ class Gridded(Root):
                                           plot_type, level=level)
 
     def _process_3x1_comparison_plot(self, plotter, file_index, current_field_index,
-                                     field_name,
-                                     figure, ax_index, data_array, plot_type,
-                                     level=None):
+                                    field_name, figure, ax_index, data_array, plot_type,
+                                    level=None):
         """Process a comparison plot."""
         self.config_manager.findex = file_index
         self.config_manager.pindex = current_field_index
@@ -679,23 +680,37 @@ class Gridded(Root):
 
         if ax_index == 2:  # Third panel in 3x1 layout is the difference
             self.config_manager.ax_opts['is_diff_field'] = True
+        
         if ax_index == 2:
             # Compute and plot the difference field
             if len(self.data2d_list) == 2:
                 data2d1, data2d2 = self.data2d_list
                 proc = self.processor
                 dim1_name, dim2_name = self.config_manager.get_dim_names(plot_type)
+                
                 self.logger.debug(
                     f"Regridding {field_name} over {dim1_name} and {dim2_name} for difference plot")
-                diff_result, diff_x, diff_y = proc.regrid(data2d1, data2d2, dim1_name, dim2_name)
-                self.logger.debug(
-                    f"Diff data min/max: {diff_result.min().values}/{diff_result.max().values}")
-                if diff_result is None or diff_result[0] is None:
-                    self.logger.error("Regridding failed, cannot create difference plot")
-                    field_to_plot = None
-                else:
-                    field_to_plot = (diff_result, diff_x, diff_y, field_name, plot_type,
-                                     file_index, figure)
+                self.logger.debug(f"data2d1 shape: {data2d1.shape}, dims: {data2d1.dims}")
+                self.logger.debug(f"data2d2 shape: {data2d2.shape}, dims: {data2d2.dims}")
+                
+                # Regrid data2d2 to match data2d1's grid
+                try:
+                    # Regrid data2d2 to match data2d1's grid
+                    d2_on_d1 = proc.regrid(data2d1, data2d2, dims=(dim1_name, dim2_name))                    
+                    diff_result = proc.compute_difference(data2d1, d2_on_d1)
+                    
+                    field_to_plot = (diff_result, 
+                                    diff_result[dim1_name], 
+                                    diff_result[dim2_name], 
+                                    field_name, plot_type,
+                                    file_index, figure)
+                except Exception as e:
+                    self.logger.error(f"Error computing difference: {e}")
+                    field_to_plot = (xr.zeros_like(data2d1), 
+                                    data2d1[dim1_name], 
+                                    data2d1[dim2_name], 
+                                    field_name, plot_type,
+                                    file_index, figure)
             else:
                 self.logger.error("Not enough data for difference plot")
                 field_to_plot = None
@@ -714,9 +729,9 @@ class Gridded(Root):
             plotter.comparison_plots(self.config_manager, field_to_plot, level=level)
 
     def _process_2x2_comparison_plot(self, plotter, file_index, current_field_index,
-                                     field_name,
-                                     figure, gsi, ax_index, data_array, plot_type,
-                                     level=None):
+                                    field_name, figure, gsi, ax_index, data_array, plot_type,
+                                    level=None):
+        """Process a 2x2 comparison plot."""
         ax = figure.get_axes()
         self.config_manager.findex = file_index
         self.config_manager.pindex = current_field_index
@@ -733,31 +748,55 @@ class Gridded(Root):
                 self.config_manager.ax_opts['add_extra_field_type'] = True
 
         figure.set_ax_opts_diff_field(ax[ax_index])
+        
+        # Handle difference calculation for bottom row panels
         if isinstance(data_array, tuple):
             if len(self.data2d_list) == 2:
                 data2d1, data2d2 = self.data2d_list
                 proc = self.processor
                 dim1_name, dim2_name = self.config_manager.get_dim_names(plot_type)
+                
                 self.logger.debug(
                     f"Regridding {field_name} over {dim1_name} and {dim2_name} for difference plot")
-                diff_result, diff_x, diff_y = proc.regrid(data2d1, data2d2, dim1_name, dim2_name)
-                self.logger.debug(
-                    f"Diff data min/max: {diff_result.min().values}/{diff_result.max().values}")
-                if diff_result is None or diff_result[0] is None:
-                    self.logger.error("Regridding failed, cannot create difference plot")
-                    field_to_plot = None
-                else:
-                    field_to_plot = (diff_result, diff_x, diff_y, field_name, plot_type,
-                                     file_index, figure)
+                self.logger.debug(f"data2d1 shape: {data2d1.shape}, dims: {data2d1.dims}")
+                self.logger.debug(f"data2d2 shape: {data2d2.shape}, dims: {data2d2.dims}")
+                
+                try:
+                    # Regrid data2d2 to match data2d1's grid
+                    d2_on_d1 = proc.regrid(data2d1, data2d2, dims=(dim1_name, dim2_name))
+                    if self.config_manager.ax_opts['add_extra_field_type'] :
+                        diff_result = proc.compute_difference(data2d1, d2_on_d1, method=self.config_manager.extra_diff_plot)
+                    else:
+                        diff_result = proc.compute_difference(data2d1, d2_on_d1)
+                    
+                    self.logger.debug(
+                        f"Diff data min/max: {diff_result.min().values}/{diff_result.max().values}")
+                    
+                    # Create field_to_plot tuple with the difference result
+                    field_to_plot = (diff_result, 
+                                    diff_result[dim1_name], 
+                                    diff_result[dim2_name], 
+                                    field_name, plot_type,
+                                    file_index, figure)
+                                    
+                except Exception as e:
+                    self.logger.error(f"Error computing difference: {e}")
+                    # Create a dummy field with zeros if calculation fails
+                    field_to_plot = (xr.zeros_like(data2d1), 
+                                    data2d1[dim1_name], 
+                                    data2d1[dim2_name], 
+                                    field_name, plot_type,
+                                    file_index, figure)
             else:
                 self.logger.error("Not enough data for difference plot")
                 field_to_plot = None
         else:
+            # For the top row panels, plot as usual and store data for diff
             field_to_plot = self._get_field_to_plot_compare(data_array, field_name,
                                                             file_index,
                                                             plot_type, figure,
                                                             level=level)
-            if field_to_plot:
+            if field_to_plot and field_to_plot[0] is not None:
                 self.data2d_list.append(field_to_plot[0])
 
         if field_to_plot:
@@ -1020,13 +1059,6 @@ class Gridded(Root):
         """Prepare data for comparison plots, handling both global and regional domains."""
         dim1_name, dim2_name = self.config_manager.get_dim_names(plot_type)
         data2d = None
-
-        # Handle difference field for comparison plots
-        if self.config_manager.ax_opts.get('is_diff_field', False) and len(
-                self.data2d_list) >= 2:
-            proc = self.processor
-            data2d, x, y = proc.regrid(plot_type)
-            return data2d, x, y, self.field_names[0], plot_type, file_index, figure
 
         # Process single plots based on plot type
         if 'yz' in plot_type:

@@ -5,9 +5,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [1.0.0] - 2025-5-31
+## [0.9.0] - 2025-6-4
 
-This is a significant rewrite of v0.6.3. Though eVis's general idea and all 
+This is a significant rewrite of v0.6.3. Though eViz's general idea and all 
 the previous functionality is the same, the code structure is different.
 However, the API remains the same are the units tests are more numerous with
 about 45% code coverage. 
@@ -22,10 +22,11 @@ eviz can produce interactive plots.
      sources, factory (for sources), and a pipeline that defines the eviz 
      workflow.
   - The original config module (config.py) was broken down into more
-    manageable pieces including a configuration adpater to bridge the 
+    manageable pieces including a configuration adapter to bridge the 
     configuration with the pipeline.
 - Many unit tests (code coverage increased from ~25% to ~45%)
 - Minimum workable Grib class (and its corresponding grib data source option)
+  and meta coordinates.
 - Matplotlib rcParams options in specs file
 - Automatic OpenDAP support (when input is a URL)
 - Improved documentation
@@ -36,10 +37,12 @@ eviz can produce interactive plots.
 - The above refactoring fixed many bugs.
 - Improved metadump.py
 - Improved sviz/autoviz.py
+- Issues with regrid()
+- Coordinates standardization
 
 ### Removed
 - iViz code
-- The generic data source is now know as gridded to emphasize its 'nature'
+- The generic data source is now known as 'gridded' to emphasize its 'nature'
 - Class in const.py that relies on a module-replacement approach is replaced
   by a plain module for constants and another module for env-dependent values,
   as well as paths.

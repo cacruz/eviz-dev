@@ -305,7 +305,7 @@ class Grib(Gridded):
 
     def _get_data(self, field_name, ax_opts, pid):
         d = self.config_manager.readers[0].get_field(field_name, self.config_manager.findex)
-        return self._get_xy(d, field_name, level=0, time_lev=ax_opts['time_lev'])
+        return self._get_xy(d, field_name, time_lev=ax_opts['time_lev'])
 
     @staticmethod
     def __get_xy(d, name):

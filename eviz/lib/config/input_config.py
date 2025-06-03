@@ -28,7 +28,7 @@ class InputConfig:
     _use_trop_height: bool = False
     _use_sphum_conv: bool = False
     _file_reader_mapping: Dict[str, str] = field(default_factory=dict)
-    _file_format_mapping: Dict[str, str] = field(default_factory=dict) 
+    _file_format_mapping: Dict[str, str] = field(default_factory=dict)
     config_manager: Optional[Any] = None  # CC: Is this necessary?
 
     _overlay: bool = field(default=False, init=False)
@@ -56,7 +56,8 @@ class InputConfig:
         self._init_for_inputs()  # Initialize for_inputs parameters
 
     def _get_file_list(self):
-        """Get all specified input files from the `inputs` section of the AppData object."""
+        """ Get all specified input files from the `inputs` section of the AppData object.
+        """
         if not self.app_data.inputs:
             self.logger.error(
                 "The 'inputs' section in the AppData object is empty or missing.")
@@ -67,12 +68,12 @@ class InputConfig:
             filename = join_file_path(entry.get('location', ''), entry['name'])
             self.file_list[i] = entry
             self.file_list[i]['filename'] = filename
-            
+
             # Store the format if provided
             if 'format' in entry:
                 self._file_format_mapping[filename] = entry['format']
                 self.logger.debug(f"File format for {filename}: {entry['format']}")
-                
+
             self.logger.debug(f"file_list[{i}] = {self.file_list[i]}")
 
     def get_format_for_file(self, file_path: str) -> Optional[str]:
@@ -102,7 +103,8 @@ class InputConfig:
                 self.compare = False
                 self.compare_diff = False
 
-    def _create_data_source(self, file_path: str, source_name: str, reader_type: Optional[str] = None) -> DataSource:
+    def _create_data_source(self, file_path: str, source_name: str,
+                            reader_type: Optional[str] = None) -> DataSource:
         """
         Create a data source for the given file path and source name.
         
@@ -113,17 +115,17 @@ class InputConfig:
             
         Returns:
             DataSource: The created data source
-        """        
+        """
         factory = DataSourceFactory(self.config_manager)
         file_format = self._file_format_mapping.get(file_path)
-        
+
         return factory.create_data_source(
             file_path=file_path,
             model_name=source_name,
             reader_type=reader_type,
             file_format=file_format
         )
-    
+
     def _init_reader_structure(self):
         """Initialize the structure for multiple readers per source."""
         for source_name in self.source_names:
@@ -154,7 +156,8 @@ class InputConfig:
         return reader_mapping
 
     def _init_readers(self):
-        """Initialize readers based on file extensions, special cases, or explicit reader field."""
+        """ Initialize readers based on file extensions, special cases, or explicit reader field.
+        """
         self._init_reader_structure()
 
         file_reader_types = {}
@@ -167,9 +170,11 @@ class InputConfig:
             if explicit_format:
                 reader_type = self._get_reader_type_from_format(explicit_format)
                 self._file_format_mapping[file_path] = explicit_format
-                self.logger.debug(f"Using explicit format for {file_path}: {explicit_format} -> reader_type: {reader_type}")
+                self.logger.debug(
+                    f"Using explicit format for {file_path}: {explicit_format} -> reader_type: {reader_type}")
             else:
-                reader_type = self._get_reader_type_for_extension(file_path, explicit_reader)
+                reader_type = self._get_reader_type_for_extension(file_path,
+                                                                  explicit_reader)
 
             if reader_type:
                 file_reader_types[file_path] = reader_type
@@ -210,7 +215,7 @@ class InputConfig:
             str: The reader type identifier
         """
         format_lower = format_str.lower()
-        
+
         if format_lower in ['netcdf', 'nc', 'nc4']:
             return 'NetCDF'
         elif format_lower in ['csv', 'text', 'txt', 'dat']:
@@ -219,8 +224,8 @@ class InputConfig:
             return 'HDF5'
         elif format_lower in ['hdf4', 'hdf']:
             return 'HDF4'
-        elif format_lower in ['grib', 'grib2']: 
-            return 'GRIB' 
+        elif format_lower in ['grib', 'grib2']:
+            return 'GRIB'
         else:
             self.logger.warning(f"Unknown format: {format_str}, defaulting to NetCDF")
             return 'NetCDF'
@@ -274,20 +279,22 @@ class InputConfig:
             return 'CSV'
         elif file_extension in ['.h5', '.he5']:
             return 'HDF5'
-        elif file_extension == '.hdf': 
+        elif file_extension == '.hdf':
             return 'HDF4'
         elif file_extension.startswith('.wrf'):  # e.g., .wrf-arw, .wrf-arw-nmp
             return 'NetCDF'
         else:
             self.logger.warning(
-                f"Unrecognized extension: {file_extension} in {file_path}, attempting to infer type from name as a last resort.")
+                f"Unrecognized extension: {file_extension} in {file_path}, "
+                f"attempting to infer type from name as a last resort.")
             if any(x in path_lower for x in ['netcdf', 'nc']):
                 return 'NetCDF'
             elif any(x in path_lower for x in ['csv', 'data', 'txt']):
                 return 'CSV'
 
         self.logger.error(
-            f"Unsupported file extension: {file_extension} for file {file_path}. Defaulting to NetCDF.")
+            f"Unsupported file extension: {file_extension} for file {file_path}. "
+            f"Defaulting to NetCDF.")
         return 'NetCDF'
 
     def _determine_data_types(self) -> Dict[str, bool]:
@@ -358,7 +365,8 @@ class InputConfig:
 
         return None
 
-    def _get_reader(self, source_name: str, file_extension: str, reader_type: str = None) -> Any:
+    def _get_reader(self, source_name: str, file_extension: str,
+                    reader_type: str = None) -> Any:
         """
         Return the appropriate reader based on file extension using the factory.
 
@@ -371,7 +379,7 @@ class InputConfig:
             Any: An instance of the appropriate data source class.
         """
         dummy_path = f"dummy{file_extension}"
-        
+
         try:
             return self._create_data_source(
                 file_path=dummy_path,
@@ -383,11 +391,12 @@ class InputConfig:
             # Default to NetCDF for unrecognized extensions when WRF is involved
             if 'wrf' in source_name.lower():
                 self.logger.debug(
-                    f"Unrecognized extension '{file_extension}' for WRF source, defaulting to NetCDF reader")
+                    f"Unrecognized extension '{file_extension}' "
+                    f"for WRF source, defaulting to NetCDF reader")
                 return self._create_data_source("dummy.nc", source_name)
             else:
                 raise ValueError(f"Unsupported file extension: {file_extension}")
-            
+
     def _init_for_inputs(self) -> None:
         """Initialize parameters in the `for_inputs` section of the AppData object."""
         for_inputs = getattr(self.app_data, 'for_inputs', {})
@@ -406,7 +415,7 @@ class InputConfig:
         # Ensure compare and compare_diff are mutually exclusive
         if self._compare and self._compare_diff:
             self.logger.warning("Both 'compare' and 'compare_diff' are set to True. "
-                            "Setting 'compare' to False to make them mutually exclusive.")
+                                "Setting 'compare' to False to make them mutually exclusive.")
             self._compare = False
 
         if self._compare_diff:
@@ -438,19 +447,18 @@ class InputConfig:
             self._set_trop_height_file_list()  # Custom method for trop_height logic
 
         self.logger.debug(f"Initialized for_inputs with: "
-                        f"overlay={self._overlay}, "
-                        f"compare={self._compare}, "
-                        f"compare_diff={self._compare_diff}, "
-                        f"compare_exp_ids={self._compare_exp_ids}, "
-                        f"extra_diff_plot={self._extra_diff_plot}, "
-                        f"profile={self._profile}, "
-                        f"cmap={self._cmap}, "
-                        f"comp_panels={self._comp_panels}, "
-                        f"use_trop_height={self._use_trop_height}, "
-                        f"subplot_specs={self._subplot_specs}, "
-                        f"use_cartopy={self._use_cartopy}")
+                          f"overlay={self._overlay}, "
+                          f"compare={self._compare}, "
+                          f"compare_diff={self._compare_diff}, "
+                          f"compare_exp_ids={self._compare_exp_ids}, "
+                          f"extra_diff_plot={self._extra_diff_plot}, "
+                          f"profile={self._profile}, "
+                          f"cmap={self._cmap}, "
+                          f"comp_panels={self._comp_panels}, "
+                          f"use_trop_height={self._use_trop_height}, "
+                          f"subplot_specs={self._subplot_specs}, "
+                          f"use_cartopy={self._use_cartopy}")
 
-        
     def get_all_variables(self, source_name: str) -> Dict[str, Any]:
         """
         Get all available variables across all readers for a source.
