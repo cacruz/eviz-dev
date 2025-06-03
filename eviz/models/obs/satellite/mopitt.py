@@ -11,14 +11,14 @@ from dataclasses import dataclass, field
 
 from eviz.lib.autoviz.figure import Figure
 from eviz.lib.autoviz.utils import print_map
-from eviz.models.root import Root
+from eviz.models.source_base import GenericSource
 from eviz.lib.data.utils import apply_conversion
 
 warnings.filterwarnings("ignore")
 
 
 @dataclass
-class Mopitt(Root):
+class Mopitt(GenericSource):
     """ Define MOPITT satellite data and functions.
     """
     source_data: Any = None

@@ -7,13 +7,13 @@ import pandas as pd
 from eviz.lib.config.config import Config
 from dataclasses import dataclass, field
 
-from eviz.models.root import Root
+from eviz.models.source_base import GenericSource
 
 warnings.filterwarnings("ignore")
 
 
 @dataclass
-class Fluxnet(Root):
+class Fluxnet(GenericSource):
     """ Define Fluxnet inventory data and functions.
 
     Parameters:

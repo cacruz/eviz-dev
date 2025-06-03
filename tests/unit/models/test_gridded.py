@@ -1,7 +1,7 @@
 import numpy as np
 import xarray as xr
 from unittest.mock import MagicMock, patch
-from eviz.models.esm.gridded import Gridded
+from eviz.models.gridded_source import GriddedSource
 
 
 def make_config_manager(tc_name='time', zc_name='lev', xc_name='lon', yc_name='lat'):
@@ -27,20 +27,20 @@ def make_config_manager(tc_name='time', zc_name='lev', xc_name='lon', yc_name='l
 
 def test_get_xy_simple_basic():
     arr = xr.DataArray(np.random.rand(2, 3, 4), dims=('time', 'lev', 'lat'))
-    g = Gridded(config_manager=make_config_manager())
+    g = GriddedSource(config_manager=make_config_manager())
     result = g._get_xy_simple(arr)
     assert isinstance(result, xr.DataArray)
     assert result.ndim <= 2
 
 
 def test_get_xy_simple_none():
-    g = Gridded(config_manager=make_config_manager())
+    g = GriddedSource(config_manager=make_config_manager())
     assert g._get_xy_simple(None) is None
 
 
 def test_get_field_for_simple_plot_xy():
     arr = xr.DataArray(np.random.rand(2, 3, 4), dims=('time', 'lev', 'lat'))
-    g = Gridded(config_manager=make_config_manager())
+    g = GriddedSource(config_manager=make_config_manager())
     tup = g._get_field_for_simple_plot(arr, 'myfield', 'xy')
     assert tup is None
 
@@ -48,45 +48,45 @@ def test_get_field_for_simple_plot_xy():
 def test_get_data_source_delegates():
     cm = make_config_manager()
     cm.pipeline.get_data_source.return_value = "ds"
-    g = Gridded(config_manager=cm)
+    g = GriddedSource(config_manager=cm)
     assert g.get_data_source("foo") == "ds"
 
 
 def test_get_yz_simple_basic():
     arr = xr.DataArray(np.random.rand(2, 3, 4), dims=('time', 'lev', 'lon'))
-    g = Gridded(config_manager=make_config_manager())
+    g = GriddedSource(config_manager=make_config_manager())
     # Patch apply_conversion to just return its input
-    with patch('eviz.models.esm.gridded.apply_conversion', lambda cm, da, name: da):
+    with patch('eviz.models.gridded_source.apply_conversion', lambda cm, da, name: da):
         result = g._get_yz_simple(arr)
     assert isinstance(result, xr.DataArray)
 
 
 def test_get_field_for_simple_plot_graph():
     arr = xr.DataArray(np.random.rand(2, 3), dims=('x', 'y'))
-    g = Gridded(config_manager=make_config_manager())
+    g = GriddedSource(config_manager=make_config_manager())
     tup = g._get_field_for_simple_plot(arr, 'myfield', 'graph')
     assert tup is None
 
 
 def test_get_field_for_simple_plot_none():
-    g = Gridded(config_manager=make_config_manager())
+    g = GriddedSource(config_manager=make_config_manager())
     assert g._get_field_for_simple_plot(None, 'myfield', 'xy') is None
 
 
 def test_get_field_for_simple_plot_badtype():
     arr = xr.DataArray(np.random.rand(2, 3), dims=('x', 'y'))
-    g = Gridded(config_manager=make_config_manager())
+    g = GriddedSource(config_manager=make_config_manager())
     assert g._get_field_for_simple_plot(arr, 'myfield', 'badtype') is None
 
 
 def test_get_yz_simple_none():
-    g = Gridded(config_manager=make_config_manager())
+    g = GriddedSource(config_manager=make_config_manager())
     assert g._get_yz_simple(None) is None
 
 
 def test_get_yz_simple_missing_dim():
     arr = xr.DataArray(np.random.rand(2, 3), dims=('time', 'lat'))
-    g = Gridded(config_manager=make_config_manager())
+    g = GriddedSource(config_manager=make_config_manager())
     result = g._get_yz_simple(arr)
     # Should return a 1D array over 'lat'
     assert isinstance(result, xr.DataArray)
@@ -95,7 +95,7 @@ def test_get_yz_simple_missing_dim():
 
 def test_get_yz_simple_zonal_mean_missing_dim():
     arr = xr.DataArray(np.random.rand(2, 3), dims=('lev', 'lat'))
-    g = Gridded(config_manager=make_config_manager())
+    g = GriddedSource(config_manager=make_config_manager())
     g.config_manager.get_model_dim_name = lambda x: {'xc': 'lon', 'tc': 'time', 'zc': 'lev'}.get(x)
     result = g._get_yz_simple(arr)
     # Should return a 2D array over ('lev', 'lat')
@@ -104,5 +104,5 @@ def test_get_yz_simple_zonal_mean_missing_dim():
 
 
 def test_logger_property():
-    g = Gridded(config_manager=make_config_manager())
+    g = GriddedSource(config_manager=make_config_manager())
     assert hasattr(g.logger, 'info')

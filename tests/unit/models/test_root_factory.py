@@ -1,7 +1,7 @@
 import pytest
-from eviz.models.root_factory import (
-    GriddedFactory, GeosFactory, WrfFactory, LisFactory, AirnowFactory,
-    OmiFactory, MopittFactory, LandsatFactory, FluxnetFactory, CrestFactory, RootFactory
+from eviz.models.source_factory import (
+    GriddedSourceFactory, GeosFactory, WrfFactory, LisFactory, AirnowFactory,
+    OmiFactory, MopittFactory, LandsatFactory, FluxnetFactory, CrestFactory, BaseSourceFactory
 )
 from unittest.mock import MagicMock
 
@@ -15,7 +15,7 @@ ABSTRACT_FACTORIES = {
 
 
 @pytest.mark.parametrize("factory_cls,expected_cls_name", [
-    (GriddedFactory, "Gridded"),
+    (GriddedSourceFactory, "GriddedSource"),
     (GeosFactory, "Geos"),
     (WrfFactory, "Wrf"),
     (LisFactory, "Lis"),
@@ -39,6 +39,6 @@ def test_factory_creates_correct_type(factory_cls, expected_cls_name):
 
 def test_root_factory_not_implemented():
     cm = MagicMock()
-    rf = RootFactory()
+    rf = BaseSourceFactory()
     with pytest.raises(NotImplementedError):
         rf.create_root_instance(cm)

@@ -4,7 +4,7 @@ from dataclasses import dataclass
 import numpy as np
 import pandas as pd
 from matplotlib import pyplot as plt
-from eviz.models.esm.gridded import Gridded
+from eviz.models.gridded_source import GriddedSource
 from eviz.lib.autoviz.figure import Figure
 from eviz.lib.autoviz.utils import print_map, create_gif
 
@@ -36,7 +36,7 @@ _TIME_COORD_VARS = ("XTIME",)
 
 
 @dataclass
-class NuWrf(Gridded):
+class NuWrf(GriddedSource):
     """ Define NUWRF specific model data and functions."""
 
     @property

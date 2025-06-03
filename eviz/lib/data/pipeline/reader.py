@@ -177,4 +177,4 @@ def get_data_coords(data_array, attribute_name):
     elif attribute_name in data_array.coords:
         return data_array.coords[attribute_name].values
 
-    raise ValueError(f"Gridded name for {attribute_name} not found in attribute_mapping.")
+    raise ValueError(f"GriddedSource name for {attribute_name} not found in attribute_mapping.")

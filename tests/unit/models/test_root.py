@@ -1,9 +1,9 @@
 from unittest.mock import MagicMock, patch
-from eviz.models.root import Root
+from eviz.models.source_base import GenericSource
 
 
 # Minimal concrete subclass for testing
-class ConcreteRoot(Root):
+class ConcreteGenericSource(GenericSource):
     def add_data_source(self, *a, **kw): pass
 
     def get_data_source(self, *a, **kw): pass
@@ -31,7 +31,7 @@ def make_config_manager():
 
 def test_root_init_and_logger():
     cm = make_config_manager()
-    r = ConcreteRoot(config_manager=cm)
+    r = ConcreteGenericSource(config_manager=cm)
     assert hasattr(r, "logger")
     assert r.app is cm.app_data
     assert r.specs is cm.spec_data
@@ -39,7 +39,7 @@ def test_root_init_and_logger():
 
 def test_root_call_triggers_plot(monkeypatch):
     cm = make_config_manager()
-    r = ConcreteRoot(config_manager=cm)
+    r = ConcreteGenericSource(config_manager=cm)
     called = {}
     monkeypatch.setattr(r, "plot", lambda: called.setdefault("plot", True))
     r()

@@ -6,13 +6,14 @@ import matplotlib
 from eviz.lib.autoviz.plotter import SimplePlotter, ComparisonPlotter, SinglePlotter
 import eviz.lib.utils as u
 from eviz.lib.config.config_manager import ConfigManager
-from eviz.models.base import AbstractRoot
+from eviz.lib.data import DataSource
+from eviz.models.base import BaseSource
 
 logging.getLogger('matplotlib.font_manager').setLevel(logging.WARNING)
 
 
 @dataclass
-class Root(AbstractRoot):
+class GenericSource(BaseSource):
     """This class defines gridded interfaces and plotting for all supported sources.
 
     Parameters
@@ -44,15 +45,21 @@ class Root(AbstractRoot):
             matplotlib.use('agg')
             self.procs = list()
 
+    def load_data_sources(self, file_list: list):
+        pass
+
+    def get_data_source(self, name: str) -> DataSource:
+        pass
+
+    def add_data_source(self, name: str, data_source: DataSource):
+        pass
+
     def set_map_params(self, map_params):
         """Set the map parameters for plotting.
 
         Args:
             map_params: Dictionary of map parameters from YAML parser
         """
-        # Assuming map_params is already loaded into config_manager.map_params
-        # This method might be redundant if map_params is always loaded during config initialization.
-        # If it's needed to *override* map_params, the logic should update config_manager.map_params
         pass
 
     def __call__(self):
@@ -156,19 +163,12 @@ class Root(AbstractRoot):
             plot_type = params.get('to_plot', ['xy'])[
                 0]  # Default to 'xy' if not specified
 
-            self.config_manager.findex = idx  # Assuming idx corresponds to file index in map_params
-            self.config_manager.pindex = idx  # Assuming idx corresponds to plot index
-            self.config_manager.axindex = 0  # Reset axis index for each plot
+            self.config_manager.findex = idx
+            self.config_manager.pindex = idx
+            self.config_manager.axindex = 0
 
             # Generate the plot using the plotter
             self.logger.info(f"Plotting {field_name} as {plot_type} plot")
-            # Pass the data array directly, not the whole source_data dict
-            # The plotter will need to be updated to handle this
-            # For now, let's pass a tuple similar to the old structure but with the DataArray
-            # (data2d, x_values, y_values, field_name, plot_type, file_index, figure, ax)
-            # We need to determine x and y values here or in the plotter
-            # Let's pass the DataArray and let the plotter handle coordinates
-            # The plotter will need access to config_manager to get dim names and coordinates
             plotter.single_plots(self.config_manager, (
                 field_data, None, None, field_name, plot_type, idx, None, None), level=0)
 

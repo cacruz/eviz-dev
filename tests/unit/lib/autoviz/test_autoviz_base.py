@@ -8,10 +8,11 @@ from eviz.lib.autoviz.base import (
     get_factory_from_user_input,
     Autoviz
 )
-from eviz.models.root_factory import (
-    GriddedFactory,
+from eviz.models.source_factory import (
+    GriddedSourceFactory,
     WrfFactory,
     LisFactory,
+    ObsSourceFactory,
     AirnowFactory,
     MopittFactory,
     LandsatFactory,
@@ -92,10 +93,10 @@ def test_get_config_path_from_env_not_exists():
 
 
 @pytest.mark.parametrize("input_source,expected_factory_type", [
-    (["gridded"], GriddedFactory),
+    (["gridded"], GriddedSourceFactory),
     (["wrf"], WrfFactory),
     (["lis"], LisFactory),
-    (["airnow"], AirnowFactory),
+    (["airnow"], ObsSourceFactory),
     (["mopitt"], MopittFactory),
     (["landsat"], LandsatFactory),
     (["omi"], OmiFactory),
@@ -110,7 +111,7 @@ def test_get_factory_from_user_input_single(input_source, expected_factory_type)
 def test_get_factory_from_user_input_multiple():
     factories = get_factory_from_user_input(["gridded", "wrf", "lis"])
     assert len(factories) == 3
-    assert isinstance(factories[0], GriddedFactory)
+    assert isinstance(factories[0], GriddedSourceFactory)
     assert isinstance(factories[1], WrfFactory)
     assert isinstance(factories[2], LisFactory)
 

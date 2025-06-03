@@ -288,7 +288,7 @@ def read_species_db(paths=None) -> dict:
 
 
 def get_reader_from_name(name):
-    """ Get reader name (as defined in RootFactory) from a given source name """
+    """ Get reader name (as defined in BaseSourceFactory) from a given source name """
     if name in ['gridded', 'geos', 'ccm', 'cf', 'wrf', 'lis']:
         return 'gridded'
     elif name in ['airnow', 'fluxnet']:
