@@ -4,11 +4,11 @@ import numpy as np
 
 from dataclasses import dataclass
 import logging
-from eviz.models.root import Root
+from eviz.models.source_base import GenericSource
 
 
 @dataclass
-class Crest(Root):
+class Crest(GenericSource):
     """ The Crest class contains definitions for handling CREST data. This is data
         produced by the Coupled Reusable Earth System Tensor-framework.
     """

@@ -7,13 +7,13 @@ import pandas as pd
 from dataclasses import dataclass, field
 import eviz.lib.autoviz.utils as pu
 from eviz.lib.autoviz.figure import Figure
-from eviz.models.obs.ungridded import Ungridded
+from eviz.models.obs_source import ObsSource
 
 warnings.filterwarnings("ignore")
 
 
 @dataclass
-class Airnow(Ungridded):
+class Airnow(ObsSource):
     """ Define Airnow inventory data and functions.
     """
     source_data: Any = None

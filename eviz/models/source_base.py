@@ -6,13 +6,13 @@ import matplotlib
 from eviz.lib.autoviz.plotter import SimplePlotter, ComparisonPlotter, SinglePlotter
 import eviz.lib.utils as u
 from eviz.lib.config.config_manager import ConfigManager
-from eviz.models.base import AbstractRoot
+from eviz.models.base import BaseSource
 
 logging.getLogger('matplotlib.font_manager').setLevel(logging.WARNING)
 
 
 @dataclass
-class Root(AbstractRoot):
+class GenericSource(BaseSource):
     """This class defines gridded interfaces and plotting for all supported sources.
 
     Parameters

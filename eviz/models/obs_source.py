@@ -5,7 +5,7 @@ import numpy as np
 import pandas as pd
 import xarray as xr
 from eviz.lib.data.pipeline.processor import DataProcessor
-from eviz.models.root import Root
+from eviz.models.source_base import GenericSource
 from eviz.lib.data.utils import apply_conversion, apply_mean
 import eviz.lib.autoviz.utils as pu
 from eviz.lib.autoviz.figure import Figure
@@ -14,11 +14,11 @@ warnings.filterwarnings("ignore")
 
 
 @dataclass
-class Ungridded(Root):
+class ObsSource(GenericSource):
     """
-    The Ungridded class provides specialized functionality for handling unstructured observation data.
+    The ObsSource class provides specialized functionality for handling unstructured observation data.
 
-    This class extends the Root implementation to work specifically with unstructured data formats
+    This class extends the GenericSource implementation to work specifically with unstructured data formats
     commonly used in observational datasets, including point measurements, irregular networks,
     and sparse spatial coverage. It implements methods for extracting, processing, and visualizing
     various representations of unstructured data, such as:
@@ -55,7 +55,7 @@ class Ungridded(Root):
         """
         Add a data source to the model.
         
-        This method is required by AbstractRoot but is now a no-op since data sources
+        This method is required by BaseSource but is now a no-op since data sources
         are managed by the pipeline. It's kept for backward compatibility.
         """
         pass
@@ -63,7 +63,7 @@ class Ungridded(Root):
     def get_data_source(self, file_path):
         """
         Get a data source from the model.
-        This method is required by AbstractRoot but now delegates to the pipeline.
+        This method is required by BaseSource but now delegates to the pipeline.
         """
         return self.config_manager.pipeline.get_data_source(file_path)
 
@@ -71,7 +71,7 @@ class Ungridded(Root):
         """
         Load data sources for the model.
         
-        This method is required by AbstractRoot but is now a no-op since data sources
+        This method is required by BaseSource but is now a no-op since data sources
         are loaded by the ConfigurationAdapter. It's kept for backward compatibility.
         """
         pass
@@ -304,7 +304,7 @@ class Ungridded(Root):
             plotter: The plotter object to use for generating plots
         """
         self.logger.info("Generating comparison plots for unstructured data")
-        # Implementation would be similar to Gridded but adapted for unstructured data
+        # Implementation would be similar to GriddedSource but adapted for unstructured data
         # This would typically involve comparing point observations from different sources
         # or comparing observations to gridded model output
         
@@ -324,7 +324,7 @@ class Ungridded(Root):
             plotter: The plotter object to use for generating plots
         """
         self.logger.info("Generating side-by-side plots for unstructured data")
-        # Implementation would be similar to Gridded but adapted for unstructured data
+        # Implementation would be similar to GriddedSource but adapted for unstructured data
         
         # For now, we'll provide a basic implementation that can be expanded later
         if not self.config_manager.a_list or not self.config_manager.b_list:

@@ -1,21 +1,19 @@
 # File: eviz/models/obs/inventory/ghg.py
 import logging
-import sys
 import warnings
-from typing import Any, Dict, List, Optional, Union
-import numpy as np
+from typing import Any
 import pandas as pd
 import xarray as xr
 from dataclasses import dataclass, field
 import eviz.lib.autoviz.utils as pu
 from eviz.lib.autoviz.figure import Figure
-from eviz.models.obs.ungridded import Ungridded
+from eviz.models.obs_source import ObsSource
 
 warnings.filterwarnings("ignore")
 
 
 @dataclass
-class Ghg(Ungridded):
+class Ghg(ObsSource):
     """
     Define Greenhouse Gas (GHG) inventory data and functions.
     

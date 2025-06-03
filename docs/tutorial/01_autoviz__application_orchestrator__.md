@@ -73,7 +73,7 @@ sequenceDiagram
     User->>CLI: Run command (e.g., python autoviz.py -s gridded)
     CLI->>A: Create Autoviz instance (pass args)
     A->>FF: Get factory for 'gridded'
-    FF-->>A: Return GriddedFactory
+    FF-->>A: Return GriddedSourceFactory
     A->>CM: Create ConfigManager (pass args)
     CM-->>A: Return ConfigManager
     A->>A: Process configuration (using ConfigAdapter)
@@ -144,39 +144,43 @@ Now, let's look at the `Autoviz` class itself in `eviz/lib/autoviz/base.py`.
 import logging
 # ... other imports ...
 from eviz.lib.config.config_manager import ConfigManager
-from eviz.models.root_factory import GriddedFactory, WrfFactory # Example factories
+from eviz.models.source_factory import GriddedSourceFactory, WrfFactory  # Example factories
+
+
 # ... other factories ...
 
 def get_factory_from_user_input(inputs) -> list:
     """Return factory classes associated with user input sources."""
     mappings = {
-        "gridded": GriddedFactory(), # Map 'gridded' to GriddedFactory
-        "wrf": WrfFactory(), # Map 'wrf' to WrfFactory
+        "gridded": GriddedSourceFactory(),  # Map 'gridded' to GriddedSourceFactory
+        "wrf": WrfFactory(),  # Map 'wrf' to WrfFactory
         # ... other mappings ...
     }
     factories = []
-    for i in inputs: # For each source name provided (-s gridded wrf)
+    for i in inputs:  # For each source name provided (-s gridded wrf)
         if i not in mappings:
-             # Handle unknown source
-             pass # Simplified error handling
-        factories.append(mappings[i]) # Get the corresponding factory
+            # Handle unknown source
+            pass  # Simplified error handling
+        factories.append(mappings[i])  # Get the corresponding factory
     return factories
+
 
 def create_config(args) -> ConfigManager:
     """Create a ConfigManager instance from command-line arguments."""
     # This function loads configuration based on the args and source names.
     # It involves finding config files, reading them, and setting up sub-configs.
     # We will cover this in detail in the next chapter!
-    print("Autoviz is loading your configuration...") # Simplified
-    config_manager = ConfigManager(...) # Actual complex logic here
+    print("Autoviz is loading your configuration...")  # Simplified
+    config_manager = ConfigManager(...)  # Actual complex logic here
     return config_manager
 
 
-@dataclass # Makes it easy to create objects with these properties
+@dataclass  # Makes it easy to create objects with these properties
 class Autoviz:
     """Main class for automatic visualization."""
-    source_names: list # The list of sources you provided (-s gridded)
+    source_names: list  # The list of sources you provided (-s gridded)
     args: Namespace = None
+
     # ... other attributes ...
 
     def __post_init__(self):
@@ -184,44 +188,44 @@ class Autoviz:
         self.logger.info("Start init")
         # If not run from CLI, create default args (e.g., in a script)
         if not self.args:
-             self.args = Namespace(...) # Default args
-             
+            self.args = Namespace(...)  # Default args
+
         # Step 3: Find the Right Tools
         self.factory_sources = get_factory_from_user_input(self.source_names)
         if not self.factory_sources:
-            raise ValueError(...) # Handle no factories found
+            raise ValueError(...)  # Handle no factories found
 
         # Step 4: Load the Blueprint
-        self._config_manager = create_config(self.args) # Use the helper function
+        self._config_manager = create_config(self.args)  # Use the helper function
 
     def run(self):
         """Execute the visualization process (Step 5 starts here)."""
         self._config_manager.input_config.start_time = time.time()
 
-        self._check_input_files() # Check if data files exist
+        self._check_input_files()  # Check if data files exist
 
         # Prepares config for use by other components
         self.config_adapter = ConfigurationAdapter(self._config_manager)
-        self.config_adapter.process_configuration() # Processes the blueprint
+        self.config_adapter.process_configuration()  # Processes the blueprint
 
         all_data_sources = {}
         try:
-             # Get the data sources prepared by the config pipeline
-             if hasattr(self._config_manager, '_pipeline') and self._config_manager._pipeline is not None:
+            # Get the data sources prepared by the config pipeline
+            if hasattr(self._config_manager, '_pipeline') and self._config_manager._pipeline is not None:
                 all_data_sources = self._config_manager._pipeline.get_all_data_sources()
-             # ... simplified error handling ...
+            # ... simplified error handling ...
         except Exception as e:
-             self.logger.error(f"Error accessing pipeline: {e}")
+            self.logger.error(f"Error accessing pipeline: {e}")
 
         if not all_data_sources:
             self.logger.error("No data sources were loaded. Check files.")
             # ... display missing files ...
-            return # Stop if no data
+            return  # Stop if no data
 
         # Handle special composite plotting request if any
         if hasattr(self.args, 'composite') and self.args.composite:
-             # ... logic for composite plots ...
-             return
+            # ... logic for composite plots ...
+            return
 
         # Now, tell each factory to create the main "Model" object
         # and run it! The Model object handles the actual data processing and plotting.
@@ -232,11 +236,10 @@ class Autoviz:
 
             # Potentially set up map parameters if needed
             if hasattr(model, 'set_map_params') and self._config_manager.map_params:
-                 model.set_map_params(self._config_manager.map_params)
+                model.set_map_params(self._config_manager.map_params)
 
             # THIS IS WHERE THE MAGIC HAPPENS! Tell the model to do its work.
-            model() # This calls the __call__ method on the model object
-
+            model()  # This calls the __call__ method on the model object
 
     # ... other methods like set_data, _check_input_files, set_output ...
 ```

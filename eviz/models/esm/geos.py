@@ -1,13 +1,13 @@
 import logging
 import warnings
 from dataclasses import dataclass
-from eviz.models.esm.gridded import Gridded
+from eviz.models.gridded_source import GriddedSource
 
 warnings.filterwarnings("ignore")
 
 
 @dataclass()
-class Geos(Gridded):
+class Geos(GriddedSource):
     """ Define GEOS-specific model data and functions.
     The GEOS-specific functionality centers around the HISTORY.rc file which contains
     information about the GEOS data sources. In Eviz, the HISTORY.rc is parsed during

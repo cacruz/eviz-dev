@@ -220,7 +220,7 @@ class DataSource(ABC):
         Get the model-specific dimension name for a gridded dimension.
         
         Args:
-            gridded_dim_name (str): Gridded dimension name (e.g., 'xc', 'yc', 'zc', 'tc')
+            gridded_dim_name (str): GriddedSource dimension name (e.g., 'xc', 'yc', 'zc', 'tc')
             available_dims (list, optional): List of available dimensions in the dataset
             
         Returns:

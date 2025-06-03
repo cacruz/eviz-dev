@@ -45,7 +45,7 @@ The `DataPipeline` object itself acts as the **manager** of this assembly line, 
 
 As a user interacting with eViz via the command line, you typically don't *directly* instantiate and call methods on the `DataPipeline` yourself. Instead, you provide instructions through the [ConfigManager](02_configmanager_.md) (using YAML files, as we saw in Chapter 2), and **Autoviz** orchestrates the creation and execution of the `DataPipeline` as part of its overall workflow.
 
-The main worker object for a specific data type (like the `GriddedModel` created by the `GriddedFactory`, concepts we'll touch on later) will receive the [ConfigManager](02_configmanager_.md) and then use it to set up and run the `DataPipeline`.
+The main worker object for a specific data type (like the `GriddedModel` created by the `GriddedSourceFactory`, concepts we'll touch on later) will receive the [ConfigManager](02_configmanager_.md) and then use it to set up and run the `DataPipeline`.
 
 So, from a user's perspective, "using" the pipeline means setting the right options in your configuration file, such as:
 

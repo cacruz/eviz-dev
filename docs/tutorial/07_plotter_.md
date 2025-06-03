@@ -273,7 +273,7 @@ While you define the plot appearance through configuration, the `Plotter` classe
 
 Now that we've covered loading data ([DataSource](05_datasource__base__.md)), managing configuration ([ConfigManager](02_configmanager_.md)), preparing the canvas (`Figure`), and drawing the data (`Plotter`), the next chapter will introduce the **Model Handler**. This is the component that brings *all* these pieces together, orchestrating the entire process for a specific type of data source, from reading to plotting.
 
-[Next Chapter: Model Handler (AbstractRoot)](08_model_handler__abstractroot__.md)
+[Next Chapter: Model Handler (BaseSource)](08_model_handler__abstractroot__.md)
 
 ---
 

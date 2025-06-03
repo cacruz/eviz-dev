@@ -5,7 +5,7 @@ import numpy as np
 import pandas as pd
 import xarray as xr
 from eviz.lib.data.pipeline.processor import DataProcessor
-from eviz.models.root import Root
+from eviz.models.source_base import GenericSource
 from eviz.lib.data.utils import apply_conversion, apply_mean, apply_zsum
 import eviz.lib.autoviz.utils as pu
 from eviz.lib.autoviz.figure import Figure
@@ -14,11 +14,11 @@ warnings.filterwarnings("ignore")
 
 
 @dataclass
-class Gridded(Root):
+class GriddedSource(GenericSource):
     """
-    The Gridded class provides specialized functionality for handling gridded Earth System Model (ESM) data.
+    The GriddedSource class provides specialized functionality for handling gridded Earth System Model (ESM) data.
 
-    This class extends the Root implementation to work specifically with structured grid data formats
+    This class extends the GenericSource implementation to work specifically with structured grid data formats
     commonly used in ESMs, including 2D (lat-lon), 3D (lat-lon-time or lat-lon-level), and 4D 
     (lat-lon-level-time) datasets. It implements methods for extracting, processing, and visualizing
     various slices and projections of gridded data, such as:
@@ -55,7 +55,7 @@ class Gridded(Root):
         """
         Add a data source to the model.
         
-        This method is required by AbstractRoot but is now a no-op since data sources
+        This method is required by BaseSource but is now a no-op since data sources
         are managed by the pipeline. It's kept for backward compatibility.
         """
         pass
@@ -63,7 +63,7 @@ class Gridded(Root):
     def get_data_source(self, file_path):
         """
         Get a data source from the model.
-        This method is required by AbstractRoot but now delegates to the pipeline.
+        This method is required by BaseSource but now delegates to the pipeline.
         """
         return self.config_manager.pipeline.get_data_source(file_path)
 
@@ -71,7 +71,7 @@ class Gridded(Root):
         """
         Load data sources for the model.
         
-        This method is required by AbstractRoot but is now a no-op since data sources
+        This method is required by BaseSource but is now a no-op since data sources
         are loaded by the ConfigurationAdapter. It's kept for backward compatibility.
         """
         pass

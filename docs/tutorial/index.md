@@ -21,7 +21,7 @@ flowchart TD
 "]
     A4["DataSourceFactory
 "]
-    A5["Model Handler (AbstractRoot)
+    A5["Model Handler (BaseSource)
 "]
     A6["Figure (Visualization Canvas)
 "]
@@ -55,7 +55,7 @@ flowchart TD
 ](06_figure__visualization_canvas__.md)
 7. [Plotter
 ](07_plotter_.md)
-8. [Model Handler (AbstractRoot)
+8. [Model Handler (BaseSource)
 ](08_model_handler__abstractroot__.md)
 
 

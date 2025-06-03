@@ -1,19 +1,18 @@
 import warnings
 from dataclasses import dataclass
-from matplotlib import pyplot as plt
 import numpy as np
 import xarray as xr
 from eviz.lib.autoviz.figure import Figure
 from eviz.lib.autoviz.utils import create_gif, print_map
 from eviz.lib.data.utils import apply_mean
 from eviz.lib.data.utils import apply_conversion
-from eviz.models.esm.gridded import Gridded
+from eviz.models.gridded_source import GriddedSource
 
 warnings.filterwarnings("ignore")
 
 
 @dataclass
-class Grib(Gridded):
+class Grib(GriddedSource):
     """ Define Grib specific model data and functions."""
 
     def __post_init__(self):
