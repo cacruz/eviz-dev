@@ -1,7 +1,8 @@
 import pytest
 from eviz.models.source_factory import (
-    GriddedSourceFactory, GeosFactory, WrfFactory, LisFactory, AirnowFactory,
-    OmiFactory, MopittFactory, LandsatFactory, FluxnetFactory, CrestFactory, BaseSourceFactory
+    GriddedSourceFactory, GeosFactory, WrfFactory, LisFactory, 
+    ObsSourceFactory, OmiFactory, AirnowFactory,
+    MopittFactory, LandsatFactory, FluxnetFactory, CrestFactory, BaseSourceFactory
 )
 from unittest.mock import MagicMock
 

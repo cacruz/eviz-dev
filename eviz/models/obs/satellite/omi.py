@@ -6,13 +6,13 @@ import xarray as xr
 from dataclasses import dataclass, field
 import eviz.lib.autoviz.utils as pu
 from eviz.lib.autoviz.figure import Figure
-from eviz.models.source_base import GenericSource
+from eviz.models.obs_source import ObsSource
 
 warnings.filterwarnings("ignore")
 
 
 @dataclass
-class Omi(GenericSource):
+class Omi(ObsSource):
     """ Define OMI satellite data and functions.
     """
     source_data: Any = None
