@@ -96,7 +96,7 @@ def test_get_config_path_from_env_not_exists():
     (["gridded"], GriddedSourceFactory),
     (["wrf"], WrfFactory),
     (["lis"], LisFactory),
-    (["airnow"], ObsSourceFactory),
+    (["airnow"], AirnowFactory),
     (["mopitt"], MopittFactory),
     (["landsat"], LandsatFactory),
     (["omi"], OmiFactory),
