@@ -314,7 +314,7 @@ class DataProcessor:
         Returns:
             xarray Dataset with standardized dimension names
         """
-        self.logger.info(f"Standardizing coordinates for model name {model_name}")
+        self.logger.debug(f"Standardizing coordinates for model name {model_name}")
 
         if model_name in ['wrf', 'lis']:
             # Skip renaming for these special models

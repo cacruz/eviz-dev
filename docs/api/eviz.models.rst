@@ -22,18 +22,18 @@ eviz.models.base module
    :show-inheritance:
 
 
-eviz.models.root module
------------------------
+eviz.models.source_base module
+------------------------------
 
-.. automodule:: eviz.models.root
+.. automodule:: eviz.models.source_base
    :members:
    :undoc-members:
    :show-inheritance:
 
-eviz.models.root\_factory module
---------------------------------
+eviz.models.source\_factory module
+----------------------------------
 
-.. automodule:: eviz.models.root_factory
+.. automodule:: eviz.models.source_factory
    :members:
    :undoc-members:
    :show-inheritance:

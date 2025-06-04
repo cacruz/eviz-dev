@@ -308,32 +308,57 @@ The terminal output may look something like this (depending on the options):
 
 .. code-block::
 
-    INFO :: base (__post_init__:93) : Start init
-    INFO :: config (__post_init__:119) : Start init
-    INFO :: config (_init_readers:370) : Setup NetCDF reader
-    INFO :: reader (__post_init__:19) : Start init
-    INFO :: gridded (__post_init__:32) : Start init
-    INFO :: root (__post_init__:66) : Start init
-    INFO :: root (plot:92) : Generate plots.
-    INFO :: plotter (__post_init__:1193) : Start init
-    INFO :: gridded (_single_plots:186) : Plotting tas, xt plot
-    INFO :: gridded (_get_xt:406) : 'tas' field has 1980 time levels
-    INFO :: gridded (_get_xt:416) : Averaging method: point_sel
-    INFO :: plotter (_time_series_plot:783) : Adding trend
-    INFO :: plotter (_time_series_plot:797) :  -- polynomial degree: 5
-    INFO :: root (plot:124) : Output files are in /Users/ccruz/projects/EVIZ/gitlab/eviz/demo_output/single
-    INFO :: root (plot:126) : Done.
-    Time taken = 0:00:01.623150
+   Processing source: gridded
+   INFO :: base (__post_init__:197) : Start init
+   INFO :: input_config (_init_readers:194) : Setting up NetCDF reader for source: gridded
+   INFO :: registry (__post_init__:21) : Start init
+   INFO :: input_config (_init_readers:204) : Initialized readers for source gridded: ['NetCDF']
+   INFO :: config_manager (__post_init__:63) : Starting ConfigManager initialization
+   INFO :: configuration_adapter (__init__:32) : Start init
+   INFO :: registry (__post_init__:21) : Start init
+   INFO :: processor (__post_init__:39) : Start init
+   INFO :: transformer (__post_init__:19) : Start init
+   INFO :: integrator (__post_init__:21) : Start init
+   INFO :: base (run:235) : Processing configuration using adapter
+   INFO :: gridded_source (__post_init__:50) : Start init
+   INFO :: source_base (__post_init__:30) : Start init
+   INFO :: processor (__post_init__:39) : Start init
+   INFO :: base (run:272) : Setting map_params with 12 entries
+   INFO :: source_base (plot:70) : Generate plots.
+   INFO :: plotter (__post_init__:1736) : Start init
+   INFO :: gridded_source (_single_plots:208) : Generating single plots
+   INFO :: gridded_source (_process_plot:247) : Plotting sst, xy plot
+   INFO :: gridded_source (_process_plot:247) : Plotting tas, xt plot
+   INFO :: gridded_source (_get_xt:1315) : Averaging method: point_sel
+   INFO :: gridded_source (_process_plot:247) : Plotting tmp, tx plot
+   INFO :: gridded_source (_process_plot:247) : Plotting tmp, xt plot
+   INFO :: gridded_source (_process_plot:247) : Plotting hgt, tx plot
+   INFO :: gridded_source (_process_plot:247) : Plotting hgt, yz plot
+   ERROR :: plotter (_plot_yz_data:596) : 'units': Please specify hgt units in specs file
+   INFO :: gridded_source (_process_plot:247) : Plotting air, xt plot
+   INFO :: gridded_source (_process_plot:247) : Plotting air, xy plot
+   INFO :: gridded_source (_process_plot:247) : Plotting air, tx plot
+   INFO :: gridded_source (_process_plot:247) : Plotting pr, xt plot
+   INFO :: gridded_source (_process_plot:247) : Plotting pr, tx plot
+   INFO :: gridded_source (_process_plot:247) : Plotting ts, xt plot
+   INFO :: gridded_source (_get_xt:1315) : Averaging method: rolling
+   INFO :: gridded_source (_process_plot:247) : Plotting FRSEAICE, polar plot
+   INFO :: gridded_source (_process_plot:247) : Plotting RAINOCN, tx plot
+   INFO :: gridded_source (_process_plot:247) : Plotting U10M, xy plot
+   INFO :: gridded_source (_process_plot:247) : Plotting U10M, xt plot
+   INFO :: gridded_source (_process_plot:247) : Plotting TAUXWTR, xy plot
+   INFO :: gridded_source (_process_plot:247) : Plotting TAUYWTR, xy plot
+   INFO :: source_base (plot:108) : Output files are in /Users/ccruz/scratch/eviz/output/gridded
+   INFO :: source_base (plot:110) : Done.
+   Time taken = 0:00:26.476805
 
-This will produce various plots in the path specified in output_dir, including
+This will produce various plots in the specified path, including
 
-1. Lat-lon plots for all of them, xy
-2. Time-series plots for CRU and CESM
-3. Hovmoller plots for CRU and CESM
-4. Same as (2) but with subsets
-5. Zonal mean plots for ERA5-REAN
-6. Zonal mean Hovmoller plots for ERA5-REAN
-7. Polar plot for CRU
+1. Lat-lon plots (xy plots)
+2. Time-series plots (xt plots)
+3. Hovmoller plots (tx plots)
+4. A zonal mean plot (yz plot)
+5. A polar plot
 
 
 Visualize with a predefined GEOS model
