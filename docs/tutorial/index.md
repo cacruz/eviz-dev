@@ -43,7 +43,7 @@ flowchart TD
     A7 -- "Generates config for" --> A0
 ```
 
-## Chapters
+## Content
 
 1. [Configuration System
 ](01_configuration_system_.md)
