@@ -8,7 +8,7 @@ from dataclasses import dataclass, field
 from eviz.lib.config.config import Config
 from eviz.lib.config.config_manager import ConfigManager
 from eviz.lib.config.configuration_adapter import ConfigurationAdapter
-from eviz.models.source_factory import (GribFactory, GriddedSourceFactory,
+from eviz.models.source_factory import (AirnowFactory, GhgFactory, GribFactory, GriddedSourceFactory,
                                         WrfFactory,
                                         LisFactory,
                                         ObsSourceFactory,
@@ -121,8 +121,8 @@ def get_factory_from_user_input(inputs) -> list:
         # "crest": CrestFactory(),     #
         "lis": LisFactory(),  # LIS and WRF are gridded but require special
         "wrf": WrfFactory(),  # "treatment" due to the "regional" nature of the data
-        "airnow": ObsSourceFactory(),  # CSV
-        "ghg": ObsSourceFactory(),  # CSV
+        "airnow": AirnowFactory(),  # CSV
+        "ghg": GhgFactory(),  # CSV
         "fluxnet": FluxnetFactory(),  # CSV
         "omi": OmiFactory(),  # HDF5
         "mopitt": MopittFactory(),  # HDF5
