@@ -1,334 +1,380 @@
 # Chapter 6: Data Processing Pipeline
 
-Welcome back! In the [previous chapters](01_autoviz_application_.md), we've seen how the **Autoviz Application** acts as the main conductor ([Chapter 1](01_autoviz_application_.md)), loads its detailed plan from **Configuration Files** ([Chapter 2](02_configuration_management_.md)), figures out how to read different file types using **Data Source Abstraction** and the **Data Source Factory** ([Chapters 3 & 4](03_data_source_factory_.md), [Chapter 4](04_data_source_factory_.md)), and understands what the data *means* using **Metadata Handling** ([Chapter 5](05_metadata_handling_.md)).
+Welcome back to the eViz tutorial! In our journey so far, we've learned how the [Configuration System](01_configuration_system_.md) acts as eViz's control panel, how the [Autoviz Application Core](02_autoviz_application_core_.md) is the engine that reads those instructions and orchestrates the process, how the [Metadata Generator (metadump)](03_metadata_generator__metadump__.md) helps create configurations, how the [Plotting Components](04_plotting_components_.md) are the artists that actually draw the visualizations, and how [Source Models](05_source_models_.md) are the specialized workers that handle data based on its specific type.
 
-By now, eViz has loaded your data into one or more standardized **xarray Datasets**. Great! But is that data immediately ready for plotting? Often, no.
+Now, let's talk about the **Data Processing Pipeline**. Imagine you're on an assembly line. Raw materials come in one end, and they go through several stations – maybe cutting, shaping, painting, and quality checking – before the finished product comes out the other end. The Data Processing Pipeline is like this assembly line for your data. It's responsible for taking raw data *from* a file and getting it ready for the [Source Models](05_source_models_.md) to use and the [Plotting Components](04_plotting_components_.md) to visualize.
 
-Your raw data might:
-*   Use dimension names (`XLONG`, `YLAT`) different from the standard ones the plotting tools expect (`lon`, `lat`).
-*   Contain missing values that need handling.
-*   Have variables in units (like Kelvin) that you want to convert (to Celsius) before plotting.
-*   Need calculations performed (like finding the difference between two variables).
-*   Come from multiple files that need to be combined (e.g., different time steps or different variables in separate files).
+## What Problem Does the Data Processing Pipeline Solve?
 
-This is where the **Data Processing Pipeline** comes in.
+When a [Source Model](05_source_models_.md) (like our `GriddedSource` from the last chapter) needs data for a variable (like `Temperature`) from a file (`my_weather_data.nc`), it can't just directly grab a number. The data often needs preparation:
 
-## The Data Processing Pipeline: Your Data's Assembly Line
+1.  **Reading:** How do we open different file formats (NetCDF, CSV, GRIB, etc.)?
+2.  **Standardization:** Variable or dimension names might be different (`lat` vs `latitude` vs `XLAT`). Units might need converting (Kelvin to Celsius). Missing values might need consistent handling.
+3.  **Filtering/Selecting:** We might only need data for a specific time, level, or region.
+4.  **Integration:** We might need to combine data from multiple files or calculate new variables from existing ones (like the difference between two model runs).
 
-Imagine an assembly line in a factory. Raw materials (your data files) come in at one end, and finished products (data ready for plotting) come out the other. The assembly line has different stations, each performing a specific task to get the product ready.
+Doing all these steps manually within each [Source Model](05_source_models_.md) would lead to a lot of duplicated code and make the models overly complicated. The Data Processing Pipeline provides a structured way to handle these common data tasks.
 
-In eViz, the **Data Processing Pipeline** is that assembly line. It's a sequence of steps or stages that the data goes through after it's loaded and before it's sent to the plotting engine. Each stage performs a specific task to clean, standardize, calculate, or combine the data.
+## Your Sixth Task: Getting Processed Data for Plotting
 
-The main goal is to take the raw data from the **xarray Dataset(s)** produced by the **Data Source** and get it into the *exact* shape and format needed by the **Plotting Engine** ([Chapter 7](07_plotting_engine_.md)).
+Let's return to our `GriddedSource` model needing the `Temperature` variable from `my_weather_data.nc`. The `GriddedSource` model's job is to figure out *what* data it needs based on the [Configuration System](01_configuration_system_.md) (e.g., `Temperature` for an `xy` plot) and then ask the Data Processing Pipeline to *get* that data.
 
-The key stages in the eViz pipeline include:
+The pipeline will then perform the necessary steps:
+1.  Identify the correct reader for `my_weather_data.nc`.
+2.  Read the raw data for `Temperature`.
+3.  Standardize the data (e.g., rename dimensions, convert units from K to C).
+4.  Provide the standardized data back to the `GriddedSource` model.
 
-1.  **Reading:** Loading the data from the file(s) into an **xarray Dataset**. (We touched on this with **Data Source** and **Factory**, but the pipeline orchestrates it).
-2.  **Processing:** Standardizing dimensions and coordinates, handling missing values, applying unit conversions, and performing basic calculations.
-3.  **Transforming:** More complex transformations (though this stage is less developed in the current eViz compared to others).
-4.  **Integrating:** Combining data from multiple sources or multiple variables within a dataset.
+The `GriddedSource` model can then confidently work with the standardized data, knowing it's in a predictable format, regardless of the original file's quirks.
 
-Data flows sequentially through these stages, getting closer to its final, plottable form at each step.
+## Key Concepts in the Data Processing Pipeline
 
-## The `DataPipeline` Class: The Pipeline Manager
+The pipeline is built from several components, each responsible for a specific step in the assembly line:
 
-The core component that manages this assembly line is the `DataPipeline` class, found in `eviz/lib/data/pipeline/pipeline.py`. This class doesn't *do* the processing itself, but it orchestrates the different stages by creating and calling specialized helper objects for each stage:
+1.  **`DataReader`:** This component is the entry point. Its job is to open the specified file(s), figure out the file type, and load the raw data. It uses the [Data Source Abstraction](07_data_source_abstraction_.md) and [Data Source Factory](08_data_source_factory_.md) (coming in the next chapters!) to find the right tool to read the specific file format.
+2.  **`DataProcessor`:** This component takes the raw data loaded by the Reader and applies standard processing steps like renaming dimensions, handling missing values, and performing unit conversions. It ensures the data is consistent.
+3.  **`DataTransformer`:** (Less commonly used in basic workflows) This component is intended for more complex transformations, like changing data representations (e.g., from a grid to scattered points), although much of this logic is currently handled elsewhere or is a placeholder for future development.
+4.  **`DataIntegrator`:** This component is used when you need to combine data. It can merge datasets from different files or perform calculations to create new variables from existing ones within a dataset (like `var1 - var2`).
+5.  **`DataPipeline`:** This is the main class (`eviz/lib/data/pipeline/pipeline.py`) that orchestrates the flow. It contains instances of the Reader, Processor, Transformer, and Integrator and manages the sequence of steps when you ask it to process a file or a set of files.
 
-*   `DataReader`: Manages the reading stage.
-*   `DataProcessor`: Manages the processing stage.
-*   `DataTransformer`: Manages the transformation stage.
-*   `DataIntegrator`: Manages the integration stage.
+Think of it like this:
 
-Think of the `DataPipeline` as the floor manager of the factory, telling each station (Reader, Processor, etc.) when to work and passing the data along.
+```{mermaid}
+graph LR
+    A[Raw File Data] --> B(DataReader);
+    B --> C(DataProcessor);
+    C --> D(DataTransformer);
+    D --> E(DataIntegrator);
+    E --> F[Processed Data (Ready for Models)];
 
-## How the Pipeline Works (Simplified Flow)
+    style A fill:#f9f,stroke:#333,stroke-width:2px
+    style F fill:#9cf,stroke:#333,stroke-width:2px
+```
+The `DataPipeline` object controls this flow. It tells the Reader to read, then passes the result to the Processor, and so on.
 
-Let's see how the `DataPipeline` fits into the overall eViz flow:
+## How the Data Processing Pipeline Gets Data
+
+When a [Source Model](05_source_models_.md) needs data, it typically interacts with the `DataPipeline` instance that is available to it (often stored within the `ConfigManager`).
+
+Here's a simplified flow for getting data for one file:
 
 ```{mermaid}
 sequenceDiagram
-    participant A as Autoviz Object
-    participant CM as ConfigManager
-    participant DP as DataPipeline Object
-    participant DR as DataReader
-    participant DS as Specific DataSource
-    participant XD as xarray Dataset
-    participant DPR as DataProcessor
-    participant DTR as DataTransformer
-    participant DINT as DataIntegrator
+    participant SourceModel as Source Model
+    participant ConfigMgr as ConfigManager
+    participant DataPipeline as Data Pipeline
+    participant DataReader as Reader
+    participant DataProcessor as Processor
+    participant DataSource as Data Source (Abstraction)
+    participant RawFile as Data File
 
-    A->>CM: Get File Paths & Config
-    CM-->>A: file1.nc, file2.nc, process_options, integration_options
-    A->>DP: Create DataPipeline(config_manager)
-    A->>DP: process_files([file1.nc, file2.nc], process=True)
-
-    DP->>DR: Create DataReader(config)
-    DR->>DS: Ask Factory to create DataSource for file1.nc
-    DS->>DS: load_data(file1.nc)
-    DS-->>DR: xarray Dataset 1
-    DR-->>DP: DataSource 1 (containing Dataset 1)
-
-    DP->>DPR: Create DataProcessor(config)
-    DPR->>DPR: process_data_source(DataSource 1)
-    DPR->>DPR: _standardize_coordinates(Dataset 1)
-    DPR->>DPR: _handle_missing_values(Dataset 1)
-    DPR->>DPR: _apply_unit_conversions(Dataset 1)
-    DPR-->>DP: Processed DataSource 1
-
-    Note right of DP: Repeat for file2.nc...
-    DP-->>A: Dictionary of processed DataSources
-
-    A->>DP: integrate_data_sources(file_paths=[file1.nc, file2.nc], method='merge')
-    DP->>DINT: Create DataIntegrator()
-    DINT->>DINT: integrate_data_sources([DataSource 1, DataSource 2])
-    DINT->>DINT: _merge_datasets([Dataset 1, Dataset 2])
-    DINT-->>DP: Integrated xarray Dataset (now a single object)
-    DP-->>A: Integrated xarray Dataset
-
-    A->>A: Pass Integrated Dataset to Plotting Engine (Next Chapter)
+    SourceModel->>ConfigMgr: "Give me the Pipeline instance!"
+    ConfigMgr-->>SourceModel: Returns DataPipeline instance
+    SourceModel->>DataPipeline: "Process file 'my_weather_data.nc' and get 'Temperature'!"
+    DataPipeline->>DataReader: "Read file 'my_weather_data.nc'!"
+    DataReader->>RawFile: Opens and reads raw data structure
+    RawFile-->>DataReader: Raw data loaded into DataSource object
+    DataReader-->>DataPipeline: Returns DataSource object (with raw data)
+    DataPipeline->>DataProcessor: "Process this DataSource!"
+    DataProcessor->>DataSource: Standardizes dims, converts units, etc.
+    DataSource-->>DataProcessor: Data is now processed within DataSource
+    DataProcessor-->>DataPipeline: Returns processed DataSource
+    DataPipeline->>DataPipeline: Stores processed DataSource
+    DataPipeline-->>SourceModel: "Here's the DataSource for 'my_weather_data.nc'!"
+    SourceModel->>DataSource: Gets the 'Temperature' variable DataArray
 ```
+The key takeaway is that the [Source Model](05_source_models_.md) doesn't handle the low-level reading or standardizing; it delegates that responsibility to the `DataPipeline`.
 
-This diagram shows that the **Autoviz Application** creates the **DataPipeline** and tells it which files to process. The `DataPipeline` uses its internal `DataReader` to load the data (which, as we know, uses the **Factory** and **Data Source**). Once loaded, `DataPipeline` sends the resulting **DataSource** object(s) through the `DataProcessor` (and potentially `DataTransformer`). Finally, it can use the `DataIntegrator` to combine data from multiple processed sources into a single **xarray Dataset**, which is then ready for plotting.
+## Diving Deeper into the Code
 
-## Inside the Pipeline Stages
+Let's look at snippets of the pipeline components, keeping them very simple.
 
-Let's peek into what happens inside some of these pipeline stages.
+### The Orchestrator: `DataPipeline` (`eviz/lib/data/pipeline/pipeline.py`)
 
-### DataReader (`eviz/lib/data/pipeline/reader.py`)
-
-The `DataReader` is responsible for getting the data *from* the files. It heavily relies on the **Data Source Factory** ([Chapter 4](04_data_source_factory_.md)) to get the correct **DataSource** object for a given file path.
-
-Here's a very simplified snippet of its `read_file` method:
+This class ties everything together.
 
 ```python
-# --- File: eviz/lib/data/pipeline/reader.py (Simplified) ---
-# ... imports ...
-from eviz.lib.data.factory import DataSourceFactory # Uses the Factory
+# --- Simplified eviz/lib/data/pipeline/pipeline.py ---
+import logging
+from typing import Dict, List, Optional, Any
+import xarray as xr
+
+# Import the pipeline components
+from eviz.lib.data.pipeline.reader import DataReader
+from eviz.lib.data.pipeline.processor import DataProcessor
+from eviz.lib.data.pipeline.transformer import DataTransformer
+from eviz.lib.data.pipeline.integrator import DataIntegrator
+# Import DataSource Abstraction (from next chapter)
+from eviz.lib.data.sources import DataSource # Used internally
+
+class DataPipeline:
+    """
+    Orchestrates the data processing workflow.
+    """
+    def __init__(self, config_manager=None):
+        """Initialize a new DataPipeline."""
+        self.logger = logging.getLogger(__name__)
+        # Create instances of the pipeline stages
+        self.reader = DataReader(config_manager)
+        self.processor = DataProcessor(config_manager)
+        self.transformer = DataTransformer() # Currently simple
+        self.integrator = DataIntegrator() # For combining datasets
+        self.data_sources = {} # Keep track of processed data
+        self.dataset = None # For integrated dataset
+
+    def process_file(self, file_path: str, model_name: Optional[str] = None,
+                    process: bool = True, transform: bool = False,
+                    transform_params: Optional[Dict[str, Any]] = None,
+                    metadata: Optional[Dict[str, Any]] = None,
+                    file_format: Optional[str] = None) -> DataSource:
+        """Process a single file through the pipeline."""
+        self.logger.debug(f"Processing file: {file_path}")
+
+        # 1. Use the Reader to get the initial data
+        data_source = self.reader.read_file(file_path, model_name, file_format=file_format)
+
+        # 2. Apply Processor (if requested)
+        if process:
+            data_source = self.processor.process_data_source(data_source)
+
+        # 3. Apply Transformer (if requested)
+        if transform and transform_params:
+            data_source = self.transformer.transform_data_source(data_source, **transform_params)
+
+        # Store the result
+        self.data_sources[file_path] = data_source
+
+        return data_source
+
+    # ... methods like process_files, integrate_data_sources, get_data_source ...
+```
+
+**Explanation:**
+
+*   The `DataPipeline` constructor creates instances of the `DataReader`, `DataProcessor`, etc.
+*   The key method `process_file` takes a file path and some optional parameters.
+*   It calls `self.reader.read_file` first to load the data.
+*   It then conditionally calls `self.processor.process_data_source` and `self.transformer.transform_data_source` if those steps are needed.
+*   Finally, it stores the resulting `DataSource` object (which now contains the processed data) in `self.data_sources` and returns it.
+
+### The Reader: `DataReader` (`eviz/lib/data/pipeline/reader.py`)
+
+This component handles opening files.
+
+```python
+# --- Simplified eviz/lib/data/pipeline/reader.py ---
+import glob
+import os
+from typing import Dict, List, Optional
+from dataclasses import dataclass, field
+import logging
+
+# Import the Data Source Factory (from next chapters)
+from eviz.lib.data.factory import DataSourceFactory
+# Import DataSource Abstraction (from next chapter)
+from eviz.lib.data.sources import DataSource
 
 @dataclass
 class DataReader:
-    # ... attributes ...
-    factory: object = field(init=False)
+    """Data reading stage of the pipeline."""
+    config_manager: Optional[object] = None
+    data_sources: Dict = field(default_factory=dict, init=False)
+    factory: DataSourceFactory = field(init=False) # Uses the Factory
 
     def __post_init__(self):
-        self.factory = DataSourceFactory(self.config_manager) # Create the Factory!
+        """Post-initialization to set up factory."""
+        # The Reader needs a Factory to create different kinds of DataSources
+        self.factory = DataSourceFactory(self.config_manager)
+
+    @property
+    def logger(self) -> logging.Logger:
+        return logging.getLogger(__name__)
 
     def read_file(self, file_path: str, model_name: Optional[str] = None, file_format: Optional[str] = None) -> DataSource:
-        """Read data from a file or URL."""
+        """Read data from a file or URL, supporting wildcards."""
         self.logger.debug(f"Reading file: {file_path}")
 
-        # ... code to handle wildcards or check if file exists ...
+        # Check if already read (caching)
+        if file_path in self.data_sources:
+            self.logger.debug(f"Using cached data source for {file_path}")
+            return self.data_sources[file_path]
 
-        # Use the factory to create the right DataSource object
-        data_source = self.factory.create_data_source(file_path, model_name, file_format=file_format)
+        try:
+            # *** Use the Factory to get the correct DataSource type ***
+            # The Factory knows how to create a NetCDFDataSource, CSVDataSource, etc.
+            data_source = self.factory.create_data_source(file_path, model_name, file_format=file_format)
 
-        # Tell the created DataSource object to load the data
-        data_source.load_data(file_path)
+            # *** Ask the created DataSource object to load its data ***
+            # How load_data works depends on the specific DataSource subclass
+            data_source.load_data(file_path)
 
-        # Store and return the loaded DataSource object (with its xarray Dataset inside)
-        self.data_sources[file_path] = data_source
-        return data_source
+            # Store and return
+            self.data_sources[file_path] = data_source
+            return data_source
 
-    # ... other methods ...
+        except Exception as e:
+            self.logger.error(f"Error reading file: {file_path}. Exception: {e}")
+            raise # Re-raise the exception
+
+    # ... methods like read_files, get_data_source, close ...
 ```
 
-This shows how `DataReader` is initialized with a `DataSourceFactory` and its `read_file` method uses the factory to get the right **DataSource** instance, then calls `load_data` on it to get the **xarray Dataset**.
+**Explanation:**
 
-### DataProcessor (`eviz/lib/data/pipeline/processor.py`)
+*   The `DataReader` holds a `DataSourceFactory` instance.
+*   The `read_file` method first checks if the data for this file has already been loaded (`self.data_sources` acts as a simple cache).
+*   If not cached, it calls `self.factory.create_data_source(file_path, ...)` This is where the [Data Source Factory](08_data_source_factory_.md) magic happens – it returns an instance of the correct [Data Source Abstraction](07_data_source_abstraction_.md) class (like `NetCDFDataSource`) based on the file extension or format hint.
+*   Then, it calls `data_source.load_data(file_path)`. This method is defined on the [Data Source Abstraction](07_data_source_abstraction_.md) object returned by the factory. The specific implementation (e.g., how `NetCDFDataSource.load_data` opens a `.nc` file using `xarray`) is hidden from the `DataReader`.
+*   The loaded `DataSource` object is stored and returned.
 
-The `DataProcessor` handles common cleaning and standardization tasks. It takes a **DataSource** object (which contains the **xarray Dataset**) and modifies the dataset within it.
+### The Processor: `DataProcessor` (`eviz/lib/data/pipeline/processor.py`)
 
-Here are simplified examples of a few key methods:
+This component cleans and standardizes the data.
 
 ```python
-# --- File: eviz/lib/data/pipeline/processor.py (Simplified) ---
-# ... imports ...
+# --- Simplified eviz/lib/data/pipeline/processor.py ---
+import logging
+from dataclasses import dataclass
 import xarray as xr
-# ... other imports ...
+import numpy as np # For array operations
+
+# Import DataSource Abstraction (from next chapter)
+from eviz.lib.data.sources import DataSource
 
 @dataclass
 class DataProcessor:
-    config_manager: Optional['ConfigManager'] = None
-    # ... attributes ...
+    """Data processing stage of the pipeline."""
+    config_manager: Optional[object] = None
+
+    @property
+    def logger(self) -> logging.Logger:
+        return logging.getLogger(__name__)
+
+    def __post_init__(self):
+        self.logger.info("Start init")
 
     def process_data_source(self, data_source: DataSource) -> DataSource:
-        """Orchestrates processing steps for a data source."""
-        if not data_source.validate_data(): # Basic check
-            self.logger.error("Data validation failed")
-            return data_source
+        """Process a data source."""
+        self.logger.debug("Processing data source")
 
-        self.logger.debug("Starting processing steps...")
-        # Call internal methods to apply processing
-        data_source.dataset = self._standardize_coordinates(data_source.dataset, data_source.model_name)
-        data_source.dataset = self._handle_missing_values(data_source.dataset)
-        data_source.dataset = self._apply_unit_conversions(data_source.dataset)
-        # ... other processing steps ...
+        if not data_source or not hasattr(data_source, 'dataset'):
+            self.logger.error("Invalid data source provided")
+            return data_source # Return as is if invalid
 
-        self.logger.debug("Processing steps finished.")
-        return data_source # Return the data source with the modified dataset
+        # Get the xarray Dataset from the DataSource object
+        dataset = data_source.dataset
+
+        # Apply processing steps
+        dataset = self._process_dataset(dataset, data_source.model_name)
+
+        # Update the dataset within the DataSource object
+        data_source.dataset = dataset
+
+        return data_source
+
+    def _process_dataset(self, dataset: xr.Dataset, model_name: str = None) -> Optional[xr.Dataset]:
+        """Apply core processing steps to an xarray Dataset."""
+        if dataset is None:
+            return None
+
+        # 1. Standardize coordinate names (e.g., 'latitude' -> 'lat')
+        dataset = self._standardize_coordinates(dataset, model_name)
+
+        # 2. Handle missing values
+        dataset = self._handle_missing_values(dataset)
+
+        # 3. Apply unit conversions (e.g., K -> C)
+        dataset = self._apply_unit_conversions(dataset)
+
+        # ... potentially other processing steps ...
+
+        return dataset
 
     def _standardize_coordinates(self, dataset: xr.Dataset, model_name: str = None) -> xr.Dataset:
-        """Standardize dimension names (e.g., 'XLONG' -> 'lon')."""
-        self.logger.debug(f"Standardizing coordinates for {model_name}")
-        # This method uses the config_manager and meta_coords (from Chapter 5)
-        # to map source-specific dimension names to standard names like 'lon', 'lat'.
-        # It then renames the dimensions in the dataset.
+        """Standardize dimension names in the dataset."""
+        self.logger.debug(f"Standardizing coordinates for model name {model_name}")
+
         rename_dict = {}
-        # Example: Find the actual name for the longitude dimension ('xc')
-        xc_dim_name = self._get_model_dim_name('xc', list(dataset.dims), model_name, self.config_manager)
-        if xc_dim_name and xc_dim_name != 'lon' and xc_dim_name in dataset.dims:
-             rename_dict[xc_dim_name] = 'lon'
-        # ... similar logic for 'yc', 'zc', 'tc' ...
+        available_dims = list(dataset.dims)
+
+        # Example: Check for common lat/lon names and map to 'lat'/'lon'
+        # Uses config to find model-specific names (simplified lookup)
+        lat_name = self._get_model_dim_name('yc', available_dims, model_name, self.config_manager) # yc -> lat
+        lon_name = self._get_model_dim_name('xc', available_dims, model_name, self.config_manager) # xc -> lon
+        time_name = self._get_model_dim_name('tc', available_dims, model_name, self.config_manager) # tc -> time
+        level_name = self._get_model_dim_name('zc', available_dims, model_name, self.config_manager) # zc -> lev
+
+        if lat_name and lat_name in available_dims and lat_name != 'lat':
+             rename_dict[lat_name] = 'lat'
+        if lon_name and lon_name in available_dims and lon_name != 'lon':
+             rename_dict[lon_name] = 'lon'
+        if time_name and time_name in available_dims and time_name != 'time':
+             rename_dict[time_name] = 'time'
+        if level_name and level_name in available_dims and level_name != 'lev':
+             rename_dict[level_name] = 'lev'
 
         if rename_dict:
             self.logger.debug(f"Renaming dimensions: {rename_dict}")
             dataset = dataset.rename(rename_dict) # Use xarray's rename method
-        return dataset
 
-    def _handle_missing_values(self, dataset: xr.Dataset) -> xr.Dataset:
-        """Replace specific missing value indicators or NaNs."""
-        self.logger.debug("Handling missing values")
-        # This loops through variables and replaces missing values based on metadata
-        # (e.g., the _FillValue attribute) or common representations like NaN.
-        for var_name, var in dataset.data_vars.items():
-             if '_FillValue' in var.attrs:
-                 fill_value = var.attrs['_FillValue']
-                 # ... code to replace values matching fill_value with NaN ...
-             # ... code to handle other missing value conventions ...
-        return dataset # Return the dataset with missing values handled
+        return dataset
 
     def _apply_unit_conversions(self, dataset: xr.Dataset) -> xr.Dataset:
-        """Apply common unit conversions (e.g., K to C)."""
-        self.logger.debug("Applying unit conversions")
-        # This loops through variables, checks their 'units' attribute (from metadata),
-        # and applies conversions for known cases.
+        """Apply unit conversions to the dataset."""
+        # Iterate through each variable in the dataset
         for var_name, var in dataset.data_vars.items():
             if 'units' in var.attrs:
-                units = var.attrs['units'].lower()
-                # Example: Convert Kelvin to Celsius
+                units = str(var.attrs['units']).lower()
+
+                # Example: Convert Kelvin to Celsius for Temperature
                 if units == 'k' and var_name.lower() in ['temp', 'temperature']:
-                    var_data = var.values - 273.15
-                    # Create a new DataArray with converted data and updated units
-                    dataset[var_name] = xr.DataArray(var_data, dims=var.dims, coords=var.coords, attrs=var.attrs)
+                    self.logger.debug(f"Converting {var_name} from K to C")
+                    var_data_celsius = var.values - 273.15 # Simple conversion
+                    # Create a new DataArray with converted data and update units attribute
+                    dataset[var_name] = xr.DataArray(
+                        var_data_celsius, dims=var.dims, coords=var.coords, attrs=var.attrs
+                    )
                     dataset[var_name].attrs['units'] = 'C'
-                    self.logger.debug(f"Converted {var_name} from K to C")
+
         return dataset
 
-    # ... other processing methods like regridding, computing differences ...
+    # ... methods like _handle_missing_values, regrid, compute_difference ...
+    # The _get_model_dim_name helper (not shown in detail here) looks up dimension
+    # names based on the source type in the ConfigManager's meta_coords section.
 ```
 
-These snippets show how the `DataProcessor` takes the `xarray Dataset` and applies standard operations like renaming dimensions based on configuration/metadata mappings, replacing specific missing values with standard `NaN`, and converting units like Kelvin to Celsius. It uses `xarray`'s powerful capabilities (`.rename()`, accessing `.attrs`, `.values`) to perform these tasks.
+**Explanation:**
 
-### DataIntegrator (`eviz/lib/data/pipeline/integrator.py`)
+*   The `DataProcessor` takes a `DataSource` object containing an `xarray.Dataset`.
+*   Its `process_data_source` method extracts the `dataset` and calls internal methods like `_standardize_coordinates`, `_handle_missing_values`, and `_apply_unit_conversions`.
+*   `_standardize_coordinates` looks at the dataset's dimensions and renames common ones (like `latitude` or `XLAT`) to standard eViz names (`lat`, `lon`, `lev`, `time`) using `xarray`'s `rename` method. It uses a helper `_get_model_dim_name` that relies on the [Configuration System](01_configuration_system_.md) (specifically `meta_coords`) to find the correct names for different source types.
+*   `_apply_unit_conversions` checks the `units` attribute of variables and performs simple conversions (like K to C) if needed, updating the data values and the `units` attribute.
+*   Other methods like `regrid` or `compute_difference` (not shown fully) handle more advanced data manipulation tasks.
 
-The `DataIntegrator` is responsible for combining data. This might mean combining multiple **xarray Datasets** (e.g., if you loaded data from several time-step files) or creating new variables by combining existing ones (e.g., calculating a difference or sum).
+### Integrator and Transformer
 
-Here are simplified examples of its methods:
+*   **`DataIntegrator` (`eviz/lib/data/pipeline/integrator.py`):** This component has methods like `integrate_data_sources` (which uses `xarray.merge` or `xarray.concat` to combine datasets from different files) and `integrate_variables` (which can perform arithmetic operations like addition or subtraction on variables within a dataset to create a new composite variable).
+*   **`DataTransformer` (`eviz/lib/data/pipeline/transformer.py`):** This is a placeholder for future transformation logic. Currently, its `_transform_dataset` method simply returns the dataset unchanged.
 
-```python
-# --- File: eviz/lib/data/pipeline/integrator.py (Simplified) ---
-# ... imports ...
-import xarray as xr
-# ... other imports ...
+These components are used by the `DataPipeline` when specific integration or transformation steps are requested, typically orchestrated by the [Source Models](05_source_models_.md) based on the configuration.
 
-@dataclass
-class DataIntegrator:
-    # ... attributes ...
+## Connection to the Rest of eViz
 
-    def integrate_data_sources(self, data_sources: List[DataSource], **kwargs) -> xr.Dataset:
-        """Integrate multiple data sources (datasets) into one."""
-        self.logger.debug(f"Integrating {len(data_sources)} data sources")
-        if not data_sources:
-            return None
+The Data Processing Pipeline is a crucial link in the eViz chain:
 
-        # Get the datasets from the DataSource objects
-        datasets_to_integrate = [ds.dataset for ds in data_sources if ds and ds.dataset is not None]
+*   It takes instructions and relevant lookups (like model-specific dimension names or unit conversion preferences) from the [Configuration System](01_configuration_system_.md) via the `ConfigManager`.
+*   It is primarily used by the [Source Models](05_source_models_.md). Models tell the pipeline *which* files and variables are needed, and the pipeline returns the processed data ready for slicing and plotting.
+*   The `DataReader` component *within* the pipeline relies heavily on the [Data Source Abstraction](07_data_source_abstraction_.md) and [Data Source Factory](08_data_source_factory_.md) to handle the variety of input file formats. The factory provides the right tool (a specific `DataSource` subclass), and the abstraction ensures that tool has a standard `load_data` method the Reader can call.
 
-        method = kwargs.get('method', 'merge') # Method can be 'merge' or 'concatenate'
-
-        if method == 'merge':
-            # xr.merge combines datasets assuming they have compatible coordinates
-            # and will add variables from different datasets if names don't clash.
-            result = xr.merge(datasets_to_integrate, join=kwargs.get('join', 'outer'))
-        elif method == 'concatenate':
-            # xr.concat stacks datasets along a specified dimension (like 'time')
-            dim = kwargs.get('dim', 'time')
-            result = xr.concat(datasets_to_integrate, dim=dim)
-        else:
-            self.logger.error(f"Unknown integration method: {method}")
-            return None # Or raise error
-
-        self.logger.info(f"Successfully integrated datasets using '{method}'")
-        return result # Return the single integrated dataset
-
-    def integrate_variables(self, dataset: xr.Dataset, variables: List[str], operation: str, output_name: str) -> xr.Dataset:
-        """Create a new variable by operating on existing variables."""
-        self.logger.debug(f"Integrating variables {variables} with operation '{operation}'")
-
-        if not dataset or not variables:
-            return dataset # Nothing to do
-
-        # Example: Simple addition of variables
-        if operation == 'add':
-             # Access DataArrays within the dataset and sum them using xarray's capabilities
-             result_data_array = sum(dataset[var] for var in variables if var in dataset.data_vars)
-             # Add the new DataArray to the dataset
-             dataset[output_name] = result_data_array
-             # Add some metadata to the new variable
-             dataset[output_name].attrs['long_name'] = f"Sum of {', '.join(variables)}"
-             self.logger.info(f"Added new variable '{output_name}' (sum)")
-        # ... other operations like 'subtract', 'mean', etc. would be implemented here ...
-
-        return dataset # Return the dataset with the new variable added
-```
-
-These snippets show how `DataIntegrator` uses `xarray.merge` or `xarray.concat` to combine multiple datasets into one, and how it can perform calculations (`sum`, `subtract`, etc.) on variables within a dataset using `xarray` operations and add the result as a new variable.
-
-### DataTransformer (`eviz/lib/data/pipeline/transformer.py`)
-
-The `DataTransformer` is intended for more complex transformations, perhaps changing the very structure or representation of the data beyond simple processing. In the current eViz code base, this stage is minimal, with a placeholder method.
-
-```python
-# --- File: eviz/lib/data/pipeline/transformer.py (Simplified) ---
-# ... imports ...
-import xarray as xr
-# ... other imports ...
-
-@dataclass()
-class DataTransformer:
-    # ... attributes ...
-
-    def transform_data_source(self, data_source: DataSource, **kwargs) -> DataSource:
-        """Transform a data source."""
-        self.logger.debug("Transforming data source (placeholder)")
-        # Currently, this just calls a placeholder method
-        data_source.dataset = self._transform_dataset(data_source.dataset, **kwargs)
-        return data_source
-
-    @staticmethod
-    def _transform_dataset(dataset: xr.Dataset) -> xr.Dataset:
-        """Placeholder for dataset transformation logic."""
-        # TODO: Implement data transformation logic
-        return dataset # Returns the dataset unchanged for now
-```
-
-This shows that while the `DataTransformer` is part of the pipeline structure, its actual functionality is planned but not fully implemented yet. Data mostly flows through this stage unchanged for now.
-
-## Benefits of the Pipeline Structure
-
-*   **Clear Responsibilities:** Each stage (Reader, Processor, Integrator) has a specific job, making the code easier to understand and maintain.
-*   **Modularity:** You can modify or replace a stage (e.g., improve missing value handling in the Processor) without affecting other stages.
-*   **Reusability:** The components (like the Processor's unit conversion logic) can potentially be reused for different data sources or workflows.
-*   **Flexibility:** By configuring which stages run and in what order (as orchestrated by the `DataPipeline`), you can create different processing workflows for different data types or plotting needs.
-*   **Standardized Data:** The pipeline operates on the standard **xarray Dataset**, reinforcing the benefits of **Data Source Abstraction** ([Chapter 3](03_data_source_abstraction_.md)).
+The pipeline hides the complexity of data loading, cleaning, and preparation from the [Source Models](05_source_models_.md), allowing the models to focus on the logic specific to their data type (e.g., how to slice a WRF grid vs. a global grid).
 
 ## Conclusion
 
-In this chapter, you learned about the **Data Processing Pipeline**, the assembly line that takes raw data from your files and prepares it for visualization. You saw how the `DataPipeline` class orchestrates different stages (`DataReader`, `DataProcessor`, `DataTransformer`, `DataIntegrator`), each responsible for specific tasks like loading, cleaning, standardizing coordinates, handling missing values, converting units, or combining datasets. Data flows through these stages as standard **xarray Datasets**, getting progressively closer to the final state needed for plotting.
+In this chapter, we learned about the Data Processing Pipeline, which acts as an assembly line to prepare raw data from files for visualization. We explored its main components: the `DataReader` (for loading), the `DataProcessor` (for standardizing and cleaning), the `DataTransformer` (for changing representation), the `DataIntegrator` (for combining), and the main `DataPipeline` class that orchestrates the flow. We saw how a [Source Model](05_source_models_.md) asks the pipeline for data, and the pipeline handles the necessary steps, using the [Configuration System](01_configuration_system_.md) for guidance and relying on the [Data Source Abstraction](07_data_source_abstraction_.md) and [Data Source Factory](08_data_source_factory_.md) to handle different file types.
 
-Now that the data has been loaded, processed, and potentially integrated, it's finally ready to be turned into actual plots and images!
+Now that we've seen how the pipeline processes data, let's take a closer look at two crucial pieces *used by* the Reader within the pipeline: the [Data Source Abstraction](07_data_source_abstraction_.md) and the [Data Source Factory](08_data_source_factory_.md), which allow eViz to read various file formats seamlessly.
 
-Ready to see how eViz takes this prepared data and creates visualizations? Let's move on to the next chapter: [Plotting Engine](07_plotting_engine_.md).
+[Next Chapter: Data Source Abstraction](07_data_source_abstraction_.md)
 
 ---
 
