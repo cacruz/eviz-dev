@@ -11,7 +11,6 @@ ABSTRACT_FACTORIES = {
     "MopittFactory",
     "LandsatFactory",
     "FluxnetFactory",
-    "CrestFactory",
 }
 
 
