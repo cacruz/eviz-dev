@@ -247,6 +247,41 @@ class ConfigManager:
             str or None: The model-specific dimension name, or None if not found.
         """
         source = self.source_names[self.ds_index]
+        
+        # Try with the current ds_index first
+        result = self._get_model_dim_name_for_source(dim_name, source)
+        if result:
+            return result
+        
+        # If that fails, try with all sources
+        for i, src in enumerate(self.source_names):
+            if i != self.ds_index:  # Skip the one we already tried
+                result = self._get_model_dim_name_for_source(dim_name, src)
+                if result:
+                    return result
+        
+        # If all else fails, try some common dimension names
+        common_dims = {
+            'xc': ['lon', 'longitude', 'x'],
+            'yc': ['lat', 'latitude', 'y'],
+            'zc': ['lev', 'level', 'z', 'altitude', 'height', 'plev'],
+            'tc': ['time', 't']
+        }
+        
+        if dim_name in common_dims:
+            # Get all data sources
+            all_sources = self.pipeline.get_all_data_sources()
+            for source in all_sources.values():
+                if hasattr(source, 'dataset') and source.dataset is not None:
+                    dims = list(source.dataset.dims)
+                    for common_dim in common_dims[dim_name]:
+                        if common_dim in dims:
+                            return common_dim
+        
+        return None
+
+    def _get_model_dim_name_for_source(self, dim_name, source):
+        """Helper method to get model dimension name for a specific source."""
         file_path = self._get_current_file_path(source)
         if not file_path:
             return None
@@ -256,6 +291,8 @@ class ConfigManager:
             return None
 
         dims = self._get_available_dimensions(data_source)
+        if not dims:
+            return None
 
         if dim_name not in self.meta_coords:
             return None
