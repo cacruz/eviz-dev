@@ -8,7 +8,7 @@ from dataclasses import dataclass, field
 from eviz.lib.config.config import Config
 from eviz.lib.config.config_manager import ConfigManager
 from eviz.lib.config.configuration_adapter import ConfigurationAdapter
-from eviz.models.source_factory import (AirnowFactory, GhgFactory, GribFactory, GriddedSourceFactory,
+from eviz.models.source_factory import (AirnowFactory, CrestFactory, GhgFactory, GribFactory, GriddedSourceFactory,
                                         WrfFactory,
                                         LisFactory,
                                         ObsSourceFactory,
@@ -101,6 +101,7 @@ def get_factory_from_user_input(inputs) -> list:
     - 'gridded': GriddedSourceFactory (for generic NetCDF data)
     - 'geos': GriddedSourceFactory (for MERRA data)
     - 'ccm', 'cf': GriddedSourceFactory (for special streams)
+    - 'crest' : GriddedSourceFactory (temporary)
     - 'lis': LisFactory (for Land Information System data)
     - 'wrf': WrfFactory (for Weather Research and Forecasting model data)
     - 'grib': GribFactory (for GRIB data)
@@ -112,21 +113,22 @@ def get_factory_from_user_input(inputs) -> list:
     - 'landsat': LandsatFactory (for Landsat HDF4 data)
     """
     mappings = {
-        "test": GriddedSourceFactory(),  # for unit tests
-        "gridded": GriddedSourceFactory(),  # default for all gridded data such as NetCDF
-        "geos": GriddedSourceFactory(),  # special alias for GEOS datasets such as MERRA
-        "ccm": GriddedSourceFactory(),  # special alias for GEOS datasets CCM
-        "cf": GriddedSourceFactory(),  # and CF
-        "grib": GribFactory(),  # for Grib data sources like ERA5, GFS, etc.
-        # "crest": CrestFactory(),     #
-        "lis": LisFactory(),  # LIS and WRF are gridded but require special
-        "wrf": WrfFactory(),  # "treatment" due to the "regional" nature of the data
-        "airnow": AirnowFactory(),  # CSV
-        "ghg": GhgFactory(),  # CSV
-        "fluxnet": FluxnetFactory(),  # CSV
-        "omi": OmiFactory(),  # HDF5
-        "mopitt": MopittFactory(),  # HDF5
-        "landsat": LandsatFactory(),  # HDF4
+        "test": GriddedSourceFactory(),    # for unit tests
+        "gridded": GriddedSourceFactory(), # default for all gridded data such as NetCDF
+        "geos": GriddedSourceFactory(),    # special alias for GEOS datasets such as MERRA
+        "ccm": GriddedSourceFactory(),     # special alias for GEOS datasets CCM
+        "cf": GriddedSourceFactory(),      # and CF
+        "crest": GriddedSourceFactory(),   # and CREST
+        "obs": ObsSourceFactory(),         # for all observation data such
+        "lis": LisFactory(),               # LIS and WRF are gridded but require special
+        "wrf": WrfFactory(),               # "treatment" due to the "regional" nature of the data
+        "grib": GribFactory(),             #  Grib data sources like ERA5, GFS, etc.
+        "airnow": AirnowFactory(),         # CSV
+        "ghg": GhgFactory(),               # CSV
+        "fluxnet": FluxnetFactory(),       # CSV
+        "omi": OmiFactory(),               # HDF5
+        "mopitt": MopittFactory(),         # HDF5
+        "landsat": LandsatFactory(),       # HDF4
         # Add other mappings for other subclasses
         # Need MODIS, CEDS, EDGAR
     }

@@ -247,7 +247,6 @@ class ConfigManager:
             str or None: The model-specific dimension name, or None if not found.
         """
         source = self.source_names[self.ds_index]
-        
         # Try with the current ds_index first
         result = self._get_model_dim_name_for_source(dim_name, source)
         if result:

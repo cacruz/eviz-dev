@@ -128,7 +128,15 @@ class OmiFactory(BaseSourceFactory):
         return Omi(config_manager)
 
 
-# For the abstract factories, we need to make them properly abstract
+@dataclass
+class CrestFactory(BaseSourceFactory):
+    """
+    Factory for creating Crest model instances for processing CREST-generated data.
+    """
+    def create_root_instance(self, config_manager: ConfigManager):
+        return Crest(config_manager)
+
+
 class MopittFactory:
     def create_root_instance(self, config_manager):
         # This should be abstract and raise TypeError
@@ -144,8 +152,4 @@ class FluxnetFactory:
         # This should be abstract and raise TypeError
         raise TypeError("Cannot instantiate abstract factory")
 
-class CrestFactory:
-    def create_root_instance(self, config_manager):
-        # This should be abstract and raise TypeError
-        raise TypeError("Cannot instantiate abstract factory")
 

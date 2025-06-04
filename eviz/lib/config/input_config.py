@@ -224,6 +224,8 @@ class InputConfig:
             return 'HDF5'
         elif format_lower in ['hdf4', 'hdf']:
             return 'HDF4'
+        elif format_lower in ['zarr']:
+            return 'ZARR'
         elif format_lower in ['grib', 'grib2']:
             return 'GRIB'
         else:
@@ -281,6 +283,8 @@ class InputConfig:
             return 'HDF5'
         elif file_extension == '.hdf':
             return 'HDF4'
+        elif file_extension == '.zarr':
+            return 'ZARR'
         elif file_extension.startswith('.wrf'):  # e.g., .wrf-arw, .wrf-arw-nmp
             return 'NetCDF'
         else:
@@ -315,6 +319,8 @@ class InputConfig:
                     data_types_needed['CSV'] = True
                 elif file_extension in ['.h5', '.he5']:
                     data_types_needed['HDF5'] = True
+                elif file_extension == '.zarr':
+                    data_types_needed['ZARR'] = True
                 elif file_extension == '.hdf':
                     data_types_needed['HDF4'] = True
                 elif '*' in file_path:

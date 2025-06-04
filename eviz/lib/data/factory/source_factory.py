@@ -5,7 +5,8 @@ from eviz.lib.data.sources import (
     NetCDFDataSource,
     HDF5DataSource,
     CSVDataSource,
-    GRIBDataSource
+    GRIBDataSource,
+    ZARRDataSource
 )
 from eviz.lib.data.url_validator import is_url, is_opendap_url
 from .registry import DataSourceRegistry
@@ -36,6 +37,7 @@ class DataSourceFactory:
         self.registry.register(['h5', 'he5', 'hdf5', 'hdf'], HDF5DataSource)
         self.registry.register(['csv', 'dat', 'txt'], CSVDataSource)
         self.registry.register(['grib', 'grib2'], GRIBDataSource)
+        self.registry.register(['zarr'], ZARRDataSource)
 
     def register_data_source(self, extensions: List[str],
                              data_source_class: Type[DataSource]) -> None:
@@ -72,6 +74,8 @@ class DataSourceFactory:
                 reader_type = 'csv'
             elif file_format in ['hdf5', 'h5', 'he5']:
                 reader_type = 'hdf5'
+            elif file_format in ['zarr']:
+                reader_type = 'zarr'
             elif file_format in ['grib', 'grib2']:
                 reader_type = 'grib'
             else:
@@ -85,6 +89,8 @@ class DataSourceFactory:
                 return NetCDFDataSource(model_name, self.config_manager)
             elif reader_type in ['hdf5', 'h5']:
                 return HDF5DataSource(model_name, self.config_manager)
+            elif reader_type in ['zarr']:
+                return ZARRDataSource(model_name, self.config_manager)
             elif reader_type in ['grib', 'grib2']:
                 return GRIBDataSource(model_name, self.config_manager)
             else:
@@ -117,6 +123,8 @@ class DataSourceFactory:
                 ext = '.h5'
             elif 'csv' in path_lower:
                 ext = '.csv'
+            elif 'zarr' in path_lower:
+                ext = '.zarr'
             elif 'grib' in path_lower:
                 ext = '.grib'
             else:

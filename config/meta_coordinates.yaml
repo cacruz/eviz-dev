@@ -13,6 +13,7 @@ xc:
     gmi: longitude_dim
     grib: lon,longitude,im
     gridded: lon,longitude,im
+    crest: lon,longitude,im
     airnow: Longitude
     omi: Longitude,longitude,lon
     wrf:
@@ -26,7 +27,6 @@ xc:
         coords: lon
     spacetime: lon
     timeseries: time
-    crest: longitude
 
 # y-coordinate name: model
 yc:
@@ -36,6 +36,7 @@ yc:
     gmi: latitude_dim
     grib: lat,latitude,jm
     gridded: lat,latitude,jm
+    crest: lat,latitude,jm
     airnow: Latitude
     omi: Latitude,latitude,lat
     wrf:
@@ -49,7 +50,6 @@ yc:
         coords: lat
     spacetime: lat
     timeseries: location
-    crest: latitude
 
 # z-coordinate name: model
 zc:
@@ -59,6 +59,7 @@ zc:
     gmi: eta_dim
     grib: lev,level,levels,plev,lm,eta_dim
     gridded: lev,level,levels,plev,lm,eta_dim
+    crest: lev,level,levels,plev,lm,eta_dim
     airnow: NA
     omi: NA
     wrf:
@@ -77,6 +78,7 @@ tc:
     gmi: rec_dim
     grib: time,Time
     gridded: time,rec_dim,ntimemax
+    crest: time,datetime,Time
     airnow: time
     omi: Time
     wrf:
@@ -87,7 +89,6 @@ tc:
         coords: time
     test: time
     spacetime: time
-    crest: datetime
 
 # chemical species name
 spec:
