@@ -4,10 +4,10 @@ eviz.models.esm package
 Submodules
 ----------
 
-eviz.models.esm.gridded module
-------------------------------
+eviz.models.gridded_source module
+---------------------------------
 
-.. automodule:: eviz.models.esm.gridded
+.. automodule:: eviz.models.gridded_source
    :members:
    :undoc-members:
    :show-inheritance:

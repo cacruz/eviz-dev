@@ -1,4 +1,4 @@
-# Tutorial:
+# Tutorial
 
 eViz is a project designed for **automatic visualization** of Earth System Model and
 observational data. It uses detailed *configuration files* to understand input data,
