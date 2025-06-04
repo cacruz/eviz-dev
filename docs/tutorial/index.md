@@ -1,62 +1,67 @@
 # Tutorial: eviz-dev
 
-The eViz project is an **automatic visualization system** designed for Earth System Model and
-observational data. It acts as an *orchestrator* to read configurations, load and
-process data from various file formats through a *flexible pipeline*, handle
-source-specific logic, and generate different *types of plots* on a visualization canvas.
-It simplifies the process of turning complex scientific data into insightful graphics.
+The Autoviz application is the **central controller** for the eViz system.
+It takes your input data files and configuration settings, orchestrates a
+**data processing pipeline** to prepare the data, and directs the
+**plotting engine** to generate visualizations. Think of it as the core
+component that brings together data, instructions, and visualization tools
+to create plots automatically.
 
 
-**Source Repository:** [EViz](https://github.com/cacruz/eviz-dev)
+**Source Repository:** [None](None)
 
 ```{mermaid}
 flowchart TD
-    A0["Autoviz (Application Orchestrator)
+    A0["Autoviz Application
 "]
-    A1["ConfigManager
+    A1["Configuration Management
 "]
-    A2["DataPipeline
+    A2["Data Processing Pipeline
 "]
-    A3["DataSource (Base)
+    A3["Data Source Abstraction
 "]
-    A4["DataSourceFactory
+    A4["Model Implementations
 "]
-    A5["Model Handler (BaseSource)
+    A5["Plotting Engine
 "]
-    A6["Figure (Visualization Canvas)
+    A6["Data Source Factory
 "]
-    A7["Plotter
+    A7["Metadata Handling
 "]
-    A0 -- "Initializes config" --> A1
-    A0 -- "Runs model handler" --> A5
-    A1 -- "Manages pipeline" --> A2
-    A1 -- "Provides config to" --> A5
-    A2 -- "Uses factory" --> A4
-    A2 -- "Processes data from" --> A3
-    A4 -- "Creates instances of" --> A3
-    A5 -- "Creates figures" --> A6
-    A5 -- "Uses plotter" --> A7
-    A7 -- "Draws on" --> A6
+    A0 -- "Initializes/Uses Config" --> A1
+    A0 -- "Orchestrates Pipeline" --> A2
+    A0 -- "Runs Models" --> A4
+    A1 -- "Manages Metadata Info" --> A7
+    A2 -- "Uses Factory" --> A6
+    A2 -- "Processes Data Sources" --> A3
+    A3 -- "Provides Metadata" --> A7
+    A4 -- "Uses Plotters" --> A5
+    A4 -- "Accesses Data" --> A3
+    A4 -- "Uses Config" --> A1
+    A4 -- "Uses Metadata" --> A7
+    A5 -- "Uses Config" --> A1
+    A5 -- "Uses Metadata" --> A7
+    A6 -- "Creates Data Sources" --> A3
 ```
 
 ## Chapters
 
-1. [Autoviz (Application Orchestrator)
-](01_autoviz__application_orchestrator__.md)
-2. [ConfigManager
-](02_configmanager_.md)
-3. [DataPipeline
-](03_datapipeline_.md)
-4. [DataSourceFactory
-](04_datasourcefactory_.md)
-5. [DataSource (Base)
-](05_datasource__base__.md)
-6. [Figure (Visualization Canvas)
-](06_figure__visualization_canvas__.md)
-7. [Plotter
-](07_plotter_.md)
-8. [Model Handler (BaseSource)
-](08_model_handler__abstractroot__.md)
+1. [Autoviz Application
+](01_autoviz_application_.md)
+2. [Configuration Management
+](02_configuration_management_.md)
+3. [Data Source Abstraction
+](03_data_source_abstraction_.md)
+4. [Data Source Factory
+](04_data_source_factory_.md)
+5. [Metadata Handling
+](05_metadata_handling_.md)
+6. [Data Processing Pipeline
+](06_data_processing_pipeline_.md)
+7. [Plotting Engine
+](07_plotting_engine_.md)
+8. [Model Implementations
+](08_model_implementations_.md)
 
 
 ---
