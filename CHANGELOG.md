@@ -9,8 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 This is a significant rewrite of v0.6.3. Though eViz's general idea and all 
 the previous functionality is the same, the code structure is different.
-However, the API remains the same are the units tests are more numerous with
-about 45% code coverage. 
+The API remains the same and the units tests are more numerous.
 
 A significant change is the omission if iViz, which was a separate application
 using the same library code. Now, the interactivity is optional and when chosen
@@ -34,10 +33,10 @@ eviz can produce interactive plots.
 ### Deprecated
 
 ### Fixed
-- The above refactoring fixed many bugs.
-- Improved metadump.py
-- Improved sviz/autoviz.py
-- Issues with regrid()
+- The above additions fixed many bugs.
+- Improved metadump.py with tests
+- Edited sviz/autoviz.py
+- Issues with regrid() were fixed
 - Coordinates standardization
 
 ### Removed
