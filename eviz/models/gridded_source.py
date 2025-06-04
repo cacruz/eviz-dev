@@ -913,9 +913,9 @@ class GriddedSource(GenericSource):
             self.config_manager.level = level_val
 
             # Store domain information for regional plots if available
-            is_regional = hasattr(self, 'source_name') and self.source_name in ['lis',
+            self.config_manager.is_regional = hasattr(self, 'source_name') and self.source_name in ['lis',
                                                                                 'wrf']
-            if is_regional:
+            if self.config_manager.is_regional:
                 if hasattr(sdat1_dataset, 'lon') and hasattr(sdat1_dataset, 'lat'):
                     self.lon = sdat1_dataset.lon
                     self.lat = sdat1_dataset.lat
@@ -1084,9 +1084,9 @@ class GriddedSource(GenericSource):
 
         # Process coordinates based on domain type
         try:
-            is_regional = hasattr(self, 'source_name') and self.source_name in ['lis',
+            self.config_manager.is_regional = hasattr(self, 'source_name') and self.source_name in ['lis',
                                                                                 'wrf']
-            if is_regional:
+            if self.config_manager.is_regional:
                 if hasattr(self, '_process_coordinates'):
                     return self._process_coordinates(data2d, dim1_name, dim2_name,
                                                      field_name,

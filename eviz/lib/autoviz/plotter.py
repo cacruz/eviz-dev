@@ -409,7 +409,8 @@ def _plot_xy_data(config, ax, data2d, x, y, field_name, fig, ax_opts, level,
                           fontsize=pu.image_font_size(fig.subplots))        
         
     elif config.compare:
-
+        if not config.is_regional:
+            fig.set_size_inches(16, 6)
         fig.suptitle_eviz(text=config.map_params[findex].get('field', 'No name'), 
                           fontweight='bold',
                           fontstyle='italic',
@@ -671,6 +672,8 @@ def _plot_yz_data(config, ax, data2d, x, y, field_name, fig, ax_opts, vertical_u
                           fontsize=pu.image_font_size(fig.subplots))        
         
     elif config.compare:
+        if not config.is_regional:
+            fig.set_size_inches(16, 6)
 
         fig.suptitle_eviz(text=config.map_params[findex].get('field', 'No name'), 
                           fontweight='bold',
