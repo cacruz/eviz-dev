@@ -37,19 +37,6 @@ The pipeline is built from several components, each responsible for a specific s
 4.  **`DataIntegrator`:** This component is used when you need to combine data. It can merge datasets from different files or perform calculations to create new variables from existing ones within a dataset (like `var1 - var2`).
 5.  **`DataPipeline`:** This is the main class (`eviz/lib/data/pipeline/pipeline.py`) that orchestrates the flow. It contains instances of the Reader, Processor, Transformer, and Integrator and manages the sequence of steps when you ask it to process a file or a set of files.
 
-Think of it like this:
-
-```{mermaid}
-graph LR
-    A[Raw File Data] --> B(DataReader);
-    B --> C(DataProcessor);
-    C --> D(DataTransformer);
-    D --> E(DataIntegrator);
-    E --> F[Processed Data (Ready for Models)];
-
-    style A fill:#f9f,stroke:#333,stroke-width:2px
-    style F fill:#9cf,stroke:#333,stroke-width:2px
-```
 The `DataPipeline` object controls this flow. It tells the Reader to read, then passes the result to the Processor, and so on.
 
 ## How the Data Processing Pipeline Gets Data

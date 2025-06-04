@@ -1,4 +1,4 @@
-# Tutorial: eviz-dev
+# Tutorial:
 
 eViz is a project designed for **automatic visualization** of Earth System Model and
 observational data. It uses detailed *configuration files* to understand input data,
@@ -9,19 +9,19 @@ helps users by *generating initial configuration* directly from data files,
 simplifying the setup process.
 
 
-**Source Repository:** [None](None)
+**Source Repository:** [eViz](https://github.com/cacruz/eviz)
 
 ```{mermaid}
 flowchart TD
     A0["Configuration System
 "]
-    A1["Data Source Abstraction
+    A1["Visualizations
 "]
     A2["Data Processing Pipeline
 "]
     A3["Source Models
 "]
-    A4["Data Source Factory
+    A4["Data Sources
 "]
     A5["Plotting Components
 "]
@@ -30,20 +30,17 @@ flowchart TD
     A7["Metadata Generator (metadump)
 "]
     A6 -- "Loads & Uses" --> A0
-    A7 -- "Generates config for" --> A0
     A0 -- "Configures & Manages" --> A2
     A6 -- "Uses" --> A4
     A4 -- "Creates instances of" --> A3
-    A4 -- "Creates instances of" --> A1
     A6 -- "Runs" --> A3
-    A6 -- "Executes" --> A2
-    A3 -- "Uses" --> A2
-    A2 -- "Processes" --> A1
-    A3 -- "Accesses via pipeline" --> A1
     A3 -- "Reads" --> A0
     A5 -- "Reads" --> A0
+    A5 -- "Creates" --> A1
     A3 -- "Directs" --> A5
     A5 -- "Gets data from" --> A3
+    A6 -- "Executes" --> A2
+    A7 -- "Generates config for" --> A0
 ```
 
 ## Chapters
