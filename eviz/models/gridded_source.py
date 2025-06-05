@@ -9,6 +9,7 @@ from eviz.models.source_base import GenericSource
 from eviz.lib.data.utils import apply_conversion, apply_mean, apply_zsum
 import eviz.lib.autoviz.utils as pu
 from eviz.lib.autoviz.figure import Figure
+from eviz.lib.autoviz.plotting.factory import PlotterFactory
 
 warnings.filterwarnings("ignore")
 
@@ -312,13 +313,13 @@ class GriddedSource(GenericSource):
                                                             file_index, plot_type, figure,
                                                             t,
                                                             level=level_val)
-
                 if field_to_plot:
-                    plotter.single_plots(self.config_manager, field_to_plot=field_to_plot,
-                                         level=level_val)
+                    backend = getattr(self.config_manager, 'plot_backend', 'matplotlib')
+                    xy_plotter = PlotterFactory.create_plotter('xy', backend)
+                    plot_result = xy_plotter.plot(self.config_manager, field_to_plot)
 
                     pu.print_map(self.config_manager, plot_type,
-                                 self.config_manager.findex, figure,
+                                 self.config_manager.findex, plot_result,
                                  level=level_val)
 
     def _process_other_plot(self, data_array: xr.DataArray, field_name: str,

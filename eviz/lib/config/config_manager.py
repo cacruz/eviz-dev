@@ -575,6 +575,11 @@ class ConfigManager:
         return self.input_config._extra_diff_plot
 
     @property
+    def plot_backend(self):
+        """The backend to use for plotting."""
+        return self.input_config._plot_backend
+
+    @property
     def cmap(self):
         """The colormap to use for plotting."""
         return self.input_config._cmap

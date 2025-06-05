@@ -19,7 +19,7 @@ class Grib(GriddedSource):
         self.logger.info("Start init")
         super().__post_init__()
         self.comparison_plot = False
-        self.source_name = 'lis'
+        self.source_name = 'grib'
 
     def _init_model_specific_data(self):
         """Grib-specific initialization."""
@@ -216,8 +216,8 @@ class Grib(GriddedSource):
                 print_map(self.config_manager, plot_type, self.config_manager.findex,
                              figure)
 
-    def _set_lis_extents(self, xs, ys):
-        """Set LIS-specific map extents."""
+    def _set_grib_extents(self, xs, ys):
+        """Set GRIB-specific map extents."""
 
         latN = max(ys)
         latS = min(ys)
@@ -265,7 +265,7 @@ class Grib(GriddedSource):
         else:
             x_values = data_array.coords['lon'].values
             y_values = data_array.coords['lat'].values    
-            self._set_lis_extents(x_values, y_values)
+            self._set_grib_extents(x_values, y_values)
         # Return the prepared data and coordinates in the expected tuple format
         return data2d, x_values, y_values, field_name, plot_type, file_index, figure
     
@@ -321,7 +321,7 @@ class Grib(GriddedSource):
 
     def _process_coordinates(self, data2d, dim1, dim2, field_name, plot_type, file_index, figure, ax):
         """
-        Process coordinates for LIS plots, handling NaN values in coordinates.
+        Process coordinates for GRIB plots, handling NaN values in coordinates.
         """
         xr = np.array(self.lon[0, :])
         yr = np.array(self.lat[:, 0])        
@@ -336,7 +336,7 @@ class Grib(GriddedSource):
 
     def _apply_vertical_level_selection(self, data2d, field_name, level):
         """
-        Apply vertical level selection for LIS data.
+        Apply vertical level selection for GRIB data.
         """
         # Get the vertical dimension name
         dim = self.get_dd(self.source_name, self.source_data, 'zc', field_name)
@@ -352,7 +352,7 @@ class Grib(GriddedSource):
 
     def _apply_time_selection(self, original_data, data2d, time_dim, time_lev, field_name, level):
         """
-        LIS has more complex time handling with optional time averaging.
+        GRIB has more complex time handling with optional time averaging.
         """
         if time_dim and time_dim in original_data.dims:
             num_times = original_data.dims[time_dim]

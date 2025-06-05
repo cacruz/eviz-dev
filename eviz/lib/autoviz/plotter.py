@@ -26,6 +26,8 @@ import eviz.lib.autoviz.utils as pu
 import eviz.lib.utils as u
 from eviz.lib.config.config_manager import ConfigManager
 from eviz.lib.data.pipeline.reader import get_data_coords
+from .plotting.factory import PlotterFactory
+
 
 warnings.filterwarnings("ignore")
 
@@ -1742,14 +1744,22 @@ class SinglePlotter(Plotter):
                      level: int = None):
         self.plot(config, field_to_plot, level)
 
-    @staticmethod
-    def plot(config, field_to_plot, level):
-        """ Create a single plot using specs data
-        Parameters:
+
+    def plot(self, config, field_to_plot, level, backend=None):
+        """Create a single plot using specs data.
+        
+        Args:
             config: ConfigManager
             field_to_plot: tuple (data2d, dim1, dim2, field_name, plot_type, findex, map_params)
             level: int (optional)
+            backend: str (optional) - If provided, use the new architecture with this backend
         """
+        # If a backend is specified, use the new architecture
+        if backend:
+            modern_plotter = ModernPlotter(backend=backend)
+            return modern_plotter.plot(config, field_to_plot)
+        
+        # Otherwise, use the existing implementation for backward compatibility
         plot_type = field_to_plot[4] + 'plot'
         if plot_type == 'yzplot':
             _single_yz_plot(config, field_to_plot)
@@ -1763,9 +1773,6 @@ class SinglePlotter(Plotter):
             _single_polar_plot(config, field_to_plot)
         if plot_type == 'scplot':
             _single_scat_plot(config, field_to_plot)
-        # TODO: for user defined functions you need to do the following:
-        # elif plot_type == constants.myplot:
-        #     self._myplot_subplot(config, field_to_plot)
 
 
 @dataclass()
@@ -1806,3 +1813,86 @@ class ComparisonPlotter:
             _single_scat_plot(config, field_to_plot)
         else:
             self.logger.error(f'{plot_type} is not implemented')
+
+
+# Add this new class
+class ModernPlotter:
+    """Modern plotter interface that delegates to specific backend implementations."""
+    
+    def __init__(self, backend="matplotlib"):
+        """Initialize with the specified backend."""
+        self.backend = backend
+        self.logger = logging.getLogger(self.__class__.__name__)
+    
+    def plot(self, config, data_to_plot):
+        """Create a plot using the specified backend.
+        
+        Args:
+            config: Configuration manager
+            data_to_plot: Tuple containing plot data
+            
+        Returns:
+            The created plot object
+        """
+        plot_type = data_to_plot[4]  # Extract plot type from data_to_plot tuple
+        try:
+            plotter = PlotterFactory.create_plotter(plot_type, self.backend)
+            return plotter.plot(config, data_to_plot)
+        except ValueError as e:
+            self.logger.error(f"Error creating plotter: {e}")
+            # Fall back to the old implementation for backward compatibility
+            if plot_type == 'xy':
+                return _single_xy_plot(config, data_to_plot, level=0)
+            # Add other fallbacks as needed
+            return None
+    
+    def save(self, plot_object, filename, **kwargs):
+        """Save the plot to a file."""
+        if hasattr(plot_object, 'save'):
+            plot_object.save(filename, **kwargs)
+        elif hasattr(plot_object, 'savefig'):
+            plot_object.savefig(filename, **kwargs)
+        else:
+            self.logger.warning(f"Don't know how to save plot of type {type(plot_object)}")
+    
+    def show(self, plot_object):
+        """Display the plot."""
+        if hasattr(plot_object, 'show'):
+            plot_object.show()
+        else:
+            import matplotlib.pyplot as plt
+            plt.show()
+
+# Modify the SinglePlotter class to optionally use the new architecture
+@dataclass()
+class SinglePlotter(Plotter):
+    # Keep existing code
+    
+    def plot(self, config, field_to_plot, level, backend=None):
+        """Create a single plot using specs data.
+        
+        Args:
+            config: ConfigManager
+            field_to_plot: tuple (data2d, dim1, dim2, field_name, plot_type, findex, map_params)
+            level: int (optional)
+            backend: str (optional) - If provided, use the new architecture with this backend
+        """
+        # If a backend is specified, use the new architecture
+        if backend:
+            modern_plotter = ModernPlotter(backend=backend)
+            return modern_plotter.plot(config, field_to_plot)
+        
+        # Otherwise, use the existing implementation for backward compatibility
+        plot_type = field_to_plot[4] + 'plot'
+        if plot_type == 'yzplot':
+            _single_yz_plot(config, field_to_plot)
+        if plot_type == 'xtplot':
+            _single_xt_plot(config, field_to_plot)
+        if plot_type == 'txplot':
+            _single_tx_plot(config, field_to_plot)
+        if plot_type == 'xyplot':
+            _single_xy_plot(config, field_to_plot, level)
+        if plot_type == 'polarplot':
+            _single_polar_plot(config, field_to_plot)
+        if plot_type == 'scplot':
+            _single_scat_plot(config, field_to_plot)

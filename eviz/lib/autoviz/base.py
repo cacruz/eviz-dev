@@ -8,7 +8,11 @@ from dataclasses import dataclass, field
 from eviz.lib.config.config import Config
 from eviz.lib.config.config_manager import ConfigManager
 from eviz.lib.config.configuration_adapter import ConfigurationAdapter
-from eviz.models.source_factory import (AirnowFactory, CrestFactory, GhgFactory, GribFactory, GriddedSourceFactory,
+from eviz.models.source_factory import (AirnowFactory, 
+                                        CrestFactory, 
+                                        GhgFactory, 
+                                        GribFactory, 
+                                        GriddedSourceFactory,
                                         WrfFactory,
                                         LisFactory,
                                         ObsSourceFactory,
@@ -118,7 +122,7 @@ def get_factory_from_user_input(inputs) -> list:
         "geos": GriddedSourceFactory(),    # special alias for GEOS datasets such as MERRA
         "ccm": GriddedSourceFactory(),     # special alias for GEOS datasets CCM
         "cf": GriddedSourceFactory(),      # and CF
-        "crest": GriddedSourceFactory(),   # and CREST
+        "crest": CrestFactory(),           # and CREST
         "obs": ObsSourceFactory(),         # for all observation data such
         "lis": LisFactory(),               # LIS and WRF are gridded but require special
         "wrf": WrfFactory(),               # "treatment" due to the "regional" nature of the data

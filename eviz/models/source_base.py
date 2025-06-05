@@ -9,6 +9,7 @@ from eviz.lib.config.config_manager import ConfigManager
 from eviz.lib.data import DataSource
 from eviz.models.base import BaseSource
 
+
 logging.getLogger('matplotlib.font_manager').setLevel(logging.WARNING)
 
 
