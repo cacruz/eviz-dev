@@ -1,3 +1,5 @@
+from eviz.lib.autoviz.plotting.backends.altair.xt_plot import AltairXTPlotter
+from eviz.lib.autoviz.plotting.backends.matplotlib.xt_plot import MatplotlibXTPlotter
 from .backends.matplotlib.xy_plot import MatplotlibXYPlotter
 from .backends.hvplot.xy_plot import HvplotXYPlotter
 from .backends.altair.xy_plot import AltairXYPlotter
@@ -24,6 +26,8 @@ class PlotterFactory:
             ("xy", "matplotlib"): MatplotlibXYPlotter,
             ("xy", "hvplot"): HvplotXYPlotter,
             ("xy", "altair"): AltairXYPlotter,
+            ("xt", "matplotlib"): MatplotlibXTPlotter,
+            ("xt", "altair"): AltairXTPlotter,
             # Add other combinations as they are implemented
         }
         

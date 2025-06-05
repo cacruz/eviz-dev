@@ -1731,7 +1731,7 @@ class SimplePlotter:
 
 
 @dataclass()
-class SinglePlotter(Plotter):
+class SinglePlotterOld(Plotter):
 
     @property
     def logger(self) -> logging.Logger:
@@ -1815,7 +1815,6 @@ class ComparisonPlotter:
             self.logger.error(f'{plot_type} is not implemented')
 
 
-# Add this new class
 class ModernPlotter:
     """Modern plotter interface that delegates to specific backend implementations."""
     
@@ -1840,10 +1839,18 @@ class ModernPlotter:
             return plotter.plot(config, data_to_plot)
         except ValueError as e:
             self.logger.error(f"Error creating plotter: {e}")
-            # Fall back to the old implementation for backward compatibility
-            if plot_type == 'xy':
-                return _single_xy_plot(config, data_to_plot, level=0)
-            # Add other fallbacks as needed
+            if plot_type == 'yzplot':
+                _single_yz_plot(config, data_to_plot)
+            elif plot_type == 'xtplot':
+                _single_xt_plot(config, data_to_plot)
+            elif plot_type == 'txplot':
+                _single_tx_plot(config, data_to_plot)
+            elif plot_type == 'xyplot':
+                _single_xy_plot(config, data_to_plot, level=0)
+            elif plot_type == 'polarplot':
+                _single_polar_plot(config, data_to_plot)
+            elif plot_type == 'scplot':
+                _single_scat_plot(config, data_to_plot)
             return None
     
     def save(self, plot_object, filename, **kwargs):
@@ -1863,11 +1870,10 @@ class ModernPlotter:
             import matplotlib.pyplot as plt
             plt.show()
 
-# Modify the SinglePlotter class to optionally use the new architecture
+
 @dataclass()
 class SinglePlotter(Plotter):
-    # Keep existing code
-    
+    """Class for creating single plots."""    
     def plot(self, config, field_to_plot, level, backend=None):
         """Create a single plot using specs data.
         

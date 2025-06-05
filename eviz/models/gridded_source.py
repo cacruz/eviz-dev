@@ -342,9 +342,14 @@ class GriddedSource(GenericSource):
                                                 plot_type, figure,
                                                 time_level=time_level_config)
         if field_to_plot:
-            plotter.single_plots(self.config_manager, field_to_plot=field_to_plot)
-            pu.print_map(self.config_manager, plot_type, self.config_manager.findex,
-                         figure)
+            backend = getattr(self.config_manager, 'plot_backend', 'matplotlib')
+            xt_plotter = PlotterFactory.create_plotter('xt', backend)
+            plot_result = xt_plotter.plot(self.config_manager, field_to_plot)
+
+        # if field_to_plot:
+        #     plotter.single_plots(self.config_manager, field_to_plot=field_to_plot)
+            pu.print_map(self.config_manager, plot_type,
+                            self.config_manager.findex, plot_result)
 
     def _process_zsum_plots(self, data_array: xr.DataArray, field_name: str,
                             file_index: int, plot_type: str, figure,

@@ -35,3 +35,13 @@ class XYPlotter(BasePlotter):
     def plot(self, config, data_to_plot):
         """Create an XY plot from the given data."""
         pass
+
+class XTPlotter(BasePlotter):
+    """Base class for XT (time-series) plotters."""
+    
+    @abstractmethod
+    def plot(self, config, data_to_plot):
+        """Create an XT plot from the given data."""
+        pass
+
+
