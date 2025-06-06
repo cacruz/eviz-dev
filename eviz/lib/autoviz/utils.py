@@ -16,6 +16,7 @@ import numpy as np
 from matplotlib.ticker import LogFormatter
 import glob
 from PIL import Image
+import holoviews as hv
 
 from numpy import e
 import eviz.lib.utils as u
@@ -287,14 +288,17 @@ def print_map(
         elif backend == 'hvplot':
             # For HvPlot, save as HTML
             try:
-                import hvplot.plotting
-                hvplot.plotting.save(fig, filename)
-            except (ImportError, AttributeError):
+                # Import holoviews for saving
+                import holoviews as hv
+                hv.save(fig, filename)
+                logger.debug(f"Saved HvPlot using holoviews.save to {filename}")
+            except (ImportError, AttributeError) as e:
+                logger.warning(f"Cannot save HvPlot using holoviews: {e}")
                 # Try direct save if available
                 if hasattr(fig, 'save'):
                     fig.save(filename)
                 else:
-                    logger.warning(f"Cannot save HvPlot: {filename}. hvplot not properly installed or object doesn't support saving.")
+                    logger.warning(f"Cannot save HvPlot: {filename}. Object doesn't support saving.")
         
         else:
             # Generic approach - try common save methods
@@ -339,11 +343,11 @@ def print_map(
                 display(fig)
             except ImportError:
                 # If not in a notebook, open in browser
-                import hvplot.plotting
                 import tempfile
                 import webbrowser
+                import holoviews as hv
                 temp_file = os.path.join(tempfile.gettempdir(), f"{fname}.html")
-                hvplot.plotting.save(fig, temp_file)
+                hv.save(fig, temp_file)
                 webbrowser.open(f"file://{temp_file}")
         else:
             # Generic approach - try common show methods
@@ -352,89 +356,6 @@ def print_map(
             else:
                 logger.warning(f"Don't know how to display plot of type {type(fig)} with backend {backend}")
     
-    logger.debug("Clearing figure")
-
-def print_map2(
-        config,
-        plot_type: str,
-        findex: int,
-        fig,
-        level: int = None,
-) -> None:
-    """Save or display a plot, handling output directory, file naming, and optional archiving.
-
-    Args:
-        config: Configuration object with plotting and output options.
-        plot_type (str): Type of plot (e.g., 'xy', 'yz', etc.).
-        findex (int): File index for naming.
-        fig: Matplotlib figure object to save or show.
-        level (int, optional): Vertical level for the plot, if applicable.
-    """
-
-    def resolve_output_dir(config) -> str:
-        """Determine and create the output directory if needed."""
-        map_params = config.map_params
-        output_dir = u.get_nested_key_value(map_params[config.pindex],
-                                            ['outputs', 'output_dir'])
-
-        if not output_dir:
-            output_dir = config.paths.output_path
-        if not os.path.exists(output_dir):
-            os.makedirs(output_dir)
-            logger.debug(f"Created output directory: {output_dir}")
-        return output_dir
-
-    def build_filename(config, plot_type: str, findex: int, level: int = None) -> str:
-        """Construct the output filename based on config and plot type."""
-        map_params = config.map_params
-        field_name = map_params[config.pindex]['field']
-        exp_id = map_params[config.pindex].get('exp_id', None)
-
-        levstr = f"_{level}" if level is not None else ""
-        time_level = getattr(config, "time_level", "")
-        exp_id_suf = "."
-
-        if not config.compare:
-            if exp_id:
-                exp_id_suf = f"_{exp_id}_{findex}_{time_level}."
-            else:
-                exp_id_suf = f"_{findex}_{time_level}."
-        # else: exp_id_suf remains "."
-
-        if 'xy' in plot_type:
-            fname = f"{field_name}{levstr}{exp_id_suf}"
-        elif 'yz' in plot_type:
-            fname = f"{field_name}_yz{exp_id_suf}"
-        else:
-            fname = f"{field_name}_{plot_type}{exp_id_suf}"
-
-        return fname
-
-    output_dir = resolve_output_dir(config)
-    fname = build_filename(config, plot_type, findex, level)
-    map_filename = f"{fname}{config.print_format}"
-    filename = os.path.join(output_dir, map_filename)
-
-    if config.print_to_file:
-        fig.tight_layout()
-        # Save with or without bbox_inches depending on extent
-        if config.ax_opts.get('extent'):
-            fig.savefig(filename, dpi=300)
-        else:
-            fig.savefig(filename, bbox_inches='tight', dpi=300)
-
-        logger.debug(f"Figure saved to {filename}")
-
-        if getattr(config, "archive_web_results", False):
-            # Remove file extension from fname for JSON
-            json_fname = fname.split('.')[0]
-            dump_json_file(
-                json_fname, config, plot_type, findex, map_filename, fig, output_dir
-            )
-            logger.debug(f"Archived web results for {json_fname}")
-    else:
-        plt.tight_layout()
-        plt.show()
     logger.debug("Clearing figure")
 
 

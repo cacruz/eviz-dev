@@ -1,8 +1,8 @@
-from eviz.lib.autoviz.plotting.backends.altair.xt_plot import AltairXTPlotter
-from eviz.lib.autoviz.plotting.backends.matplotlib.xt_plot import MatplotlibXTPlotter
+from .backends.altair.xy_plot import AltairXYPlotter
+from .backends.altair.xt_plot import AltairXTPlotter
+from .backends.matplotlib.xt_plot import MatplotlibXTPlotter
 from .backends.matplotlib.xy_plot import MatplotlibXYPlotter
 from .backends.hvplot.xy_plot import HvplotXYPlotter
-from .backends.altair.xy_plot import AltairXYPlotter
 
 class PlotterFactory:
     """Factory for creating appropriate plotters."""
@@ -23,11 +23,11 @@ class PlotterFactory:
         """
         # Dictionary mapping (plot_type, backend) to plotter class
         plotters = {
-            ("xy", "matplotlib"): MatplotlibXYPlotter,
-            ("xy", "hvplot"): HvplotXYPlotter,
             ("xy", "altair"): AltairXYPlotter,
-            ("xt", "matplotlib"): MatplotlibXTPlotter,
             ("xt", "altair"): AltairXTPlotter,
+            ("xy", "matplotlib"): MatplotlibXYPlotter,
+            ("xt", "matplotlib"): MatplotlibXTPlotter,
+            ("xy", "hvplot"): HvplotXYPlotter,
             # Add other combinations as they are implemented
         }
         
