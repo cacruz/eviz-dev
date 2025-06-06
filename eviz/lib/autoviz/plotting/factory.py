@@ -3,6 +3,7 @@ from .backends.altair.xt_plot import AltairXTPlotter
 from .backends.matplotlib.xt_plot import MatplotlibXTPlotter
 from .backends.matplotlib.xy_plot import MatplotlibXYPlotter
 from .backends.hvplot.xy_plot import HvplotXYPlotter
+from .backends.hvplot.xt_plot import HvplotXTPlotter
 
 class PlotterFactory:
     """Factory for creating appropriate plotters."""
@@ -28,6 +29,7 @@ class PlotterFactory:
             ("xy", "matplotlib"): MatplotlibXYPlotter,
             ("xt", "matplotlib"): MatplotlibXTPlotter,
             ("xy", "hvplot"): HvplotXYPlotter,
+            ("xt", "hvplot"): HvplotXTPlotter,
             # Add other combinations as they are implemented
         }
         
