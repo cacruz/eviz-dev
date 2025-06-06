@@ -237,7 +237,8 @@ class GriddedSource(GenericSource):
             if isinstance(plot_types, str):
                 plot_types = [pt.strip() for pt in plot_types.split(',')]
             for plot_type in plot_types:
-                self._process_plot(field_data_array, field_name, idx, plot_type, plotter)
+                self.process_plot(field_data_array, field_name, idx, plot_type, plotter)
+                # self._process_plot(field_data_array, field_name, idx, plot_type, plotter)
 
         if self.config_manager.make_gif:
             pu.create_gif(self.config_manager.config)
@@ -256,31 +257,25 @@ class GriddedSource(GenericSource):
             self._process_other_plot(data_array, field_name, file_index, plot_type,
                                      figure, plotter)
 
-    def _process_xy_plot(self, data_array: xr.DataArray, field_name: str, file_index: int,
-                         plot_type: str, figure, plotter):
-        """Process xy or polar plot types."""
+    def _process_xy_plot(self, data_array, field_name, file_index, plot_type, figure, plotter):
+        """Process an XY plot."""
         levels = self.config_manager.get_levels(field_name, plot_type + 'plot')
         do_zsum = self.config_manager.ax_opts.get('zsum', False)
 
         time_level_config = self.config_manager.ax_opts.get('time_lev', 0)
         tc_dim = self.config_manager.get_model_dim_name('tc') or 'time'
         num_times = data_array[tc_dim].size if tc_dim in data_array.dims else 1
-        time_levels = range(num_times) if time_level_config == 'all' else [
-            time_level_config]
+        time_levels = range(num_times) if time_level_config == 'all' else [time_level_config]
 
         if not levels and not do_zsum:
             return
 
         if levels:
-            self._process_level_plots(data_array, field_name, file_index, plot_type,
-                                      figure, time_levels, levels, plotter)
+            self._process_level_plots(data_array, field_name, file_index, plot_type, figure, time_levels, levels, plotter)
         else:
-            self._process_zsum_plots(data_array, field_name, file_index, plot_type,
-                                     figure, time_levels, plotter)
+            self._process_zsum_plots(data_array, field_name, file_index, plot_type, figure, time_levels, plotter)
 
-    def _process_level_plots(self, data_array: xr.DataArray, field_name: str,
-                             file_index: int, plot_type: str, figure,
-                             time_levels: list, levels: dict, plotter):
+    def _process_level_plots(self, data_array, field_name, file_index, plot_type, figure, time_levels, levels, plotter):
         """Process plots for specific vertical levels."""
         self.logger.debug(f' -> Processing {len(time_levels)} time levels')
         zc_dim = self.config_manager.get_model_dim_name('zc') or 'lev'
@@ -305,23 +300,108 @@ class GriddedSource(GenericSource):
                 # If the data doesn't have a vertical dimension, we can't select a level
                 # In this case, we'll just use the data as is
                 if not has_vertical_dim:
-                    field_to_plot = self._get_field_to_plot(data_at_time, field_name,
-                                                            file_index, plot_type, figure,
-                                                            t)
+                    field_to_plot = self._get_field_to_plot(data_at_time, field_name, file_index, plot_type, figure, t)
                 else:
-                    field_to_plot = self._get_field_to_plot(data_at_time, field_name,
-                                                            file_index, plot_type, figure,
-                                                            t,
-                                                            level=level_val)
+                    field_to_plot = self._get_field_to_plot(data_at_time, field_name, file_index, plot_type, figure, t, level=level_val)
+                
                 if field_to_plot:
-                    backend = getattr(self.config_manager, 'plot_backend', 'matplotlib')
-                    xy_plotter = PlotterFactory.create_plotter('xy', backend)
-                    plot_result = xy_plotter.plot(self.config_manager, field_to_plot)
+                    plot_result = self.create_plot(field_name, field_to_plot)                    
+                    pu.print_map(self.config_manager, plot_type, self.config_manager.findex, plot_result, level=level_val)
 
-                    pu.print_map(self.config_manager, plot_type,
-                                 self.config_manager.findex, plot_result,
-                                 level=level_val)
+    def _process_xt_plot(self, data_array, field_name, file_index, plot_type, figure, plotter):
+        """Process an XT plot."""
+        self.config_manager.level = None
+        time_level_config = self.config_manager.ax_opts.get('time_lev', 0)
+        tc_dim = self.config_manager.get_model_dim_name('tc') or 'time'
 
+        if tc_dim in data_array.dims:
+            num_times = data_array[tc_dim].size
+            time_levels = range(num_times) if time_level_config == 'all' else [time_level_config]
+        else:
+            time_levels = [0]
+
+        field_to_plot = self._get_field_to_plot(data_array, field_name, file_index, plot_type, figure, time_level=time_level_config)
+        
+        if field_to_plot:
+            plot_result = self.create_plot(field_name, field_to_plot)
+            pu.print_map(self.config_manager, plot_type, self.config_manager.findex, plot_result)
+    
+    def _process_tx_plot(self, data_array, field_name, file_index, plot_type, figure, plotter):
+        """Process an TX plot."""
+        self.config_manager.level = None
+        time_level_config = self.config_manager.ax_opts.get('time_lev', 0)
+        tc_dim = self.config_manager.get_model_dim_name('tc') or 'time'
+
+        if tc_dim in data_array.dims:
+            num_times = data_array[tc_dim].size
+            time_levels = range(num_times) if time_level_config == 'all' else [
+                time_level_config]
+        else:
+            time_levels = [0]
+
+        field_to_plot = self._get_field_to_plot(data_array, field_name, file_index, plot_type, figure, time_level=time_level_config)
+        
+        if field_to_plot:
+            plot_result = self.create_plot(field_name, field_to_plot)
+            pu.print_map(self.config_manager, plot_type, self.config_manager.findex, plot_result)
+    
+    def _process_scatter_plot(self, data_array, field_name, file_index, plot_type, figure, plotter):
+        """Process a scatter plot."""
+        # Get x and y data for scatter plot
+        x_data, y_data, z_data = self._get_scatter_data(data_array, field_name)
+        
+        if x_data is not None and y_data is not None:
+            # Create field_to_plot tuple
+            field_to_plot = (x_data, y_data, z_data, field_name, 'sc', file_index, figure)
+            
+            plot_result = self.create_plot(field_name, field_to_plot)
+            pu.print_map(self.config_manager, plot_type, self.config_manager.findex, plot_result)
+    
+    def _get_scatter_data(self, data_array, field_name):
+        """Get data for scatter plot.
+        
+        This is a placeholder implementation. You'll need to implement this
+        based on your specific requirements.
+        """
+        # This is where you would extract x, y, and optionally z data
+        # from data_array based on the field_name and configuration
+        
+        # For example:
+        if field_name in self.config_manager.spec_data and 'scplot' in self.config_manager.spec_data[field_name]:
+            sc_config = self.config_manager.spec_data[field_name]['scplot']
+            
+            # Get x field
+            x_field = sc_config.get('x_field')
+            if x_field and x_field in self.config_manager.pipeline.get_all_variables():
+                x_data = self.config_manager.pipeline.get_variable(x_field)
+            else:
+                # Default x data
+                x_data = np.arange(len(data_array))
+            
+            # Get y field
+            y_field = sc_config.get('y_field')
+            if y_field and y_field in self.config_manager.pipeline.get_all_variables():
+                y_data = self.config_manager.pipeline.get_variable(y_field)
+            else:
+                # Use the input data_array as y data
+                y_data = data_array
+            
+            # Get z field (optional)
+            z_field = sc_config.get('z_field')
+            if z_field and z_field in self.config_manager.pipeline.get_all_variables():
+                z_data = self.config_manager.pipeline.get_variable(z_field)
+            else:
+                z_data = None
+            
+            return x_data, y_data, z_data
+        
+        # Default implementation: use data_array as y data, create x data
+        x_data = np.arange(len(data_array))
+        y_data = data_array
+        z_data = None
+        
+        return x_data, y_data, z_data
+    
     def _process_other_plot(self, data_array: xr.DataArray, field_name: str,
                             file_index: int, plot_type: str, figure,
                             plotter):
@@ -342,15 +422,9 @@ class GriddedSource(GenericSource):
                                                 plot_type, figure,
                                                 time_level=time_level_config)
         if field_to_plot:
-            backend = getattr(self.config_manager, 'plot_backend', 'matplotlib')
-            xt_plotter = PlotterFactory.create_plotter('xt', backend)
-            plot_result = xt_plotter.plot(self.config_manager, field_to_plot)
-
-        # if field_to_plot:
-        #     plotter.single_plots(self.config_manager, field_to_plot=field_to_plot)
-            pu.print_map(self.config_manager, plot_type,
-                            self.config_manager.findex, plot_result)
-
+            plot_result = self.create_plot(field_name, field_to_plot)
+            pu.print_map(self.config_manager, plot_type, self.config_manager.findex, plot_result)
+ 
     def _process_zsum_plots(self, data_array: xr.DataArray, field_name: str,
                             file_index: int, plot_type: str, figure,
                             time_levels: list, plotter):

@@ -36,6 +36,14 @@ class XYPlotter(BasePlotter):
         """Create an XY plot from the given data."""
         pass
 
+class YZPlotter(BasePlotter):
+    """Base class for YZ (zonal-mean) plotters."""
+    
+    @abstractmethod
+    def plot(self, config, data_to_plot):
+        """Create a YZ plot from the given data."""
+        pass
+
 class XTPlotter(BasePlotter):
     """Base class for XT (time-series) plotters."""
     
@@ -44,4 +52,18 @@ class XTPlotter(BasePlotter):
         """Create an XT plot from the given data."""
         pass
 
+class TXPlotter(BasePlotter):
+    """Base class for TX (Hovmoller) plotters."""
+    
+    @abstractmethod
+    def plot(self, config, data_to_plot):
+        """Create a TX plot from the given data."""
+        pass
 
+class ScatterPlotter(BasePlotter):
+    """Base class for scatter plotters."""
+    
+    @abstractmethod
+    def plot(self, config, data_to_plot):
+        """Create a scatter plot from the given data."""
+        pass

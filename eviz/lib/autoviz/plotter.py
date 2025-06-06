@@ -1822,7 +1822,8 @@ class ModernPlotter:
         """Initialize with the specified backend."""
         self.backend = backend
         self.logger = logging.getLogger(self.__class__.__name__)
-    
+        self.logger.info(f"Using backend: {backend}")
+
     def plot(self, config, data_to_plot):
         """Create a plot using the specified backend.
         
@@ -1833,6 +1834,8 @@ class ModernPlotter:
         Returns:
             The created plot object
         """
+        print(f"Creating plot with backend: {self.backend}")
+
         plot_type = data_to_plot[4]  # Extract plot type from data_to_plot tuple
         try:
             plotter = PlotterFactory.create_plotter(plot_type, self.backend)
@@ -1874,31 +1877,49 @@ class ModernPlotter:
 @dataclass()
 class SinglePlotter(Plotter):
     """Class for creating single plots."""    
-    def plot(self, config, field_to_plot, level, backend=None):
-        """Create a single plot using specs data.
+# In eviz/lib/autoviz/plotter.py
+
+@dataclass()
+class SinglePlotter(Plotter):
+    # ... existing code ...
+    
+    def single_plots(self, config, field_to_plot=None):
+        """Create a single plot using specs data."""
+        if field_to_plot is None:
+            return
         
-        Args:
-            config: ConfigManager
-            field_to_plot: tuple (data2d, dim1, dim2, field_name, plot_type, findex, map_params)
-            level: int (optional)
-            backend: str (optional) - If provided, use the new architecture with this backend
-        """
-        # If a backend is specified, use the new architecture
-        if backend:
-            modern_plotter = ModernPlotter(backend=backend)
-            return modern_plotter.plot(config, field_to_plot)
+        field_name = field_to_plot[3]
+        plot_type = field_to_plot[4]
         
-        # Otherwise, use the existing implementation for backward compatibility
-        plot_type = field_to_plot[4] + 'plot'
-        if plot_type == 'yzplot':
-            _single_yz_plot(config, field_to_plot)
-        if plot_type == 'xtplot':
-            _single_xt_plot(config, field_to_plot)
-        if plot_type == 'txplot':
-            _single_tx_plot(config, field_to_plot)
-        if plot_type == 'xyplot':
-            _single_xy_plot(config, field_to_plot, level)
-        if plot_type == 'polarplot':
-            _single_polar_plot(config, field_to_plot)
-        if plot_type == 'scplot':
-            _single_scat_plot(config, field_to_plot)
+        # Register the plot type for this field
+        config.register_plot_type(field_name, plot_type)
+        
+        # Get the backend from config
+        backend = getattr(config, 'plot_backend', 'matplotlib')
+        
+        # Create the plotter
+        try:
+            plotter = PlotterFactory.create_plotter(plot_type, backend)
+            plot_result = plotter.plot(config, field_to_plot)
+            
+            # Save or display the plot
+            import eviz.lib.autoviz.utils as pu
+            level = getattr(config, 'level', None)
+            pu.print_map(config, plot_type, config.findex, plot_result, level=level)
+            
+        except ValueError as e:
+            self.logger.error(f"Error creating plotter: {e}")
+            # Fall back to the old implementation
+            plot_type = plot_type + 'plot'
+            if plot_type == 'yzplot':
+                _single_yz_plot(config, field_to_plot)
+            if plot_type == 'xtplot':
+                _single_xt_plot(config, field_to_plot)
+            if plot_type == 'txplot':
+                _single_tx_plot(config, field_to_plot)
+            if plot_type == 'xyplot':
+                _single_xy_plot(config, field_to_plot, level=getattr(config, 'level', None))
+            if plot_type == 'polarplot':
+                _single_polar_plot(config, field_to_plot)
+            if plot_type == 'scplot':
+                _single_scat_plot(config, field_to_plot)

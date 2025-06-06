@@ -108,22 +108,24 @@ def natural_key(filename):
 
 
 def create_gif(config):
-    if config.archive_web_results:
+    archive_web_results = getattr(config, 'archive_web_results', False)
+    if archive_web_results:
         img_path = os.path.join(config.app_data.outputs['output_dir'], config.archive_path)
     else:
         img_path = config.app_data.outputs['output_dir']
 
-    all_files = glob.glob(img_path + "/*." + config.print_format)
+    print_format = getattr(config, 'print_format', 'png')
+    all_files = glob.glob(img_path + "/*." + print_format)
     files = sorted(all_files, key=natural_key)
     if len(files) == 1:
         return
     prefix = list(config.app_data.inputs[0]['to_plot'])[0]
 
     # remove IC (NUWRF only)
-    if not config.archive_web_results:
+    if not archive_web_results:
         if {'lis', 'wrf'} & set(config.source_names):
             # Find the file that ends with "_0_0.png" instead of assuming exact name
-            ic_file_pattern = f"*{prefix}*_0_0.{config.print_format}"
+            ic_file_pattern = f"*{prefix}*_0_0.{print_format}"
             ic_files = glob.glob(os.path.join(img_path, ic_file_pattern))
 
             if ic_files:
@@ -141,7 +143,7 @@ def create_gif(config):
                     f"Warning: No IC file found matching pattern {ic_file_pattern}")
 
     if not files:
-        logger.error("No files remaining after IC removal")
+        logger.error("No files remaining to create GIF")
         return
 
     image_array = []
@@ -177,7 +179,7 @@ def create_gif(config):
 
     logger.info(f"Created GIF: {gif_path}")
 
-    if config.archive_web_results:
+    if archive_web_results:
         json_filename = f"{prefix}.json"
         json_path = os.path.join(img_path, json_filename)
         with open(json_path, 'w') as fp:
@@ -192,13 +194,7 @@ def create_gif(config):
         except OSError as e:
             logger.warning(f"Warning: Could not remove {my_file}: {e}")
 
-def print_map(
-        config,
-        plot_type: str,
-        findex: int,
-        fig,
-        level: int = None,
-) -> None:
+def print_map(config,plot_type: str, findex: int, fig, level: int = None) -> None:
     """Save or display a plot, handling output directory, file naming, and optional archiving.
 
     Args:

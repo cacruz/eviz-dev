@@ -188,7 +188,7 @@ class ObsSource(GenericSource):
             if isinstance(plot_types, str):
                 plot_types = [pt.strip() for pt in plot_types.split(',')]
             for plot_type in plot_types:
-                self._process_plot(field_data_array, field_name, idx, plot_type, plotter)
+                self.process_plot(field_data_array, field_name, idx, plot_type, plotter)
 
         if self.config_manager.make_gif:
             pu.create_gif(self.config_manager.config)
@@ -291,6 +291,19 @@ class ObsSource(GenericSource):
         else:
             self.logger.warning(f"Plot type {plot_type} may not be suitable for unstructured data")
             return data_array, None, None, field_name, plot_type, file_index, figure
+
+
+    def _process_scatter_plot(self, data_array, field_name, file_index, plot_type, figure, plotter):
+        """Process a scatter plot."""
+        # Get x and y data for scatter plot
+        x_data, y_data, z_data = self._get_scatter_data(data_array, field_name)
+        
+        if x_data is not None and y_data is not None:
+            # Create field_to_plot tuple
+            field_to_plot = (x_data, y_data, z_data, field_name, 'sc', file_index, figure)
+            
+            plot_result = self.create_plot(field_name, field_to_plot)
+            pu.print_map(self.config_manager, plot_type, self.config_manager.findex, plot_result)
 
     def _comparison_plots(self, plotter):
         """

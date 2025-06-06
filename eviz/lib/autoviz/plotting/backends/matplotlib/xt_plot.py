@@ -3,10 +3,10 @@ import numpy as np
 import matplotlib as mpl
 import pandas as pd
 import logging
-from ....plotting.base import XTPlotter
+from .base import MatplotlibBasePlotter
 
 
-class MatplotlibXTPlotter(XTPlotter):
+class MatplotlibXTPlotter(MatplotlibBasePlotter):
     """Matplotlib implementation of XT (time-series) plotting."""
     
     def __init__(self):
@@ -277,51 +277,4 @@ class MatplotlibXTPlotter(XTPlotter):
             # Add grid if specified
             if ax_opts['add_grid']:
                 ax.grid()
-
     
-    def _legend_font_size(self, subplots):
-        """Determine appropriate font size for legends based on subplot layout."""
-        import eviz.lib.autoviz.utils as pu
-        return pu.legend_font_size(subplots)
-    
-    def _image_font_size(self, subplots):
-        """Get appropriate font size based on subplot layout."""
-        import eviz.lib.autoviz.utils as pu
-        return pu.image_font_size(subplots)
-    
-    def _add_logo_ax(self, fig, desired_width_ratio=0.05):
-        """Add a logo to the figure."""
-        import eviz.lib.autoviz.utils as pu
-        return pu.add_logo_ax(fig, desired_width_ratio)
-    
-    def save(self, filename, **kwargs):
-        """Save the plot to a file."""
-        if self.fig is not None:
-            self.fig.savefig(filename, **kwargs)
-            self.logger.info(f"Saved plot to {filename}")
-        else:
-            self.logger.warning("No figure to save")
-    
-    def show(self):
-        """Display the plot."""
-        if self.fig is not None:
-            # If figure is not registered with pyplot, register it
-            if plt.fignum_exists(self.fig.number if hasattr(self.fig, 'number') else 1):
-                plt.figure(self.fig.number)
-            else:
-                # For custom Figure classes that aren't managed by pyplot
-                try:
-                    # Try to show the figure directly if it has a show method
-                    if hasattr(self.fig, 'show_eviz'):
-                        self.fig.show_eviz()
-                    elif hasattr(self.fig, 'show'):
-                        self.fig.show()
-                    else:
-                        # Fall back to pyplot.show() which will show all figures
-                        plt.show()
-                except Exception as e:
-                    self.logger.error(f"Error showing figure: {e}")
-                    # Last resort: just call plt.show() to display any figures
-                    plt.show()
-        else:
-            self.logger.warning("No figure to show")

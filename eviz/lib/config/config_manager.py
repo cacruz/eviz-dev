@@ -546,6 +546,18 @@ class ConfigManager:
                 f"No meta_attrs mapping for attribute '{attr_name}' and source '{source}'")
             return None
 
+    def register_plot_type(self, field_name, plot_type):
+        """Register the plot type for a field."""
+        if not hasattr(self, '_plot_type_registry'):
+            self._plot_type_registry = {}
+        self._plot_type_registry[field_name] = plot_type
+    
+    def get_plot_type(self, field_name, default='xy'):
+        """Get the plot type for a field."""
+        if hasattr(self, '_plot_type_registry') and field_name in self._plot_type_registry:
+            return self._plot_type_registry[field_name]
+        return default
+    
     # Properties that delegate to config objects
     # These are defined explicitly to provide better documentation and type hints
 

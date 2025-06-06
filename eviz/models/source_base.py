@@ -4,7 +4,10 @@ import logging
 import matplotlib
 
 from eviz.lib.autoviz.plotter import SimplePlotter, ComparisonPlotter, SinglePlotter
+from eviz.lib.autoviz.plotting.factory import PlotterFactory
+from eviz.lib.autoviz.figure import Figure
 import eviz.lib.utils as u
+import eviz.lib.autoviz.utils as pu
 from eviz.lib.config.config_manager import ConfigManager
 from eviz.lib.data import DataSource
 from eviz.models.base import BaseSource
@@ -45,6 +48,10 @@ class GenericSource(BaseSource):
             # Set to avoid establishing a GUI in each sub-process:
             matplotlib.use('agg')
             self.procs = list()
+        
+        # Initialize plot type registry
+        if not hasattr(self.config_manager, '_plot_type_registry'):
+            self.config_manager._plot_type_registry = {}
 
     def load_data_sources(self, file_list: list):
         pass
@@ -110,6 +117,103 @@ class GenericSource(BaseSource):
 
         self.logger.info("Done.")
 
+    # PlotterFactory integration
+    def register_plot_type(self, field_name, plot_type):
+        """Register the plot type for a field."""
+        self.config_manager._plot_type_registry[field_name] = plot_type
+        
+    def get_plot_type(self, field_name, default='xy'):
+        """Get the plot type for a field."""
+        return self.config_manager._plot_type_registry.get(field_name, default)
+    
+    def create_plotter(self, field_name, backend=None):
+        """Create a plotter for the given field.
+        
+        Args:
+            field_name: Name of the field to plot
+            backend: Backend to use (defaults to config_manager.plot_backend)
+            
+        Returns:
+            An instance of the appropriate plotter
+        """
+        # Get the backend from config if not specified
+        if backend is None:
+            backend = getattr(self.config_manager, 'plot_backend', 'matplotlib')
+        
+        # Get the plot type for this field
+        plot_type = self.get_plot_type(field_name)
+        
+        # Create and return the plotter
+        try:
+            return PlotterFactory.create_plotter(plot_type, backend)
+        except ValueError as e:
+            self.logger.error(f"Error creating plotter for {field_name}: {e}")
+            return None
+    
+    def create_plot(self, field_name, data_to_plot):
+        """Create a plot using the appropriate plotter.
+        
+        Args:
+            field_name: Name of the field to plot
+            data_to_plot: Tuple containing plot data
+            
+        Returns:
+            The created plot object
+        """
+        # Get the backend from config
+        backend = getattr(self.config_manager, 'plot_backend', 'matplotlib')
+        
+        # Get the plot type for this field
+        plot_type = self.get_plot_type(field_name)
+        
+        # Create the plotter
+        plotter = self.create_plotter(field_name, backend)
+        if plotter is None:
+            return None
+        
+        # Create the plot
+        return plotter.plot(self.config_manager, data_to_plot)
+    
+    def process_plot(self, data_array, field_name, file_index, plot_type, plotter):
+        """Process a plot for the given field.
+        
+        This is a base implementation that delegates to subclass methods.
+        Subclasses should implement the specific plot type methods.
+        """
+        # Register the plot type for this field
+        self.register_plot_type(field_name, plot_type)
+        
+        # Create a figure
+        figure = Figure.create_eviz_figure(self.config_manager, plot_type)
+        self.config_manager.ax_opts = figure.init_ax_opts(field_name)
+        
+        # Delegate to the appropriate method based on plot type
+        if plot_type == 'xy' or plot_type == 'po':
+            if hasattr(self, '_process_xy_plot'):
+                self._process_xy_plot(data_array, field_name, file_index, plot_type, figure, plotter)
+            else:
+                self.logger.warning(f"_process_xy_plot not implemented for {self.__class__.__name__}")
+        elif plot_type == 'xt':
+            if hasattr(self, '_process_xt_plot'):
+                self._process_xt_plot(data_array, field_name, file_index, plot_type, figure, plotter)
+            else:
+                self.logger.warning(f"_process_xt_plot not implemented for {self.__class__.__name__}")
+        elif plot_type == 'tx':
+            if hasattr(self, '_process_tx_plot'):
+                self._process_tx_plot(data_array, field_name, file_index, plot_type, figure, plotter)
+            else:
+                self.logger.warning(f"_process_tx_plot not implemented for {self.__class__.__name__}")
+        elif plot_type == 'sc':
+            if hasattr(self, '_process_scatter_plot'):
+                self._process_scatter_plot(data_array, field_name, file_index, plot_type, figure, plotter)
+            else:
+                self.logger.warning(f"_process_scatter_plot not implemented for {self.__class__.__name__}")
+        else:
+            if hasattr(self, '_process_other_plot'):
+                self._process_other_plot(data_array, field_name, file_index, plot_type, figure, plotter)
+            else:
+                self.logger.warning(f"_process_other_plot not implemented for {self.__class__.__name__}")
+
     def _side_by_side_plots(self, plotter):
         """Generate side-by-side comparison plots."""
         self.logger.info("Generating side-by-side plots")
@@ -161,8 +265,10 @@ class GenericSource(BaseSource):
                     f"Field {field_name} not found in data source for {filename}")
                 continue
 
-            plot_type = params.get('to_plot', ['xy'])[
-                0]  # Default to 'xy' if not specified
+            plot_type = params.get('to_plot', ['xy'])[0]  # Default to 'xy' if not specified
+            
+            # Register the plot type for this field
+            self.register_plot_type(field_name, plot_type)
 
             self.config_manager.findex = idx
             self.config_manager.pindex = idx
@@ -176,4 +282,3 @@ class GenericSource(BaseSource):
     def _comparison_plots(self, plotter):
         """Generate comparison plots."""
         self.logger.info("Generating comparison plots")
-
