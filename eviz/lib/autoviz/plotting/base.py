@@ -67,3 +67,11 @@ class ScatterPlotter(BasePlotter):
     def plot(self, config, data_to_plot):
         """Create a scatter plot from the given data."""
         pass
+
+class PolarPlotter(BasePlotter):
+    """Base class for ploar plotters."""
+    
+    @abstractmethod
+    def plot(self, config, data_to_plot):
+        """Create a polar plot from the given data."""
+        pass

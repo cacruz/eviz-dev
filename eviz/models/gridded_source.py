@@ -243,19 +243,19 @@ class GriddedSource(GenericSource):
         if self.config_manager.make_gif:
             pu.create_gif(self.config_manager.config)
 
-    def _process_plot(self, data_array: xr.DataArray, field_name: str, file_index: int,
-                      plot_type: str, plotter):
-        """Process a single plot type for a given field."""
-        self.logger.info(f"Plotting {field_name}, {plot_type} plot")
-        figure = Figure.create_eviz_figure(self.config_manager, plot_type)
-        self.config_manager.ax_opts = figure.init_ax_opts(field_name)
+    # def _process_plot(self, data_array: xr.DataArray, field_name: str, file_index: int,
+    #                   plot_type: str, plotter):
+    #     """Process a single plot type for a given field."""
+    #     self.logger.info(f"Plotting {field_name}, {plot_type} plot")
+    #     figure = Figure.create_eviz_figure(self.config_manager, plot_type)
+    #     self.config_manager.ax_opts = figure.init_ax_opts(field_name)
 
-        if 'xy' in plot_type or 'po' in plot_type:
-            self._process_xy_plot(data_array, field_name, file_index, plot_type,
-                                  figure, plotter)
-        else:
-            self._process_other_plot(data_array, field_name, file_index, plot_type,
-                                     figure, plotter)
+    #     if 'xy' in plot_type or 'po' in plot_type:
+    #         self._process_xy_plot(data_array, field_name, file_index, plot_type,
+    #                               figure, plotter)
+    #     else:
+    #         self._process_other_plot(data_array, field_name, file_index, plot_type,
+    #                                  figure, plotter)
 
     def _process_xy_plot(self, data_array, field_name, file_index, plot_type, figure, plotter):
         """Process an XY plot."""
@@ -308,6 +308,50 @@ class GriddedSource(GenericSource):
                     plot_result = self.create_plot(field_name, field_to_plot)                    
                     pu.print_map(self.config_manager, plot_type, self.config_manager.findex, plot_result, level=level_val)
 
+    def _process_polar_plot(self, data_array, field_name, file_index, plot_type, figure, plotter):
+        """Process plots for specific vertical levels."""
+        levels = self.config_manager.get_levels(field_name, plot_type + 'plot')
+        do_zsum = self.config_manager.ax_opts.get('zsum', False)
+
+        time_level_config = self.config_manager.ax_opts.get('time_lev', 0)
+        tc_dim = self.config_manager.get_model_dim_name('tc') or 'time'
+        num_times = data_array[tc_dim].size if tc_dim in data_array.dims else 1
+        time_levels = range(num_times) if time_level_config == 'all' else [time_level_config]
+
+        if not levels and not do_zsum:
+            return
+        
+        self.logger.debug(f' -> Processing {len(time_levels)} time levels')
+        zc_dim = self.config_manager.get_model_dim_name('zc') or 'lev'
+        tc_dim = self.config_manager.get_model_dim_name('tc') or 'time'
+
+        has_vertical_dim = zc_dim and zc_dim in data_array.dims
+
+        for level_val in levels.keys():
+            self.config_manager.level = level_val
+            for t in time_levels:
+                if tc_dim in data_array.dims:
+                    data_at_time = data_array.isel({tc_dim: t})
+                else:
+                    data_at_time = data_array.squeeze()  # Assume single time if no time dim
+
+                self._set_time_config(t, data_at_time)
+
+                # Create a new figure for each level to avoid reusing axes
+                figure = Figure.create_eviz_figure(self.config_manager, plot_type)
+                self.config_manager.ax_opts = figure.init_ax_opts(field_name)
+
+                # If the data doesn't have a vertical dimension, we can't select a level
+                # In this case, we'll just use the data as is
+                if not has_vertical_dim:
+                    field_to_plot = self._get_field_to_plot(data_at_time, field_name, file_index, plot_type, figure, t)
+                else:
+                    field_to_plot = self._get_field_to_plot(data_at_time, field_name, file_index, plot_type, figure, t, level=level_val)
+                
+                if field_to_plot:
+                    plot_result = self.create_plot(field_name, field_to_plot)                    
+                    pu.print_map(self.config_manager, plot_type, self.config_manager.findex, plot_result, level=level_val)
+
     def _process_xt_plot(self, data_array, field_name, file_index, plot_type, figure, plotter):
         """Process an XT plot."""
         self.config_manager.level = None
@@ -327,24 +371,19 @@ class GriddedSource(GenericSource):
             pu.print_map(self.config_manager, plot_type, self.config_manager.findex, plot_result)
     
     def _process_tx_plot(self, data_array, field_name, file_index, plot_type, figure, plotter):
-        """Process an TX plot."""
+        """Process a TX (Hovmoller) plot."""
+        self.logger.info(f"Plotting {field_name}, {plot_type} plot")
+        
+        # TX plots don't use levels like XY plots
         self.config_manager.level = None
-        time_level_config = self.config_manager.ax_opts.get('time_lev', 0)
-        tc_dim = self.config_manager.get_model_dim_name('tc') or 'time'
-
-        if tc_dim in data_array.dims:
-            num_times = data_array[tc_dim].size
-            time_levels = range(num_times) if time_level_config == 'all' else [
-                time_level_config]
-        else:
-            time_levels = [0]
-
-        field_to_plot = self._get_field_to_plot(data_array, field_name, file_index, plot_type, figure, time_level=time_level_config)
+        
+        # Get the full data array for TX plotting
+        field_to_plot = (data_array, None, None, field_name, 'tx', file_index, figure)
         
         if field_to_plot:
             plot_result = self.create_plot(field_name, field_to_plot)
             pu.print_map(self.config_manager, plot_type, self.config_manager.findex, plot_result)
-    
+        
     def _process_scatter_plot(self, data_array, field_name, file_index, plot_type, figure, plotter):
         """Process a scatter plot."""
         # Get x and y data for scatter plot

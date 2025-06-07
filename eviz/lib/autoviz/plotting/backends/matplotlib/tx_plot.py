@@ -2,12 +2,11 @@ import numpy as np
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as mgridspec
-from matplotlib import colors
 import pandas as pd
 import cartopy.crs as ccrs
 import cartopy.feature as cfeature
+from matplotlib.ticker import FixedLocator
 from .base import MatplotlibBasePlotter
-from eviz.lib.data.pipeline.reader import get_data_coords
 
 
 class MatplotlibTXPlotter(MatplotlibBasePlotter):
@@ -30,125 +29,111 @@ class MatplotlibTXPlotter(MatplotlibBasePlotter):
         """
         data2d, _, _, field_name, plot_type, findex, fig = data_to_plot
         
-        self.fig = fig
-        
+        # Skip if no data
         if data2d is None:
             self.logger.warning("No data to plot")
             return fig
         
-        self.logger.debug(f"=== TX PLOT DEBUG INFO ===")
-        self.logger.debug(f"Field: {field_name}")
-        self.logger.debug(f"Data shape: {data2d.shape}")
-        self.logger.debug(f"Data dims: {data2d.dims}")
-        self.logger.debug(f"Data coords: {list(data2d.coords.keys())}")
-        
+        # Get axes options from config
         ax_opts = config.ax_opts
         
+        # Create a special gridspec layout for Hovmoller plots
         with mpl.rc_context(rc=ax_opts.get('rc_params', {})):
+            # IMPORTANT: Create a new figure instead of using the provided one
+            # This is critical for Hovmoller plots which need a specific layout
+            self.fig = plt.figure(figsize=(12, 10))
+            
+            # Create a gridspec with two rows - small map on top, hovmoller plot below
             gs = mgridspec.GridSpec(nrows=2, ncols=1, height_ratios=[1, 6], hspace=0.05)
             
             # Create two axes - one for the map, one for the hovmoller
-            ax = []
-            ax.append(fig.add_subplot(gs[0, 0], projection=ccrs.PlateCarree(central_longitude=180)))
-            ax.append(fig.add_subplot(gs[1, 0]))
+            self.ax = []
+            self.ax.append(self.fig.add_subplot(gs[0, 0], projection=ccrs.PlateCarree(central_longitude=180)))
+            self.ax.append(self.fig.add_subplot(gs[1, 0]))
             
-            fig.set_size_inches(12, 10, forward=True)
+            # Update axes options
+            ax_opts = fig.update_ax_opts(field_name, self.ax, 'tx')
             
-            ax_opts = fig.update_ax_opts(field_name, ax, 'tx')
-            
+            # Get data range for debugging
             dmin = data2d.min(skipna=True).values
             dmax = data2d.max(skipna=True).values
             self.logger.debug(f"Field: {field_name}; Min:{dmin}; Max:{dmax}")
             
-            self.create_clevs(field_name, ax_opts, data2d)
-            self.logger.debug(f"Contour levels: {ax_opts['clevs']}")
+            # Create contour levels
+            self._create_clevs(field_name, ax_opts, data2d)
             
+            # Set extend value for colorbar
             extend_value = "both"
             if ax_opts['clevs'][0] == 0:
                 extend_value = "max"
-            self.logger.debug(f"Extend value: {extend_value}")
             
+            # Create color normalization
+            from matplotlib import colors
             norm = colors.BoundaryNorm(ax_opts['clevs'], ncolors=256, clip=False)
             
-            # vtimes = self._get_time_coordinates(data2d)
-            vtimes = data2d.time.values.astype('datetime64[ms]').astype('O')
-
-            self.logger.debug(f"Time coordinates shape: {len(vtimes)}")
-            self.logger.debug(f"Time range: {vtimes[0]} to {vtimes[-1]}")
+            # Get time coordinates
+            vtimes = self._get_time_coordinates(data2d)
             
             # Get longitude coordinates
             lon_dim = config.get_model_dim_name('xc')
             lons = self._get_longitude_coordinates(data2d, lon_dim)
-
-            self.logger.debug(f"Longitude coordinates shape: {len(lons)}")
-            self.logger.debug(f"Longitude range: {lons[0]} to {lons[-1]}")
             
             # Process data for plotting
             data2d_reduced = self._process_data_for_hovmoller(data2d, vtimes, lons)
-            self.logger.debug(f"Processed data shape: {data2d_reduced.shape}")
-            self.logger.debug(f"Processed data range: {np.nanmin(data2d_reduced)} to {np.nanmax(data2d_reduced)}")
             
             # Set up the map in the top panel
-            self._setup_map_panel(ax[0])
+            self._setup_map_panel(self.ax[0])
             
             # Add text to the map
-            fig.plot_text(field_name=field_name, ax=ax[0], pid='tx', data=data2d, fontsize=8, loc='left')
+            fig.plot_text(field_name=field_name, ax=self.ax[0], pid='tx', data=data2d, fontsize=8, loc='left')
             
             # Set time axis order
             if ax_opts.get('torder', False):
-                self.logger.debug("Inverting y-axis for time order")
-                ax[1].invert_yaxis()  # Reverse the time order
+                self.ax[1].invert_yaxis()  # Reverse the time order
             
             # Create the hovmoller plot
             try:
-                self.logger.debug("Attempting contourf plot")
-                cfilled = ax[1].contourf(lons, vtimes, data2d_reduced, ax_opts['clevs'],
+                cfilled = self.ax[1].contourf(lons, vtimes, data2d_reduced, ax_opts['clevs'],
                                         norm=norm,
                                         cmap=ax_opts['use_cmap'], extend=extend_value)
-                self.logger.debug("Contourf plot successful")
             except Exception as e:
                 self.logger.error(f"Error creating contour plot: {e}")
                 try:
                     self.logger.info("Falling back to pcolormesh")
                     lon_mesh, time_mesh = np.meshgrid(lons, vtimes)
-                    self.logger.debug(f"Meshgrid shapes: lon_mesh={lon_mesh.shape}, time_mesh={time_mesh.shape}")
-                    cfilled = ax[1].pcolormesh(lon_mesh, time_mesh, data2d_reduced,
+                    cfilled = self.ax[1].pcolormesh(lon_mesh, time_mesh, data2d_reduced,
                                             norm=norm, cmap=ax_opts['use_cmap'])
-                    self.logger.debug("Pcolormesh plot successful")
                 except Exception as e2:
                     self.logger.error(f"Error creating pcolormesh plot: {e2}")
                     # just show something
-                    self.logger.info("Falling back to imshow")
-                    cfilled = ax[1].imshow(data2d_reduced, aspect='auto', origin='lower',
+                    cfilled = self.ax[1].imshow(data2d_reduced, aspect='auto', origin='lower',
                                         norm=norm, cmap=ax_opts['use_cmap'])
             
             # Set axis labels
-            ax[1].set_xlabel("Longitude")
-            ax[1].set_ylabel("Time")
-            ax[1].grid(linestyle='dotted', linewidth=0.5)
+            self.ax[1].set_xlabel("Longitude")
+            self.ax[1].set_ylabel("Time")
+            self.ax[1].grid(linestyle='dotted', linewidth=0.5)
             
             # Add contour lines if specified
             try:
                 if ax_opts.get('line_contours', False):
-                    self.logger.debug("Adding contour lines")
-                    self.line_contours(fig, ax[1], ax_opts, lons, vtimes, data2d_reduced)
+                    self.line_contours(fig, self.ax[1], ax_opts, lons, vtimes, data2d_reduced)
             except Exception as e:
                 self.logger.error(f"Error adding contour lines: {e}")
             
             # Add colorbar
-            cbar = fig.colorbar(cfilled, orientation='horizontal', pad=0.1, aspect=70,
+            cbar = self.fig.colorbar(cfilled, orientation='horizontal', pad=0.1, aspect=70,
                                 extendrect=True)
             
             # Set colorbar label
             units = self._get_units_for_colorbar(data2d)
             cbar.set_label(units)
-            self.logger.debug(f"Colorbar units: {units}")
             
             # Set x-axis ticks
-            self._set_longitude_ticks(ax[1], lons)
+            self._set_longitude_ticks(self.ax[1], lons)
             
             # Format y-axis (time) labels
-            y_labels = ax[1].get_yticklabels()
+            y_labels = self.ax[1].get_yticklabels()
             if len(y_labels) > 0:
                 y_labels[0].set_visible(False)  # hide first label
             for i, label in enumerate(y_labels):
@@ -158,35 +143,26 @@ class MatplotlibTXPlotter(MatplotlibBasePlotter):
             # Add grid if specified
             if ax_opts.get('add_grid', False):
                 kwargs = {'linestyle': '-', 'linewidth': 2}
-                ax[1].grid(**kwargs)
+                self.ax[1].grid(**kwargs)
             
-            # Adjust layout if needed
-            if hasattr(fig, 'subplots') and fig.subplots != (1, 1):
-                if hasattr(fig, 'squeeze_fig_aspect'):
-                    fig.squeeze_fig_aspect(fig)
-            
-            # Store axes for later use
-            self.ax = ax
+            # Adjust layout
+            self.fig.tight_layout()
         
         # Store the plot object
-        self.plot_object = fig
+        self.plot_object = self.fig
         
-        self.logger.debug("=== TX PLOT DEBUG END ===")
-        return fig
+        return self.fig
     
     def _get_time_coordinates(self, data2d):
         """Get time coordinates from the data."""
         try:
-            # Try to get time coordinates - this is critical for Hovmoller plots
+            # Try to get time coordinates
             if 'time' in data2d.coords:
                 time_coords = data2d.time.values
-                self.logger.debug("Found 'time' coordinate")
             elif 'Time' in data2d.coords:
                 time_coords = data2d.Time.values
-                self.logger.debug("Found 'Time' coordinate")
             elif 't' in data2d.coords:
                 time_coords = data2d.t.values
-                self.logger.debug("Found 't' coordinate")
             else:
                 # Look for time dimension in dims
                 time_dim = None
@@ -197,19 +173,16 @@ class MatplotlibTXPlotter(MatplotlibBasePlotter):
                 
                 if time_dim:
                     time_coords = data2d[time_dim].values
-                    self.logger.debug(f"Found time dimension: {time_dim}")
                 else:
                     # Create dummy time coordinates
                     time_coords = np.arange(data2d.shape[0])
-                    self.logger.warning("No time coordinate found, creating dummy coordinates")
             
             # Convert to datetime if needed
             if hasattr(time_coords[0], 'astype'):
                 try:
                     time_coords = time_coords.astype('datetime64[ms]').astype('O')
-                    self.logger.debug("Converted time coordinates to datetime")
                 except:
-                    self.logger.debug("Could not convert time coordinates to datetime")
+                    pass
             
             return time_coords
             
@@ -223,8 +196,8 @@ class MatplotlibTXPlotter(MatplotlibBasePlotter):
         try:
             if lon_dim:
                 try:
+                    from eviz.lib.data.pipeline.reader import get_data_coords
                     lons = get_data_coords(data2d, lon_dim)
-                    self.logger.debug(f"Got longitude coordinates using lon_dim: {lon_dim}")
                 except ImportError:
                     self.logger.warning("Could not import get_data_coords")
                     lons = None
@@ -234,16 +207,12 @@ class MatplotlibTXPlotter(MatplotlibBasePlotter):
             if lons is None:
                 if 'lon' in data2d.dims:
                     lons = data2d.lon.values
-                    self.logger.debug("Using 'lon' dimension")
                 elif 'longitude' in data2d.dims:
                     lons = data2d.longitude.values
-                    self.logger.debug("Using 'longitude' dimension")
                 elif 'x' in data2d.dims:
                     lons = data2d.x.values
-                    self.logger.debug("Using 'x' dimension")
                 else:
                     lons = np.arange(data2d.shape[-1])  # Use last dimension
-                    self.logger.warning("No longitude coordinate found, creating dummy coordinates")
         except Exception as e:
             self.logger.error(f"Error getting longitude coordinates: {e}")
             lons = np.arange(data2d.shape[-1])
@@ -252,51 +221,64 @@ class MatplotlibTXPlotter(MatplotlibBasePlotter):
     
     def _process_data_for_hovmoller(self, data2d, vtimes, lons):
         """Process data for Hovmoller plot."""
-        self.logger.debug(f"Processing data for Hovmoller: input shape {data2d.shape}")
-        
         try:
             if len(data2d.shape) > 2:
-                self.logger.debug(f"Data has {len(data2d.shape)} dimensions")
-                
-                # Check if first dimension matches time
                 if data2d.shape[0] == len(vtimes):
-                    self.logger.debug("First dimension matches time length")
+                    # data shape is (time, level, lon), we need to average over level
+                    if len(data2d.shape) == 3 and data2d.shape[2] == len(lons):
+                        # average over the middle dimension (level)
+                        data2d_reduced = data2d.mean(axis=1)
                     
-                    # Check if last dimension matches longitude
-                    if data2d.shape[-1] == len(lons):
-                        self.logger.debug("Last dimension matches longitude length")
-                        
-                        if len(data2d.shape) == 3:
-                            # Shape is (time, middle_dim, lon) - average over middle dimension
-                            self.logger.debug("Averaging over middle dimension")
-                            data2d_reduced = data2d.mean(axis=1)
-                        else:
-                            # More than 3 dimensions - average over all except first and last
-                            axes_to_avg = tuple(range(1, len(data2d.shape) - 1))
-                            self.logger.debug(f"Averaging over axes: {axes_to_avg}")
-                            data2d_reduced = data2d.mean(axis=axes_to_avg)
+                    # data shape is (time, lat, lon), we need to average over lat
+                    elif len(data2d.shape) == 3 and data2d.shape[2] == len(lons):
+                        # average over the middle dimension (lat)
+                        data2d_reduced = data2d.mean(axis=1)
+                    
                     else:
-                        self.logger.warning(f"Last dimension {data2d.shape[-1]} doesn't match longitude length {len(lons)}")
-                        # Try to find time and longitude dimensions by name
-                        data2d_reduced = self._process_by_dimension_names(data2d, vtimes, lons)
+                        dim_names = list(data2d.dims)
+                        time_dim_idx = None
+                        lon_dim_idx = None
+                        
+                        for i, dim in enumerate(dim_names):
+                            if dim in ['time', 't', 'TIME']:
+                                time_dim_idx = i
+                                break
+                        
+                        for i, dim in enumerate(dim_names):
+                            if dim in ['lon', 'longitude', 'x']:
+                                lon_dim_idx = i
+                                break
+                        
+                        if time_dim_idx is not None and lon_dim_idx is not None:
+                            dims_to_avg = [i for i in range(len(dim_names))
+                                        if i != time_dim_idx and i != lon_dim_idx]
+                            
+                            data2d_reduced = data2d.copy()
+                            for dim_idx in sorted(dims_to_avg, reverse=True):
+                                data2d_reduced = data2d_reduced.mean(axis=dim_idx)
+                            
+                            # transpose if needed to get (time, lon) order
+                            if time_dim_idx > lon_dim_idx:
+                                data2d_reduced = data2d_reduced.T
+                        else:
+                            # flatten all dimensions except time
+                            data2d_reduced = data2d.reshape(data2d.shape[0], -1).mean(axis=1)
+                            lons = np.arange(data2d_reduced.shape[1])
                 else:
-                    self.logger.warning(f"First dimension {data2d.shape[0]} doesn't match time length {len(vtimes)}")
-                    data2d_reduced = self._process_by_dimension_names(data2d, vtimes, lons)
+                    data2d_reduced = data2d
+                    if len(vtimes) != data2d.shape[0]:
+                        vtimes = np.arange(data2d.shape[0])
+                    if len(lons) != data2d.shape[1]:
+                        lons = np.arange(data2d.shape[1])
             else:
-                self.logger.debug("Data is 2D")
                 data2d_reduced = data2d
                 
-                # Check if dimensions match
                 if data2d.shape != (len(vtimes), len(lons)):
                     if data2d.shape == (len(lons), len(vtimes)):
-                        self.logger.debug("Transposing 2D data")
                         data2d_reduced = data2d.T
                     else:
-                        self.logger.warning(f"2D data shape {data2d.shape} doesn't match expected ({len(vtimes)}, {len(lons)})")
-                        # Adjust coordinates to match data
                         vtimes = np.arange(data2d.shape[0])
                         lons = np.arange(data2d.shape[1])
-                        
         except Exception as e:
             self.logger.error(f"Error processing data for Hovmoller plot: {e}")
             data2d_reduced = data2d
@@ -304,61 +286,10 @@ class MatplotlibTXPlotter(MatplotlibBasePlotter):
                 vtimes = np.arange(data2d.shape[0])
                 lons = np.arange(data2d.shape[1])
         
-        # Final shape check
         if hasattr(data2d_reduced, 'shape') and len(data2d_reduced.shape) >= 2:
-            expected_shape = (len(vtimes), len(lons))
-            actual_shape = data2d_reduced.shape
-            if actual_shape != expected_shape:
-                self.logger.warning(f"Final data shape {actual_shape} doesn't match expected {expected_shape}")
-        
-        self.logger.debug(f"Final processed data shape: {data2d_reduced.shape}")
-        return data2d_reduced
-    
-    def _process_by_dimension_names(self, data2d, vtimes, lons):
-        """Process data by finding time and longitude dimensions by name."""
-        self.logger.debug("Processing data by dimension names")
-        
-        dim_names = list(data2d.dims)
-        time_dim_idx = None
-        lon_dim_idx = None
-        
-        # Find time dimension
-        for i, dim in enumerate(dim_names):
-            if dim.lower() in ['time', 't', 'TIME']:
-                time_dim_idx = i
-                self.logger.debug(f"Found time dimension '{dim}' at index {i}")
-                break
-        
-        # Find longitude dimension
-        for i, dim in enumerate(dim_names):
-            if dim.lower() in ['lon', 'longitude', 'x']:
-                lon_dim_idx = i
-                self.logger.debug(f"Found longitude dimension '{dim}' at index {i}")
-                break
-        
-        if time_dim_idx is not None and lon_dim_idx is not None:
-            # Average over all other dimensions
-            dims_to_avg = [i for i in range(len(dim_names))
-                          if i != time_dim_idx and i != lon_dim_idx]
-            
-            self.logger.debug(f"Averaging over dimension indices: {dims_to_avg}")
-            
-            data2d_reduced = data2d.copy()
-            for dim_idx in sorted(dims_to_avg, reverse=True):
-                data2d_reduced = data2d_reduced.mean(axis=dim_idx)
-            
-            # Transpose if needed to get (time, lon) order
-            if time_dim_idx > lon_dim_idx:
-                self.logger.debug("Transposing to get (time, lon) order")
-                data2d_reduced = data2d_reduced.T
-        else:
-            self.logger.warning("Could not find time and longitude dimensions by name")
-            # Fallback: assume first dimension is time, average over middle dimensions
-            if len(data2d.shape) > 2:
-                axes_to_avg = tuple(range(1, len(data2d.shape) - 1))
-                data2d_reduced = data2d.mean(axis=axes_to_avg)
-            else:
-                data2d_reduced = data2d
+            if data2d_reduced.shape[0] != len(vtimes) or data2d_reduced.shape[1] != len(lons):
+                vtimes = np.arange(data2d_reduced.shape[0])
+                lons = np.arange(data2d_reduced.shape[1])
         
         return data2d_reduced
     
@@ -407,3 +338,19 @@ class MatplotlibTXPlotter(MatplotlibBasePlotter):
                 ax.set_xticks([0, 90, 180, 270, 360])
         
         ax.set_xticklabels(x_tick_labels, fontsize=10)
+    
+    def save(self, filename, **kwargs):
+        """Save the plot to a file."""
+        if self.fig is not None:
+            self.fig.savefig(filename, **kwargs)
+            self.logger.info(f"Saved plot to {filename}")
+        else:
+            self.logger.warning("No figure to save")
+    
+    def show(self):
+        """Display the plot."""
+        if self.fig is not None:
+            plt.figure(self.fig.number)
+            plt.show()
+        else:
+            self.logger.warning("No figure to show")

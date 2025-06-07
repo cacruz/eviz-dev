@@ -540,6 +540,7 @@ def contour_levels_plot(clevs):
 
 
 def contour_format_from_levels(levels, scale=None):
+    """Determine appropriate format for contour labels based on the levels."""
     digits_list = []
     num_sci_format = 0
     for lev in levels:  # check each contour level
@@ -565,7 +566,14 @@ def contour_format_from_levels(levels, scale=None):
             digits_list.append(0)
         else:
             digits_list.append(len(clevs_string.split('.')[1]))  # just get RHS of number
+    
+    # Sort the digits list
     digits_list.sort()
+    
+    # Handle empty digits_list
+    if not digits_list:
+        return "%1.1f"
+    
     num_type = "f"
     if num_sci_format > 1:
         num_type = "e"

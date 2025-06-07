@@ -2,10 +2,13 @@ import numpy as np
 import cartopy.crs as ccrs
 import matplotlib as mpl
 import matplotlib.pyplot as plt
+from matplotlib import colors
 import logging
 from matplotlib.ticker import FixedLocator
 
 from eviz.lib.autoviz.plotting.base import BasePlotter
+import eviz.lib.autoviz.utils as pu
+
 
 class MatplotlibBasePlotter(BasePlotter):
     """Base class for all Matplotlib plotters with common functionality."""
@@ -17,15 +20,13 @@ class MatplotlibBasePlotter(BasePlotter):
         self.logger = logging.getLogger(self.__class__.__name__)
     
     def filled_contours(self, config, field_name, ax, x, y, data2d, transform=None):
-        """Plot filled contours."""
-        from matplotlib import colors
-        import eviz.lib.autoviz.utils as pu
+        """Plot filled contours."""        
+        # Create contour levels if they don't exist
+        if 'clevs' not in config.ax_opts or config.ax_opts['clevs'] is None or len(config.ax_opts['clevs']) == 0:
+            self._create_clevs(field_name, config.ax_opts, data2d)
         
-        # Create contour levels
-        self._create_clevs(field_name, config.ax_opts, data2d)
         norm = colors.BoundaryNorm(config.ax_opts['clevs'], ncolors=256, clip=False)
         
-        # Get colormap
         if config.compare:
             cmap_str = config.ax_opts['use_diff_cmap']
         else:
@@ -37,17 +38,17 @@ class MatplotlibBasePlotter(BasePlotter):
             self.logger.debug("Fill with a neutral color and print text")
             ax.set_facecolor('whitesmoke')
             ax.text(0.5, 0.5, 'zero field', transform=ax.transAxes,
-                   ha='center', va='center', fontsize=16, color='gray', fontweight='bold')
+                ha='center', va='center', fontsize=16, color='gray', fontweight='bold')
             return None
         
         try:
             if np.all(np.diff(config.ax_opts['clevs']) > 0):
                 cfilled = ax.contourf(x, y, data2d,
-                                     levels=config.ax_opts['clevs'],
-                                     cmap=cmap_str,
-                                     extend=config.ax_opts['extend_value'],
-                                     norm=norm,
-                                     transform=transform)
+                                    levels=config.ax_opts['clevs'],
+                                    cmap=cmap_str,
+                                    extend=config.ax_opts['extend_value'],
+                                    norm=norm,
+                                    transform=transform)
                 
                 # Set under/over colors if specified
                 if config.ax_opts['cmap_set_under']:
@@ -68,14 +69,13 @@ class MatplotlibBasePlotter(BasePlotter):
                 cfilled = ax.contourf(x, y, data2d, extend='both')
             
             return cfilled
-    
+
     def _create_clevs(self, field_name, ax_opts, data2d):
         """Create contour levels for the plot."""
-        # Skip if levels already exist
-        if ax_opts['clevs']:
+        # Check if clevs already exists and is not empty
+        if 'clevs' in ax_opts and ax_opts['clevs'] is not None and len(ax_opts['clevs']) > 0:
             return
         
-        # Get data range
         dmin = data2d.min(skipna=True).values
         dmax = data2d.max(skipna=True).values
         self.logger.debug(f"dmin: {dmin}, dmax: {dmax}")
@@ -88,7 +88,6 @@ class MatplotlibBasePlotter(BasePlotter):
         ax_opts['clevs_prec'] = precision
         self.logger.debug(f"range_val: {range_val}, precision: {precision}")
         
-        # Generate levels
         if not ax_opts.get('create_clevs', True):
             clevs = np.around(np.linspace(dmin, dmax, 10), decimals=precision)
         else:
@@ -120,19 +119,37 @@ class MatplotlibBasePlotter(BasePlotter):
         import eviz.lib.autoviz.utils as pu
         
         with mpl.rc_context(rc=ax_opts.get('rc_params', {})):
-            contour_format = pu.contour_format_from_levels(
-                pu.formatted_contours(ax_opts['clevs']),
-                scale=ax_opts['cscale'])
-            
-            clines = ax.contour(x, y, data2d, levels=ax_opts['clevs'], colors="black",
-                               alpha=0.5, transform=transform)
-            
-            if len(clines.allsegs) == 0 or all(len(seg) == 0 for seg in clines.allsegs):
-                self.logger.warning("No contours were generated. Skipping contour labeling.")
-                return
-            
-            ax.clabel(clines, inline=1, fontsize=pu.contour_label_size(fig.subplots),
-                     colors="black", fmt=contour_format)
+            try:
+                # Check if clevs exists and has enough levels
+                if 'clevs' not in ax_opts or ax_opts['clevs'] is None or len(ax_opts['clevs']) < 2:
+                    self.logger.warning("Not enough contour levels for line contours")
+                    return
+                
+                # Format contour labels
+                try:
+                    formatted_clevs = pu.formatted_contours(ax_opts['clevs'])
+                    contour_format = pu.contour_format_from_levels(
+                        formatted_clevs,
+                        scale=ax_opts.get('cscale', None))
+                except IndexError:
+                    # Handle the case where contour_format_from_levels fails
+                    self.logger.warning("Could not determine contour format, using default")
+                    contour_format = '%.1f'
+                
+                # Create contour lines
+                clines = ax.contour(x, y, data2d, levels=ax_opts['clevs'], colors="black",
+                                alpha=0.5, transform=transform)
+                
+                # Check if contours were generated
+                if len(clines.allsegs) == 0 or all(len(seg) == 0 for seg in clines.allsegs):
+                    self.logger.warning("No contours were generated. Skipping contour labeling.")
+                    return
+                
+                # Add contour labels
+                ax.clabel(clines, inline=1, fontsize=pu.contour_label_size(fig.subplots),
+                        colors="black", fmt=contour_format)
+            except Exception as e:
+                self.logger.error(f"Error adding contour lines: {e}")
     
     def set_colorbar(self, config, cfilled, fig, ax, ax_opts, findex, field_name, data2d):
         """Add a colorbar to the plot."""

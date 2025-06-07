@@ -74,7 +74,7 @@ class GenericSource(BaseSource):
         self.plot()
 
     def plot(self):
-        """Top-level interface for gridded (NetCDF) maps."""
+        """Top-level interface for gridded fields plotting."""
         self.logger.info("Generate plots.")
 
         if not self.config_manager.spec_data:
@@ -188,9 +188,14 @@ class GenericSource(BaseSource):
         self.config_manager.ax_opts = figure.init_ax_opts(field_name)
         
         # Delegate to the appropriate method based on plot type
-        if plot_type == 'xy' or plot_type == 'po':
+        if plot_type == 'xy':
             if hasattr(self, '_process_xy_plot'):
                 self._process_xy_plot(data_array, field_name, file_index, plot_type, figure, plotter)
+            else:
+                self.logger.warning(f"_process_xy_plot not implemented for {self.__class__.__name__}")
+        if plot_type == 'polar':
+            if hasattr(self, '_process_polar_plot'):
+                self._process_polar_plot(data_array, field_name, file_index, plot_type, figure, plotter)
             else:
                 self.logger.warning(f"_process_xy_plot not implemented for {self.__class__.__name__}")
         elif plot_type == 'xt':

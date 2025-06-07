@@ -2,6 +2,7 @@ from .backends.matplotlib.xy_plot import MatplotlibXYPlotter
 from .backends.matplotlib.yz_plot import MatplotlibYZPlotter
 from .backends.matplotlib.xt_plot import MatplotlibXTPlotter
 from .backends.matplotlib.tx_plot import MatplotlibTXPlotter
+from .backends.matplotlib.polar_plot import MatplotlibPolarPlotter
 from .backends.matplotlib.scatter_plot import MatplotlibScatterPlotter
 from .backends.hvplot.xy_plot import HvplotXYPlotter
 from .backends.hvplot.xt_plot import HvplotXTPlotter
@@ -32,7 +33,8 @@ class PlotterFactory:
             ("xy", "matplotlib"): MatplotlibXYPlotter,
             ("yz", "matplotlib"): MatplotlibYZPlotter,
             ("xt", "matplotlib"): MatplotlibXTPlotter,
-            ("tx", "matplotlib"): MatplotlibXTPlotter,
+            ("tx", "matplotlib"): MatplotlibTXPlotter,
+            ("polar", "matplotlib"): MatplotlibPolarPlotter,
             ("sc", "matplotlib"): MatplotlibScatterPlotter,
             ("xy", "hvplot"): HvplotXYPlotter,
             ("xt", "hvplot"): HvplotXTPlotter,
