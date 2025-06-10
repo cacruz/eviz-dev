@@ -1,4 +1,17 @@
 #!/bin/bash
+
+function prompt() {
+
+read -p "Press Y to continue: " -n 1 -r
+
+if [[ $REPLY =~ ^[Yy]$ ]]; then
+  echo
+  return
+else
+  exit 1
+fi
+}
+
 set -e
 
 if [[ -z "$EVIZ_CONFIG_PATH" ]]; then
@@ -45,6 +58,7 @@ if [ $skip -eq 1 ]; then
 fi
 #---------------------------------------------------
 
+
 if [ "$os_type" == "Darwin" ]; then
     echo "Running tests on Darwin OS"
 elif [ "$os_type" == "Linux" ]; then
@@ -59,86 +73,82 @@ current_env=$CONDA_DEFAULT_ENV
 if [ "$current_env" == "$eviz_env" ]; then
     echo "Using conda env $eviz_env."
 else
-    echo "Error: Activate the $eviz_env environment before running this script."
+    echo "Usage ./integ.sh [conda env name]"
+    echo "Make sure to activate the viz environment before running this script."
     exit 1
 fi
 
-echo "Basic 'gridded' tests"
-echo "---------------------"
+echo "Single-plot tests"
+echo "------------------"
 echo
 # Use -f option (would override EVIZ_CONFIG_PATH)
 f_option=/Users/ccruz/projects/Eviz/config/simple/simple.yaml
-echo "Using configfile -f $f_option"
-python autoviz.py -s gridded -f $f_option -v 0
-echo
+#echo "Gridded no specs"
+#python autoviz.py -s gridded -f $f_option -v 0
+#echo
 
 # Use -c option (would override EVIZ_CONFIG_PATH)
 c_option=/Users/ccruz/projects/Eviz/config
 echo "Using config -c $c_option"
-echo "(expects app and spec under gridded)"
+echo "Source: 'gridded' default specs"
 python autoviz.py -s gridded -c $c_option -v 0
 echo
 
-
-echo "Same as above, but using EVIZ_CONFIG_PATH"
-python autoviz.py -s gridded -v 0
+echo "Source: 'gridded' different (multiple) sources"
+python autoviz.py -s gridded -f $EVIZ_CONFIG_PATH/gridded/gridded_multiple.yaml -v 0
 echo
 
-echo "Single-plot tests"
-echo "-----------------"
+echo "Source: 'gridded' OpenDAP access"
+python autoviz.py -s gridded -f $EVIZ_CONFIG_PATH/gridded/gridded_opendap.yaml -v 0
 echo
 
-echo "Source: geos, with 4 files"
+echo "Source: 'geos', with 4 files"
 python autoviz.py -s geos -v 0
 echo
 
-echo "Source: ccm, with 2 files"
+echo "Source: 'ccm', with 2 files"
 python autoviz.py -s ccm -v 0
 echo
 
-echo "Source: ccm, 2 files and unit conversions"
-python autoviz.py -s ccm -v 0 -f /Users/ccruz/projects/Eviz/config/ccm/ccm_multiple.yaml
+echo "Source: 'ccm', 2 files and unit conversions"
+python autoviz.py -s ccm -v 0 -f $EVIZ_CONFIG_PATH/ccm/ccm_multiple.yaml
 echo
 
-#echo "Source: cf, with 3 files"
-#python autoviz.py -s cf -v 0
-#echo
-
-echo "Source: wrf, with 1 file"
+echo "Source: 'wrf', with 1 file (multiple 2D fields)"
 python autoviz.py -s wrf -v 0
 echo
 
-echo "Source: lis, with 1 file"
+echo "Source: 'wrf', GIF option"
+python autoviz.py -s wrf -v 0 -f $EVIZ_CONFIG_PATH/wrf_gif.yaml
+echo
+
+
+echo "Source: 'lis', with 1 file (multiple 2D fields)"
 python autoviz.py -s lis -v 0
 echo
 
-echo "Source: airnow, with 12 files"
+echo "Source: 'airnow', with 12 files"
 python autoviz.py -s airnow -v 0
 echo
 
-echo "Source: omi, with 1 file"
+echo "Source: 'omi', with 1 file"
 python autoviz.py -s omi -v 0
 echo
 
-echo "Source: mopitt, with 1 file"
+#echo "Source: mopitt, with 1 file"
 #python autoviz.py -s mopitt -v 0
-echo
 
-echo "Source: landsat, with 1 file"
+#echo "Source: landsat, with 1 file"
 #python autoviz.py -s landsat -v 0
-echo
 
-echo "Source: omi,airnow"
+#echo "Source: omi,airnow"
 #python autoviz.py -s omi,airnow -v 0
-echo
 
-echo "Source: wrf,lis"
+#echo "Source: wrf,lis"
 #python autoviz.py -s wrf,lis -v 0
-echo
 
-echo "Source: gridded,geos,cf"
+#echo "Source: gridded,geos,cf"
 #python autoviz.py -s gridded,geos,cf -v 0
-echo
 
 echo "Comparison-plot tests"
 echo "---------------------"
@@ -148,33 +158,67 @@ echo "Using config path:"
 echo "$EVIZ_CONFIG_PATH"
 echo
 
-echo "Source: ccm vs ccm"
-python autoviz.py -s ccm -v 0 -f /Users/ccruz/projects/Eviz/config/ccm/ccm_compare.yaml
+echo "Source: 'ccm' vs 'ccm' (compare)"
+python autoviz.py -s ccm -v 0 -f  $EVIZ_CONFIG_PATH/ccm/ccm_compare.yaml
 echo
 
-echo "Source: ccm,omi"
+echo "Source: 'ccm' vs 'ccm' (compare-diff 3x1)"
+python autoviz.py -s ccm -v 0 -f  $EVIZ_CONFIG_PATH/ccm/ccm_compare_3x1.yaml
+echo
+
+echo "Source: 'ccm' vs 'ccm' (compare-diff 2x2)"
+python autoviz.py -s ccm -v 0 -f  $EVIZ_CONFIG_PATH/ccm/ccm_compare_2x2.yaml
+echo
+
+echo "Source: 'ccm' vs 'ccm' (overlay)"
+python autoviz.py -s ccm -v 0 -f  $EVIZ_CONFIG_PATH/ccm/ccm_compare_overlay.yaml
+echo
+
+echo "Source: 'wrf', with 2 files (compare)"
+python autoviz.py -s wrf -v 0 -f $EVIZ_CONFIG_PATH/wrf_compare.yaml
+echo
+
+echo "Source: 'wrf', line-plot (compare)"
+python autoviz.py -s wrf -v 0 -f $EVIZ_CONFIG_PATH/wrf_xt_compare.yaml
+echo
+
+echo "Source: lis, with 2 files (compare multiple fields)"
+python autoviz.py -s lis -v 0
+echo
+
+#echo "Source: 'ccm' vs 'omi' "
 #python autoviz.py -s ccm,omi -v 0
-echo
 
-echo "Source: ccm,mopitt"
+#echo "Source: ccm,mopitt"
 #python autoviz.py -s ccm,mopitt -v 0
-echo
 
-echo "Source: cf,geos (geos=merra2)"
+#echo "Source: cf,geos (geos=merra2)"
 #python autoviz.py -s cf,geos -v 0
-echo
 
-echo "Source: cf,airnow"
+#echo "Source: cf,airnow"
 #python autoviz.py -s cf,airnow -v 0
-echo
 
-echo "Source: cf,omi"
+#echo "Source: cf,omi"
 #python autoviz.py -s cf,omi -v 0
+
+#echo "Source: cf,geos (comparison cf,merra2 + single cf)"
+#python autoviz.py -s cf,geos -v 0
+
+
+# Altair backend
+
+c_option=/Users/ccruz/projects/Eviz/config
+echo "Source: 'gridded' - altair backend"
+python autoviz.py -s gridded -f $EVIZ_CONFIG_PATH/gridded/gridded_altair.yaml -v 0
 echo
 
-echo "Source: cf,geos (comparison cf,merra2 + single cf)"
-#python autoviz.py -s cf,geos -v 0
+# Hvplot backend
+
+c_option=/Users/ccruz/projects/Eviz/config
+echo "Source: 'gridded' - hvplot backend"
+python autoviz.py -s gridded -f $EVIZ_CONFIG_PATH/gridded/gridded_hvplot.yaml -v 0
 echo
+
 
 echo "End of tests"
 echo "------------"
