@@ -136,7 +136,8 @@ class GenericSource(BaseSource):
         Returns:
             An instance of the appropriate plotter
         """
-        # Get the backend from config if not specified
+        # TODO: This gets a backend per plot, but we should probably get it once and pass it around
+        # Does this degrade performance?
         if backend is None:
             backend = getattr(self.config_manager, 'plot_backend', 'matplotlib')
         
@@ -193,7 +194,7 @@ class GenericSource(BaseSource):
                 self._process_xy_plot(data_array, field_name, file_index, plot_type, figure, plotter)
             else:
                 self.logger.warning(f"_process_xy_plot not implemented for {self.__class__.__name__}")
-        if plot_type == 'polar':
+        elif plot_type == 'polar':
             if hasattr(self, '_process_polar_plot'):
                 self._process_polar_plot(data_array, field_name, file_index, plot_type, figure, plotter)
             else:

@@ -194,7 +194,7 @@ def create_gif(config):
         except OSError as e:
             logger.warning(f"Warning: Could not remove {my_file}: {e}")
 
-def print_map(config,plot_type: str, findex: int, fig, level: int = None) -> None:
+def print_map(config, plot_type: str, findex: int, fig, level: int = None) -> None:
     """Save or display a plot, handling output directory, file naming, and optional archiving.
 
     Args:

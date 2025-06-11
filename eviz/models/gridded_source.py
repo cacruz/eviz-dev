@@ -17,21 +17,24 @@ warnings.filterwarnings("ignore")
 @dataclass
 class GriddedSource(GenericSource):
     """
-    The GriddedSource class provides specialized functionality for handling gridded Earth System Model (ESM) data.
+    The GriddedSource class provides specialized functionality for handling 
+    gridded Earth System Model (ESM) data.
 
-    This class extends the GenericSource implementation to work specifically with structured grid data formats
-    commonly used in ESMs, including 2D (lat-lon), 3D (lat-lon-time or lat-lon-level), and 4D 
-    (lat-lon-level-time) datasets. It implements methods for extracting, processing, and visualizing
-    various slices and projections of gridded data, such as:
+    This class extends the GenericSource implementation to work specifically with 
+    structured grid data formats commonly used in ESMs, including 2D (lat-lon), 
+    3D (lat-lon-time or lat-lon-level), and 4D  (lat-lon-level-time) datasets. 
+    It implements methods for extracting, processing, and visualizing various 
+    slices and projections of gridded data, such as:
 
     - Horizontal (XY) slices at specific vertical levels or times
     - Vertical (YZ) slices (zonal means)
     - Time series (XT) at points or averaged over regions
     - Hovmöller diagrams (TX) showing time-longitude evolution
 
-    Unlike the observation modules which may handle both gridded and unstructured data formats,
-    this class is optimized specifically for regular grid structures with consistent coordinate
-    systems. It provides specialized grid-aware operations including:
+    Unlike the observation modules which may handle both gridded and unstructured 
+    data formats, this class is optimized specifically for regular grid structures 
+    with consistent coordinate systems. It provides specialized grid-aware operations 
+    including:
 
     - Vertical level selection and averaging
     - Zonal and meridional means
@@ -201,10 +204,11 @@ class GriddedSource(GenericSource):
 
     def _single_plots(self, plotter):
         """Generate single plots for each source and field according to configuration.
-        This method is responsible for creating individual plots for each data source and field
+           This method is responsible for creating individual plots for each data 
+           source and field.
  
         Args:
-            plotter (instance of SimplePlotter)
+            plotter (instance of SinglePlotter)
         """
         self.logger.info("Generating single plots")
 
@@ -237,6 +241,7 @@ class GriddedSource(GenericSource):
             if isinstance(plot_types, str):
                 plot_types = [pt.strip() for pt in plot_types.split(',')]
             for plot_type in plot_types:
+                self.logger.info(f"Plotting {field_name}, {plot_type} plot")
                 self.process_plot(field_data_array, field_name, idx, plot_type, plotter)
                 # self._process_plot(field_data_array, field_name, idx, plot_type, plotter)
 
@@ -292,10 +297,9 @@ class GriddedSource(GenericSource):
                     data_at_time = data_array.squeeze()  # Assume single time if no time dim
 
                 self._set_time_config(t, data_at_time)
-
                 # Create a new figure for each level to avoid reusing axes
-                figure = Figure.create_eviz_figure(self.config_manager, plot_type)
-                self.config_manager.ax_opts = figure.init_ax_opts(field_name)
+                # figure = Figure.create_eviz_figure(self.config_manager, plot_type)
+                # self.config_manager.ax_opts = figure.init_ax_opts(field_name)
 
                 # If the data doesn't have a vertical dimension, we can't select a level
                 # In this case, we'll just use the data as is
@@ -303,7 +307,7 @@ class GriddedSource(GenericSource):
                     field_to_plot = self._get_field_to_plot(data_at_time, field_name, file_index, plot_type, figure, t)
                 else:
                     field_to_plot = self._get_field_to_plot(data_at_time, field_name, file_index, plot_type, figure, t, level=level_val)
-                
+
                 if field_to_plot:
                     plot_result = self.create_plot(field_name, field_to_plot)                    
                     pu.print_map(self.config_manager, plot_type, self.config_manager.findex, plot_result, level=level_val)
@@ -349,6 +353,7 @@ class GriddedSource(GenericSource):
                     field_to_plot = self._get_field_to_plot(data_at_time, field_name, file_index, plot_type, figure, t, level=level_val)
                 
                 if field_to_plot:
+                    print("calling create_plot from _process_level_plots")
                     plot_result = self.create_plot(field_name, field_to_plot)                    
                     pu.print_map(self.config_manager, plot_type, self.config_manager.findex, plot_result, level=level_val)
 
@@ -372,18 +377,24 @@ class GriddedSource(GenericSource):
     
     def _process_tx_plot(self, data_array, field_name, file_index, plot_type, figure, plotter):
         """Process a TX (Hovmoller) plot."""
-        self.logger.info(f"Plotting {field_name}, {plot_type} plot")
-        
-        # TX plots don't use levels like XY plots
         self.config_manager.level = None
-        
-        # Get the full data array for TX plotting
-        field_to_plot = (data_array, None, None, field_name, 'tx', file_index, figure)
-        
+        time_level_config = self.config_manager.ax_opts.get('time_lev', 0)
+        tc_dim = self.config_manager.get_model_dim_name('tc') or 'time'
+
+        if tc_dim in data_array.dims:
+            num_times = data_array[tc_dim].size
+            time_levels = range(num_times) if time_level_config == 'all' else [
+                time_level_config]
+        else:
+            time_levels = [0]
+
+        field_to_plot = self._get_field_to_plot(data_array, field_name, file_index,
+                                                plot_type, figure,
+                                                time_level=time_level_config)
         if field_to_plot:
             plot_result = self.create_plot(field_name, field_to_plot)
             pu.print_map(self.config_manager, plot_type, self.config_manager.findex, plot_result)
-        
+         
     def _process_scatter_plot(self, data_array, field_name, file_index, plot_type, figure, plotter):
         """Process a scatter plot."""
         # Get x and y data for scatter plot

@@ -46,7 +46,6 @@ class PlotterFactory:
         }
         
         key = (plot_type, backend)
-        print(f"Creating plotter for {plot_type} plottype with backend {backend}")
         if key in plotters:
             return plotters[key]()
         else:
