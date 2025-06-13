@@ -27,85 +27,92 @@ class MatplotlibYZPlotter(MatplotlibBasePlotter):
             The created figure
         """
         data2d, x, y, field_name, plot_type, findex, fig = data_to_plot
-        
         self.fig = fig
-        
+
         ax_opts = config.ax_opts
-        
+        # Test applying rcparams to the figure via specification in specs
+        # fig.apply_rc_params()
+
         if not config.compare and not config.compare_diff and not config.overlay:
             fig.set_axes()
         
         ax_temp = fig.get_axes()
         axes_shape = fig.subplots
-        
+
         if axes_shape == (3, 1):
             if ax_opts['is_diff_field']:
-                self.ax = ax_temp[2]
+                ax = ax_temp[2]
             else:
-                self.ax = ax_temp[config.axindex]
+                ax = ax_temp[config.axindex]
         elif axes_shape == (2, 2):
             if ax_opts['is_diff_field']:
-                self.ax = ax_temp[2]
+                ax = ax_temp[2]
                 if config.ax_opts['add_extra_field_type']:
-                    self.ax = ax_temp[3]
+                    ax = ax_temp[3]
             else:
-                self.ax = ax_temp[config.axindex]
+                ax = ax_temp[config.axindex]
         elif axes_shape == (1, 2) or axes_shape == (1, 3):
             if isinstance(ax_temp, list):
-                self.ax = ax_temp[config.axindex]
+                ax = ax_temp[config.axindex]  # Use the correct axis based on axindex
             else:
-                self.ax = ax_temp
+                ax = ax_temp
         else:
-            self.ax = ax_temp[0]
-        
+            ax = ax_temp[0]
+
         if data2d is None:
-            return fig
-        
-        ax_opts = fig.update_ax_opts(field_name, self.ax, 'yz')
-        fig.plot_text(field_name, self.ax, 'yz', level=None, data=data2d)
-        
+            return
+
+        ax_opts = fig.update_ax_opts(field_name, ax, 'yz')
+        fig.plot_text(field_name, ax, 'yz', level=None, data=data2d)
+
+        # Determine the vertical coordinate and its units
         zc = config.get_model_dim_name('zc')
+        vertical_coord = None
         vertical_units = 'n.a.'
-        
+
         if isinstance(zc, dict):
             for dim_name in data2d.coords:
                 if 'lev' in dim_name or 'z' in dim_name or 'height' in dim_name:
                     vertical_coord = data2d.coords[dim_name]
-                    if hasattr(vertical_coord, 'attrs') and 'units' in vertical_coord.attrs:
-                        vertical_units = vertical_coord.attrs['units']
                     break
         elif isinstance(zc, list):
             for z in zc:
                 if z in data2d.coords:
                     vertical_coord = data2d.coords[z]
-                    if hasattr(vertical_coord, 'attrs') and 'units' in vertical_coord.attrs:
-                        vertical_units = vertical_coord.attrs['units']
                     break
         else:
             if zc and zc in data2d.coords:
                 vertical_coord = data2d.coords[zc]
-                if hasattr(vertical_coord, 'attrs') and 'units' in vertical_coord.attrs:
-                    vertical_units = vertical_coord.attrs['units']
             else:
                 # Try common vertical dimension names
                 for dim_name in ['lev', 'level', 'z', 'height', 'altitude', 'pressure']:
                     if dim_name in data2d.coords:
                         vertical_coord = data2d.coords[dim_name]
-                        if hasattr(vertical_coord, 'attrs') and 'units' in vertical_coord.attrs:
-                            vertical_units = vertical_coord.attrs['units']
                         break
-        
-        self._plot_yz_data(config, self.ax, data2d, x, y, field_name, fig, ax_opts, vertical_units, plot_type, findex)
-        
-        self.plot_object = fig
-        
+
+        if vertical_coord is not None:
+            vertical_units = vertical_coord.attrs.get('units', 'n.a.')
+        else:
+            if len(data2d.shape) >= 2:
+                # Assume first dimension is vertical in a YZ plot
+                vertical_coord = np.arange(data2d.shape[0])
+
+        if isinstance(ax, list):
+            for single_ax in ax:
+                self._plot_yz_data(config, single_ax, data2d, x, y, field_name, fig, ax_opts,
+                            vertical_units,
+                            plot_type, findex)
+        else:
+            self._plot_yz_data(config, ax, data2d, x, y, field_name, fig, ax_opts, vertical_units,
+                        plot_type, findex)
+        # reset rc params to default
+        # matplotlib.rcParams.update(matplotlib.rcParamsDef   
         return fig
-    
+
     def _plot_yz_data(self, config, ax, data2d, x, y, field_name, fig, ax_opts, vertical_units, plot_type, findex):
         """Helper function to plot YZ data on a single axes."""
-        import eviz.lib.autoviz.utils as pu
         source_name = config.source_names[config.ds_index]
-        
+
         # Check if profile plot is requested
         prof_dim = None
         if ax_opts['profile_dim']:
@@ -119,25 +126,25 @@ class MatplotlibYZPlotter(MatplotlibBasePlotter):
             prof_dim = ax_opts['profile_dim']
             data2d = data2d.mean(dim=config.get_model_dim_name(prof_dim))
             
-            # Set up line style for overlay mode
+            # TODO: Put in rcParams
             line_color = None
             line_style = '-'
             line_width = 1.5
             marker = None
-            label = None
-            
             if config.overlay:
-                colors = ['blue', 'orange', 'green', 'purple', 'brown', 'pink', 'gray', 'red']
+                colors = ['blue', 'orange', 'green', 'purple', 'brown', 'pink', 'gray', 'red',]
                 styles = ['-', '--', '-.', ':']
                 
                 dataset_index = 0
                 if hasattr(config, 'current_dataset_index'):
                     dataset_index = config.current_dataset_index
                 
-                line_color = colors[dataset_index % len(colors)]
-                line_style = styles[dataset_index % len(styles)]
-                
-                # Create label for legend
+                line_color = colors[dataset_index]
+                # line_style = styles[(dataset_index // len(colors)) % len(styles)]
+                line_style = styles[dataset_index]
+                self.logger.info(f"line_color: {line_color}, line_style: {line_style}")
+
+                label = None
                 if hasattr(config, 'a_list') and hasattr(config, 'b_list'):
                     if findex in config.a_list:
                         list_idx = config.a_list.index(findex)
@@ -149,27 +156,29 @@ class MatplotlibYZPlotter(MatplotlibBasePlotter):
                         list_idx = 0
                         list_name = 'unknown'
                     
+                    # Try to get a meaningful label
                     label = config.get_file_exp_name(findex) or config.get_file_exp_id(findex)
                     if not label:
                         label = f"Dataset {list_name}[{list_idx}]"
                 else:
                     label = f"Dataset {dataset_index}"
             
-            # Plot the profile
-            self._plot_profile(config, data2d, fig, ax, ax_opts, (prof_dim, dep_var), 
-                              color=line_color, linestyle=line_style, linewidth=line_width, 
-                              marker=marker, label=label)
-            
-            # Add legend if this is the last dataset or if forced
+            if config.overlay and label:
+                self._plot_profile(config, data2d, fig, ax, ax_opts, (prof_dim, dep_var), 
+                                color=line_color, linestyle=line_style, linewidth=line_width, 
+                                marker=marker, label=label)
+            else:
+                self._plot_profile(config, data2d, fig, ax, ax_opts, (prof_dim, dep_var))
+
             if config.overlay:
-                all_plotted = getattr(config, 'current_dataset_index', 0) == getattr(config, 'total_datasets', 1) - 1
+                all_plotted = config.current_dataset_index == config.total_datasets - 1            
                 if all_plotted or ax_opts.get('force_legend', False):
-                    legend = ax.legend(loc='best', fontsize=pu.legend_font_size(fig.subplots))
+                    legend = ax.legend(loc='best', fontsize=pu.legend_font_size(fig.subplots))                
                     frame = legend.get_frame()
                     frame.set_alpha(0.7)
                     frame.set_edgecolor('gray')
-            
-            # Get units for y-axis label
+
+            # TODO: Fix units issue (missing sometimes)
             if 'units' in config.spec_data[field_name]:
                 units = config.spec_data[field_name]['units']
             else:
@@ -180,42 +189,41 @@ class MatplotlibYZPlotter(MatplotlibBasePlotter):
                 except Exception as e:
                     self.logger.error(f"{e}: Please specify {field_name} units in specs file")
                     units = "n.a."
-            
-            # Set axis labels
             if dep_var == 'zc':
                 ax.set_xlabel(units)
-                ax.set_ylabel(f"Pressure ({vertical_units})",
-                             size=pu.axes_label_font_size(fig.subplots))
-            else:
-                ax.set_xlabel("Latitude")
-                ax.set_ylabel(units)
-            
+                ax.set_ylabel("Pressure (" + vertical_units + ")",
+                            size=pu.axes_label_font_size(fig.subplots))
+
         else:
-            # Regular contour plot
-            with mpl.rc_context(rc=ax_opts.get('rc_params', {})):
-                # Create filled contours
-                cfilled = self.filled_contours(config, field_name, ax, x, y, data2d)
-                
-                # Set font size for axis tick labels
-                ylabels = ax.get_yticklabels()
-                for label in ylabels:
-                    label.set_fontsize(pu.axis_tick_font_size(fig.subplots))
-                
-                xlabels = ax.get_xticklabels()
-                for label in xlabels:
-                    label.set_fontsize(pu.axis_tick_font_size(fig.subplots))
-                
-                # Set axis ranges and scales
-                self._set_ax_ranges(config, field_name, fig, ax, ax_opts, y, vertical_units)
-                
-                # Add contour lines if requested
-                if ax_opts.get('line_contours', False):
-                    self.line_contours(fig, ax, ax_opts, x, y, data2d)
-                
-                # Add colorbar
-                self.set_colorbar(config, cfilled, fig, ax, ax_opts, findex, field_name, data2d)
-        
-        # Add title for comparison plots
+            # Regular contour plot code...
+            cfilled = self.filled_contours(config, field_name, ax, x, y, data2d)
+
+            ylabels = ax.get_yticklabels()
+            for label in ylabels:
+                label.set_fontsize(pu.axis_tick_font_size(fig.subplots))
+
+            xlabels = ax.get_xticklabels()
+            for label in xlabels:
+                label.set_fontsize(pu.axis_tick_font_size(fig.subplots))
+
+            self._set_ax_ranges(config, field_name, fig, ax, ax_opts, y, vertical_units)
+
+            self.line_contours(fig, ax, ax_opts, x, y, data2d)
+
+            self.set_colorbar(config, cfilled, fig, ax, ax_opts, findex, field_name, data2d)
+
+        # The following is only supported for GEOS datasets:
+        # TODO: move to 'model' layer!?
+        # print(config.use_trop_height)
+        # if config.use_trop_height and not prof_dim:
+        #     proc = DataProcessor(config)
+        #     tropp = proc.process_data_source(data2d)
+        #     # This should be the only call needed here:
+        #     if proc.trop_ok:
+        #         ax.plot(x, tropp, linewidth=2, color="k", linestyle="--")
+        #     # The following is temporary, while the TODO above is not done.
+        #     config.use_trop_height = None
+
         if config.compare_diff and config.ax_opts['is_diff_field']:
             try:
                 if 'name' in config.spec_data[field_name]:
@@ -232,7 +240,7 @@ class MatplotlibYZPlotter(MatplotlibBasePlotter):
                         else:
                             # direct access
                             reader = config.readers[source_name]
-                    
+
                     if reader and hasattr(reader, 'datasets'):
                         if findex in reader.datasets and 'vars' in reader.datasets[findex]:
                             var_attrs = reader.datasets[findex]['vars'][field_name].attrs
@@ -250,24 +258,30 @@ class MatplotlibYZPlotter(MatplotlibBasePlotter):
             except Exception as e:
                 self.logger.warning(f"Error getting field name: {e}")
                 name = field_name
-            
+
             fig.suptitle_eviz(name, 
-                             fontweight='bold',
-                             fontstyle='italic',
-                             fontsize=pu.image_font_size(fig.subplots))
+                            fontweight='bold',
+                            fontstyle='italic',
+                            fontsize=pu.image_font_size(fig.subplots))        
             
         elif config.compare:
-            if not config.is_regional:
-                fig.set_size_inches(16, 6)
-            
+
             fig.suptitle_eviz(text=config.map_params[findex].get('field', 'No name'), 
-                             fontweight='bold',
-                             fontstyle='italic',
-                             fontsize=pu.image_font_size(fig.subplots))
-            
+                            fontweight='bold',
+                            fontstyle='italic',
+                            fontsize=pu.image_font_size(fig.subplots))        
+
+            # fig.text(0.5, 0.98, name,
+            #         fontweight='bold',
+            #         fontstyle='italic',
+            #         fontsize=pu.image_font_size(fig.subplots),
+            #         ha='center',
+            #         va='top',
+            #         transform=fig.transFigure)
+
             if config.add_logo:
                 pu.add_logo_ax(fig, desired_width_ratio=0.05)
-    
+
     def _plot_profile(self, config, data2d, fig, ax, ax_opts, ax_dims, 
                      color=None, linestyle='-', linewidth=1.5, marker=None, label=None):
         """Plot a vertical profile."""
@@ -287,7 +301,6 @@ class MatplotlibYZPlotter(MatplotlibBasePlotter):
             
             ax.set_ylim(y0, y1)
         
-        # Set y-axis scale (log or linear)
         ax.set_yscale(ax_opts['zscale'])
         ax.yaxis.set_minor_formatter(NullFormatter())
         
@@ -296,14 +309,11 @@ class MatplotlibYZPlotter(MatplotlibBasePlotter):
             y_ranges = [1000, 900, 800, 700, 600, 500, 400, 300, 200, 100, 0]
             ax.set_yticks(y_ranges)
         
-        # Format y-axis tick labels
         ax.yaxis.set_major_formatter(FormatStrFormatter('%3.1f'))
         
-        # Add grid if requested
         if ax_opts['add_grid']:
             ax.grid()
         
-        # Set font size for axis tick labels
         ylabels = ax.get_yticklabels()
         for label in ylabels:
             label.set_fontsize(pu.axis_tick_font_size(fig.subplots))
