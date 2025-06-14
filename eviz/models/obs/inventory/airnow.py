@@ -29,17 +29,14 @@ class Airnow(ObsSource):
     def logger(self) -> logging.Logger:
         """Get the logger for this class."""
         return logging.getLogger(__name__)
-    
+
     def add_data_source(self, *args, **kwargs):
-        # Implement as needed, or just pass if not used
         pass
 
     def get_data_source(self, *args, **kwargs):
-        # Implement as needed, or just return None if not used
         return None
 
     def load_data_sources(self, *args, **kwargs):
-        # Implement as needed, or just pass if not used
         pass
 
     def _simple_plots(self, plotter):
@@ -62,57 +59,17 @@ class Airnow(ObsSource):
                 plotter.simple_plot(self.config_manager, field_to_plot)
             field_num += 1
 
-    def _single_plots(self, plotter):
-        """Generate single plots for each source and field according to configuration."""
-        self.logger.info("Generating single plots")
-
-        all_data_sources = self.config_manager.pipeline.get_all_data_sources()
-        if not all_data_sources:
-            self.logger.error("No data sources available for single plotting.")
-            return
-
-        # Iterate through map_params to generate plots
-        for idx, params in self.config_manager.map_params.items():
-            field_name = params.get('field')
-            if not field_name:
-                continue
-
-            filename = params.get('filename')
-            data_source = self.config_manager.pipeline.get_data_source(filename)
-
-            if not data_source or not hasattr(data_source,
-                                              'dataset') or data_source.dataset is None:
-                continue
-
-            if field_name not in data_source.dataset:
-                continue
-
-            self.config_manager.findex = idx  
-            self.config_manager.pindex = idx
-            self.config_manager.axindex = 0
-
-            field_data_array = data_source.dataset[field_name]
-            plot_types = params.get('to_plot', ['xy'])
-            if isinstance(plot_types, str):
-                plot_types = [pt.strip() for pt in plot_types.split(',')]
-            for plot_type in plot_types:
-                self._process_plot(field_data_array, field_name, idx, plot_type, plotter)
-
-        if self.config_manager.make_gif:
-            pu.create_gif(self.config_manager.config)
-
-    def _process_plot(self, data_array: pd.DataFrame, field_name: str, file_index: int,
-                      plot_type: str, plotter):
+    def _process_scatter_plot(self, data_array, field_name, file_index, plot_type,
+                              figure):
         """Process a single plot type for a given field."""
         self.logger.info(f"Plotting {field_name}, {plot_type} plot")
         figure = Figure.create_eviz_figure(self.config_manager, plot_type)
         self.config_manager.ax_opts = figure.init_ax_opts(field_name)
 
-        self._process_obs_plot(data_array, field_name, file_index, plot_type, figure, plotter)
+        self._process_obs_plot(data_array, field_name, file_index, plot_type, figure)
 
     def _process_obs_plot(self, data_array: pd.DataFrame, field_name: str,
-                            file_index: int, plot_type: str, figure,
-                            plotter):
+                          file_index: int, plot_type: str, figure):
         """Process non-xy and non-polar plot types."""
         self.config_manager.level = None
         time_level_config = self.config_manager.ax_opts.get('time_lev', 0)
@@ -121,22 +78,25 @@ class Airnow(ObsSource):
                                                 plot_type, figure,
                                                 time_level=time_level_config)
         if field_to_plot:
-            plotter.single_plots(self.config_manager, field_to_plot=field_to_plot)
+            plot_result = self.create_plot(field_name, field_to_plot)
             pu.print_map(self.config_manager, plot_type, self.config_manager.findex,
-                         figure)
+                         plot_result)
 
-    def _get_field_to_plot(self, data_array: pd.DataFrame, field_name: str, file_index: int,
-                           plot_type: str, figure, time_level=None,) -> tuple:
+    def _get_field_to_plot(self, data_array: pd.DataFrame, field_name: str,
+                           file_index: int,
+                           plot_type: str, figure, time_level=None, ) -> tuple:
         self.config_manager.ax_opts = figure.init_ax_opts(field_name)
         data2d = None
 
         dim1, dim2 = self.config_manager.get_dim_names(plot_type)
         lon = data_array.lon
         lat = data_array.lat
-   
+
         self.config_manager.ax_opts['extent'] = [-120, -70, 24, 50.5]
-        self.config_manager.ax_opts['central_lon'] = np.mean(self.config_manager.ax_opts['extent'][:2])
-        self.config_manager.ax_opts['central_lat'] = np.mean(self.config_manager.ax_opts['extent'][2:])
+        self.config_manager.ax_opts['central_lon'] = np.mean(
+            self.config_manager.ax_opts['extent'][:2])
+        self.config_manager.ax_opts['central_lat'] = np.mean(
+            self.config_manager.ax_opts['extent'][2:])
 
         if 'xy' in plot_type:
             data2d = self._get_xy_simple(data_array, field_name, 0)
@@ -148,8 +108,9 @@ class Airnow(ObsSource):
 
         if 'xt' in plot_type or 'tx' in plot_type:
             return data2d, None, None, field_name, plot_type, file_index, figure
-        return data2d, data2d[dim1].values, data2d[dim2].values, field_name, plot_type, file_index, figure
-    
+        return data2d, data2d[dim1].values, data2d[
+            dim2].values, field_name, plot_type, file_index, figure
+
     def _get_field_for_simple_plot(self, field_name, plot_type):
         dim1, dim2 = self.config_manager.get_dim_names(plot_type)
         d = self.source_data[field_name]
@@ -161,7 +122,8 @@ class Airnow(ObsSource):
             lat = self.source_data['lat'].data
             return d.data, lon, lat, field_name, plot_type
         else:
-            self.logger.error(f'Plot type [{plot_type}] error: Either specify in SPECS file or create plot type.')
+            self.logger.error(
+                f'Plot type [{plot_type}] error: Either specify in SPECS file or create plot type.')
             sys.exit()
 
         coords = data2d.coords

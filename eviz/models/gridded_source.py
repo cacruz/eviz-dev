@@ -16,21 +16,24 @@ warnings.filterwarnings("ignore")
 @dataclass
 class GriddedSource(GenericSource):
     """
-    The GriddedSource class provides specialized functionality for handling gridded Earth System Model (ESM) data.
+    The GriddedSource class provides specialized functionality for handling 
+    gridded Earth System Model (ESM) data.
 
-    This class extends the GenericSource implementation to work specifically with structured grid data formats
-    commonly used in ESMs, including 2D (lat-lon), 3D (lat-lon-time or lat-lon-level), and 4D 
-    (lat-lon-level-time) datasets. It implements methods for extracting, processing, and visualizing
-    various slices and projections of gridded data, such as:
+    This class extends the GenericSource implementation to work specifically with 
+    structured grid data formats commonly used in ESMs, including 2D (lat-lon), 
+    3D (lat-lon-time or lat-lon-level), and 4D  (lat-lon-level-time) datasets. 
+    It implements methods for extracting, processing, and visualizing various 
+    slices and projections of gridded data, such as:
 
     - Horizontal (XY) slices at specific vertical levels or times
     - Vertical (YZ) slices (zonal means)
     - Time series (XT) at points or averaged over regions
     - Hovmöller diagrams (TX) showing time-longitude evolution
 
-    Unlike the observation modules which may handle both gridded and unstructured data formats,
-    this class is optimized specifically for regular grid structures with consistent coordinate
-    systems. It provides specialized grid-aware operations including:
+    Unlike the observation modules which may handle both gridded and unstructured 
+    data formats, this class is optimized specifically for regular grid structures 
+    with consistent coordinate systems. It provides specialized grid-aware operations 
+    including:
 
     - Vertical level selection and averaging
     - Zonal and meridional means
@@ -198,89 +201,69 @@ class GriddedSource(GenericSource):
             data2d = data2d.mean(dim=xc_dim)
         return data2d
 
-    def _single_plots(self, plotter):
-        """Generate single plots for each source and field according to configuration.
-        This method is responsible for creating individual plots for each data source and field
- 
-        Args:
-            plotter (instance of SimplePlotter)
-        """
-        self.logger.info("Generating single plots")
-
-        all_data_sources = self.config_manager.pipeline.get_all_data_sources()
-        if not all_data_sources:
-            self.logger.error("No data sources available for single plotting.")
-            return
-
-        for idx, params in self.config_manager.map_params.items():
-            field_name = params.get('field')
-            if not field_name:
-                continue
-
-            filename = params.get('filename')
-            data_source = self.config_manager.pipeline.get_data_source(filename)
-
-            if not data_source or not hasattr(data_source,
-                                              'dataset') or data_source.dataset is None:
-                continue
-
-            if field_name not in data_source.dataset:
-                continue
-
-            self.config_manager.findex = idx
-            self.config_manager.pindex = idx
-            self.config_manager.axindex = 0
-
-            field_data_array = data_source.dataset[field_name]
-            plot_types = params.get('to_plot', ['xy'])
-            if isinstance(plot_types, str):
-                plot_types = [pt.strip() for pt in plot_types.split(',')]
-            for plot_type in plot_types:
-                self._process_plot(field_data_array, field_name, idx, plot_type, plotter)
-
-        if self.config_manager.make_gif:
-            pu.create_gif(self.config_manager.config)
-
-    def _process_plot(self, data_array: xr.DataArray, field_name: str, file_index: int,
-                      plot_type: str, plotter):
-        """Process a single plot type for a given field."""
-        self.logger.info(f"Plotting {field_name}, {plot_type} plot")
-        figure = Figure.create_eviz_figure(self.config_manager, plot_type)
-        self.config_manager.ax_opts = figure.init_ax_opts(field_name)
-
-        if 'xy' in plot_type or 'po' in plot_type:
-            self._process_xy_plot(data_array, field_name, file_index, plot_type,
-                                  figure, plotter)
-        else:
-            self._process_other_plot(data_array, field_name, file_index, plot_type,
-                                     figure, plotter)
-
-    def _process_xy_plot(self, data_array: xr.DataArray, field_name: str, file_index: int,
-                         plot_type: str, figure, plotter):
-        """Process xy or polar plot types."""
+    def _process_xy_plot(self, data_array, field_name, file_index, plot_type, figure):
+        """Process an XY plot."""
         levels = self.config_manager.get_levels(field_name, plot_type + 'plot')
         do_zsum = self.config_manager.ax_opts.get('zsum', False)
 
         time_level_config = self.config_manager.ax_opts.get('time_lev', 0)
         tc_dim = self.config_manager.get_model_dim_name('tc') or 'time'
         num_times = data_array[tc_dim].size if tc_dim in data_array.dims else 1
-        time_levels = range(num_times) if time_level_config == 'all' else [
-            time_level_config]
+        time_levels = range(num_times) if time_level_config == 'all' else [time_level_config]
 
         if not levels and not do_zsum:
             return
 
         if levels:
-            self._process_level_plots(data_array, field_name, file_index, plot_type,
-                                      figure, time_levels, levels, plotter)
+            self._process_level_plots(data_array, field_name, file_index, plot_type, figure, time_levels, levels)
         else:
-            self._process_zsum_plots(data_array, field_name, file_index, plot_type,
-                                     figure, time_levels, plotter)
+            self._process_zsum_plots(data_array, field_name, file_index, plot_type, figure, time_levels)
 
-    def _process_level_plots(self, data_array: xr.DataArray, field_name: str,
-                             file_index: int, plot_type: str, figure,
-                             time_levels: list, levels: dict, plotter):
+    def _process_level_plots(self, data_array, field_name, file_index, plot_type, figure, time_levels, levels):
         """Process plots for specific vertical levels."""
+        self.logger.debug("Processing XY level plots")
+        zc_dim = self.config_manager.get_model_dim_name('zc') or 'lev'
+        tc_dim = self.config_manager.get_model_dim_name('tc') or 'time'
+
+        has_vertical_dim = zc_dim and zc_dim in data_array.dims
+
+        for level_val in levels.keys():
+            self.config_manager.level = level_val
+            for t in time_levels:
+                if tc_dim in data_array.dims:
+                    data_at_time = data_array.isel({tc_dim: t})
+                else:
+                    data_at_time = data_array.squeeze()  # Assume single time if no time dim
+
+                self._set_time_config(t, data_at_time)
+                # Create a new figure for each level to avoid reusing axes
+                figure = Figure.create_eviz_figure(self.config_manager, plot_type)
+                self.config_manager.ax_opts = figure.init_ax_opts(field_name)
+
+                # If the data doesn't have a vertical dimension, we can't select a level
+                # In this case, we'll just use the data as is
+                if not has_vertical_dim:
+                    field_to_plot = self._get_field_to_plot(data_at_time, field_name, file_index, plot_type, figure, t)
+                else:
+                    field_to_plot = self._get_field_to_plot(data_at_time, field_name, file_index, plot_type, figure, t, level=level_val)
+
+                if field_to_plot:
+                    plot_result = self.create_plot(field_name, field_to_plot)                    
+                    pu.print_map(self.config_manager, plot_type, self.config_manager.findex, plot_result, level=level_val)
+
+    def _process_polar_plot(self, data_array, field_name, file_index, plot_type, figure):
+        """Process plots for specific vertical levels."""
+        levels = self.config_manager.get_levels(field_name, plot_type + 'plot')
+        do_zsum = self.config_manager.ax_opts.get('zsum', False)
+
+        time_level_config = self.config_manager.ax_opts.get('time_lev', 0)
+        tc_dim = self.config_manager.get_model_dim_name('tc') or 'time'
+        num_times = data_array[tc_dim].size if tc_dim in data_array.dims else 1
+        time_levels = range(num_times) if time_level_config == 'all' else [time_level_config]
+
+        if not levels and not do_zsum:
+            return
+        
         self.logger.debug(f' -> Processing {len(time_levels)} time levels')
         zc_dim = self.config_manager.get_model_dim_name('zc') or 'lev'
         tc_dim = self.config_manager.get_model_dim_name('tc') or 'time'
@@ -304,26 +287,111 @@ class GriddedSource(GenericSource):
                 # If the data doesn't have a vertical dimension, we can't select a level
                 # In this case, we'll just use the data as is
                 if not has_vertical_dim:
-                    field_to_plot = self._get_field_to_plot(data_at_time, field_name,
-                                                            file_index, plot_type, figure,
-                                                            t)
+                    field_to_plot = self._get_field_to_plot(data_at_time, field_name, file_index, plot_type, figure, t)
                 else:
-                    field_to_plot = self._get_field_to_plot(data_at_time, field_name,
-                                                            file_index, plot_type, figure,
-                                                            t,
-                                                            level=level_val)
-
+                    field_to_plot = self._get_field_to_plot(data_at_time, field_name, file_index, plot_type, figure, t, level=level_val)
+                
                 if field_to_plot:
-                    plotter.single_plots(self.config_manager, field_to_plot=field_to_plot,
-                                         level=level_val)
+                    plot_result = self.create_plot(field_name, field_to_plot)                    
+                    pu.print_map(self.config_manager, plot_type, self.config_manager.findex, plot_result, level=level_val)
 
-                    pu.print_map(self.config_manager, plot_type,
-                                 self.config_manager.findex, figure,
-                                 level=level_val)
+    def _process_xt_plot(self, data_array, field_name, file_index, plot_type, figure):
+        """Process an XT plot."""
+        self.config_manager.level = None
+        time_level_config = self.config_manager.ax_opts.get('time_lev', 0)
+        tc_dim = self.config_manager.get_model_dim_name('tc') or 'time'
 
+        if tc_dim in data_array.dims:
+            num_times = data_array[tc_dim].size
+            time_levels = range(num_times) if time_level_config == 'all' else [time_level_config]
+        else:
+            time_levels = [0]
+
+        field_to_plot = self._get_field_to_plot(data_array, field_name, file_index, plot_type, figure, time_level=time_level_config)
+        
+        if field_to_plot:
+            plot_result = self.create_plot(field_name, field_to_plot)
+            pu.print_map(self.config_manager, plot_type, self.config_manager.findex, plot_result)
+    
+    def _process_tx_plot(self, data_array, field_name, file_index, plot_type, figure):
+        """Process a TX (Hovmoller) plot."""
+        self.config_manager.level = None
+        time_level_config = self.config_manager.ax_opts.get('time_lev', 0)
+        tc_dim = self.config_manager.get_model_dim_name('tc') or 'time'
+
+        if tc_dim in data_array.dims:
+            num_times = data_array[tc_dim].size
+            time_levels = range(num_times) if time_level_config == 'all' else [
+                time_level_config]
+        else:
+            time_levels = [0]
+
+        field_to_plot = self._get_field_to_plot(data_array, field_name, file_index,
+                                                plot_type, figure,
+                                                time_level=time_level_config)
+        if field_to_plot:
+            plot_result = self.create_plot(field_name, field_to_plot)
+            pu.print_map(self.config_manager, plot_type, self.config_manager.findex, plot_result)
+         
+    def _process_scatter_plot(self, data_array, field_name, file_index, plot_type, figure):
+        """Process a scatter plot."""
+        # Get x and y data for scatter plot
+        x_data, y_data, z_data = self._get_scatter_data(data_array, field_name)
+        
+        if x_data is not None and y_data is not None:
+            # Create field_to_plot tuple
+            field_to_plot = (x_data, y_data, z_data, field_name, 'sc', file_index, figure)
+            
+            plot_result = self.create_plot(field_name, field_to_plot)
+            pu.print_map(self.config_manager, plot_type, self.config_manager.findex, plot_result)
+    
+    def _get_scatter_data(self, data_array, field_name):
+        """Get data for scatter plot.
+        
+        This is a placeholder implementation. You'll need to implement this
+        based on your specific requirements.
+        """
+        # This is where you would extract x, y, and optionally z data
+        # from data_array based on the field_name and configuration
+        
+        # For example:
+        if field_name in self.config_manager.spec_data and 'scplot' in self.config_manager.spec_data[field_name]:
+            sc_config = self.config_manager.spec_data[field_name]['scplot']
+            
+            # Get x field
+            x_field = sc_config.get('x_field')
+            if x_field and x_field in self.config_manager.pipeline.get_all_variables():
+                x_data = self.config_manager.pipeline.get_variable(x_field)
+            else:
+                # Default x data
+                x_data = np.arange(len(data_array))
+            
+            # Get y field
+            y_field = sc_config.get('y_field')
+            if y_field and y_field in self.config_manager.pipeline.get_all_variables():
+                y_data = self.config_manager.pipeline.get_variable(y_field)
+            else:
+                # Use the input data_array as y data
+                y_data = data_array
+            
+            # Get z field (optional)
+            z_field = sc_config.get('z_field')
+            if z_field and z_field in self.config_manager.pipeline.get_all_variables():
+                z_data = self.config_manager.pipeline.get_variable(z_field)
+            else:
+                z_data = None
+            
+            return x_data, y_data, z_data
+        
+        # Default implementation: use data_array as y data, create x data
+        x_data = np.arange(len(data_array))
+        y_data = data_array
+        z_data = None
+        
+        return x_data, y_data, z_data
+    
     def _process_other_plot(self, data_array: xr.DataArray, field_name: str,
-                            file_index: int, plot_type: str, figure,
-                            plotter):
+                            file_index: int, plot_type: str, figure):
         """Process non-xy and non-polar plot types."""
         self.config_manager.level = None
         time_level_config = self.config_manager.ax_opts.get('time_lev', 0)
@@ -341,13 +409,12 @@ class GriddedSource(GenericSource):
                                                 plot_type, figure,
                                                 time_level=time_level_config)
         if field_to_plot:
-            plotter.single_plots(self.config_manager, field_to_plot=field_to_plot)
-            pu.print_map(self.config_manager, plot_type, self.config_manager.findex,
-                         figure)
-
+            plot_result = self.create_plot(field_name, field_to_plot)
+            pu.print_map(self.config_manager, plot_type, self.config_manager.findex, plot_result)
+ 
     def _process_zsum_plots(self, data_array: xr.DataArray, field_name: str,
                             file_index: int, plot_type: str, figure,
-                            time_levels: list, plotter):
+                            time_levels: list):
         """Process plots with vertical summation."""
         self.config_manager.level = None
         tc_dim = self.config_manager.get_model_dim_name('tc') or 'time'
@@ -366,18 +433,13 @@ class GriddedSource(GenericSource):
             field_to_plot = self._get_field_to_plot(data_at_time, field_name,
                                                     file_index, plot_type, figure, t)
             if field_to_plot:
-                plotter.single_plots(self.config_manager, field_to_plot=field_to_plot)
-                pu.print_map(self.config_manager, plot_type, self.config_manager.findex,
-                             figure)
+                plot_result = self.create_plot(field_name, field_to_plot)
+                pu.print_map(self.config_manager, plot_type, self.config_manager.findex, plot_result)
 
     def _get_field_to_plot(self, data_array: xr.DataArray, field_name: str,
                            file_index: int, plot_type: str, figure, time_level,
                            level=None) -> tuple:
-        """Prepare the data array and coordinates for plotting."""
-        if data_array is None:
-            self.logger.error(f"No data array provided for field {field_name}")
-            return None
-
+        """Prepare the 2D data array and coordinates to be plotted."""
         dim1_name, dim2_name = self.config_manager.get_dim_names(plot_type)
         data2d = None
 
@@ -390,6 +452,8 @@ class GriddedSource(GenericSource):
         elif 'xy' in plot_type or 'polar' in plot_type:
             data2d = self._get_xy(data_array, level=level, time_lev=time_level)
         else:
+            self.logger.warning(
+                f"Unsupported plot type for _get_field_to_plot: {plot_type}")
             return None
 
         if data2d is None:
@@ -397,149 +461,63 @@ class GriddedSource(GenericSource):
                 f"Failed to prepare 2D data for field {field_name}, plot type {plot_type}")
             return None
 
-        x_values = None
-        y_values = None
+        # For time series plots, return without coordinates
         if 'xt' in plot_type or 'tx' in plot_type:
-            # For time-series or Hovmoller plots, coordinates are handled differently
-            # The plotter functions for these types will need to extract them from data2d
-            pass
-        else:
-            try:
-                # Use the determined dimension names
-                if dim1_name and dim1_name in data2d.coords:
-                    x_values = data2d[dim1_name]
-                else:
-                    self.logger.debug(
-                        f"Dimension '{dim1_name}' not found in data coordinates for {field_name}")
+            return data2d, None, None, field_name, plot_type, file_index, figure
 
-                if dim2_name and dim2_name in data2d.coords:
-                    y_values = data2d[dim2_name]
-                else:
-                    self.logger.debug(
-                        f"Dimension '{dim2_name}' not found in data coordinates for {field_name}")
+        # Process coordinates based on domain type
+        try:
+            self.config_manager.is_regional = hasattr(self, 'source_name') and self.source_name in ['lis',
+                                                                                'wrf']
 
-            except KeyError as e:
-                self.logger.error(f"Error getting coordinates for {field_name}: {e}")
-                dims = list(data2d.dims)
-                if len(dims) >= 2:
-                    self.logger.debug(
-                        f"Falling back to using dimensions {dims[0]} and {dims[1]} as coordinates")
-                    x_values = data2d[dims[0]]
-                    y_values = data2d[dims[1]]
+            if self.config_manager.is_regional:
+                if hasattr(self, '_process_coordinates'):
+                    return self._process_coordinates(data2d, 
+                                                     dim1_name, dim2_name,
+                                                     field_name,
+                                                     plot_type, file_index, figure)
                 else:
+                    xs = np.array(self._get_field(dim1_name, data2d)[0, :])
+                    ys = np.array(self._get_field(dim2_name, data2d)[:, 0])
+                    latN = max(ys[:])
+                    latS = min(ys[:])
+                    lonW = min(xs[:])
+                    lonE = max(xs[:])
+                    self.config_manager.ax_opts['extent'] = [lonW, lonE, latS, latN]
+                    self.config_manager.ax_opts['central_lon'] = np.mean([lonW, lonE])
+                    self.config_manager.ax_opts['central_lat'] = np.mean([latS, latN])
+
+                    return data2d, xs, ys, field_name, plot_type, file_index, figure
+            else:
+                x = data2d[dim1_name].values if dim1_name in data2d.coords else None
+                y = data2d[dim2_name].values if dim2_name in data2d.coords else None
+
+                if x is None or y is None:
+                    dims = list(data2d.dims)
+                    if len(dims) >= 2:
+                        x = data2d[dims[0]].values
+                        y = data2d[dims[1]].values
+                    else:
+                        self.logger.error(
+                            "Dataset has fewer than 2 dimensions, cannot plot")
+                        return None
+
+                if np.isnan(data2d.values).all():
                     self.logger.error(
-                        "Dataset has fewer than 2 dimensions, cannot plot spatial data")
-                    return None
+                        f"All values are NaN for {field_name}. Using original data.")
+                    data2d = data_array.squeeze()
+                elif np.isnan(data2d.values).any():
+                    self.logger.debug(
+                        f"Note: Some NaN values present ({np.sum(np.isnan(data2d.values))} NaNs).")
+                    # data2d = data2d.fillna(0)
 
-            if np.isnan(data2d.values).all():
-                self.logger.error(
-                    f"All values are NaN for {field_name}. Using original data.")
-                data2d = data_array.squeeze()
-            elif np.isnan(data2d.values).any():
-                self.logger.debug(
-                    f"Note: Some NaN values present ({np.sum(np.isnan(data2d.values))} NaNs).")
-                # data2d = data2d.fillna(0)
+                return data2d, x, y, field_name, plot_type, file_index, figure
 
-        # Return the prepared data and coordinates in the expected tuple format
-        return data2d, x_values, y_values, field_name, plot_type, file_index, figure
-
-    def _comparison_plots(self, plotter):
-        """Generate comparison plots for paired data sources according to configuration.
-
-        Args:
-            plotter (instance of ComparisonPlotter): The plotter instance to use for generating plots.
-        """
-        self.logger.info("Generating comparison plots")
-        current_field_index = 0
-
-        all_data_sources = self.config_manager.pipeline.get_all_data_sources()
-        if not all_data_sources:
-            self.logger.error("No data sources available for comparison plotting.")
-            return
-
-        if not self.config_manager.a_list or not self.config_manager.b_list:
-            self.logger.error("a_list or b_list is empty, cannot perform comparison.")
-            return
-
-        idx1 = self.config_manager.a_list[0]
-        idx2 = self.config_manager.b_list[0]
-
-        # Gather all unique field names from map_params for these files
-        fields_file1 = [params['field'] for i, params in
-                        self.config_manager.map_params.items() if
-                        params['file_index'] == idx1]
-        fields_file2 = [params['field'] for i, params in
-                        self.config_manager.map_params.items() if
-                        params['file_index'] == idx2]
-
-        # Pair fields by order, not by name
-        num_pairs = min(len(fields_file1), len(fields_file2))
-        field_pairs = list(zip(fields_file1[:num_pairs], fields_file2[:num_pairs]))
-
-        self.logger.debug(f"Comparing files {idx1} and {idx2}")
-        self.logger.debug(f"Fields in file 1: {fields_file1}")
-        self.logger.debug(f"Fields in file 2: {fields_file2}")
-        self.logger.debug(f"Field pairs to compare: {field_pairs}")
-
-        for field1, field2 in field_pairs:
-            # Find map_params for this field in both files
-            idx1_field = next((i for i, params in self.config_manager.map_params.items()
-                               if params['file_index'] == idx1 and params[
-                                   'field'] == field1), None)
-            idx2_field = next((i for i, params in self.config_manager.map_params.items()
-                               if params['file_index'] == idx2 and params[
-                                   'field'] == field2), None)
-            if idx1_field is None or idx2_field is None:
-                continue
-
-            map1_params = self.config_manager.map_params[idx1_field]
-            map2_params = self.config_manager.map_params[idx2_field]
-
-            filename1 = map1_params.get('filename')
-            filename2 = map2_params.get('filename')
-
-            data_source1 = self.config_manager.pipeline.get_data_source(filename1)
-            data_source2 = self.config_manager.pipeline.get_data_source(filename2)
-
-            if not data_source1 or not data_source2:
-                continue
-
-            sdat1_dataset = data_source1.dataset if hasattr(data_source1,
-                                                            'dataset') else None
-            sdat2_dataset = data_source2.dataset if hasattr(data_source2,
-                                                            'dataset') else None
-
-            if sdat1_dataset is None or sdat2_dataset is None:
-                continue
-
-            file_indices = (idx1_field, idx2_field)
-
-            self.field_names = (field1, field2)
-
-            # Assuming plot types are the same for comparison
-            plot_types = map1_params.get('to_plot', ['xy'])
-            if isinstance(plot_types, str):
-                plot_types = [pt.strip() for pt in plot_types.split(',')]
-            for plot_type in plot_types:
-                self.logger.info(
-                    f"Plotting {field1} vs {field2}, {plot_type} plot")
-                self.data2d_list = []  # Reset for each plot type
-
-                if 'xy' in plot_type or 'po' in plot_type or 'polar' in plot_type:
-                    self._process_xy_comparison_plots(plotter, file_indices,
-                                                      current_field_index,
-                                                      field1, field2, plot_type,
-                                                      sdat1_dataset, sdat2_dataset)
-                else:
-                    self._process_other_comparison_plots(plotter, file_indices,
-                                                         current_field_index,
-                                                         field1, field2,
-                                                         plot_type, sdat1_dataset,
-                                                         sdat2_dataset)
-
-            current_field_index += 1
-
-    def _process_xy_comparison_plots(self, plotter, file_indices: tuple,
+        except Exception as e:
+            self.logger.error(f"Error processing coordinates for {field_name}: {e}")
+            return None
+        
+    def _process_xy_comparison_plots(self, file_indices: tuple,
                                      current_field_index: int,
                                      field_name1: str, field_name2: str, plot_type: str,
                                      sdat1_dataset: xr.Dataset,
@@ -559,24 +537,24 @@ class GriddedSource(GenericSource):
             self.config_manager.level = level_val
 
             if figure.subplots == (3, 1):
-                self._create_3x1_comparison_plot(plotter, file_indices,
+                self._create_3x1_comparison_plot(file_indices,
                                                  current_field_index,
                                                  field_name1, field_name2, figure,
                                                  plot_type, sdat1_dataset, sdat2_dataset,
                                                  level_val)
             elif figure.subplots == (2, 2):
-                self._create_2x2_comparison_plot(plotter, file_indices,
+                self._create_2x2_comparison_plot(file_indices,
                                                  current_field_index,
                                                  field_name1, field_name2, figure,
                                                  plot_type, sdat1_dataset, sdat2_dataset,
                                                  level_val)
 
             self.config_manager.findex = file_index1
-            pu.print_map(self.config_manager, plot_type, self.config_manager.findex,
-                         figure, level=level_val)
+            pu.print_map(self.config_manager, plot_type, self.config_manager.findex, self.plot_result,
+                          level=level_val)
             self.comparison_plot = False  # Reset comparison flag
 
-    def _process_other_comparison_plots(self, plotter, file_indices: tuple,
+    def _process_other_comparison_plots(self, file_indices: tuple,
                                         current_field_index: int,
                                         field_name1: str, field_name2: str,
                                         plot_type: str,
@@ -592,32 +570,32 @@ class GriddedSource(GenericSource):
         self.config_manager.level = None
 
         if figure.subplots == (3, 1):
-            self._create_3x1_comparison_plot(plotter, file_indices, current_field_index,
+            self._create_3x1_comparison_plot(file_indices, current_field_index,
                                              field_name1, field_name2, figure,
                                              plot_type, sdat1_dataset, sdat2_dataset)
         elif figure.subplots == (2, 2):
-            self._create_2x2_comparison_plot(plotter, file_indices, current_field_index,
+            self._create_2x2_comparison_plot(file_indices, current_field_index,
                                              field_name1, field_name2, figure,
                                              plot_type, sdat1_dataset, sdat2_dataset)
 
         self.config_manager.findex = file_index1
-        pu.print_map(self.config_manager, plot_type, self.config_manager.findex, figure)
+        pu.print_map(self.config_manager, plot_type, self.config_manager.findex, self.plot_result)
         self.comparison_plot = False  # Reset comparison flag
 
-    def _create_3x1_comparison_plot(self, plotter, file_indices, current_field_index,
+    def _create_3x1_comparison_plot(self, file_indices, current_field_index,
                                     field_name1, field_name2, figure,
                                     plot_type, sdat1_dataset, sdat2_dataset, level=None):
         """Create a 3x1 comparison plot."""
         file_index1, file_index2 = file_indices
 
         # Plot the first dataset
-        self._process_3x1_comparison_plot(plotter, file_index1, current_field_index,
+        self._process_3x1_comparison_plot(file_index1, current_field_index,
                                           field_name1, figure, 0,
                                           sdat1_dataset[field_name1], plot_type,
                                           level=level)
 
         # Plot the second dataset
-        self._process_3x1_comparison_plot(plotter, file_index2, current_field_index,
+        self._process_3x1_comparison_plot(file_index2, current_field_index,
                                           field_name2, figure, 1,
                                           sdat2_dataset[field_name2], plot_type,
                                           level=level)
@@ -627,26 +605,26 @@ class GriddedSource(GenericSource):
         self.config_manager.comparison_plot = True
         # For the comparison, we need to pass both datasets
         # The _process_comparison_plot method will need to handle this special case
-        self._process_3x1_comparison_plot(plotter, file_index1, current_field_index,
+        self._process_3x1_comparison_plot(file_index1, current_field_index,
                                           field_name1, figure, 2,
                                           (sdat1_dataset[field_name1],
                                            sdat2_dataset[field_name2]),
                                           plot_type, level=level)
 
-    def _create_2x2_comparison_plot(self, plotter, file_indices, current_field_index,
+    def _create_2x2_comparison_plot(self, file_indices, current_field_index,
                                     field_name1, field_name2, figure,
                                     plot_type, sdat1_dataset, sdat2_dataset, level=None):
         """Create a 2x2 comparison plot."""
         file_index1, file_index2 = file_indices
 
         # Plot the first dataset in the top-left
-        self._process_2x2_comparison_plot(plotter, file_index1, current_field_index,
+        self._process_2x2_comparison_plot(file_index1, current_field_index,
                                           field_name1, figure, [0, 0], 0,
                                           sdat1_dataset[field_name1], plot_type,
                                           level=level)
 
         # Plot the second dataset in the top-right
-        self._process_2x2_comparison_plot(plotter, file_index2, current_field_index,
+        self._process_2x2_comparison_plot(file_index2, current_field_index,
                                           field_name2, figure, [0, 1], 1,
                                           sdat2_dataset[field_name2], plot_type,
                                           level=level)
@@ -655,7 +633,7 @@ class GriddedSource(GenericSource):
         self.comparison_plot = True
         self.config_manager.comparison_plot = True
         # For the comparison, we need to pass both datasets
-        self._process_2x2_comparison_plot(plotter, file_index1, current_field_index,
+        self._process_2x2_comparison_plot(file_index1, current_field_index,
                                           field_name1, figure, [1, 0], 2,
                                           (sdat1_dataset[field_name1],
                                            sdat2_dataset[field_name2]),
@@ -663,13 +641,13 @@ class GriddedSource(GenericSource):
 
         # If extra field type is enabled, plot another comparison view
         # if self.config_manager.ax_opts.get('add_extra_field_type', False):
-        self._process_2x2_comparison_plot(plotter, file_index1, current_field_index,
+        self._process_2x2_comparison_plot(file_index1, current_field_index,
                                           field_name1, figure, [1, 1], 2,
                                           (sdat1_dataset[field_name1],
                                            sdat2_dataset[field_name2]),
                                           plot_type, level=level)
 
-    def _process_3x1_comparison_plot(self, plotter, file_index, current_field_index,
+    def _process_3x1_comparison_plot(self, file_index, current_field_index,
                                     field_name, figure, ax_index, data_array, plot_type,
                                     level=None):
         """Process a comparison plot."""
@@ -677,6 +655,12 @@ class GriddedSource(GenericSource):
         self.config_manager.pindex = current_field_index
         self.config_manager.axindex = ax_index
         self.config_manager.ax_opts = figure.init_ax_opts(field_name)
+        time_level_config = self.config_manager.ax_opts.get('time_lev', 0)
+
+        # TODO: This is a hack to get the plot type to work with the
+        #       side-by-side comparison plots.
+        #       Need to fix this in the future.
+        self.register_plot_type(field_name, plot_type)
 
         if ax_index == 2:  # Third panel in 3x1 layout is the difference
             self.config_manager.ax_opts['is_diff_field'] = True
@@ -718,17 +702,18 @@ class GriddedSource(GenericSource):
             self.data2d_list = []
         else:
             # For the first two panels, plot as usual and store data for diff
-            field_to_plot = self._get_field_to_plot_compare(data_array, field_name,
+            field_to_plot = self._get_field_to_plot(data_array, field_name,
                                                             file_index,
                                                             plot_type, figure,
+                                                            time_level=time_level_config,
                                                             level=level)
             if field_to_plot:
                 self.data2d_list.append(field_to_plot[0])
 
         if field_to_plot:
-            plotter.comparison_plots(self.config_manager, field_to_plot, level=level)
+            self.plot_result = self.create_plot(field_name, field_to_plot)
 
-    def _process_2x2_comparison_plot(self, plotter, file_index, current_field_index,
+    def _process_2x2_comparison_plot(self, file_index, current_field_index,
                                     field_name, figure, gsi, ax_index, data_array, plot_type,
                                     level=None):
         """Process a 2x2 comparison plot."""
@@ -736,6 +721,12 @@ class GriddedSource(GenericSource):
         self.config_manager.findex = file_index
         self.config_manager.pindex = current_field_index
         self.config_manager.axindex = ax_index
+        time_level_config = self.config_manager.ax_opts.get('time_lev', 0)
+
+        # TODO: This is a hack to get the plot type to work with the
+        #       side-by-side comparison plots.
+        #       Need to fix this in the future.
+        self.register_plot_type(field_name, plot_type)
 
         # Initialize ax_opts BEFORE setting flags
         self.config_manager.ax_opts = figure.init_ax_opts(field_name)
@@ -792,109 +783,18 @@ class GriddedSource(GenericSource):
                 field_to_plot = None
         else:
             # For the top row panels, plot as usual and store data for diff
-            field_to_plot = self._get_field_to_plot_compare(data_array, field_name,
+            field_to_plot = self._get_field_to_plot(data_array, field_name,
                                                             file_index,
                                                             plot_type, figure,
+                                                            time_level=time_level_config,
                                                             level=level)
             if field_to_plot and field_to_plot[0] is not None:
                 self.data2d_list.append(field_to_plot[0])
 
         if field_to_plot:
-            plotter.comparison_plots(self.config_manager, field_to_plot, level=level)
+            self.plot_result = self.create_plot(field_name, field_to_plot)
 
-    # SIDE-BY-SIDE COMPARE METHODS (always need SPECS file)
-    # --------------------------------------------------------------------------
-    def _side_by_side_plots(self, plotter):
-        """
-        Generate side-by-side comparison plots for the given plotter.
-
-        Args:
-            plotter (instance of ComparisonPlotter): The plotter instance to use for generating plots.
-
-        """
-        self.logger.info("Generating side-by-side comparison plots")
-        current_field_index = 0
-        self.data2d_list = []
-
-        # Get the file indices for the two files being compared
-        if not self.config_manager.a_list or not self.config_manager.b_list:
-            self.logger.error(
-                "a_list or b_list is empty, cannot perform side-by-side comparison.")
-            return
-
-        idx1 = self.config_manager.a_list[0]
-        idx2 = self.config_manager.b_list[0]
-
-        # Gather all unique field names from map_params for these files
-        fields_file1 = [params['field'] for i, params in
-                        self.config_manager.map_params.items() if
-                        params['file_index'] == idx1]
-        fields_file2 = [params['field'] for i, params in
-                        self.config_manager.map_params.items() if
-                        params['file_index'] == idx2]
-
-        # Pair fields by order, not by name
-        num_pairs = min(len(fields_file1), len(fields_file2))
-        field_pairs = list(zip(fields_file1[:num_pairs], fields_file2[:num_pairs]))
-
-        for field1, field2 in field_pairs:
-            # Find map_params for this field in both files
-            idx1_field = next((i for i, params in self.config_manager.map_params.items()
-                               if params['file_index'] == idx1 and params[
-                                   'field'] == field1), None)
-            idx2_field = next((i for i, params in self.config_manager.map_params.items()
-                               if params['file_index'] == idx2 and params[
-                                   'field'] == field2), None)
-            if idx1_field is None or idx2_field is None:
-                continue
-
-            map1_params = self.config_manager.map_params[idx1_field]
-            map2_params = self.config_manager.map_params[idx2_field]
-
-            filename1 = map1_params.get('filename')
-            filename2 = map2_params.get('filename')
-
-            data_source1 = self.config_manager.pipeline.get_data_source(filename1)
-            data_source2 = self.config_manager.pipeline.get_data_source(filename2)
-
-            if not data_source1 or not data_source2:
-                continue
-
-            sdat1_dataset = data_source1.dataset if hasattr(data_source1,
-                                                            'dataset') else None
-            sdat2_dataset = data_source2.dataset if hasattr(data_source2,
-                                                            'dataset') else None
-
-            if sdat1_dataset is None or sdat2_dataset is None:
-                continue
-
-            self.file_indices = (idx1_field, idx2_field)
-
-            self.field_names = (field1, field2)
-
-            plot_types = map1_params.get('to_plot', ['xy'])
-            if isinstance(plot_types, str):
-                plot_types = [pt.strip() for pt in plot_types.split(',')]
-            for plot_type in plot_types:
-                self.data2d_list = []
-                self.logger.info(f"Plotting {field1} vs {field2} , {plot_type} plot")
-
-                if 'xy' in plot_type or 'polar' in plot_type:
-                    self._process_xy_side_by_side_plots(plotter,
-                                                        current_field_index,
-                                                        field1, field2,
-                                                        plot_type,
-                                                        sdat1_dataset, sdat2_dataset)
-                else:
-                    self._process_other_side_by_side_plots(plotter,
-                                                           current_field_index,
-                                                           field1, field2,
-                                                           plot_type, sdat1_dataset,
-                                                           sdat2_dataset)
-
-            current_field_index += 1
-
-    def _process_xy_side_by_side_plots(self, plotter, current_field_index,
+    def _process_xy_side_by_side_plots(self, current_field_index,
                                        field_name1, field_name2, plot_type, sdat1_dataset,
                                        sdat2_dataset):
         """Process side-by-side comparison plots for xy or polar plot types."""
@@ -920,16 +820,14 @@ class GriddedSource(GenericSource):
                     self.lon = sdat1_dataset.lon
                     self.lat = sdat1_dataset.lat
 
-            self._create_xy_side_by_side_plot(plotter,
-                                              current_field_index,
+            self._create_xy_side_by_side_plot(current_field_index,
                                               field_name1, field_name2, figure,
                                               plot_type, sdat1_dataset, sdat2_dataset,
                                               level_val)
 
-            pu.print_map(self.config_manager, plot_type, self.config_manager.findex,
-                         figure, level=level_val)
+            pu.print_map(self.config_manager, plot_type, self.config_manager.findex, self.plot_result)
 
-    def _create_xy_side_by_side_plot(self, plotter, current_field_index,
+    def _create_xy_side_by_side_plot(self, current_field_index,
                                      field_name1, field_name2, figure,
                                      plot_type, sdat1_dataset, sdat2_dataset, level=None):
         """
@@ -945,7 +843,7 @@ class GriddedSource(GenericSource):
 
         # Plot first dataset (from a_list)
         if self.config_manager.a_list:
-            self._process_side_by_side_plot(plotter, self.config_manager.a_list[0],
+            self._process_side_by_side_plot(self.config_manager.a_list[0],
                                             current_field_index,
                                             field_name1, figure, 0,
                                             sdat1_dataset[field_name1], plot_type,
@@ -955,13 +853,13 @@ class GriddedSource(GenericSource):
         for i, file_idx in enumerate(self.config_manager.b_list, start=1):
             if i < num_plots:  # Only plot if we have a corresponding axis
                 self.logger.debug(f"Plotting dataset {i} to axis {i}")
-                self._process_side_by_side_plot(plotter, file_idx,
+                self._process_side_by_side_plot(file_idx,
                                                 current_field_index,
                                                 field_name2, figure, i,
                                                 sdat2_dataset[field_name2], plot_type,
                                                 level=level)
 
-    def _process_other_side_by_side_plots(self, plotter,
+    def _process_other_side_by_side_plots(self,
                                         current_field_index,
                                         field_name1, field_name2, plot_type,
                                         sdat1_dataset, sdat2_dataset):
@@ -978,14 +876,14 @@ class GriddedSource(GenericSource):
         figure.set_axes()
         self.config_manager.level = None
 
-        self._create_other_side_by_side_plot(plotter, current_field_index,
+        self._create_other_side_by_side_plot(current_field_index,
                                         field_name1, field_name2, figure,
                                         plot_type, sdat1_dataset, sdat2_dataset)
 
-        pu.print_map(self.config_manager, plot_type, self.config_manager.findex, figure)
+        pu.print_map(self.config_manager, plot_type, self.config_manager.findex, self.plot_result)
 
 
-    def _create_other_side_by_side_plot(self, plotter, current_field_index,
+    def _create_other_side_by_side_plot(self, current_field_index,
                                         field_name1, field_name2, figure,
                                         plot_type, sdat1_dataset, sdat2_dataset,
                                         level=None):
@@ -995,13 +893,13 @@ class GriddedSource(GenericSource):
         The layout is:
         - Left subplot: First dataset
         - Right subplot: Second dataset
-        - etc... up to 3x1
+        - etc... up to nx1
         """
         file_index1, file_index2 = self.file_indices
 
         # Plot the first dataset in the left subplot
         self.comparison_plot = False
-        self._process_side_by_side_plot(plotter, file_index1, current_field_index,
+        self._process_side_by_side_plot(file_index1, current_field_index,
                                         field_name1,
                                         figure, 0, sdat1_dataset[field_name1],
                                         plot_type, level=level)
@@ -1014,19 +912,25 @@ class GriddedSource(GenericSource):
             axes_index = 1
 
         # Plot the second dataset in the right subplot
-        self._process_side_by_side_plot(plotter, file_index2, current_field_index,
+        self._process_side_by_side_plot(file_index2, current_field_index,
                                         field_name2,
                                         figure, axes_index, sdat2_dataset[field_name2],
                                         plot_type, level=level)
 
 
-    def _process_side_by_side_plot(self, plotter, file_index, current_field_index,
+    def _process_side_by_side_plot(self, file_index, current_field_index,
                                 field_name, figure, ax_index, data_array, plot_type,
                                 level=None):
         """Process a single plot for side-by-side comparison."""
         self.config_manager.findex = file_index
         self.config_manager.pindex = current_field_index
         self.config_manager.axindex = ax_index
+        time_level_config = self.config_manager.ax_opts.get('time_lev', 0)
+
+        # TODO: This is a hack to get the plot type to work with the
+        #       side-by-side comparison plots.
+        #       Need to fix this in the future.
+        self.register_plot_type(field_name, plot_type)
 
         # Track which dataset we're currently plotting and how many total
         if self.config_manager.should_overlay_plots(field_name, plot_type[:2]):
@@ -1042,86 +946,17 @@ class GriddedSource(GenericSource):
         
         self.config_manager.ax_opts = figure.init_ax_opts(field_name)
         
-        field_to_plot = self._get_field_to_plot_compare(data_array, field_name,
+        field_to_plot = self._get_field_to_plot(data_array, field_name,
                                                         file_index,
                                                         plot_type, figure,
+                                                        time_level=time_level_config,
                                                         level=level)
 
         if field_to_plot and field_to_plot[0] is not None:
             self.data2d_list.append(field_to_plot[0])
 
         if field_to_plot:
-            if hasattr(plotter, 'comparison_plots'):
-                plotter.comparison_plots(self.config_manager, field_to_plot, level=level)
-
-    def _get_field_to_plot_compare(self, data_array, field_name, file_index, plot_type,
-                                   figure, level=None) -> tuple:
-        """Prepare data for comparison plots, handling both global and regional domains."""
-        dim1_name, dim2_name = self.config_manager.get_dim_names(plot_type)
-        data2d = None
-
-        # Process single plots based on plot type
-        if 'yz' in plot_type:
-            data2d = self._get_yz(data_array,
-                                  time_lev=self.config_manager.ax_opts.get('time_lev', 0))
-        elif 'xt' in plot_type:
-            data2d = self._get_xt(data_array,
-                                  time_lev=self.config_manager.ax_opts.get('time_lev', 0))
-        elif 'tx' in plot_type:
-            data2d = self._get_tx(data_array, level=level,
-                                  time_lev=self.config_manager.ax_opts.get('time_lev', 0))
-        elif 'xy' in plot_type or 'polar' in plot_type:
-            data2d = self._get_xy(data_array, level=level,
-                                  time_lev=self.config_manager.ax_opts.get('time_lev', 0))
-        else:
-            self.logger.warning(
-                f"Unsupported plot type for _get_field_to_plot_compare: {plot_type}")
-            return None
-
-        # For time series plots, return without coordinates
-        if 'xt' in plot_type or 'tx' in plot_type:
-            return data2d, None, None, field_name, plot_type, file_index, figure
-
-        # Process coordinates based on domain type
-        try:
-            self.config_manager.is_regional = hasattr(self, 'source_name') and self.source_name in ['lis',
-                                                                                'wrf']
-            if self.config_manager.is_regional:
-                if hasattr(self, '_process_coordinates'):
-                    return self._process_coordinates(data2d, dim1_name, dim2_name,
-                                                     field_name,
-                                                     plot_type, file_index, figure)
-                else:
-                    xs = np.array(self._get_field(dim1_name, data2d)[0, :])
-                    ys = np.array(self._get_field(dim2_name, data2d)[:, 0])
-                    latN = max(ys[:])
-                    latS = min(ys[:])
-                    lonW = min(xs[:])
-                    lonE = max(xs[:])
-                    self.config_manager.ax_opts['extent'] = [lonW, lonE, latS, latN]
-                    self.config_manager.ax_opts['central_lon'] = np.mean([lonW, lonE])
-                    self.config_manager.ax_opts['central_lat'] = np.mean([latS, latN])
-
-                    return data2d, xs, ys, field_name, plot_type, file_index, figure
-            else:
-                x = data2d[dim1_name].values if dim1_name in data2d.coords else None
-                y = data2d[dim2_name].values if dim2_name in data2d.coords else None
-
-                if x is None or y is None:
-                    dims = list(data2d.dims)
-                    if len(dims) >= 2:
-                        x = data2d[dims[0]].values
-                        y = data2d[dims[1]].values
-                    else:
-                        self.logger.error(
-                            "Dataset has fewer than 2 dimensions, cannot plot")
-                        return None
-
-                return data2d, x, y, field_name, plot_type, file_index, figure
-
-        except Exception as e:
-            self.logger.error(f"Error processing coordinates for {field_name}: {e}")
-            return None
+            self.plot_result = self.create_plot(field_name, field_to_plot)
 
     # DATA SLICE PROCESSING METHODS
     def _get_yz(self, data_array, time_lev):
@@ -1264,7 +1099,7 @@ class GriddedSource(GenericSource):
 
         if self.config_manager.ax_opts.get('zsum', False):
             self.logger.debug("Summing over vertical levels.")
-            data2d_zsum = apply_zsum(self.config_manager, data2d)
+            data2d_zsum = apply_zsum(data2d)
             self.logger.debug(
                 "Min: {data2d_zsum.min().values}, Max: {data2d_zsum.max().values}")
             data2d.attrs = data_array.attrs.copy()

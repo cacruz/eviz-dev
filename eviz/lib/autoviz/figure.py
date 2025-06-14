@@ -76,6 +76,11 @@ class Figure(mfigure.Figure):
             del kwargs['ncols']
             
         super().__init__(**kwargs)
+
+        # Ensure the figure has a canvas
+        if not hasattr(self, 'canvas') or self.canvas is None:
+            from matplotlib.backends.backend_agg import FigureCanvasAgg
+            self.canvas = FigureCanvasAgg(self)
                             
         self._init_frame()
 
@@ -342,18 +347,17 @@ class Figure(mfigure.Figure):
         # Do more custom stuff
 
     def show_eviz(self, *args, **kwargs):
-        """
-        Display the figure with any custom processing.
-        Change to show() to override overrides matplotlib's plt.show() with 
-        custom behavior if needed.
-        """
-        # Any custom pre-show processing
+        """Display the figure with any custom processing."""
+        # Register with pyplot if needed
+        if not hasattr(self, 'number') or self.number not in plt.get_fignums():
+            num = max(plt.get_fignums() + [0]) + 1
+            self.number = num
+            plt.figure(num).canvas = self.canvas
         
         # Call the parent method or use plt.show() if needed
         plt.figure(self.number)  # Make sure this figure is active
         plt.show(*args, **kwargs)
-        # Any custom post-show processing
-
+        
     def get_projection(self, projection=None) -> Optional[ccrs.Projection]:
         """Get projection parameter."""
         # Default values for extent and central coordinates

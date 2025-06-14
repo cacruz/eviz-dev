@@ -151,73 +151,6 @@ class ObsSource(GenericSource):
             self.logger.warning(f"Plot type {plot_type} may not be suitable for unstructured data")
             return data_array, None, None, field_name, plot_type
 
-    def _single_plots(self, plotter):
-        """
-        Generate single plots for each source and field according to configuration.
-        
-        Args:
-            plotter: The plotter object to use for generating plots
-        """
-        self.logger.info("Generating single plots")
-
-        all_data_sources = self.config_manager.pipeline.get_all_data_sources()
-        if not all_data_sources:
-            self.logger.error("No data sources available for single plotting.")
-            return
-
-        for idx, params in self.config_manager.map_params.items():
-            field_name = params.get('field')
-            if not field_name:
-                continue
-
-            filename = params.get('filename')
-            data_source = self.config_manager.pipeline.get_data_source(filename)
-
-            if not data_source or not hasattr(data_source, 'dataset') or data_source.dataset is None:
-                continue
-
-            if field_name not in data_source.dataset:
-                continue
-
-            self.config_manager.findex = idx
-            self.config_manager.pindex = idx
-            self.config_manager.axindex = 0
-
-            field_data_array = data_source.dataset[field_name]
-            plot_types = params.get('to_plot', ['sc'])  # Default to scatter for unstructured data
-            if isinstance(plot_types, str):
-                plot_types = [pt.strip() for pt in plot_types.split(',')]
-            for plot_type in plot_types:
-                self._process_plot(field_data_array, field_name, idx, plot_type, plotter)
-
-        if self.config_manager.make_gif:
-            pu.create_gif(self.config_manager.config)
-
-    def _process_plot(self, data_array, field_name, file_index, plot_type, plotter):
-        """
-        Process a single plot type for a given field.
-        
-        Args:
-            data_array: The data array to process
-            field_name: The name of the field
-            file_index: The index of the file
-            plot_type: The type of plot to generate
-            plotter: The plotter object to use for generating plots
-        """
-        self.logger.info(f"Plotting {field_name}, {plot_type} plot")
-        figure = Figure.create_eviz_figure(self.config_manager, plot_type)
-        self.config_manager.ax_opts = figure.init_ax_opts(field_name)
-
-        # For unstructured data, we typically don't need to handle levels
-        # But we do need to handle time if present
-        time_level_config = self.config_manager.ax_opts.get('time_lev', 0)
-        
-        field_to_plot = self._get_field_to_plot(data_array, field_name, file_index,
-                                              plot_type, figure, time_level=time_level_config)
-        if field_to_plot:
-            plotter.single_plots(self.config_manager, field_to_plot=field_to_plot)
-            pu.print_map(self.config_manager, plot_type, self.config_manager.findex, figure)
-
     def _get_field_to_plot(self, data_array, field_name, file_index, plot_type, figure, time_level=None):
         """
         Prepare the data array and coordinates for plotting.
@@ -292,12 +225,10 @@ class ObsSource(GenericSource):
             self.logger.warning(f"Plot type {plot_type} may not be suitable for unstructured data")
             return data_array, None, None, field_name, plot_type, file_index, figure
 
-    def _comparison_plots(self, plotter):
+
+    def _comparison_plots(self):
         """
         Generate comparison plots for paired data sources according to configuration.
-        
-        Args:
-            plotter: The plotter object to use for generating plots
         """
         self.logger.info("Generating comparison plots for unstructured data")
         # Implementation would be similar to GriddedSource but adapted for unstructured data
@@ -312,12 +243,9 @@ class ObsSource(GenericSource):
         # Basic implementation that can be expanded as needed
         self.logger.warning("Comparison plots for unstructured data are not fully implemented")
         
-    def _side_by_side_plots(self, plotter):
+    def _side_by_side_plots(self):
         """
         Generate side-by-side comparison plots for paired data sources.
-        
-        Args:
-            plotter: The plotter object to use for generating plots
         """
         self.logger.info("Generating side-by-side plots for unstructured data")
         # Implementation would be similar to GriddedSource but adapted for unstructured data

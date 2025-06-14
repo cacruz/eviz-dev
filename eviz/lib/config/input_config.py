@@ -42,6 +42,7 @@ class InputConfig:
     _comp_panels: tuple = field(default=(1, 1), init=False)
     _subplot_specs: tuple = field(default=(1, 1), init=False)
     _use_cartopy: bool = field(default=False, init=False)
+    _plot_backend: str = field(default="matplotlib", init=False)
 
     # @log_method
     def initialize(self):
@@ -414,6 +415,7 @@ class InputConfig:
         self._use_cartopy = for_inputs.get('use_cartopy', False)
         self._comp_panels = for_inputs.get('comp_panels', (1, 1))
         self._subplot_specs = for_inputs.get('subplot_specs', (1, 1))
+        self._plot_backend = for_inputs.get('plot_backend', 'matplotlib')
 
         # Parse for_inputs to set _compare and _compare_diff
         self._parse_for_inputs(for_inputs)
@@ -453,6 +455,7 @@ class InputConfig:
             self._set_trop_height_file_list()  # Custom method for trop_height logic
 
         self.logger.debug(f"Initialized for_inputs with: "
+                          f"backend={self._plot_backend}, "
                           f"overlay={self._overlay}, "
                           f"compare={self._compare}, "
                           f"compare_diff={self._compare_diff}, "

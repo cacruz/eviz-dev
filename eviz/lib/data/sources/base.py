@@ -33,17 +33,6 @@ class DataSource(ABC):
     Abstract Methods:
         load_data: Load data from a specified file path into an xarray Dataset.
     
-    Methods:
-        validate_data: Validate the loaded data for integrity and completeness.
-        get_field: Get a specific field (variable) from the dataset.
-        get_metadata: Get metadata about the dataset.
-        get_dimensions: Get the dimensions of the dataset.
-        get_variables: Get the variables in the dataset.
-        close: Close the dataset and free resources.
-        _get_model_dim_name: Get model-specific dimension name for a standard dimension.
-        _get_model_dim_name2: Alternative implementation for dimension name mapping.
-        __getattr__: Delegate attribute access to the underlying dataset.
-        __getitem__: Delegate item access to the underlying dataset.
     """
     model_name: Optional[str] = None
     config_manager: Optional[
@@ -74,11 +63,6 @@ class DataSource(ABC):
         The method should handle format-specific details while ensuring the returned
         dataset conforms to the expected structure for the eViz application.
         
-        Raises:
-            NotImplementedError: If the subclass does not implement this method.
-            FileNotFoundError: If the specified file does not exist.
-            ValueError: If the file format is invalid or unsupported.
-            IOError: If there are issues reading the file.
         """
         raise NotImplementedError("Subclasses must implement the load_data method.")
     

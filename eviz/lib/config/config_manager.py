@@ -52,6 +52,7 @@ class ConfigManager:
     b_list: List[int] = field(default_factory=list)
     _findex: int = 0
     _ds_index: int = 0
+    current_field_name: str = ""
 
     # Fields not included in __init__
     _units: Optional[object] = field(default=None, init=False)
@@ -500,8 +501,7 @@ class ConfigManager:
             self.logger.debug(f'Key error {e}, returning default')
             return None
 
-    @staticmethod
-    def get_dim_names(pid):
+    def get_dim_names(self, pid):
         """
         Get dimension names for a specific plot type.
         
@@ -513,13 +513,13 @@ class ConfigManager:
         """
         dim1, dim2 = None, None
         if 'yz' in pid:
-            dim1, dim2 = 'lat', 'lev'
+            dim1, dim2 =  self.get_model_dim_name('yc'), self.get_model_dim_name('zc')
         elif 'xt' in pid:
-            dim1, dim2 = 'time', None
+            dim1, dim2 = self.get_model_dim_name('tc'), None
         elif 'tx' in pid:
-            dim1, dim2 = 'lon', 'time'
+            dim1, dim2 = self.get_model_dim_name('xc'), self.get_model_dim_name('tc')
         else:
-            dim1, dim2 = 'lon', 'lat'
+            dim1, dim2 = self.get_model_dim_name('xc'), self.get_model_dim_name('yc')
         return dim1, dim2
 
     def get_model_attr_name(self, attr_name):
@@ -545,6 +545,32 @@ class ConfigManager:
             self.logger.debug(
                 f"No meta_attrs mapping for attribute '{attr_name}' and source '{source}'")
             return None
+
+    def register_plot_type(self, field_name, plot_type):
+        """Register the plot type for a field."""
+        if not hasattr(self, '_plot_type_registry'):
+            self._plot_type_registry = {}
+        self._plot_type_registry[field_name] = plot_type
+    
+    def get_plot_type(self, field_name, default='xy'):
+        """Get the plot type for a field."""
+        if hasattr(self, '_plot_type_registry') and field_name in self._plot_type_registry:
+            return self._plot_type_registry[field_name]
+        return default
+
+    def get_file_index_by_filename(self, filename: str) -> int:
+        """Return the file_index associated with a filename from map_params.
+        
+        Args:
+            filename: The filename to search for
+            
+        Returns:
+            The file_index if found, or -1 if the filename is not found
+        """
+        for params in self.config.map_params.values():
+            if params['filename'] == filename:
+                return params['file_index']
+        return -1
 
     # Properties that delegate to config objects
     # These are defined explicitly to provide better documentation and type hints
@@ -573,6 +599,11 @@ class ConfigManager:
     def extra_diff_plot(self):
         """Flag indicating if extra difference plots should be generated."""
         return self.input_config._extra_diff_plot
+
+    @property
+    def plot_backend(self):
+        """The backend to use for plotting."""
+        return self.input_config._plot_backend
 
     @property
     def cmap(self):
@@ -637,52 +668,52 @@ class ConfigManager:
     @property
     def print_to_file(self):
         """Flag indicating if output should be printed to a file."""
-        return self.input_config._print_to_file
+        return self.output_config.print_to_file
 
     @property
     def output_dir(self):
         """The directory to write output files to."""
-        return self.input_config._output_dir
+        return self.output_config.output_dir
 
     @property
     def print_format(self):
         """The format to use for printing output."""
-        return self.input_config._print_format
+        return self.input_config.print_format
 
     @property
     def make_gif(self):
         """Flag indicating if GIFs should be generated."""
-        return self.input_config._make_gif
+        return self.output_config.make_gif
 
     @property
     def gif_fps(self):
         """The frames per second to use for GIFs."""
-        return self.input_config._gif_fps
+        return self.output_config.gif_fps
 
     @property
     def make_pdf(self):
         """Flag indicating if PDFs should be generated."""
-        return self.input_config._make_pdf
+        return self.output_config.make_pdf
 
     @property
     def mpl_style(self):
         """The matplotlib style to use for plotting."""
-        return self.input_config._mpl_style
+        return self.output_config.mpl_style
 
     @property
     def print_basic_stats(self):
         """Flag indicating if basic statistics should be printed."""
-        return self.input_config._print_basic_stats
+        return self.output_config.print_basic_stats
 
     @property
     def use_mp_pool(self):
         """Flag indicating if multiprocessing should be used."""
-        return self.input_config._use_mp_pool
+        return self.system_config.use_mp_pool
 
     @property
     def archive_web_results(self):
         """Flag indicating if web results should be archived."""
-        return self.input_config._archive_web_results
+        return self.system_config.archive_web_results
 
     @property
     def to_plot(self):

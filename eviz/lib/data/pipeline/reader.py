@@ -3,7 +3,6 @@ import os
 from typing import Dict, List, Optional
 from dataclasses import dataclass, field
 import logging
-
 import numpy as np
 from eviz.lib.data.factory import DataSourceFactory
 from eviz.lib.data.sources import DataSource

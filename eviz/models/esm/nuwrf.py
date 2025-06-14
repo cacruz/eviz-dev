@@ -1,4 +1,5 @@
 import logging
+import os
 import warnings
 from dataclasses import dataclass
 import numpy as np
@@ -6,7 +7,8 @@ import pandas as pd
 from matplotlib import pyplot as plt
 from eviz.models.gridded_source import GriddedSource
 from eviz.lib.autoviz.figure import Figure
-from eviz.lib.autoviz.utils import print_map, create_gif
+from eviz.lib.autoviz.utils import create_gif
+from eviz.lib.data.utils import apply_conversion
 
 warnings.filterwarnings("ignore")
 
@@ -119,94 +121,6 @@ class NuWrf(GriddedSource):
                 plotter.simple_plot(self.config_manager, field_to_plot)
             field_num += 1
 
-    def _single_plots(self, plotter):
-        """Common implementation for single plots with model-specific hooks."""
-        for s in range(len(self.config_manager.source_names)):
-            map_params = self.config_manager.map_params
-            field_num = 0
-            
-            for i in map_params.keys():
-                source_name = map_params[i]['source_name']
-                if source_name == self.config_manager.source_names[s]:
-                    field_name = map_params[i]['field']
-                    self.source_name = source_name
-                    filename = map_params[i]['filename']
-                    file_index = field_num
-                    
-                    self.source_data = self._load_source_data(source_name, filename)
-                    if not self.source_data:
-                        continue
-                        
-                    self._global_attrs = self.source_data['attrs']
-                    
-                    # Model-specific initialization
-                    self._init_model_specific_data()
-
-                    self.config_manager.findex = file_index
-                    self.config_manager.pindex = field_num
-                    self.config_manager.axindex = 0
-                    
-                    self._process_field_plots(field_name, map_params[i], plotter)
-                    field_num += 1
-            
-            if self.config_manager.make_gif:
-                create_gif(self.config_manager)
-
-    def _process_field_plots(self, field_name, field_config, plotter):
-        """Process all plot types for a given field."""
-        for plot_type in field_config['to_plot']:
-            self.logger.info(f"Plotting {field_name}, {plot_type} plot")
-            
-            temp_figure = Figure(self.config_manager, plot_type)
-            self.config_manager.ax_opts = temp_figure.init_ax_opts(field_name)
-            
-            d = self.source_data['vars'][field_name]
-            time_levels = self._get_time_levels(d)
-            
-            if 'xy' in plot_type:
-                self._process_xy_plots(field_name, plot_type, d, time_levels, plotter)
-            else:
-                self._process_non_xy_plots(field_name, plot_type, d, time_levels, plotter)
-
-    def _process_xy_plots(self, field_name, plot_type, data_array, time_levels, plotter):
-        """Process XY plots with multiple levels and time steps."""
-        levels = self.config_manager.get_levels(field_name, plot_type + 'plot')
-        if not levels:
-            self.logger.warning(f' -> No levels specified for {field_name}')
-            return
-            
-        for level in levels:
-            self.logger.info(f' -> Processing {len(time_levels)} time levels for level {level}')
-            
-            for time_step in time_levels:
-                self._create_single_plot(field_name, plot_type, data_array, time_step, plotter, level)
-
-    def _process_non_xy_plots(self, field_name, plot_type, data_array, time_levels, plotter):
-        """Process non-XY plots (yz, xt, tx, etc.)."""
-        for time_step in time_levels:
-            self._create_single_plot(field_name, plot_type, data_array, time_step, plotter, level=None)
-
-    def _create_single_plot(self, field_name, plot_type, data_array, time_step, plotter, level=None):
-        """Create a single plot for the given parameters."""
-        # Create new figure for each time level
-        figure = Figure.create_eviz_figure(self.config_manager, plot_type)
-        self.config_manager.ax_opts = figure.init_ax_opts(field_name)
-        
-        self.config_manager.time_level = time_step
-        self.config_manager.real_time = self._get_time_string(data_array, time_step)
-        
-        field_to_plot = self._get_field_to_plot(
-            field_name, self.config_manager.findex, plot_type, figure, time_step, level=level
-        )        
-        if level is not None:
-            plotter.single_plots(self.config_manager, field_to_plot=field_to_plot, level=level)
-            print_map(self.config_manager, plot_type, self.config_manager.findex, figure, level=level)
-        else:
-            plotter.single_plots(self.config_manager, field_to_plot=field_to_plot)
-            print_map(self.config_manager, plot_type, self.config_manager.findex, figure)
-        
-        plt.close(figure)
-
     def _init_model_specific_data(self):
         """Hook for model-specific initialization. Override in subclasses."""
         pass
@@ -214,10 +128,6 @@ class NuWrf(GriddedSource):
     def _get_field_for_simple_plot(self, field_name, plot_type):
         """Hook for model-specific simple plot field processing. Override in subclasses."""
         raise NotImplementedError("Subclasses must implement _get_field_for_simple_plot")
-
-    def _get_field_to_plot(self, field_name, file_index, plot_type, figure, time_level, level=None):
-        """Hook for model-specific field processing. Override in subclasses."""
-        raise NotImplementedError("Subclasses must implement _get_field_to_plot")
 
     # Common utility methods
     def _get_time_levels(self, data_array):
@@ -282,6 +192,39 @@ class NuWrf(GriddedSource):
         
         return None
 
+    def _get_xy(self, d, level, time_lev):
+        """ Extract XY slice from N-dim data field"""
+        if d is None:
+            return
+        if level:
+            level = int(level)
+
+        self.logger.debug(f"Selecting time level: {time_lev}")
+        tc_dim = self.get_model_dim_name('tc') or 'Time'
+        zc_dim = self.get_model_dim_name('zc') 
+
+        if tc_dim in d.dims:
+            data2d = d.isel({tc_dim: time_lev})
+        else:
+            data2d = d
+        data2d = data2d.squeeze()
+
+        zname = self.find_matching_dimension(d.dims, 'zc')
+        if zname in data2d.dims:
+            if 'soil' in zname:
+                data2d = data2d.isel({zname: 0})
+            else:
+                if self.source_name == 'lis':
+                    lev_to_plot = level
+                    data2d = data2d.isel({zname: 0})
+                else:
+                    difference_array = np.absolute(self.levs - level)
+                    index = difference_array.argmin()
+                    lev_to_plot = self.levs[index]  # should I use this instead of index?
+                    data2d = data2d.isel({zname: index})
+
+        return apply_conversion(self.config_manager, data2d, d.name)
+
     @staticmethod
     def set_global_attrs(source_name, ds_attrs):
         """Return a tuple of global attributes from WRF or LIS dataset """
@@ -297,20 +240,17 @@ class NuWrf(GriddedSource):
                 tmp[attr] = None
         return tmp
 
-    def coord_names(self, source_name, source_data, field_name, pid):
+    def coord_names(self, source_name, source_data, pid):
         """ Get WRF or LIS coord names based on field and plot type
 
         Parameters:
             source_name (str) : source name
             source_data (dict) : source data
-            field_name(str) : Field name associated with this plot
             pid (str) : plot type
         """
         coords = []
-        field = source_data['vars'][field_name]
-
         if source_name == 'wrf':
-            stag = source_data['vars'][field_name].stagger
+            stag = source_data.attrs.get('stagger', None)
             xsuf, ysuf, zsuf = "", "", ""
             if stag == "X":
                 xsuf = "_stag"
@@ -320,13 +260,19 @@ class NuWrf(GriddedSource):
                 zsuf = "_stag"
 
             for name in self.get_model_coord_name(source_name, 'xc').split(","):
-                if name in field.coords.keys():
-                    coords.append((name, self.get_model_dim_name('xc')+xsuf))
+                if name in source_data.coords.keys():
+                    if xsuf:
+                        coords.append((name, self.get_model_dim_name('xc')+xsuf))
+                    else:
+                        coords.append((name, self.get_model_dim_name('xc')))
                     break
 
             for name in self.get_model_coord_name(source_name, 'yc').split(","):
-                if name in field.coords.keys():
-                    coords.append((name, self.get_model_dim_name('yc')+ysuf))
+                if name in source_data.coords.keys():
+                    if ysuf:
+                        coords.append((name, self.get_model_dim_name('yc')+xsuf))
+                    else:
+                        coords.append((name, self.get_model_dim_name('yc')))
                     break
         else:
             xc = self.get_model_dim_name('xc')
@@ -337,19 +283,19 @@ class NuWrf(GriddedSource):
                 coords.append(yc)
 
         if source_name == 'wrf':
-            zc = self.get_field_dim_name(field, 'zc')
+            zc = self.get_model_dim_name('zc')   # field_dim_name(source_data, 'zc')?
             if zc:
                 coords.append(zc)
         else:
             for name in self.get_model_dim_name('zc').split(","):
-                if hasattr(field, "coords") and name in field.coords.keys():
+                if hasattr(source_data, "coords") and name in source_data.coords.keys():
                     coords.append(name)
                     break
 
         if source_name == 'wrf':
-            tc = self.get_field_dim_name(field, 'tc')
+            tc = self.get_model_dim_name('tc')   # field_dim_name(source_data, 'tc')?
         else:
-            tc = self.get_field_dim_name(field, 'tc')
+            tc = self.get_model_dim_name('tc')
 
         if tc:
             coords.append(tc)
@@ -429,3 +375,5 @@ class NuWrf(GriddedSource):
             if dim in self.config_manager.meta_coords[dim_name][self.source_name]['dim']:
                 return dim
         return None
+    
+

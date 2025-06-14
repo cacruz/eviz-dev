@@ -19,30 +19,9 @@ class Lis(NuWrf):
         self.comparison_plot = False
         self.source_name = 'lis'
 
-    def _get_field_to_plot(self, field_name, file_index, plot_type, figure, time_level, level=None):
-        """LIS-specific field processing."""
-        self.config_manager.ax_opts = figure.init_ax_opts(field_name)
-        data2d = None
-        d = self.source_data['vars'][field_name]
-        
-        if 'xt' in plot_type:
-            data2d = self._get_xt(d, time_lev=time_level, level=None)
-        elif 'xy' in plot_type:
-            data2d = self._get_xy(d, level=level, time_lev=time_level)
-
-        if 'xt' in plot_type or 'tx' in plot_type:
-            return data2d, None, None, field_name, plot_type, file_index, figure
-        else:
-            lon = self.source_data['vars'][self.get_model_coord_name(self.source_name, 'xc')]
-            lat = self.source_data['vars'][self.get_model_coord_name(self.source_name, 'yc')]
-            xs = np.array(lon[0, :])
-            ys = np.array(lat[:, 0])
-            
-            # Handle NaN coordinates and set extents
-            self._fix_nan_coordinates(xs, ys)
-            self._set_lis_extents(xs, ys)
-            
-            return data2d, xs, ys, field_name, plot_type, file_index, figure
+    def _init_lis_domain(self, data_source):
+        """LIS-specific initialization."""
+        self.source_data = data_source
 
     def _fix_nan_coordinates(self, xs, ys):
         """Fix NaN values in LIS coordinates."""
@@ -74,9 +53,9 @@ class Lis(NuWrf):
         if 'xt' in plot_type:
             data2d = self._get_xt(d, time_lev=self.ax_opts['time_lev'], level=None)
         elif 'tx' in plot_type:
-            data2d = self._get_tx(d, field_name, level=None, time_lev=self.ax_opts['time_lev'])
+            data2d = self._get_tx(d, level=None, time_lev=self.ax_opts['time_lev'])
         elif 'xy' in plot_type:
-            data2d = self._get_xy(d, field_name, level, time_lev)
+            data2d = self._get_xy(d, level, time_lev)
         else:
             pass
 
@@ -109,7 +88,7 @@ class Lis(NuWrf):
 
     def _get_data(self, field_name, ax_opts, pid):
         d = self.config_manager.readers[0].get_field(field_name, self.config_manager.findex)
-        return self._get_xy(d, field_name, level=0, time_lev=ax_opts['time_lev'])
+        return self._get_xy(d, level=0, time_lev=ax_opts['time_lev'])
 
     @staticmethod
     def __get_xy(d, name):
@@ -128,16 +107,19 @@ class Lis(NuWrf):
         """
         Process coordinates for LIS plots, handling NaN values in coordinates.
         """
-        xr = np.array(self.lon[0, :])
-        yr = np.array(self.lat[:, 0])        
-        latN = max(yr[:])
-        latS = min(yr[:])
-        lonW = min(xr[:])
-        lonE = max(xr[:])
-        self.config_manager.ax_opts['extent'] = [lonW, lonE, latS, latN]
-        self.config_manager.ax_opts['central_lon'] = np.mean([lonW, lonE])
-        self.config_manager.ax_opts['central_lat'] = np.mean([latS, latN])
-        return data2d, xr, yr, field_name, plot_type, file_index, figure
+        dim1, dim2 = self.coord_names(self.source_name, data2d, plot_type)
+        if 'xt' in plot_type or 'tx' in plot_type:
+            return data2d, None, None, field_name, plot_type, file_index, figure
+        else:
+            lon = self.source_data[self.get_model_coord_name(self.source_name, 'xc')]
+            lat = self.source_data[self.get_model_coord_name(self.source_name, 'yc')]
+            xs = np.array(lon[0, :])
+            ys = np.array(lat[:, 0])
+            # Handle NaN coordinates and set extents
+            self._fix_nan_coordinates(xs, ys)
+            self._set_lis_extents(xs, ys)
+           
+            return data2d, xs, ys, field_name, plot_type, file_index, figure        
 
     def _apply_vertical_level_selection(self, data2d, field_name, level):
         """
@@ -182,28 +164,6 @@ class Lis(NuWrf):
         common = list(set(names).intersection(field_dims))
         dim = list(common)[0] if common else None
         return dim
-
-    def _get_xy(self, data_array, level, time_lev):
-        """ Extract XY slice from N-dim data field"""
-        if data_array is None:
-            return None
-
-        data2d = data_array.squeeze()
-        tc_dim = self.get_model_dim_name('tc')
-        zc_dim = self.find_matching_dimension(data_array.dims, 'zc')
-
-        if zc_dim in data2d.dims:
-            data2d = data2d.isel({zc_dim: level})
-        if tc_dim in data2d.dims:
-            num_times = data_array[tc_dim].size
-            if self.ax_opts['tave'] and num_times > 1:
-                self.logger.debug(f"Averaging over {num_times} time levels.")
-                data2d = apply_mean(self.config_manager, data2d, level)
-                return apply_conversion(self.config_manager, data2d, data_array.name)
-            else:
-                data2d = data2d.isel({tc_dim: time_lev})
-
-        return apply_conversion(self.config_manager, data2d, data_array.name)
 
     def _get_xt(self, d, time_lev, level=None):
         """ Extract time-series from a DataArray

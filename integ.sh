@@ -82,7 +82,7 @@ if  prompt "Source: 'gridded' OpenDAP access"; then
     echo
 fi
     
-if prompt "Source: 'geos', with 4 files"; then
+if prompt "Source: 'geos', MERRA2 averaging"; then
     python autoviz.py -s geos -v 0
     echo
 fi
@@ -103,7 +103,7 @@ if prompt "Source: 'wrf', with 1 file (multiple 2D fields)"; then
 fi
    
 if prompt "Source: 'wrf', GIF option"; then
-   python autoviz.py -s wrf -v 0 -f $EVIZ_CONFIG_PATH/wrf_gif.yaml
+   python autoviz.py -s wrf -v 0 -f $EVIZ_CONFIG_PATH/wrf/wrf_gif.yaml
    echo
 fi
 
@@ -111,7 +111,7 @@ if prompt  "Source: 'lis', with 1 file (multiple 2D fields)"; then
    python autoviz.py -s lis -v 0
    echo
 fi
-   
+
 if prompt "Source: 'airnow', with 12 files"; then
    python autoviz.py -s airnow -v 0
    echo
@@ -120,6 +120,11 @@ fi
 if prompt "Source: 'omi', with 1 file"; then
    python autoviz.py -s omi -v 0
    echo
+fi
+
+if prompt "Source: 'grib'"; then
+    python autoviz.py -s grib -v 0
+    echo
 fi
  
 #echo "Source: mopitt, with 1 file"
@@ -176,7 +181,7 @@ if prompt "Source: 'wrf', line-plot (compare)"; then
 fi
    
 if prompt "Source: lis, with 2 files (compare multiple fields)"; then
-   python autoviz.py -s lis -v 0
+   python autoviz.py -s lis -v 0 -f $EVIZ_CONFIG_PATH/lis_compare.yaml
    echo
 fi
    

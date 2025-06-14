@@ -19,7 +19,7 @@ class Grib(GriddedSource):
         self.logger.info("Start init")
         super().__post_init__()
         self.comparison_plot = False
-        self.source_name = 'lis'
+        self.source_name = 'grib'
 
     def _init_model_specific_data(self):
         """Grib-specific initialization."""
@@ -44,61 +44,8 @@ class Grib(GriddedSource):
             
         return source_data
 
-    def _single_plots(self, plotter):
-            """Generate single plots for each source and field according to configuration."""
-            self.logger.info("Generating single plots")
-
-            all_data_sources = self.config_manager.pipeline.get_all_data_sources()
-            if not all_data_sources:
-                self.logger.error("No data sources available for single plotting.")
-                return
-
-            # Iterate through map_params to generate plots
-            for idx, params in self.config_manager.map_params.items():
-                field_name = params.get('field')
-                if not field_name:
-                    continue
-
-                filename = params.get('filename')
-                data_source = self.config_manager.pipeline.get_data_source(filename)
-
-                if not data_source or not hasattr(data_source,
-                                                'dataset') or data_source.dataset is None:
-                    continue
-
-                if field_name not in data_source.dataset:
-                    continue
-
-                self.config_manager.findex = idx
-                self.config_manager.pindex = idx
-                self.config_manager.axindex = 0
-
-                field_data_array = data_source.dataset[field_name]
-                plot_types = params.get('to_plot', ['xy'])
-                if isinstance(plot_types, str):
-                    plot_types = [pt.strip() for pt in plot_types.split(',')]
-                for plot_type in plot_types:
-                    self._process_plot(field_data_array, field_name, idx, plot_type, plotter)
-
-            if self.config_manager.make_gif:
-                create_gif(self.config_manager.config)
-
-    def _process_plot(self, data_array: xr.DataArray, field_name: str, file_index: int,
-                      plot_type: str, plotter):
-        """Process a single plot type for a given field."""
-        self.logger.info(f"Plotting {field_name}, {plot_type} plot")
-        figure = Figure.create_eviz_figure(self.config_manager, plot_type)
-        self.config_manager.ax_opts = figure.init_ax_opts(field_name)
-
-        if 'xy' in plot_type or 'po' in plot_type:
-            self._process_xy_plot(data_array, field_name, file_index, plot_type,
-                                  figure, plotter)
-        else:
-            self._process_other_plot(data_array, field_name, file_index, plot_type,
-                                     figure, plotter)
-
     def _process_xy_plot(self, data_array: xr.DataArray, field_name: str, file_index: int,
-                         plot_type: str, figure, plotter):
+                         plot_type: str, figure):
         """Process xy or polar plot types."""
         levels = self.config_manager.get_levels(field_name, plot_type + 'plot')
         do_zsum = self.config_manager.ax_opts.get('zsum', False)  # Use .get with default
@@ -114,14 +61,14 @@ class Grib(GriddedSource):
 
         if levels:
             self._process_level_plots(data_array, field_name, file_index, plot_type,
-                                      figure, time_levels, levels, plotter)
+                                      figure, time_levels, levels)
         else:
             self._process_zsum_plots(data_array, field_name, file_index, plot_type,
-                                     figure, time_levels, plotter)
+                                     figure, time_levels)
 
     def _process_level_plots(self, data_array: xr.DataArray, field_name: str,
                              file_index: int, plot_type: str, figure,
-                             time_levels: list, levels: dict, plotter):
+                             time_levels: list, levels: dict):
         """Process plots for specific vertical levels."""
         self.logger.debug(f' -> Processing {len(time_levels)} time levels')
         zc_dim = self.config_manager.get_model_dim_name('zc') or 'lev'
@@ -156,16 +103,12 @@ class Grib(GriddedSource):
                                                             level=level_val)
 
                 if field_to_plot:
-                    plotter.single_plots(self.config_manager, field_to_plot=field_to_plot,
-                                         level=level_val)
-
-                    print_map(self.config_manager, plot_type,
-                                 self.config_manager.findex, figure,
-                                 level=level_val)
+                    plot_result = self.create_plot(field_name, field_to_plot)                    
+                    print_map(self.config_manager, plot_type, self.config_manager.findex, plot_result, 
+                              level=level_val)
 
     def _process_other_plot(self, data_array: xr.DataArray, field_name: str,
-                            file_index: int, plot_type: str, figure,
-                            plotter):
+                            file_index: int, plot_type: str, figure):
         """Process non-xy and non-polar plot types."""
         self.config_manager.level = None
         time_level_config = self.config_manager.ax_opts.get('time_lev', 0)
@@ -186,13 +129,12 @@ class Grib(GriddedSource):
                                                 plot_type, figure,
                                                 time_level=time_level_config)
         if field_to_plot:
-            plotter.single_plots(self.config_manager, field_to_plot=field_to_plot)
-            print_map(self.config_manager, plot_type, self.config_manager.findex,
-                         figure)
+            plot_result = self.create_plot(field_name, field_to_plot)
+            print_map(self.config_manager, plot_type, self.config_manager.findex, plot_result)
 
     def _process_zsum_plots(self, data_array: xr.DataArray, field_name: str,
                             file_index: int, plot_type: str, figure,
-                            time_levels: list, plotter):
+                            time_levels: list):
         """Process plots with vertical summation."""
         self.config_manager.level = None
         tc_dim = self.config_manager.get_model_dim_name('tc') or 'time'
@@ -212,12 +154,12 @@ class Grib(GriddedSource):
                                                     # Pass None for ax initially
                                                     file_index, plot_type, figure, t)
             if field_to_plot:
-                plotter.single_plots(self.config_manager, field_to_plot=field_to_plot)
+                plot_result = self.create_plot(field_name, field_to_plot)
                 print_map(self.config_manager, plot_type, self.config_manager.findex,
-                             figure)
+                             plot_result)
 
-    def _set_lis_extents(self, xs, ys):
-        """Set LIS-specific map extents."""
+    def _set_grib_extents(self, xs, ys):
+        """Set GRIB-specific map extents."""
 
         latN = max(ys)
         latS = min(ys)
@@ -265,7 +207,7 @@ class Grib(GriddedSource):
         else:
             x_values = data_array.coords['lon'].values
             y_values = data_array.coords['lat'].values    
-            self._set_lis_extents(x_values, y_values)
+            self._set_grib_extents(x_values, y_values)
         # Return the prepared data and coordinates in the expected tuple format
         return data2d, x_values, y_values, field_name, plot_type, file_index, figure
     
@@ -321,7 +263,7 @@ class Grib(GriddedSource):
 
     def _process_coordinates(self, data2d, dim1, dim2, field_name, plot_type, file_index, figure, ax):
         """
-        Process coordinates for LIS plots, handling NaN values in coordinates.
+        Process coordinates for GRIB plots, handling NaN values in coordinates.
         """
         xr = np.array(self.lon[0, :])
         yr = np.array(self.lat[:, 0])        
@@ -336,7 +278,7 @@ class Grib(GriddedSource):
 
     def _apply_vertical_level_selection(self, data2d, field_name, level):
         """
-        Apply vertical level selection for LIS data.
+        Apply vertical level selection for GRIB data.
         """
         # Get the vertical dimension name
         dim = self.get_dd(self.source_name, self.source_data, 'zc', field_name)
@@ -352,7 +294,7 @@ class Grib(GriddedSource):
 
     def _apply_time_selection(self, original_data, data2d, time_dim, time_lev, field_name, level):
         """
-        LIS has more complex time handling with optional time averaging.
+        GRIB has more complex time handling with optional time averaging.
         """
         if time_dim and time_dim in original_data.dims:
             num_times = original_data.dims[time_dim]

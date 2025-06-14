@@ -503,9 +503,9 @@ class Units:
         """ Conversion method for chemical species
 
         Parameters:
+            data (xArray): data to undergo unit conversion
             to_unit (str): data destination unit
             species_name (str): species name of the data
-            data (xArray): data to undergo unit conversion
             air_column_density (xArray)
         """
         species_name = get_species_name(species_name)
