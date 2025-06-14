@@ -245,9 +245,9 @@ class MatplotlibTXPlotter(MatplotlibBasePlotter):
             gs = mgridspec.GridSpec(nrows=2, ncols=1, height_ratios=[1, 6], hspace=0.05)
             
             # Create two axes - one for the map, one for the hovmoller
-            ax = []
-            ax.append(fig.add_subplot(gs[0, 0], projection=ccrs.PlateCarree(central_longitude=180)))
-            ax.append(fig.add_subplot(gs[1, 0]))
+            ax = [fig.add_subplot(gs[0, 0],
+                                  projection=ccrs.PlateCarree(central_longitude=180)),
+                  fig.add_subplot(gs[1, 0])]
             fig.set_size_inches(12, 10, forward=True)
 
             ax_opts = fig.update_ax_opts(field_name, ax, 'tx')
@@ -468,7 +468,8 @@ class MatplotlibTXPlotter(MatplotlibBasePlotter):
         
         return data2d_reduced
     
-    def _get_units_for_colorbar(self, data2d):
+    @staticmethod
+    def _get_units_for_colorbar(data2d):
         """Get units for the colorbar."""
         units = "n.a."
         if hasattr(data2d, 'attrs') and 'units' in data2d.attrs:
@@ -477,7 +478,8 @@ class MatplotlibTXPlotter(MatplotlibBasePlotter):
             units = data2d.units
         return units
     
-    def _setup_map_panel(self, ax):
+    @staticmethod
+    def _setup_map_panel(ax):
         """Set up the map panel at the top of the Hovmoller plot."""
         # Set map extent
         ax.set_extent([0, 357.5, 35, 65], ccrs.PlateCarree(central_longitude=180))
@@ -500,7 +502,8 @@ class MatplotlibTXPlotter(MatplotlibBasePlotter):
         ax.add_feature(cfeature.COASTLINE.with_scale('50m'))
         ax.add_feature(cfeature.LAKES.with_scale('50m'), color='black', linewidths=0.5)
     
-    def _set_longitude_ticks(self, ax, lons):
+    @staticmethod
+    def _set_longitude_ticks(ax, lons):
         """Set longitude ticks for the Hovmoller plot."""
         x_tick_labels = [u'0\N{DEGREE SIGN}E', u'90\N{DEGREE SIGN}E',
                         u'180\N{DEGREE SIGN}E', u'90\N{DEGREE SIGN}W',

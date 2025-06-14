@@ -300,7 +300,7 @@ class GenericSource(BaseSource):
                 self.process_plot(field_data_array, field_name, idx, plot_type)
 
         if self.config_manager.make_gif:
-            pu.create_gif(self.config_manager.config)
+            pu.create_gif(self.config_manager)
 
     def _comparison_plots(self):
         """Generate comparison plots for paired data sources according to configuration.

@@ -1099,7 +1099,7 @@ class GriddedSource(GenericSource):
 
         if self.config_manager.ax_opts.get('zsum', False):
             self.logger.debug("Summing over vertical levels.")
-            data2d_zsum = apply_zsum(self.config_manager, data2d)
+            data2d_zsum = apply_zsum(data2d)
             self.logger.debug(
                 "Min: {data2d_zsum.min().values}, Max: {data2d_zsum.max().values}")
             data2d.attrs = data_array.attrs.copy()

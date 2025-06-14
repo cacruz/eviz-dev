@@ -1,7 +1,6 @@
-# File: eviz/models/obs/inventory/ghg.py
 import logging
 import warnings
-from typing import Any
+from typing import Any, Union
 import pandas as pd
 import xarray as xr
 from dataclasses import dataclass, field
@@ -57,7 +56,7 @@ class Ghg(ObsSource):
         """Load data sources for the model."""
         pass  # Handled by the pipeline
 
-    def process_data(self, filename: str, field_name: str) -> xr.Dataset:
+    def process_data(self, filename: str, field_name: str) -> Union[xr.Dataset, None]:
         """
         Process CSV data for a specific field from a file.
         
@@ -111,7 +110,8 @@ class Ghg(ObsSource):
             # If it's already an xarray Dataset, return it
             return data_source.dataset
 
-    def _infer_units(self, column_name: str) -> str:
+    @staticmethod
+    def _infer_units(column_name: str) -> str:
         """
         Infer units from column name.
         
@@ -171,7 +171,7 @@ class Ghg(ObsSource):
                 plotter.simple_plot(self.config_manager, field_to_plot)
             field_num += 1
 
-    def _get_field_for_simple_plot(self, field_name: str, plot_type: str) -> tuple:
+    def _get_field_for_simple_plot(self, field_name: str, plot_type: str) -> Union[tuple, None]:
         """
         Prepare data for simple plots without SPECS file.
         
@@ -217,7 +217,7 @@ class Ghg(ObsSource):
             time_values = data.coords[time_dim].values
             return data, time_values, None, field_name, 'xt'
 
-    def _single_plots(self, plotter):
+    def _single_plots(self):
         """
         Generate single plots for each source and field according to configuration.
         
@@ -238,7 +238,6 @@ class Ghg(ObsSource):
 
             filename = params.get('filename')
             
-            # Process the data for this field
             processed_data = self.process_data(filename, field_name)
             if processed_data is None:
                 continue
@@ -247,26 +246,23 @@ class Ghg(ObsSource):
             self.config_manager.pindex = idx
             self.config_manager.axindex = 0
 
-            # Get the data array for this field
             if field_name in processed_data:
                 field_data_array = processed_data[field_name]
             else:
                 self.logger.error(f"Field {field_name} not found in processed data")
                 continue
                 
-            # Get plot types
             plot_types = params.get('to_plot', ['xt'])  # Default to time series for GHG data
             if isinstance(plot_types, str):
                 plot_types = [pt.strip() for pt in plot_types.split(',')]
                 
-            # Process each plot type
             for plot_type in plot_types:
-                self._process_plot(field_data_array, field_name, idx, plot_type, plotter, processed_data)
+                self._process_plot(field_data_array, field_name, idx, plot_type, processed_data)
 
         if self.config_manager.make_gif:
             pu.create_gif(self.config_manager.config)
 
-    def _process_plot(self, data_array, field_name, file_index, plot_type, plotter, full_dataset=None):
+    def _process_plot(self, data_array, field_name, file_index, plot_type, full_dataset=None):
         """
         Process a single plot type for a given field.
         
@@ -285,8 +281,8 @@ class Ghg(ObsSource):
         field_to_plot = self._get_field_to_plot(data_array, field_name, file_index, 
                                               plot_type, figure, full_dataset=full_dataset)
         if field_to_plot:
-            plotter.single_plots(self.config_manager, field_to_plot=field_to_plot)
-            pu.print_map(self.config_manager, plot_type, self.config_manager.findex, figure)
+                plot_result = self.create_plot(field_name, field_to_plot)
+                pu.print_map(self.config_manager, plot_type, self.config_manager.findex, plot_result)
 
     def _get_field_to_plot(self, data_array, field_name, file_index, plot_type, figure, time_level=None, full_dataset=None):
         """

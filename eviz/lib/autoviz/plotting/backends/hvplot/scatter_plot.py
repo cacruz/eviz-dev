@@ -1,10 +1,9 @@
 import numpy as np
 import pandas as pd
-import xarray
 import logging
-import hvplot.xarray
 import holoviews as hv
 from ....plotting.base import ScatterPlotter
+
 
 class HvplotScatterPlotter(ScatterPlotter):
     """HvPlot implementation of scatter plotting."""

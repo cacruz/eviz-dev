@@ -157,10 +157,11 @@ def create_gif(config):
     height, width, _ = image_array[0].shape
     fig, ax = plt.subplots(figsize=(width / 100, height / 100),
                            dpi=300)  # dpi here must be the same as in print_map()
+    
     ax.set_axis_off()
     fig.subplots_adjust(left=0, right=1, top=1, bottom=0)  # Remove padding
 
-    fps = config.gif_fps
+    fps = getattr(config, 'gif_fps', 5) 
     duration_ms = int(1000 / fps)
     image_sequence = [Image.fromarray(img) for img in image_array]
 

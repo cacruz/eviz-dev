@@ -134,7 +134,7 @@ class Grib(GriddedSource):
 
     def _process_zsum_plots(self, data_array: xr.DataArray, field_name: str,
                             file_index: int, plot_type: str, figure,
-                            time_levels: list, plotter):
+                            time_levels: list):
         """Process plots with vertical summation."""
         self.config_manager.level = None
         tc_dim = self.config_manager.get_model_dim_name('tc') or 'time'
@@ -154,9 +154,9 @@ class Grib(GriddedSource):
                                                     # Pass None for ax initially
                                                     file_index, plot_type, figure, t)
             if field_to_plot:
-                plotter.single_plots(self.config_manager, field_to_plot=field_to_plot)
+                plot_result = self.create_plot(field_name, field_to_plot)
                 print_map(self.config_manager, plot_type, self.config_manager.findex,
-                             figure)
+                             plot_result)
 
     def _set_grib_extents(self, xs, ys):
         """Set GRIB-specific map extents."""

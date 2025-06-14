@@ -668,52 +668,52 @@ class ConfigManager:
     @property
     def print_to_file(self):
         """Flag indicating if output should be printed to a file."""
-        return self.input_config._print_to_file
+        return self.output_config.print_to_file
 
     @property
     def output_dir(self):
         """The directory to write output files to."""
-        return self.input_config._output_dir
+        return self.output_config.output_dir
 
     @property
     def print_format(self):
         """The format to use for printing output."""
-        return self.input_config._print_format
+        return self.input_config.print_format
 
     @property
     def make_gif(self):
         """Flag indicating if GIFs should be generated."""
-        return self.input_config._make_gif
+        return self.output_config.make_gif
 
     @property
     def gif_fps(self):
         """The frames per second to use for GIFs."""
-        return self.input_config._gif_fps
+        return self.output_config.gif_fps
 
     @property
     def make_pdf(self):
         """Flag indicating if PDFs should be generated."""
-        return self.input_config._make_pdf
+        return self.output_config.make_pdf
 
     @property
     def mpl_style(self):
         """The matplotlib style to use for plotting."""
-        return self.input_config._mpl_style
+        return self.output_config.mpl_style
 
     @property
     def print_basic_stats(self):
         """Flag indicating if basic statistics should be printed."""
-        return self.input_config._print_basic_stats
+        return self.output_config.print_basic_stats
 
     @property
     def use_mp_pool(self):
         """Flag indicating if multiprocessing should be used."""
-        return self.input_config._use_mp_pool
+        return self.system_config.use_mp_pool
 
     @property
     def archive_web_results(self):
         """Flag indicating if web results should be archived."""
-        return self.input_config._archive_web_results
+        return self.system_config.archive_web_results
 
     @property
     def to_plot(self):

@@ -53,9 +53,9 @@ class Lis(NuWrf):
         if 'xt' in plot_type:
             data2d = self._get_xt(d, time_lev=self.ax_opts['time_lev'], level=None)
         elif 'tx' in plot_type:
-            data2d = self._get_tx(d, field_name, level=None, time_lev=self.ax_opts['time_lev'])
+            data2d = self._get_tx(d, level=None, time_lev=self.ax_opts['time_lev'])
         elif 'xy' in plot_type:
-            data2d = self._get_xy(d, field_name, level, time_lev)
+            data2d = self._get_xy(d, level, time_lev)
         else:
             pass
 
@@ -88,7 +88,7 @@ class Lis(NuWrf):
 
     def _get_data(self, field_name, ax_opts, pid):
         d = self.config_manager.readers[0].get_field(field_name, self.config_manager.findex)
-        return self._get_xy(d, field_name, level=0, time_lev=ax_opts['time_lev'])
+        return self._get_xy(d, level=0, time_lev=ax_opts['time_lev'])
 
     @staticmethod
     def __get_xy(d, name):

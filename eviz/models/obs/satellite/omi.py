@@ -29,15 +29,12 @@ class Omi(ObsSource):
         return logging.getLogger(__name__)
     
     def add_data_source(self, *args, **kwargs):
-        # Implement as needed, or just pass if not used
         pass
 
     def get_data_source(self, *args, **kwargs):
-        # Implement as needed, or just return None if not used
         return None
 
     def load_data_sources(self, *args, **kwargs):
-        # Implement as needed, or just pass if not used
         pass
 
     def _single_plots(self):

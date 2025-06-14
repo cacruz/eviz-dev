@@ -335,7 +335,7 @@ class Autoviz:
                 print(f"  {i + 1}. {file_path}")
             print("The application will attempt to continue, but plotting may fail.")
 
-    def set_output(self, output_dir) -> str:
+    def set_output(self, output_dir):
         """
         Assign model output directory as specified in model config file.
         

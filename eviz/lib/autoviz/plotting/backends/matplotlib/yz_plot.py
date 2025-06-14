@@ -279,8 +279,9 @@ class MatplotlibYZPlotter(MatplotlibBasePlotter):
             if config.add_logo:
                 pu.add_logo_ax(fig, desired_width_ratio=0.05)
 
-    def _plot_profile(self, config, data2d, fig, ax, ax_opts, ax_dims, 
-                     color=None, linestyle='-', linewidth=1.5, marker=None, label=None):
+    @staticmethod
+    def _plot_profile(config, data2d, fig, ax, ax_opts, ax_dims,
+                      color=None, linestyle='-', linewidth=1.5, marker=None, label=None):
         """Plot a vertical profile."""
         if ax_dims[0] in ('zc', 'yc'):
             other_dim = config.get_model_dim_name(ax_dims[1])

@@ -121,27 +121,6 @@ class NuWrf(GriddedSource):
                 plotter.simple_plot(self.config_manager, field_to_plot)
             field_num += 1
 
-    def _process_field_plots(self, field_name, field_config):
-        """Process all plot types for a given field."""
-        for plot_type in field_config['to_plot']:
-            self.logger.info(f"Plotting {field_name}, {plot_type} plot")
-            
-            temp_figure = Figure(self.config_manager, plot_type)
-            self.config_manager.ax_opts = temp_figure.init_ax_opts(field_name)
-            
-            d = self.source_data['vars'][field_name]
-            time_levels = self._get_time_levels(d)
-            
-            if 'xy' in plot_type:
-                self._process_xy_plots(field_name, plot_type, d, time_levels)
-            else:
-                self._process_non_xy_plots(field_name, plot_type, d, time_levels)
-
-    def _process_non_xy_plots(self, field_name, plot_type, data_array, time_levels, plotter):
-        """Process non-XY plots (yz, xt, tx, etc.)."""
-        for time_step in time_levels:
-            self._create_single_plot(field_name, plot_type, data_array, time_step, plotter, level=None)
-
     def _init_model_specific_data(self):
         """Hook for model-specific initialization. Override in subclasses."""
         pass
@@ -267,7 +246,6 @@ class NuWrf(GriddedSource):
         Parameters:
             source_name (str) : source name
             source_data (dict) : source data
-            field_name(str) : Field name associated with this plot
             pid (str) : plot type
         """
         coords = []

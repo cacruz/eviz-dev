@@ -87,8 +87,7 @@ class Wrf(NuWrf):
     def _get_field_for_simple_plot(self, field_name, plot_type):
         data2d = None
         d = self.source_data['vars'][field_name]
-        dim1, dim2 = self.coord_names(self.source_name, self.source_data,
-                                      field_name, plot_type)
+        dim1, dim2 = self.coord_names(self.source_name, self.source_data, plot_type)
         if 'yz' in plot_type:
             data2d = self.__get_yz(d, field_name)
         elif 'xy' in plot_type:
@@ -353,8 +352,7 @@ class Wrf(NuWrf):
         Apply vertical level selection for WRF data, handling staggered grids and pressure levels.
         """
         # Get the vertical dimension name
-        zname = self.get_field_dim_name(self.source_name, self.source_data, 'zc',
-                                        field_name)
+        zname = self.get_field_dim_name(self.source_data, 'zc')
 
         # If no vertical dimension or it's not in the data, return as is
         if not zname or zname not in data2d.dims:

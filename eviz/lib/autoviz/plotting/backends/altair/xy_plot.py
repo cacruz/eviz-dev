@@ -3,6 +3,7 @@ import pandas as pd
 import altair as alt
 from ....plotting.base import XYPlotter
 
+
 class AltairXYPlotter(XYPlotter):
     """Altair implementation of XY plotting."""
     

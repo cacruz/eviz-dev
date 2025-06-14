@@ -29,17 +29,14 @@ class Airnow(ObsSource):
     def logger(self) -> logging.Logger:
         """Get the logger for this class."""
         return logging.getLogger(__name__)
-    
+
     def add_data_source(self, *args, **kwargs):
-        # Implement as needed, or just pass if not used
         pass
 
     def get_data_source(self, *args, **kwargs):
-        # Implement as needed, or just return None if not used
         return None
 
     def load_data_sources(self, *args, **kwargs):
-        # Implement as needed, or just pass if not used
         pass
 
     def _simple_plots(self, plotter):
@@ -62,9 +59,8 @@ class Airnow(ObsSource):
                 plotter.simple_plot(self.config_manager, field_to_plot)
             field_num += 1
 
-    def _process_scatter_plot(self, data_array, field_name, file_index, plot_type, figure):
-    # def _process_plot(self, data_array: pd.DataFrame, field_name: str, file_index: int,
-                    #   plot_type: str):
+    def _process_scatter_plot(self, data_array, field_name, file_index, plot_type,
+                              figure):
         """Process a single plot type for a given field."""
         self.logger.info(f"Plotting {field_name}, {plot_type} plot")
         figure = Figure.create_eviz_figure(self.config_manager, plot_type)
@@ -73,7 +69,7 @@ class Airnow(ObsSource):
         self._process_obs_plot(data_array, field_name, file_index, plot_type, figure)
 
     def _process_obs_plot(self, data_array: pd.DataFrame, field_name: str,
-                            file_index: int, plot_type: str, figure):
+                          file_index: int, plot_type: str, figure):
         """Process non-xy and non-polar plot types."""
         self.config_manager.level = None
         time_level_config = self.config_manager.ax_opts.get('time_lev', 0)
@@ -83,20 +79,24 @@ class Airnow(ObsSource):
                                                 time_level=time_level_config)
         if field_to_plot:
             plot_result = self.create_plot(field_name, field_to_plot)
-            pu.print_map(self.config_manager, plot_type, self.config_manager.findex, plot_result)
+            pu.print_map(self.config_manager, plot_type, self.config_manager.findex,
+                         plot_result)
 
-    def _get_field_to_plot(self, data_array: pd.DataFrame, field_name: str, file_index: int,
-                           plot_type: str, figure, time_level=None,) -> tuple:
+    def _get_field_to_plot(self, data_array: pd.DataFrame, field_name: str,
+                           file_index: int,
+                           plot_type: str, figure, time_level=None, ) -> tuple:
         self.config_manager.ax_opts = figure.init_ax_opts(field_name)
         data2d = None
 
         dim1, dim2 = self.config_manager.get_dim_names(plot_type)
         lon = data_array.lon
         lat = data_array.lat
-   
+
         self.config_manager.ax_opts['extent'] = [-120, -70, 24, 50.5]
-        self.config_manager.ax_opts['central_lon'] = np.mean(self.config_manager.ax_opts['extent'][:2])
-        self.config_manager.ax_opts['central_lat'] = np.mean(self.config_manager.ax_opts['extent'][2:])
+        self.config_manager.ax_opts['central_lon'] = np.mean(
+            self.config_manager.ax_opts['extent'][:2])
+        self.config_manager.ax_opts['central_lat'] = np.mean(
+            self.config_manager.ax_opts['extent'][2:])
 
         if 'xy' in plot_type:
             data2d = self._get_xy_simple(data_array, field_name, 0)
@@ -108,8 +108,9 @@ class Airnow(ObsSource):
 
         if 'xt' in plot_type or 'tx' in plot_type:
             return data2d, None, None, field_name, plot_type, file_index, figure
-        return data2d, data2d[dim1].values, data2d[dim2].values, field_name, plot_type, file_index, figure
-    
+        return data2d, data2d[dim1].values, data2d[
+            dim2].values, field_name, plot_type, file_index, figure
+
     def _get_field_for_simple_plot(self, field_name, plot_type):
         dim1, dim2 = self.config_manager.get_dim_names(plot_type)
         d = self.source_data[field_name]
@@ -121,7 +122,8 @@ class Airnow(ObsSource):
             lat = self.source_data['lat'].data
             return d.data, lon, lat, field_name, plot_type
         else:
-            self.logger.error(f'Plot type [{plot_type}] error: Either specify in SPECS file or create plot type.')
+            self.logger.error(
+                f'Plot type [{plot_type}] error: Either specify in SPECS file or create plot type.')
             sys.exit()
 
         coords = data2d.coords

@@ -1,9 +1,8 @@
 import numpy as np
-import xarray
 import logging
-import hvplot.xarray  # This registers hvplot with xarray
 import holoviews as hv
 from ....plotting.base import XYPlotter
+
 
 class HvplotXYPlotter(XYPlotter):
     """HvPlot implementation of XY plotting."""

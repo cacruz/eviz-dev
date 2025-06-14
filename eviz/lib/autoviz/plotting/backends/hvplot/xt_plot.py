@@ -1,11 +1,9 @@
-# eviz/lib/autoviz/plotting/backends/hvplot/xt_plot.py
 import numpy as np
 import pandas as pd
-import xarray
 import logging
-import hvplot.xarray  # This registers hvplot with xarray
 import holoviews as hv
 from ....plotting.base import XTPlotter
+
 
 class HvplotXTPlotter(XTPlotter):
     """HvPlot implementation of XT (time-series) plotting."""

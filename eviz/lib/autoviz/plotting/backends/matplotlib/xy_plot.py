@@ -80,7 +80,7 @@ class MatplotlibXYPlotter(MatplotlibBasePlotter):
         data_transform = ccrs.PlateCarree()
 
         vmin, vmax = None, None
-        if (config.compare or config.compare_diff):
+        if config.compare or config.compare_diff:
             # Check if we've stored limits for this field in the config
             if not hasattr(config, '_comparison_cbar_limits'):
                 config._comparison_cbar_limits = {}

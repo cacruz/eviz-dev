@@ -4,6 +4,7 @@ import altair as alt
 import logging
 from ....plotting.base import ScatterPlotter
 
+
 class AltairScatterPlotter(ScatterPlotter):
     """Altair implementation of scatter plotting."""
     
