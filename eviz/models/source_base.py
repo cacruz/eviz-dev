@@ -371,6 +371,14 @@ class GenericSource(BaseSource):
             if sdat1_dataset is None or sdat2_dataset is None:
                 continue
 
+            # NUWRF-specific initializations
+            if hasattr(self, 'source_name') and self.source_name in ['wrf']:
+                self._init_wrf_domain(sdat1_dataset)
+                self._init_wrf_domain(sdat2_dataset)
+            if hasattr(self, 'source_name') and self.source_name in ['lis']:
+                self._init_lis_domain(sdat1_dataset)
+                self._init_lis_domain(sdat2_dataset)
+
             file_indices = (idx1_field, idx2_field)
 
             self.field_names = (field1, field2)
@@ -460,6 +468,14 @@ class GenericSource(BaseSource):
 
             if sdat1_dataset is None or sdat2_dataset is None:
                 continue
+
+            # NUWRF-specific initializations
+            if hasattr(self, 'source_name') and self.source_name in ['wrf']:
+                self._init_wrf_domain(sdat1_dataset)
+                self._init_wrf_domain(sdat2_dataset)
+            if hasattr(self, 'source_name') and self.source_name in ['lis']:
+                self._init_lis_domain(sdat1_dataset)
+                self._init_lis_domain(sdat2_dataset)
 
             self.file_indices = (idx1_field, idx2_field)
 
