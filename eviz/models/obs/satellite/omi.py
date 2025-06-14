@@ -40,7 +40,7 @@ class Omi(ObsSource):
         # Implement as needed, or just pass if not used
         pass
 
-    def _single_plots(self, plotter):
+    def _single_plots(self):
         """Generate single plots for each source and field according to configuration."""
         self.logger.info("Generating single plots")
 
@@ -82,23 +82,22 @@ class Omi(ObsSource):
             if isinstance(plot_types, str):
                 plot_types = [pt.strip() for pt in plot_types.split(',')]
             for plot_type in plot_types:
-                self._process_plot(ds_short, field_name, idx, plot_type, plotter)
+                self._process_plot(ds_short, field_name, idx, plot_type)
 
         if self.config_manager.make_gif:
             pu.create_gif(self.config_manager.config)
 
     def _process_plot(self, ds_short: xr.Dataset, field_name: str, file_index: int,
-                      plot_type: str, plotter):
+                      plot_type: str):
         """Process a single plot type for a given field."""
         self.logger.info(f"Plotting {field_name}, {plot_type} plot")
         figure = Figure.create_eviz_figure(self.config_manager, plot_type)
         self.config_manager.ax_opts = figure.init_ax_opts(field_name)
 
-        self._process_obs_plot(ds_short, field_name, file_index, plot_type, figure, plotter)
+        self._process_obs_plot(ds_short, field_name, file_index, plot_type, figure)
 
     def _process_obs_plot(self, ds_short: xr.Dataset, field_name: str,
-                            file_index: int, plot_type: str, figure,
-                            plotter):
+                            file_index: int, plot_type: str, figure):
         """Process non-xy and non-polar plot types."""
         self.config_manager.level = None
         time_level_config = self.config_manager.ax_opts.get('time_lev', 0)
@@ -115,9 +114,8 @@ class Omi(ObsSource):
                                                 plot_type, figure,
                                                 time_level=time_level)
         if field_to_plot:
-            plotter.single_plots(self.config_manager, field_to_plot=field_to_plot)
-            pu.print_map(self.config_manager, plot_type, self.config_manager.findex,
-                         figure)
+            plot_result = self.create_plot(field_name, field_to_plot)
+            pu.print_map(self.config_manager, plot_type, self.config_manager.findex, plot_result)
 
     def _get_field_to_plot(self, ds_short: xr.Dataset, field_name: str,
                            file_index: int, plot_type: str, figure, time_level=None,

@@ -48,3 +48,4 @@ dependencies:
       - sphinx_rtd_theme
       - myst-parser
       - sphinxcontrib-mermaid
+      - cfgrib

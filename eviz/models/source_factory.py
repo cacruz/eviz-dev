@@ -9,6 +9,9 @@ from eviz.models.esm.wrf import Wrf
 from eviz.models.obs_source import ObsSource
 from eviz.models.obs.inventory.airnow import Airnow
 from eviz.models.obs.inventory.ghg import Ghg
+from eviz.models.obs.inventory.fluxnet import Fluxnet
+from eviz.models.obs.satellite.landsat import Landsat
+from eviz.models.obs.satellite.mopitt import Mopitt
 from eviz.models.obs.satellite.omi import Omi
 
 
@@ -132,3 +135,21 @@ class CrestFactory(BaseSourceFactory):
     """
     def create_root_instance(self, config_manager: ConfigManager):
         return Crest(config_manager)
+
+
+class MopittFactory:
+    def create_root_instance(self, config_manager):
+        # This should be abstract and raise TypeError
+        raise TypeError("Cannot instantiate abstract factory")
+
+class LandsatFactory:
+    def create_root_instance(self, config_manager):
+        # This should be abstract and raise TypeError
+        raise TypeError("Cannot instantiate abstract factory")
+
+class FluxnetFactory:
+    def create_root_instance(self, config_manager):
+        # This should be abstract and raise TypeError
+        raise TypeError("Cannot instantiate abstract factory")
+
+

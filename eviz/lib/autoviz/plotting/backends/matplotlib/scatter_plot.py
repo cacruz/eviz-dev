@@ -63,13 +63,13 @@ class MatplotlibScatterPlotter(MatplotlibBasePlotter):
         ax_opts = fig.update_ax_opts(field_name, self.ax, 'sc', level=0)
         fig.plot_text(field_name, self.ax, 'sc', level=0)
         
-        self._plot_scatter_data(config, self.ax, ax_opts, x, y, data2d, field_name, findex)
+        self._plot_scatter_data(config, self.ax, fig, ax_opts, x, y, data2d, field_name, findex)
         
         self.plot_object = fig
         
         return fig
 
-    def _plot_scatter_data(self, config, ax, ax_opts, x, y, data2d, field_name, findex):
+    def _plot_scatter_data(self, config, ax, fig, ax_opts, x, y, data2d, field_name, findex):
         """ Create a single scatter using SPECS data
             config (Config) : configuration used to specify data sources
             data_to_plot (dict) : dict with plotted data and specs
@@ -97,7 +97,7 @@ class MatplotlibScatterPlotter(MatplotlibBasePlotter):
                 return 
             else:
                 self._set_cartopy_ticks_alt(ax, ax_opts['extent'])
-                self._set_colorbar(config, scat, ax, ax_opts, findex, field_name, data2d)
+                self.set_colorbar(config, scat, fig, ax, ax_opts, findex, field_name, data2d)
 
             ax.set_title(f'{field_name}')   
 
