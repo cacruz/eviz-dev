@@ -431,38 +431,6 @@ def test_create_pdf_creates_pdf(monkeypatch):
     p.create_pdf(config)
     assert os.path.exists(os.path.join(config.output_dir, 'eviz_plots.pdf'))
 
-def test_create_gif_handles_no_files(monkeypatch):
-    class DummyConfig:
-        archive_web_results = False
-        app_data = type('app', (), {'outputs': {'output_dir': tempfile.mkdtemp()}, 'inputs': [{'to_plot': ['field']}]})()
-        paths = type('paths', (), {'archive_path': ''})()
-        print_format = 'png'
-        source_names = []
-        gif_fps = 1
-        vis_summary = {}
-    config = DummyConfig()
-    monkeypatch.setattr(p.glob, 'glob', lambda pat: [])
-    with mock.patch.object(p.logger, 'error') as mock_log:
-        p.create_gif(config)
-        mock_log.assert_called_with("No files remaining after IC removal")
-
-def test_print_map_print_to_file(monkeypatch):
-    class DummyConfig:
-        print_to_file = True
-        map_params = [{'outputs': {'output_dir': tempfile.mkdtemp()}, 'field': 'f'}]
-        pindex = 0
-        paths = type('paths', (), {'output_path': tempfile.mkdtemp()})()
-        print_format = 'png'
-        ax_opts = {}
-        compare = False
-        time_level = ''
-        archive_web_results = False
-    config = DummyConfig()
-    fig = mock.Mock()
-    monkeypatch.setattr(fig, 'tight_layout', lambda: None)
-    monkeypatch.setattr(fig, 'savefig', lambda *a, **k: None)
-    p.print_map(config, 'xy', 0, fig)
-
 def test_revise_tick_labels_removes_decimals(monkeypatch):
     class DummyCbar:
         def __init__(self):

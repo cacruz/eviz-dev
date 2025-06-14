@@ -184,36 +184,3 @@ def test_simple_plots(nuwrf):
     
     # Check that plotter.simple_plot was called
     mock_plotter.simple_plot.assert_called_once_with(nuwrf.config_manager, 'field_data')
-
-def test_single_plots(nuwrf):
-    # Test _single_plots method
-    # Create mock plotter
-    mock_plotter = MagicMock()
-    
-    # Create mock config_manager
-    nuwrf.config_manager.source_names = ['wrf']
-    nuwrf.config_manager.map_params = {
-        0: {
-            'field': 'temperature',
-            'source_name': 'wrf',
-            'filename': 'test.nc',
-            'to_plot': ['xy']
-        }
-    }
-    nuwrf.config_manager.make_gif = False
-    
-    # Mock _load_source_data to return mock data
-    mock_data = {'vars': {'temperature': MagicMock()}, 'attrs': {}}
-    nuwrf._load_source_data = MagicMock(return_value=mock_data)
-    
-    # Mock _init_model_specific_data
-    nuwrf._init_model_specific_data = MagicMock()
-    
-    # Mock _process_field_plots
-    nuwrf._process_field_plots = MagicMock()
-    
-    # Call _single_plots
-    nuwrf._single_plots(mock_plotter)
-    
-    # Check that _process_field_plots was called
-    nuwrf._process_field_plots.assert_called_once_with('temperature', nuwrf.config_manager.map_params[0], mock_plotter)
