@@ -19,12 +19,17 @@ class MatplotlibBasePlotter(BasePlotter):
         self.ax = None
         self.logger = logging.getLogger(self.__class__.__name__)
     
-    def filled_contours(self, config, field_name, ax, x, y, data2d, transform=None):
+    def filled_contours(self, config, field_name, ax, x, y, data2d, 
+                        vmin=None, vmax=None, transform=None):
         """Plot filled contours."""        
         # Create contour levels if they don't exist
         if 'clevs' not in config.ax_opts or config.ax_opts['clevs'] is None or len(config.ax_opts['clevs']) == 0:
-            self._create_clevs(field_name, config.ax_opts, data2d)
-        
+            if vmin is not None and vmax is not None and (config.compare or config.compare_diff):
+                # Create new contour levels based on the provided vmin/vmax
+                config.ax_opts['clevs'] = np.linspace(vmin, vmax, 10)
+            else:
+                self._create_clevs(field_name, config.ax_opts, data2d)
+            
         norm = colors.BoundaryNorm(config.ax_opts['clevs'], ncolors=256, clip=False)
         
         if config.compare:
@@ -33,8 +38,8 @@ class MatplotlibBasePlotter(BasePlotter):
             cmap_str = config.ax_opts['use_cmap']
         
         # Check for constant field
-        vmin, vmax = np.nanmin(data2d), np.nanmax(data2d)
-        if np.isclose(vmin, vmax):
+        data_vmin, data_vmax = np.nanmin(data2d), np.nanmax(data2d)
+        if np.isclose(data_vmin, data_vmax):
             self.logger.debug("Fill with a neutral color and print text")
             ax.set_facecolor('whitesmoke')
             ax.text(0.5, 0.5, 'zero field', transform=ax.transAxes,

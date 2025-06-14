@@ -184,7 +184,7 @@ class GenericSource(BaseSource):
         backend = getattr(self.config_manager, 'plot_backend', 'matplotlib')
         
         plot_type = self.get_plot_type(field_name)
-        
+
         plotter = self.create_plotter(field_name, plot_type, backend)
         if plotter is None:
             return None
@@ -264,13 +264,22 @@ class GenericSource(BaseSource):
             field_name = params.get('field')
             if not field_name:
                 continue
+            self.config_manager.current_field_name = field_name
 
             filename = params.get('filename')
+            self.config_manager.findex = self.config_manager.get_file_index_by_filename(filename)
+
             data_source = self.config_manager.pipeline.get_data_source(filename)
 
             if not data_source:
                 self.logger.warning(f"No data source found in pipeline for {filename}")
                 continue
+
+            # NUWRF-specific initializations
+            if hasattr(self, 'source_name') and self.source_name in ['wrf']:
+                self._init_wrf_domain(data_source)
+            if hasattr(self, 'source_name') and self.source_name in ['lis']:
+                self._init_lis_domain(data_source)
 
             if hasattr(data_source, 'dataset') and data_source.dataset is not None:
                 field_data = data_source.dataset.get(field_name)

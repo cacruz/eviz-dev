@@ -52,6 +52,7 @@ class ConfigManager:
     b_list: List[int] = field(default_factory=list)
     _findex: int = 0
     _ds_index: int = 0
+    current_field_name: str = ""
 
     # Fields not included in __init__
     _units: Optional[object] = field(default=None, init=False)
@@ -500,8 +501,7 @@ class ConfigManager:
             self.logger.debug(f'Key error {e}, returning default')
             return None
 
-    @staticmethod
-    def get_dim_names(pid):
+    def get_dim_names(self, pid):
         """
         Get dimension names for a specific plot type.
         
@@ -513,13 +513,13 @@ class ConfigManager:
         """
         dim1, dim2 = None, None
         if 'yz' in pid:
-            dim1, dim2 = 'lat', 'lev'
+            dim1, dim2 =  self.get_model_dim_name('yc'), self.get_model_dim_name('zc')
         elif 'xt' in pid:
-            dim1, dim2 = 'time', None
+            dim1, dim2 = self.get_model_dim_name('tc'), None
         elif 'tx' in pid:
-            dim1, dim2 = 'lon', 'time'
+            dim1, dim2 = self.get_model_dim_name('xc'), self.get_model_dim_name('tc')
         else:
-            dim1, dim2 = 'lon', 'lat'
+            dim1, dim2 = self.get_model_dim_name('xc'), self.get_model_dim_name('yc')
         return dim1, dim2
 
     def get_model_attr_name(self, attr_name):
@@ -557,7 +557,21 @@ class ConfigManager:
         if hasattr(self, '_plot_type_registry') and field_name in self._plot_type_registry:
             return self._plot_type_registry[field_name]
         return default
-    
+
+    def get_file_index_by_filename(self, filename: str) -> int:
+        """Return the file_index associated with a filename from map_params.
+        
+        Args:
+            filename: The filename to search for
+            
+        Returns:
+            The file_index if found, or -1 if the filename is not found
+        """
+        for params in self.config.map_params.values():
+            if params['filename'] == filename:
+                return params['file_index']
+        return -1
+
     # Properties that delegate to config objects
     # These are defined explicitly to provide better documentation and type hints
 

@@ -25,17 +25,17 @@ class Wrf(NuWrf):
         self.comparison_plot = False
         self.source_name = 'wrf'
 
-    def _init_model_specific_data(self):
+    def _init_wrf_domain(self, data_source):
         """WRF-specific initialization."""
         if not self.p_top:
-            self._init_domain()
+            self._init_domain(data_source)
 
-    def _init_domain(self):
+    def _init_domain(self, data_source):
         """ Approximate unknown fields """
         # Create sigma->pressure dictionary
-        self.p_top = self.source_data['vars']['P_TOP'][0] / 1e5  # mb
-        self.eta_full = np.array(self.source_data['vars']['ZNW'][0])
-        self.eta_mid = np.array(self.source_data['vars']['ZNU'][0])
+        self.p_top = data_source['P_TOP'][0] / 1e5  # mb
+        self.eta_full = np.array(data_source['ZNW'][0])
+        self.eta_mid = np.array(data_source['ZNU'][0])
         self.levf = np.empty(len(self.eta_full))
         self.levs = np.empty(len(self.eta_mid))
 
@@ -51,41 +51,23 @@ class Wrf(NuWrf):
             else:
                 self.levs[i] = self.p_top + s * (1000 - self.p_top)
 
-    def _get_field_to_plot(self, field_name, file_index, plot_type, figure, time_level,
-                           level=None):
-        """WRF-specific field processing."""
-        dim1, dim2 = self.coord_names(self.source_name, self.source_data, field_name,
-                                      plot_type)
-        data2d = None
-        d = self.source_data['vars'][field_name]
-
-        if 'yz' in plot_type:
-            data2d = self._get_yz(d, time_lev=time_level)
-        elif 'xt' in plot_type:
-            data2d = self._get_xt(d, level=level, time_lev=time_level)
-        elif 'tx' in plot_type:
-            pass  # TODO!
-        elif 'xy' in plot_type or 'polar' in plot_type:
-            data2d = self._get_xy(d, level=level, time_lev=time_level)
-
-        return self._process_coordinates(data2d, dim1, dim2, field_name, plot_type,
-                                         file_index, figure)
-
-    def _process_coordinates(self, data2d, dim1, dim2, field_name, plot_type, file_index,
-                             figure):
+    def _process_coordinates(self, data2d, dim1, dim2, 
+                             field_name, 
+                             plot_type, file_index, figure):
         """Process coordinates for WRF plots"""
+        dim1, dim2 = self.coord_names(self.source_name, data2d, plot_type)
         if 'xt' in plot_type or 'tx' in plot_type:
             return data2d, None, None, field_name, plot_type, file_index, figure
         elif 'yz' in plot_type:
-            xs = np.array(self._get_field(dim1[0], data2d)[0, :][:, 0])
+            xs = np.array(self._get_wrf_coord(dim1[0], data2d)[0, :][:, 0])
             ys = self.levs
             latN = max(xs[:])
             latS = min(xs[:])
             self.config_manager.ax_opts['extent'] = [None, None, latS, latN]
             return data2d, xs, ys, field_name, plot_type, file_index, figure
         else:
-            xs = np.array(self._get_field(dim1[0], data2d)[0, :])
-            ys = np.array(self._get_field(dim2[0], data2d)[:, 0])
+            xs = np.array(self._get_wrf_coord(dim1[0], data2d)[0, :])
+            ys = np.array(self._get_wrf_coord(dim2[0], data2d)[:, 0])
             latN = max(ys[:])
             latS = min(ys[:])
             lonW = min(xs[:])
@@ -94,6 +76,13 @@ class Wrf(NuWrf):
             self.config_manager.ax_opts['central_lon'] = np.mean([lonW, lonE])
             self.config_manager.ax_opts['central_lat'] = np.mean([latS, latN])
             return data2d, xs, ys, field_name, plot_type, file_index, figure
+
+    def _get_wrf_coord(self, name, data):
+        try:
+            return data[name]
+        except Exception as e:
+            self.logger.error('key error: %s, not found' % str(e))
+            return None
 
     def _get_field_for_simple_plot(self, field_name, plot_type):
         data2d = None
@@ -168,31 +157,6 @@ class Wrf(NuWrf):
             dim1 = dims[0]
             dim2 = dims[1]
         return dim1, dim2
-
-    def _get_xy(self, d, level, time_lev):
-        """ Extract XY slice from N-dim data field"""
-        if d is None:
-            return
-        if level:
-            level = int(level)
-
-        self.logger.debug(f"Selecting time level: {time_lev}")
-        data2d = eval(
-            f"d.isel({self.get_model_dim_name('tc')}=time_lev)")
-        data2d = data2d.squeeze()
-
-        zname = self.find_matching_dimension(d.dims, 'zc')
-        if zname in data2d.dims:
-            if 'soil' in zname:
-                data2d = data2d.isel(zname=0)
-            else:
-                difference_array = np.absolute(self.levs - level)
-                index = difference_array.argmin()
-                lev_to_plot = self.levs[index]
-                self.logger.debug(f'Level to plot: {lev_to_plot} at index {index}')
-                data2d = data2d.isel(zname=index)
-
-        return apply_conversion(self.config_manager, data2d, d.name)
 
     def _get_yz(self, d, time_lev=0):
         """ Create YZ slice from N-dim data field"""

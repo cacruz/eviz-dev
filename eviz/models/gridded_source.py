@@ -221,7 +221,7 @@ class GriddedSource(GenericSource):
 
     def _process_level_plots(self, data_array, field_name, file_index, plot_type, figure, time_levels, levels):
         """Process plots for specific vertical levels."""
-        self.logger.debug(f' -> Processing {len(time_levels)} time levels')
+        self.logger.debug("Processing XY level plots")
         zc_dim = self.config_manager.get_model_dim_name('zc') or 'lev'
         tc_dim = self.config_manager.get_model_dim_name('tc') or 'time'
 
@@ -416,7 +416,6 @@ class GriddedSource(GenericSource):
                             file_index: int, plot_type: str, figure,
                             time_levels: list):
         """Process plots with vertical summation."""
-        print("Processing zsum plots")
         self.config_manager.level = None
         tc_dim = self.config_manager.get_model_dim_name('tc') or 'time'
         zc_dim = self.config_manager.get_model_dim_name('zc') or 'lev'
@@ -440,11 +439,7 @@ class GriddedSource(GenericSource):
     def _get_field_to_plot(self, data_array: xr.DataArray, field_name: str,
                            file_index: int, plot_type: str, figure, time_level,
                            level=None) -> tuple:
-        """Prepare the data array and coordinates for plotting."""
-        if data_array is None:
-            self.logger.error(f"No data array provided for field {field_name}")
-            return None
-
+        """Prepare the 2D data array and coordinates to be plotted."""
         dim1_name, dim2_name = self.config_manager.get_dim_names(plot_type)
         data2d = None
 
@@ -457,6 +452,8 @@ class GriddedSource(GenericSource):
         elif 'xy' in plot_type or 'polar' in plot_type:
             data2d = self._get_xy(data_array, level=level, time_lev=time_level)
         else:
+            self.logger.warning(
+                f"Unsupported plot type for _get_field_to_plot: {plot_type}")
             return None
 
         if data2d is None:
@@ -464,51 +461,62 @@ class GriddedSource(GenericSource):
                 f"Failed to prepare 2D data for field {field_name}, plot type {plot_type}")
             return None
 
-        x_values = None
-        y_values = None
+        # For time series plots, return without coordinates
         if 'xt' in plot_type or 'tx' in plot_type:
-            # For time-series or Hovmoller plots, coordinates are handled differently
-            pass
-        else:
-            try:
-                # Use the determined dimension names
-                if dim1_name and dim1_name in data2d.coords:
-                    x_values = data2d[dim1_name]
-                else:
-                    self.logger.debug(
-                        f"Dimension '{dim1_name}' not found in data coordinates for {field_name}")
+            return data2d, None, None, field_name, plot_type, file_index, figure
 
-                if dim2_name and dim2_name in data2d.coords:
-                    y_values = data2d[dim2_name]
-                else:
-                    self.logger.debug(
-                        f"Dimension '{dim2_name}' not found in data coordinates for {field_name}")
+        # Process coordinates based on domain type
+        try:
+            self.config_manager.is_regional = hasattr(self, 'source_name') and self.source_name in ['lis',
+                                                                                'wrf']
 
-            except KeyError as e:
-                self.logger.error(f"Error getting coordinates for {field_name}: {e}")
-                dims = list(data2d.dims)
-                if len(dims) >= 2:
-                    self.logger.debug(
-                        f"Falling back to using dimensions {dims[0]} and {dims[1]} as coordinates")
-                    x_values = data2d[dims[0]]
-                    y_values = data2d[dims[1]]
+            if self.config_manager.is_regional:
+                if hasattr(self, '_process_coordinates'):
+                    return self._process_coordinates(data2d, 
+                                                     dim1_name, dim2_name,
+                                                     field_name,
+                                                     plot_type, file_index, figure)
                 else:
+                    xs = np.array(self._get_field(dim1_name, data2d)[0, :])
+                    ys = np.array(self._get_field(dim2_name, data2d)[:, 0])
+                    latN = max(ys[:])
+                    latS = min(ys[:])
+                    lonW = min(xs[:])
+                    lonE = max(xs[:])
+                    self.config_manager.ax_opts['extent'] = [lonW, lonE, latS, latN]
+                    self.config_manager.ax_opts['central_lon'] = np.mean([lonW, lonE])
+                    self.config_manager.ax_opts['central_lat'] = np.mean([latS, latN])
+
+                    return data2d, xs, ys, field_name, plot_type, file_index, figure
+            else:
+                x = data2d[dim1_name].values if dim1_name in data2d.coords else None
+                y = data2d[dim2_name].values if dim2_name in data2d.coords else None
+
+                if x is None or y is None:
+                    dims = list(data2d.dims)
+                    if len(dims) >= 2:
+                        x = data2d[dims[0]].values
+                        y = data2d[dims[1]].values
+                    else:
+                        self.logger.error(
+                            "Dataset has fewer than 2 dimensions, cannot plot")
+                        return None
+
+                if np.isnan(data2d.values).all():
                     self.logger.error(
-                        "Dataset has fewer than 2 dimensions, cannot plot spatial data")
-                    return None
+                        f"All values are NaN for {field_name}. Using original data.")
+                    data2d = data_array.squeeze()
+                elif np.isnan(data2d.values).any():
+                    self.logger.debug(
+                        f"Note: Some NaN values present ({np.sum(np.isnan(data2d.values))} NaNs).")
+                    # data2d = data2d.fillna(0)
 
-            if np.isnan(data2d.values).all():
-                self.logger.error(
-                    f"All values are NaN for {field_name}. Using original data.")
-                data2d = data_array.squeeze()
-            elif np.isnan(data2d.values).any():
-                self.logger.debug(
-                    f"Note: Some NaN values present ({np.sum(np.isnan(data2d.values))} NaNs).")
-                # data2d = data2d.fillna(0)
+                return data2d, x, y, field_name, plot_type, file_index, figure
 
-        # Return the prepared data and coordinates in the expected tuple format
-        return data2d, x_values, y_values, field_name, plot_type, file_index, figure
-
+        except Exception as e:
+            self.logger.error(f"Error processing coordinates for {field_name}: {e}")
+            return None
+        
     def _process_xy_comparison_plots(self, file_indices: tuple,
                                      current_field_index: int,
                                      field_name1: str, field_name2: str, plot_type: str,
@@ -647,6 +655,7 @@ class GriddedSource(GenericSource):
         self.config_manager.pindex = current_field_index
         self.config_manager.axindex = ax_index
         self.config_manager.ax_opts = figure.init_ax_opts(field_name)
+        time_level_config = self.config_manager.ax_opts.get('time_lev', 0)
 
         # TODO: This is a hack to get the plot type to work with the
         #       side-by-side comparison plots.
@@ -693,9 +702,10 @@ class GriddedSource(GenericSource):
             self.data2d_list = []
         else:
             # For the first two panels, plot as usual and store data for diff
-            field_to_plot = self._get_field_to_plot_compare(data_array, field_name,
+            field_to_plot = self._get_field_to_plot(data_array, field_name,
                                                             file_index,
                                                             plot_type, figure,
+                                                            time_level=time_level_config,
                                                             level=level)
             if field_to_plot:
                 self.data2d_list.append(field_to_plot[0])
@@ -711,6 +721,7 @@ class GriddedSource(GenericSource):
         self.config_manager.findex = file_index
         self.config_manager.pindex = current_field_index
         self.config_manager.axindex = ax_index
+        time_level_config = self.config_manager.ax_opts.get('time_lev', 0)
 
         # TODO: This is a hack to get the plot type to work with the
         #       side-by-side comparison plots.
@@ -772,9 +783,10 @@ class GriddedSource(GenericSource):
                 field_to_plot = None
         else:
             # For the top row panels, plot as usual and store data for diff
-            field_to_plot = self._get_field_to_plot_compare(data_array, field_name,
+            field_to_plot = self._get_field_to_plot(data_array, field_name,
                                                             file_index,
                                                             plot_type, figure,
+                                                            time_level=time_level_config,
                                                             level=level)
             if field_to_plot and field_to_plot[0] is not None:
                 self.data2d_list.append(field_to_plot[0])
@@ -913,6 +925,7 @@ class GriddedSource(GenericSource):
         self.config_manager.findex = file_index
         self.config_manager.pindex = current_field_index
         self.config_manager.axindex = ax_index
+        time_level_config = self.config_manager.ax_opts.get('time_lev', 0)
 
         # TODO: This is a hack to get the plot type to work with the
         #       side-by-side comparison plots.
@@ -933,9 +946,10 @@ class GriddedSource(GenericSource):
         
         self.config_manager.ax_opts = figure.init_ax_opts(field_name)
         
-        field_to_plot = self._get_field_to_plot_compare(data_array, field_name,
+        field_to_plot = self._get_field_to_plot(data_array, field_name,
                                                         file_index,
                                                         plot_type, figure,
+                                                        time_level=time_level_config,
                                                         level=level)
 
         if field_to_plot and field_to_plot[0] is not None:
@@ -943,76 +957,6 @@ class GriddedSource(GenericSource):
 
         if field_to_plot:
             self.plot_result = self.create_plot(field_name, field_to_plot)
-
-    def _get_field_to_plot_compare(self, data_array, field_name, file_index, plot_type,
-                                   figure, level=None) -> tuple:
-        """Prepare data for comparison plots, handling both global and regional domains."""
-        dim1_name, dim2_name = self.config_manager.get_dim_names(plot_type)
-        data2d = None
-
-        # Process single plots based on plot type
-        if 'yz' in plot_type:
-            data2d = self._get_yz(data_array,
-                                  time_lev=self.config_manager.ax_opts.get('time_lev', 0))
-        elif 'xt' in plot_type:
-            data2d = self._get_xt(data_array,
-                                  time_lev=self.config_manager.ax_opts.get('time_lev', 0))
-        elif 'tx' in plot_type:
-            data2d = self._get_tx(data_array, level=level,
-                                  time_lev=self.config_manager.ax_opts.get('time_lev', 0))
-        elif 'xy' in plot_type or 'polar' in plot_type:
-            data2d = self._get_xy(data_array, level=level,
-                                  time_lev=self.config_manager.ax_opts.get('time_lev', 0))
-        else:
-            self.logger.warning(
-                f"Unsupported plot type for _get_field_to_plot_compare: {plot_type}")
-            return None
-
-        # For time series plots, return without coordinates
-        if 'xt' in plot_type or 'tx' in plot_type:
-            return data2d, None, None, field_name, plot_type, file_index, figure
-
-        # Process coordinates based on domain type
-        try:
-            self.config_manager.is_regional = hasattr(self, 'source_name') and self.source_name in ['lis',
-                                                                                'wrf']
-
-            if self.config_manager.is_regional:
-                if hasattr(self, '_process_coordinates'):
-                    return self._process_coordinates(data2d, dim1_name, dim2_name,
-                                                     field_name,
-                                                     plot_type, file_index, figure)
-                else:
-                    xs = np.array(self._get_field(dim1_name, data2d)[0, :])
-                    ys = np.array(self._get_field(dim2_name, data2d)[:, 0])
-                    latN = max(ys[:])
-                    latS = min(ys[:])
-                    lonW = min(xs[:])
-                    lonE = max(xs[:])
-                    self.config_manager.ax_opts['extent'] = [lonW, lonE, latS, latN]
-                    self.config_manager.ax_opts['central_lon'] = np.mean([lonW, lonE])
-                    self.config_manager.ax_opts['central_lat'] = np.mean([latS, latN])
-
-                    return data2d, xs, ys, field_name, plot_type, file_index, figure
-            else:
-                x = data2d[dim1_name].values if dim1_name in data2d.coords else None
-                y = data2d[dim2_name].values if dim2_name in data2d.coords else None
-
-                if x is None or y is None:
-                    dims = list(data2d.dims)
-                    if len(dims) >= 2:
-                        x = data2d[dims[0]].values
-                        y = data2d[dims[1]].values
-                    else:
-                        self.logger.error(
-                            "Dataset has fewer than 2 dimensions, cannot plot")
-                        return None
-
-                return data2d, x, y, field_name, plot_type, file_index, figure
-
-        except Exception as e:
-            self.logger.error(f"Error processing coordinates for {field_name}: {e}")
-            return None
 
     # DATA SLICE PROCESSING METHODS
     def _get_yz(self, data_array, time_lev):

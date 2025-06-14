@@ -1,32 +1,16 @@
 from dataclasses import dataclass
-import cftime
 import logging
 import warnings
-import matplotlib
 import numpy as np
 import xarray as xr
 import matplotlib.pyplot as plt
 import math
-import pandas as pd
-from matplotlib import colors
-from matplotlib.ticker import FormatStrFormatter, FixedLocator, FuncFormatter
-from matplotlib.ticker import NullFormatter
-import matplotlib.gridspec as mgridspec
-import matplotlib.ticker as mticker
-import matplotlib.path as mpath
-import matplotlib as mpl
 import cartopy.crs as ccrs
-import cartopy.feature as cfeature
 import networkx as nx
-from cartopy.mpl.geoaxes import GeoAxes
-from cartopy.mpl.ticker import LongitudeFormatter, LatitudeFormatter
 
-from sklearn.metrics import mean_squared_error
 import eviz.lib.autoviz.utils as pu
 import eviz.lib.utils as u
 from eviz.lib.config.config_manager import ConfigManager
-from eviz.lib.data.pipeline.reader import get_data_coords
-from .plotting.factory import PlotterFactory
 
 
 warnings.filterwarnings("ignore")

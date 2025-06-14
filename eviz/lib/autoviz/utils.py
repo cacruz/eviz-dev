@@ -221,8 +221,8 @@ def print_map(config, plot_type: str, findex: int, fig, level: int = None) -> No
     def build_filename(config, plot_type: str, findex: int, level: int = None) -> str:
         """Construct the output filename based on config and plot type."""
         map_params = config.map_params
-        field_name = map_params[config.pindex]['field']
-        exp_id = map_params[config.pindex].get('exp_id', None)
+        field_name = config.current_field_name  or map_params[findex]['field']
+        exp_id = map_params[findex].get('exp_id', None)
 
         levstr = f"_{level}" if level is not None else ""
         time_level = getattr(config, "time_level", "")
@@ -260,6 +260,7 @@ def print_map(config, plot_type: str, findex: int, fig, level: int = None) -> No
     
     map_filename = f"{fname}{file_ext}"
     filename = os.path.join(output_dir, map_filename)
+    logger.debug(f"Saving plot to: {filename}")
 
     if config.print_to_file:
         # Save the figure based on the backend

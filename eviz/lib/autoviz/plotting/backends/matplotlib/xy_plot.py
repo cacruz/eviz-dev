@@ -80,18 +80,40 @@ class MatplotlibXYPlotter(MatplotlibBasePlotter):
             pass
 
         data_transform = ccrs.PlateCarree()
+
+        vmin, vmax = None, None
+        if (config.compare or config.compare_diff):
+            # Check if we've stored limits for this field in the config
+            if not hasattr(config, '_comparison_cbar_limits'):
+                config._comparison_cbar_limits = {}
+                
+            if field_name in config._comparison_cbar_limits:
+                vmin, vmax = config._comparison_cbar_limits[field_name]
+
         if fig.use_cartopy and is_cartopy_axis:
-            cfilled = self.filled_contours(config, field_name, ax, x, y, data2d, transform=data_transform)
+            cfilled = self.filled_contours(config, field_name, ax, x, y, data2d, 
+                                           vmin=vmin, vmax=vmax, transform=data_transform)
             if 'extent' in ax_opts:
                 self.set_cartopy_ticks(ax, ax_opts['extent'])
             else:
                 self.set_cartopy_ticks(ax, [-180, 180, -90, 90])
         else:
-            cfilled = self.filled_contours(config, field_name, ax, x, y, data2d)
+            cfilled = self.filled_contours(config, field_name, ax, x, y, data2d,
+                                           vmin=vmin, vmax=vmax)
 
         if cfilled is None:
             self.set_const_colorbar(cfilled, fig, ax)
         else:
+            # Store colorbar limits for the first plot in a comparison
+            if (config.compare or config.compare_diff) and config.axindex == 0:
+                # Get the limits used in the plot
+                # vmin = config.ax_opts['clevs'][0]
+                # vmax = config.ax_opts['clevs'][-1]
+                vmin, vmax = cfilled.get_clim()
+                if not hasattr(config, '_comparison_cbar_limits'):
+                    config._comparison_cbar_limits = {}
+                config._comparison_cbar_limits[field_name] = (vmin, vmax)
+
             self.set_colorbar(config, cfilled, fig, ax, ax_opts, findex, field_name, data2d)
             if ax_opts.get('line_contours', False):
                 if fig.use_cartopy and is_cartopy_axis:
