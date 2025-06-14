@@ -8,7 +8,6 @@ from .base import MatplotlibBasePlotter
 
 class MatplotlibXTPlotter(MatplotlibBasePlotter):
     """Matplotlib implementation of XT (time-series) plotting."""
-    
     def __init__(self):
         super().__init__()
         self.fig = None

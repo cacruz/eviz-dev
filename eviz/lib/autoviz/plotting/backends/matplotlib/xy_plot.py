@@ -8,7 +8,6 @@ from .base import MatplotlibBasePlotter
 
 class MatplotlibXYPlotter(MatplotlibBasePlotter):
     """Matplotlib implementation of XY plotting."""
-    
     def __init__(self):
         super().__init__()
         self.fig = None
@@ -57,8 +56,7 @@ class MatplotlibXYPlotter(MatplotlibBasePlotter):
                 self.ax = ax_temp
         else:
             self.ax = ax_temp[0]
-        
-        
+
         ax_opts = fig.update_ax_opts(field_name, self.ax, 'xy', level=0)
         fig.plot_text(field_name, self.ax, 'xy', level=0, data=data2d)
         

@@ -498,6 +498,4 @@ class GenericSource(BaseSource):
                                                            field1, field2,
                                                            plot_type, sdat1_dataset,
                                                            sdat2_dataset)
-
             current_field_index += 1
-

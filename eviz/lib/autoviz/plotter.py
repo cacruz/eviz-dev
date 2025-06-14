@@ -282,6 +282,3 @@ class SimplePlotter:
             _simple_sc_plot(config, field_to_plot)
         elif plot_type == 'graph':
             _simple_graph_plot(config, field_to_plot)
-
-
-

@@ -1,6 +1,4 @@
-import matplotlib.pyplot as plt
 import numpy as np
-import matplotlib as mpl
 import logging
 from matplotlib.ticker import FormatStrFormatter, NullFormatter
 import eviz.lib.autoviz.utils as pu
@@ -9,7 +7,6 @@ from .base import MatplotlibBasePlotter
 
 class MatplotlibYZPlotter(MatplotlibBasePlotter):
     """Matplotlib implementation of YZ (zonal-mean) plotting."""
-    
     def __init__(self):
         super().__init__()
         self.fig = None

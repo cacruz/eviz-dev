@@ -16,7 +16,6 @@ import numpy as np
 from matplotlib.ticker import LogFormatter
 import glob
 from PIL import Image
-import holoviews as hv
 
 from numpy import e
 import eviz.lib.utils as u

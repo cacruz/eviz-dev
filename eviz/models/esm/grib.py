@@ -45,43 +45,43 @@ class Grib(GriddedSource):
         return source_data
 
     def _single_plots(self, plotter):
-            """Generate single plots for each source and field according to configuration."""
-            self.logger.info("Generating single plots")
+        """Generate single plots for each source and field according to configuration."""
+        self.logger.info("Generating single plots")
 
-            all_data_sources = self.config_manager.pipeline.get_all_data_sources()
-            if not all_data_sources:
-                self.logger.error("No data sources available for single plotting.")
-                return
+        all_data_sources = self.config_manager.pipeline.get_all_data_sources()
+        if not all_data_sources:
+            self.logger.error("No data sources available for single plotting.")
+            return
 
-            # Iterate through map_params to generate plots
-            for idx, params in self.config_manager.map_params.items():
-                field_name = params.get('field')
-                if not field_name:
-                    continue
+        # Iterate through map_params to generate plots
+        for idx, params in self.config_manager.map_params.items():
+            field_name = params.get('field')
+            if not field_name:
+                continue
 
-                filename = params.get('filename')
-                data_source = self.config_manager.pipeline.get_data_source(filename)
+            filename = params.get('filename')
+            data_source = self.config_manager.pipeline.get_data_source(filename)
 
-                if not data_source or not hasattr(data_source,
-                                                'dataset') or data_source.dataset is None:
-                    continue
+            if not data_source or not hasattr(data_source,
+                                            'dataset') or data_source.dataset is None:
+                continue
 
-                if field_name not in data_source.dataset:
-                    continue
+            if field_name not in data_source.dataset:
+                continue
 
-                self.config_manager.findex = idx
-                self.config_manager.pindex = idx
-                self.config_manager.axindex = 0
+            self.config_manager.findex = idx
+            self.config_manager.pindex = idx
+            self.config_manager.axindex = 0
 
-                field_data_array = data_source.dataset[field_name]
-                plot_types = params.get('to_plot', ['xy'])
-                if isinstance(plot_types, str):
-                    plot_types = [pt.strip() for pt in plot_types.split(',')]
-                for plot_type in plot_types:
-                    self._process_plot(field_data_array, field_name, idx, plot_type, plotter)
+            field_data_array = data_source.dataset[field_name]
+            plot_types = params.get('to_plot', ['xy'])
+            if isinstance(plot_types, str):
+                plot_types = [pt.strip() for pt in plot_types.split(',')]
+            for plot_type in plot_types:
+                self._process_plot(field_data_array, field_name, idx, plot_type, plotter)
 
-            if self.config_manager.make_gif:
-                create_gif(self.config_manager.config)
+        if self.config_manager.make_gif:
+            create_gif(self.config_manager.config)
 
     def _process_plot(self, data_array: xr.DataArray, field_name: str, file_index: int,
                       plot_type: str, plotter):

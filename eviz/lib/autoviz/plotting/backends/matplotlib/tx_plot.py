@@ -2,10 +2,8 @@ import numpy as np
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as mgridspec
-import pandas as pd
 import cartopy.crs as ccrs
 import cartopy.feature as cfeature
-from matplotlib.ticker import FixedLocator
 from matplotlib import colors
 from .base import MatplotlibBasePlotter
 from eviz.lib.data.pipeline.reader import get_data_coords
@@ -13,7 +11,6 @@ from eviz.lib.data.pipeline.reader import get_data_coords
 
 class MatplotlibTXPlotter(MatplotlibBasePlotter):
     """Matplotlib implementation of TX (Hovmoller) plotting."""
-    
     def __init__(self):
         super().__init__()
         self.fig = None

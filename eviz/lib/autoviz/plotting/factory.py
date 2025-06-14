@@ -11,6 +11,7 @@ from .backends.altair.xy_plot import AltairXYPlotter
 from .backends.altair.xt_plot import AltairXTPlotter
 from .backends.altair.scatter_plot import AltairScatterPlotter
 
+
 class PlotterFactory:
     """Factory for creating appropriate plotters."""
     

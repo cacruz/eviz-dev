@@ -7,9 +7,9 @@ import cartopy.feature as cfeature
 from .base import MatplotlibBasePlotter
 import eviz.lib.autoviz.utils as pu
 
+
 class MatplotlibPolarPlotter(MatplotlibBasePlotter):
     """Matplotlib implementation of polar plotting."""
-    
     def __init__(self):
         super().__init__()
         self.fig = None
@@ -72,7 +72,6 @@ class MatplotlibPolarPlotter(MatplotlibBasePlotter):
     
     def _plot_polar_data(self, config, ax, data2d, x, y, field_name, ax_opts, findex):
         """Helper function to plot polar data."""
-        
         if ax_opts['use_pole'] == 'south':
             projection = ccrs.SouthPolarStereo()
             extent_lat = -60  # Southern limit for South Polar plot

@@ -217,7 +217,7 @@ def calc_spatial_integral(xr_da, lon_name="longitude", lat_name="latitude",
         xr_da: xarray.DataArray Data to average
         lon_name: str, optional Name of x-coordinate
         lat_name: str, optional Name of y-coordinate
-        radius: float Radius of the planet [metres], currently assumed spherical (not important anyway)
+        radius: float Radius of the planet [metres]
 
     Returns:
         Spatially averaged xarray.DataArray.
@@ -246,7 +246,8 @@ def get_file_ptr(data_dir, file_pat=None):
 
 def read_multiple_netcdf_in_directory(directory_path):
     """
-    Reads all NetCDF files in a specified directory using xarray and returns a combined xarray Dataset.
+    Reads all NetCDF files in a specified directory using xarray and returns a combined
+    xarray Dataset.
 
     Parameters:
     directory_path (str): The path to the directory containing NetCDF files to read.

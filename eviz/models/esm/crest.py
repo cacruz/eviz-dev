@@ -6,6 +6,7 @@ from eviz.models.gridded_source import GriddedSource
 
 warnings.filterwarnings("ignore")
 
+
 @dataclass
 class Crest(GriddedSource):
     """ The Crest class contains definitions for handling CREST data. This is data

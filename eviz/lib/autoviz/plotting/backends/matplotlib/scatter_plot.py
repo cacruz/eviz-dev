@@ -9,7 +9,6 @@ from .base import MatplotlibBasePlotter
 
 class MatplotlibScatterPlotter(MatplotlibBasePlotter):
     """Matplotlib implementation of scatter plotting."""
-    
     def __init__(self):
         super().__init__()
         self.fig = None
@@ -160,4 +159,3 @@ class MatplotlibScatterPlotter(MatplotlibBasePlotter):
                             verticalalignment='top', bbox=dict(boxstyle='round', facecolor='white', alpha=0.5))
                 except Exception as e:
                     self.logger.warning(f"Error adding regression line: {e}")
-    

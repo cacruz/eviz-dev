@@ -5,7 +5,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.9.0] - 2025-6-4
+## [0.9.0] - 2025-6-19
 
 This is a significant rewrite of v0.6.3. Though eViz's general idea and all 
 the previous functionality is the same, the code structure is different.

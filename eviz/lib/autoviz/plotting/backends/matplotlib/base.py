@@ -7,12 +7,10 @@ import logging
 from matplotlib.ticker import FixedLocator
 
 from eviz.lib.autoviz.plotting.base import BasePlotter
-import eviz.lib.autoviz.utils as pu
 
 
 class MatplotlibBasePlotter(BasePlotter):
     """Base class for all Matplotlib plotters with common functionality."""
-    
     def __init__(self):
         super().__init__()
         self.fig = None

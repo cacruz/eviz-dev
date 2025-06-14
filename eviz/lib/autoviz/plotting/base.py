@@ -1,9 +1,9 @@
 from abc import ABC, abstractmethod
 import logging
 
+
 class BasePlotter(ABC):
     """Base class for all plotters."""
-    
     def __init__(self):
         self.logger = logging.getLogger(self.__class__.__name__)
         self.plot_object = None
@@ -36,6 +36,7 @@ class XYPlotter(BasePlotter):
         """Create an XY plot from the given data."""
         pass
 
+
 class YZPlotter(BasePlotter):
     """Base class for YZ (zonal-mean) plotters."""
     
@@ -43,6 +44,7 @@ class YZPlotter(BasePlotter):
     def plot(self, config, data_to_plot):
         """Create a YZ plot from the given data."""
         pass
+
 
 class XTPlotter(BasePlotter):
     """Base class for XT (time-series) plotters."""
@@ -52,6 +54,7 @@ class XTPlotter(BasePlotter):
         """Create an XT plot from the given data."""
         pass
 
+
 class TXPlotter(BasePlotter):
     """Base class for TX (Hovmoller) plotters."""
     
@@ -60,6 +63,7 @@ class TXPlotter(BasePlotter):
         """Create a TX plot from the given data."""
         pass
 
+
 class ScatterPlotter(BasePlotter):
     """Base class for scatter plotters."""
     
@@ -67,6 +71,7 @@ class ScatterPlotter(BasePlotter):
     def plot(self, config, data_to_plot):
         """Create a scatter plot from the given data."""
         pass
+
 
 class PolarPlotter(BasePlotter):
     """Base class for ploar plotters."""
