@@ -56,7 +56,7 @@ def test_get_yz_simple_basic():
     arr = xr.DataArray(np.random.rand(2, 3, 4), dims=('time', 'lev', 'lon'))
     g = GriddedSource(config_manager=make_config_manager())
     # Patch apply_conversion to just return its input
-    with patch('eviz.models.gridded_source.apply_conversion', lambda cm, da, name: da):
+    with patch('eviz.models.source_base.apply_conversion', lambda cm, da, name: da):
         result = g._get_yz_simple(arr)
     assert isinstance(result, xr.DataArray)
 

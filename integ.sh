@@ -171,17 +171,17 @@ if prompt "Source: 'ccm' vs 'ccm' (overlay)"; then
 fi
    
 if prompt "Source: 'wrf', with 2 files (compare)"; then
-   python autoviz.py -s wrf -v 0 -f $EVIZ_CONFIG_PATH/wrf_compare.yaml
+   python autoviz.py -s wrf -v 0 -f $EVIZ_CONFIG_PATH/wrf/wrf_compare.yaml
    echo
 fi
    
 if prompt "Source: 'wrf', line-plot (compare)"; then
-   python autoviz.py -s wrf -v 0 -f $EVIZ_CONFIG_PATH/wrf_xt_compare.yaml
+   python autoviz.py -s wrf -v 0 -f $EVIZ_CONFIG_PATH/wrf/wrf_xt_compare.yaml
    echo
 fi
    
 if prompt "Source: lis, with 2 files (compare multiple fields)"; then
-   python autoviz.py -s lis -v 0 -f $EVIZ_CONFIG_PATH/lis_compare.yaml
+   python autoviz.py -s lis -v 0 -f $EVIZ_CONFIG_PATH/lis/lis_compare.yaml
    echo
 fi
    

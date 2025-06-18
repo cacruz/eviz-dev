@@ -550,6 +550,7 @@ class DummyConfig:
         self.findex = 0
         self.readers = {}
         self.config = self
+        self.current_field_name = ""
         self.map_params = {0: {'source_name': 'test_source'}}
         self.ax_opts = {}
         self.yaml_parser = self
