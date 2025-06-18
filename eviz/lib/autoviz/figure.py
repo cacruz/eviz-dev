@@ -704,8 +704,8 @@ class Figure(mfigure.Figure):
         title_fontsize = title_size or fontsize
         loc = kwargs.get('location', 'left')
 
-        self.logger.info(f"Setting title for {field_name} with size {title_fontsize}")
-        self.logger.info(f"Current title size: {ax.title.get_size()}")
+        self.logger.debug(f"Setting title for {field_name} with size {title_fontsize}")
+        self.logger.debug(f"Current title size: {ax.title.get_size()}")
 
         findex = self.config_manager.findex
         sname = self.config_manager.config.map_params[findex]['source_name']
