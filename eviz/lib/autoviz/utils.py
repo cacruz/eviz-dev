@@ -269,11 +269,20 @@ def print_map(config, plot_type: str, findex: int, fig, level: int = None) -> No
             if hasattr(fig, 'tight_layout'):
                 fig.tight_layout()
             
-            # Save with or without bbox_inches depending on extent
-            if config.ax_opts.get('extent'):
-                fig.savefig(filename, dpi=300)
+             # Get rc_params if available
+            rc_params = {}
+            if hasattr(fig, '_ax_opts') and 'rc_params' in fig._ax_opts:
+                rc_params = fig._ax_opts['rc_params']
+            
+            # Save with facecolor preserved if specified
+            if 'figure.facecolor' in rc_params:
+                fig.savefig(filename, dpi=300, facecolor=fig.get_facecolor())
             else:
-                fig.savefig(filename, bbox_inches='tight', dpi=300)
+            # Save with or without bbox_inches depending on extent
+                if config.ax_opts.get('extent'):
+                    fig.savefig(filename, dpi=300)
+                else:
+                    fig.savefig(filename, bbox_inches='tight', dpi=300)
         
         elif backend == 'altair':
             # For Altair, save as HTML

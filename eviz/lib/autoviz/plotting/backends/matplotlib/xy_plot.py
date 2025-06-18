@@ -1,4 +1,5 @@
 import matplotlib.pyplot as plt
+import matplotlib as mpl
 import numpy as np
 import cartopy.crs as ccrs
 from cartopy.mpl.geoaxes import GeoAxes
@@ -24,6 +25,7 @@ class MatplotlibXYPlotter(MatplotlibBasePlotter):
             The created figure
         """
         data2d, x, y, field_name, plot_type, findex, fig = data_to_plot
+
         if data2d is None:
             return fig
         
@@ -59,7 +61,6 @@ class MatplotlibXYPlotter(MatplotlibBasePlotter):
 
         ax_opts = fig.update_ax_opts(field_name, self.ax, 'xy', level=0)
         fig.plot_text(field_name, self.ax, 'xy', level=0, data=data2d)
-        
         self._plot_xy_data(config, self.ax, data2d, x, y, field_name, fig, ax_opts, 0, plot_type, findex)
         
         return fig

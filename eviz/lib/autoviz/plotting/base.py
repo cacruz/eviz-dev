@@ -74,9 +74,33 @@ class ScatterPlotter(BasePlotter):
 
 
 class PolarPlotter(BasePlotter):
-    """Base class for ploar plotters."""
+    """Base class for polar plotters."""
     
     @abstractmethod
     def plot(self, config, data_to_plot):
         """Create a polar plot from the given data."""
+        pass
+
+class BoxPlotter(BasePlotter):
+    """Base class for box plotters."""
+    
+    @abstractmethod
+    def plot(self, config, data_to_plot):
+        """Create a box plot from the given data."""
+        pass
+
+class LinePlotter(BasePlotter):
+    """Base class for line plotters."""
+    
+    @abstractmethod
+    def plot(self, config, data_to_plot):
+        """Create a line plot from the given data."""
+        pass
+
+class HistPlotter(BasePlotter):
+    """Base class for histogram plotters."""
+    
+    @abstractmethod
+    def plot(self, config, data_to_plot):
+        """Create a histogram plot from the given data."""
         pass

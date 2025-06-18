@@ -7,6 +7,7 @@ import logging
 from matplotlib.ticker import FixedLocator
 
 from eviz.lib.autoviz.plotting.base import BasePlotter
+import eviz.lib.autoviz.utils as pu
 
 
 class MatplotlibBasePlotter(BasePlotter):
@@ -21,34 +22,34 @@ class MatplotlibBasePlotter(BasePlotter):
         self.ax = None
         self.logger = logging.getLogger(self.__class__.__name__)
 
-    def filled_contours(self, config, field_name, ax, x, y, data2d,
-                        vmin=None, vmax=None, transform=None):
+    def filled_contours(self, config, field_name, ax, x, y, data2d, transform=None, vmin=None, vmax=None):
         """Plot filled contours."""
+        # Check if data is all NaN
+        if np.isnan(data2d).all():
+            self.logger.warning(f"All values are NaN for {field_name}. Cannot create contour plot.")
+            ax.set_facecolor('whitesmoke')
+            ax.text(0.5, 0.5, 'No valid data', transform=ax.transAxes,
+                    ha='center', va='center', fontsize=16, color='gray', fontweight='bold')
+            return None
+        
         # Create contour levels if they don't exist
-        if 'clevs' not in config.ax_opts or config.ax_opts['clevs'] is None or len(
-                config.ax_opts['clevs']) == 0:
-            if vmin is not None and vmax is not None and (
-                    config.compare or config.compare_diff):
-                # Create new contour levels based on the provided vmin/vmax
-                config.ax_opts['clevs'] = np.linspace(vmin, vmax, 10)
-            else:
-                self._create_clevs(field_name, config.ax_opts, data2d)
-
+        if 'clevs' not in config.ax_opts or config.ax_opts['clevs'] is None or len(config.ax_opts['clevs']) == 0:
+            self._create_clevs(field_name, config.ax_opts, data2d)
+        
         norm = colors.BoundaryNorm(config.ax_opts['clevs'], ncolors=256, clip=False)
-
+        
         if config.compare:
             cmap_str = config.ax_opts['use_diff_cmap']
         else:
             cmap_str = config.ax_opts['use_cmap']
-
+        
         # Check for constant field
         data_vmin, data_vmax = np.nanmin(data2d), np.nanmax(data2d)
         if np.isclose(data_vmin, data_vmax):
             self.logger.debug("Fill with a neutral color and print text")
             ax.set_facecolor('whitesmoke')
-            ax.text(0.5, 0.5, 'zero field', transform=ax.transAxes,
-                    ha='center', va='center', fontsize=16, color='gray',
-                    fontweight='bold')
+            ax.text(0.5, 0.5, 'Constant field', transform=ax.transAxes,
+                    ha='center', va='center', fontsize=16, color='gray', fontweight='bold')
             return None
 
         try:
@@ -83,14 +84,30 @@ class MatplotlibBasePlotter(BasePlotter):
     def _create_clevs(self, field_name, ax_opts, data2d):
         """Create contour levels for the plot."""
         # Check if clevs already exists and is not empty
-        if 'clevs' in ax_opts and ax_opts['clevs'] is not None and len(
-                ax_opts['clevs']) > 0:
+        if 'clevs' in ax_opts and ax_opts['clevs'] is not None and len(ax_opts['clevs']) > 0:
             return
-
-        dmin = data2d.min(skipna=True).values
-        dmax = data2d.max(skipna=True).values
+        
+        # Check if data is all NaN
+        if np.isnan(data2d).all():
+            self.logger.warning(f"All values are NaN for {field_name}. Cannot create contour levels.")
+            # Set default contour levels to avoid errors
+            ax_opts['clevs'] = np.array([0, 1])
+            ax_opts['clevs_prec'] = 0
+            return
+        
+        # Get min/max values, skipping NaN values
+        dmin = np.nanmin(data2d)
+        dmax = np.nanmax(data2d)
         self.logger.debug(f"dmin: {dmin}, dmax: {dmax}")
-
+        
+        # Check if min equals max (constant field)
+        if np.isclose(dmin, dmax):
+            self.logger.debug(f"Constant field detected for {field_name}: {dmin}")
+            # Create simple contour levels around the constant value
+            ax_opts['clevs'] = np.array([dmin - 0.1, dmin, dmin + 0.1])
+            ax_opts['clevs_prec'] = 1
+            return
+        
         # Calculate appropriate precision
         range_val = abs(dmax - dmin)
         precision = max(0, int(np.ceil(-np.log10(range_val)))) if range_val != 0 else 6
@@ -98,14 +115,14 @@ class MatplotlibBasePlotter(BasePlotter):
             precision = 1
         ax_opts['clevs_prec'] = precision
         self.logger.debug(f"range_val: {range_val}, precision: {precision}")
-
+        
         if not ax_opts.get('create_clevs', True):
             clevs = np.around(np.linspace(dmin, dmax, 10), decimals=precision)
         else:
             clevs = np.around(np.linspace(dmin, dmax, ax_opts.get('num_clevs', 10)),
-                              decimals=precision)
+                            decimals=precision)
             clevs = np.unique(clevs)  # Remove duplicates
-
+        
         # Check if levels are strictly increasing
         # If not enough unique levels, regenerate with more precision or fallback
         if len(set(clevs)) <= 2:
@@ -116,14 +133,15 @@ class MatplotlibBasePlotter(BasePlotter):
             if len(clevs) <= 2:
                 # As a last resort, just use [dmin, dmax]
                 clevs = np.array([dmin, dmax])
-
+        
         # Ensure strictly increasing
         clevs = np.unique(clevs)  # Remove duplicates, again
         ax_opts['clevs'] = clevs
-
+        
         self.logger.debug(f'Created contour levels for {field_name}: {ax_opts["clevs"]}')
         if ax_opts['clevs'][0] == 0.0:
             ax_opts['extend_value'] = "max"
+
 
     def line_contours(self, fig, ax, ax_opts, x, y, data2d, transform=None):
         """Add line contours to the plot."""
@@ -137,7 +155,6 @@ class MatplotlibBasePlotter(BasePlotter):
                     self.logger.warning("Not enough contour levels for line contours")
                     return
 
-                # Format contour labels
                 try:
                     formatted_clevs = pu.formatted_contours(ax_opts['clevs'])
                     contour_format = pu.contour_format_from_levels(
@@ -149,18 +166,15 @@ class MatplotlibBasePlotter(BasePlotter):
                         "Could not determine contour format, using default")
                     contour_format = '%.1f'
 
-                # Create contour lines
                 clines = ax.contour(x, y, data2d, levels=ax_opts['clevs'], colors="black",
                                     alpha=0.5, transform=transform)
 
-                # Check if contours were generated
                 if len(clines.allsegs) == 0 or all(
                         len(seg) == 0 for seg in clines.allsegs):
                     self.logger.warning(
                         "No contours were generated. Skipping contour labeling.")
                     return
 
-                # Add contour labels
                 ax.clabel(clines, inline=1, fontsize=pu.contour_label_size(fig.subplots),
                           colors="black", fmt=contour_format)
             except Exception as e:
@@ -168,8 +182,6 @@ class MatplotlibBasePlotter(BasePlotter):
 
     def set_colorbar(self, config, cfilled, fig, ax, ax_opts, findex, field_name, data2d):
         """Add a colorbar to the plot."""
-        import eviz.lib.autoviz.utils as pu
-
         try:
             source_name = config.source_names[config.ds_index]
 
@@ -181,7 +193,6 @@ class MatplotlibBasePlotter(BasePlotter):
             else:
                 fmt = pu.OOMFormatter(prec=ax_opts['clevs_prec'], math_text=True)
 
-            # Create colorbar
             if not fig.use_cartopy:
                 cbar = fig.colorbar(cfilled)
             else:
@@ -199,17 +210,14 @@ class MatplotlibBasePlotter(BasePlotter):
                              transform=cbar.ax.transAxes, va='center', ha='left',
                              fontsize=12)
 
-            # Get units for the colorbar
             units = self.get_units(config, field_name, data2d, source_name, findex)
 
-            # Set colorbar label
             if ax_opts['clabel'] is None:
                 cbar_label = units
             else:
                 cbar_label = ax_opts['clabel']
             cbar.set_label(cbar_label, size=pu.bar_font_size(fig.subplots))
 
-            # Set font size for colorbar ticks
             for t in cbar.ax.get_xticklabels():
                 t.set_fontsize(pu.contour_tick_font_size(fig.subplots))
             for t in cbar.ax.get_yticklabels():
@@ -217,6 +225,9 @@ class MatplotlibBasePlotter(BasePlotter):
 
         except Exception as e:
             self.logger.error(f"Failed to add colorbar: {e}")
+
+    def set_const_colorbar(self, cfilled, fig, ax):
+        _ = fig.colorbar(cfilled, ax=ax, shrink=0.5)
 
     def get_units(self, config, field_name, data2d, source_name, findex):
         """Get units for the field."""

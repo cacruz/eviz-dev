@@ -1,6 +1,9 @@
 import numpy as np
+import pandas as pd
 import logging
 import holoviews as hv
+import hvplot.xarray  # register the hvplot method with xarray objects
+import hvplot.pandas
 from ....plotting.base import XYPlotter
 
 
@@ -11,12 +14,38 @@ class HvplotXYPlotter(XYPlotter):
         super().__init__()
         self.plot_object = None
         self.logger = logging.getLogger(self.__class__.__name__)
-        # Set up HoloViews extension and default renderer
+        self._apply_numpy_compatibility_patch()
+
+        # Set up HoloViews and hvplot extensions
         try:
             hv.extension('bokeh')
+            import hvplot.xarray  # Register hvplot with xarray again to be safe
+            self.logger.debug("Successfully initialized HoloViews and hvplot extensions")
         except Exception as e:
-            self.logger.warning(f"Could not initialize HoloViews extension: {e}")
-        
+            self.logger.warning(f"Could not initialize HoloViews/hvplot extensions: {e}")   
+
+    def _apply_numpy_compatibility_patch(self):
+        """Apply compatibility patch for NumPy 1.20+ with older HoloViews/hvplot."""
+        try:
+            import numpy as np
+            if not hasattr(np, 'bool'):
+                self.logger.debug("Applying NumPy compatibility patch for bool")
+                np.bool = bool
+            
+            # Add other deprecated NumPy aliases that might be needed
+            if not hasattr(np, 'int'):
+                np.int = int
+            if not hasattr(np, 'float'):
+                np.float = float
+            if not hasattr(np, 'complex'):
+                np.complex = complex
+            if not hasattr(np, 'object'):
+                np.object = object
+            if not hasattr(np, 'str'):
+                np.str = str
+        except Exception as e:
+            self.logger.warning(f"Failed to apply NumPy compatibility patch: {e}")        
+
     def plot(self, config, data_to_plot):
         """Create an interactive XY plot using HvPlot.
         
@@ -62,14 +91,9 @@ class HvplotXYPlotter(XYPlotter):
             units = data2d.units
         
         try:
-            # Get dimension names
-            x_dim = x.name if hasattr(x, 'name') else 'x'
-            y_dim = y.name if hasattr(y, 'name') else 'y'
+            x_dim = config.get_model_dim_name('xc')
+            y_dim = config.get_model_dim_name('yc')
             
-            self.logger.debug(f"X dimension: {x_dim}")
-            self.logger.debug(f"Y dimension: {y_dim}")
-            
-            # Use the simpler hvplot approach that we know works
             plot = data2d.hvplot(
                 x=x_dim,
                 y=y_dim,
@@ -92,7 +116,7 @@ class HvplotXYPlotter(XYPlotter):
             
             # Try using HoloViews directly as a fallback
             try:
-                self.logger.debug("Trying alternative approach with HoloViews")
+                self.logger.info("Trying alternative approach with HoloViews")
                 
                 # Convert xarray DataArray to numpy arrays
                 if hasattr(data2d, 'values'):
@@ -143,6 +167,7 @@ class HvplotXYPlotter(XYPlotter):
                 self.logger.error(f"Error saving plot: {e}")
         else:
             self.logger.warning("No plot to save")
+
     
     def show(self):
         """Display the plot."""

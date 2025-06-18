@@ -38,7 +38,38 @@ class AltairXYPlotter(XYPlotter):
         if 'fill_value' in config.spec_data[field_name]['xyplot']:
             fill_value = config.spec_data[field_name]['xyplot']['fill_value']
             data2d = data2d.where(data2d != fill_value, np.nan)
+
+        if 'fill_value' in config.spec_data[field_name]['xyplot']:
+            fill_value = config.spec_data[field_name]['xyplot']['fill_value']
+            data2d = data2d.where(data2d != fill_value, np.nan)
         
+        # Convert xarray DataArray to pandas DataFrame for Altair
+        df = self._convert_to_dataframe(data2d, x, y)
+        
+        self.logger.debug(f"DataFrame shape: {df.shape}")
+        self.logger.debug(f"DataFrame columns: {df.columns}")
+        
+        if df.empty or 'value' not in df.columns:
+            self.logger.error("DataFrame is empty or missing 'value' column")
+            # Create a simple chart with a message
+            chart = alt.Chart(pd.DataFrame({'x': [0], 'y': [0], 'text': ['No data to display']})).mark_text(
+                align='center',
+                baseline='middle',
+                fontSize=20
+            ).encode(
+                x=alt.X('x:Q', scale=alt.Scale(domain=[-1, 1]), axis=None),
+                y=alt.Y('y:Q', scale=alt.Scale(domain=[-1, 1]), axis=None),
+                text='text:N'
+            ).properties(
+                width=800,
+                height=500,
+                title=field_name
+            )
+            self.plot_object = chart
+            return chart
+        
+        self.logger.debug(f"DataFrame value range: {df['value'].min()} to {df['value'].max()}")
+
         # Get colormap - convert matplotlib colormap to Vega colormap
         cmap = ax_opts.get('use_cmap', 'viridis')
         # Temporary: Map common matplotlib colormaps to Vega schemes
@@ -198,20 +229,36 @@ class AltairXYPlotter(XYPlotter):
             
             # Check if data2d is already a DataFrame
             if isinstance(data2d, pd.DataFrame):
-                return data2d
+                # Make sure it has the expected columns
+                if 'x' in data2d.columns and 'y' in data2d.columns:
+                    if 'value' not in data2d.columns:
+                        # Try to find a value column
+                        value_cols = [col for col in data2d.columns 
+                                    if col not in ['x', 'y']]
+                        if value_cols:
+                            data2d = data2d.rename(columns={value_cols[0]: 'value'})
+                        else:
+                            # Create a dummy value column
+                            data2d['value'] = 0
+                    return data2d
             
             # Get the data values
             data_values = data2d.values if hasattr(data2d, 'values') else data2d
             
             # Print some debug info
-            self.logger.debug(f"X values range: {x_vals.min()} to {x_vals.max()}")
-            self.logger.debug(f"Y values range: {y_vals.min()} to {y_vals.max()}")
+            self.logger.debug(f"X values range: {np.nanmin(x_vals)} to {np.nanmax(x_vals)}")
+            self.logger.debug(f"Y values range: {np.nanmin(y_vals)} to {np.nanmax(y_vals)}")
             self.logger.debug(f"Data values shape: {data_values.shape}")
+            
+            # Check if all values are NaN
+            if np.isnan(data_values).all():
+                self.logger.warning("All values are NaN, creating empty DataFrame")
+                return pd.DataFrame(columns=['x', 'y', 'value'])
+            
             self.logger.debug(f"Data values range: {np.nanmin(data_values)} to {np.nanmax(data_values)}")
             self.logger.debug(f"Data values NaN count: {np.isnan(data_values).sum()}")
             
             # Create a DataFrame directly from the 2D array
-            # This is a different approach that might work better
             rows = []
             for j, y_val in enumerate(y_vals):
                 for i, x_val in enumerate(x_vals):
@@ -223,10 +270,16 @@ class AltairXYPlotter(XYPlotter):
             
             df = pd.DataFrame(rows)
             
+            # If DataFrame is empty, create a minimal one with a single point
+            if df.empty:
+                self.logger.warning("Created empty DataFrame, adding a single point")
+                df = pd.DataFrame([{'x': x_vals[0], 'y': y_vals[0], 'value': 0}])
+            
             # Log the result
             self.logger.debug(f"Created DataFrame with {len(df)} rows")
             
             return df
+
             
         except Exception as e:
             self.logger.error(f"Error converting to DataFrame: {e}")

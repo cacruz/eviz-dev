@@ -232,11 +232,11 @@ class Figure(mfigure.Figure):
             self.gs = gridspec.GridSpec(*self._subplots)
             
         return self
-
-    @staticmethod
-    def create_eviz_figure(config_manager, 
-                           plot_type, 
-                           field_name=None, nrows=None, ncols=None) -> "Figure":
+    
+    @classmethod
+    def create_eviz_figure(cls, config_manager, 
+                        plot_type, 
+                        field_name=None, nrows=None, ncols=None) -> "Figure":
         """
         Factory method to create an eViz Figure instance.
         
@@ -250,6 +250,16 @@ class Figure(mfigure.Figure):
         Returns:
             Figure: An instance of the eViz Figure class
         """
+        # Get rc_params if available
+        if field_name is None:
+            field_name = config_manager.current_field_name
+        
+        rc_params = {}
+        if (config_manager.spec_data and 
+            field_name in config_manager.spec_data and 
+            plot_type + 'plot' in config_manager.spec_data[field_name]):
+            rc_params = config_manager.spec_data[field_name][plot_type + 'plot'].get('rc_params', {})
+        
         # Check if we should use overlay mode for comparison
         use_overlay = False
         if config_manager.compare and field_name:
@@ -270,7 +280,28 @@ class Figure(mfigure.Figure):
                 # For single plots, use 1x1 layout
                 nrows, ncols = 1, 1
         
-        fig = Figure(config_manager, plot_type, nrows=nrows, ncols=ncols)
+        # Create figure with rc_params applied
+        fig = cls(config_manager, plot_type, nrows=nrows, ncols=ncols)
+        
+        # Apply rc_params directly to the figure
+        if rc_params:
+            # Apply figure-specific params
+            for param, value in rc_params.items():
+                if param.startswith('figure.'):
+                    if param == 'figure.facecolor':
+                        fig.patch.set_facecolor(value)
+                    elif param == 'figure.figsize':
+                        if isinstance(value, list) and len(value) == 2:
+                            fig.set_size_inches(value[0], value[1])
+                    elif param == 'figure.dpi':
+                        fig.set_dpi(value)
+                    # Add other figure parameters as needed
+        
+        # Store rc_params in ax_opts for later use with axes
+        if not hasattr(fig, '_ax_opts'):
+            fig._ax_opts = {}
+        fig._ax_opts['rc_params'] = rc_params
+        
         return fig
 
     def create_subplots(self):
@@ -505,7 +536,7 @@ class Figure(mfigure.Figure):
         }
         self._ax_opts = {key: spec.get(key, defaults[key]) for key in defaults}
         
-        # Merge rc_params from YAML if present
+        # Get rc_params from YAML if present
         rc_params_from_yaml = spec.get('rc_params', {})
         rc_keys = set(mpl.rcParams.keys())
         # Filter for valid rcParams
@@ -515,6 +546,33 @@ class Figure(mfigure.Figure):
             self._ax_opts['rc_params'].update(filtered_rc_params)
         else:
             self._ax_opts['rc_params'] = filtered_rc_params        
+        # Store the font size for later use
+        font_size = self._ax_opts['rc_params'].get('font.size', None)
+        title_size = self._ax_opts['rc_params'].get('axes.titlesize', None)
+
+        # Apply axes-specific rc_params directly to axes
+        if self._ax_opts['rc_params']:
+            for ax in self.axes:
+                # Apply font size to tick labels if specified
+                if font_size is not None:
+                    ax.tick_params(axis='both', labelsize=font_size)
+                
+                # Apply title size and location if specified
+                if ax.get_title() and title_size is not None:
+                    ax.title.set_size(title_size)
+                
+                if 'axes.titlelocation' in self._ax_opts['rc_params']:
+                    title_loc = self._ax_opts['rc_params']['axes.titlelocation']
+                    if ax.get_title():
+                        ax.set_title(ax.get_title(), loc=title_loc)
+                
+                # Apply other axes parameters
+                for param, value in self._ax_opts['rc_params'].items():
+                    if param == 'axes.grid':
+                        ax.grid(value)
+                    elif param == 'axes.labelsize':
+                        ax.xaxis.label.set_size(value)
+                        ax.yaxis.label.set_size(value)
 
         return self._ax_opts
 
@@ -635,8 +693,19 @@ class Figure(mfigure.Figure):
 
     def _plot_text(self, field_name, ax, pid, level=None, data=None, **kwargs):
         """Add text to a single axes."""
-        fontsize = kwargs.get('fontsize', pu.subplot_title_font_size(self._subplots))
+        font_size = None
+        title_size = None
+        if hasattr(self, '_ax_opts') and 'rc_params' in self._ax_opts:
+            font_size = self._ax_opts['rc_params'].get('font.size', None)
+            title_size = self._ax_opts['rc_params'].get('axes.titlesize', None)
+        
+        # Use provided font size or fall back to rc_params or default
+        fontsize = kwargs.get('fontsize', font_size or pu.subplot_title_font_size(self._subplots))
+        title_fontsize = title_size or fontsize
         loc = kwargs.get('location', 'left')
+
+        self.logger.info(f"Setting title for {field_name} with size {title_fontsize}")
+        self.logger.info(f"Current title size: {ax.title.get_size()}")
 
         findex = self.config_manager.findex
         sname = self.config_manager.config.map_params[findex]['source_name']
@@ -668,7 +737,7 @@ class Figure(mfigure.Figure):
                 title_string = self._set_axes_title(findex)
             else:  # Default title for comparison
                 title_string = 'Placeholder'
-            ax.set_title(title_string, loc=loc, fontsize=fontsize)
+            ax.set_title(title_string, loc=loc, fontsize=title_fontsize)
             return
 
         # Non-comparison case
@@ -691,7 +760,7 @@ class Figure(mfigure.Figure):
             if self.config_manager.use_history:
                 ax.set_title(self.config_manager.history_expid + " (" + self.config_manager.history_expdsc + ")")
             else:
-                ax.set_title(title_string, loc=loc, fontsize=8)
+                ax.set_title(title_string, loc=loc, fontsize=title_fontsize)
 
             ax.text(0.5 * (left + right), bottom + top + 0.1,
                     name, fontweight='bold',
@@ -713,9 +782,9 @@ class Figure(mfigure.Figure):
                         ha='right', va='bottom', fontsize=10,
                         transform=ax.transAxes)
             if self.config_manager.use_history:
-                ax.set_title(self.config_manager.history_expid + " (" + self.config_manager.history_expdsc + ")", fontsize=10)
+                ax.set_title(self.config_manager.history_expid + " (" + self.config_manager.history_expdsc + ")", fontsize=title_fontsize)
             else:
-                ax.set_title(title_string, loc=loc, fontsize=8)
+                ax.set_title(title_string, loc=loc, fontsize=title_fontsize)
 
             ax.text(0.5 * (left + right), bottom + top + 0.1,
                     name + level_text, 
