@@ -743,15 +743,24 @@ class GenericSource(BaseSource):
         zc_dim = self.config_manager.get_model_dim_name('zc')
 
         d_temp = data_array.copy()
-
         if tc_dim and tc_dim in d_temp.dims:
             num_tc = d_temp[tc_dim].size
-            if isinstance(time_lev, int) and time_lev < num_tc:
-                d_temp = d_temp.isel({tc_dim: time_lev})
+            # Handle negative indices (e.g., -1 for the last time level)
+            if isinstance(time_lev, int):
+                # Convert negative index to positive if needed
+                actual_time_lev = time_lev if time_lev >= 0 else num_tc + time_lev
+                
+                # Check if the index is valid
+                if 0 <= actual_time_lev < num_tc:
+                    d_temp = d_temp.isel({tc_dim: actual_time_lev})
+                    self.logger.debug(f"Selected time level {actual_time_lev} (specified as {time_lev})")
+                else:
+                    self.logger.warning(f"Time level {time_lev} out of range (0-{num_tc-1}), using first time level")
+                    d_temp = d_temp.isel({tc_dim: 0})
             else:
-                d_temp = d_temp.isel({tc_dim: 0})
-        else:
-            self.logger.debug(f"No time dimension found matching {tc_dim}")
+                self.logger.warning(f"No time dimension found matching {tc_dim}")
+
+
 
         has_vertical_dim = zc_dim and zc_dim in d_temp.dims
         if has_vertical_dim:

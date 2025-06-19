@@ -80,5 +80,146 @@ class Crest(GenericSource):
             else:
                 self.logger.warning(f"_process_line_plot not implemented for {handler.__class__.__name__}")
 
-
+    def _process_xy_side_by_side_plots(self, current_field_index, field_name1, field_name2, plot_type, sdat1_dataset, sdat2_dataset):
+        """Process side-by-side comparison plots for xy plot types.
         
+        This method delegates to either the gridded_handler or obs_handler based on the data type.
+        """
+        # Determine if the datasets are observational
+        is_obs1 = self._is_observational_data(sdat1_dataset[field_name1])
+        is_obs2 = self._is_observational_data(sdat2_dataset[field_name2])
+        
+        # If both datasets are the same type, use the appropriate handler
+        if is_obs1 and is_obs2:
+            self.logger.info(f"Processing side-by-side comparison of {field_name1} vs {field_name2} as observational data")
+            return self.obs_handler._process_xy_side_by_side_plots(
+                current_field_index, field_name1, field_name2, plot_type, sdat1_dataset, sdat2_dataset)
+        elif not is_obs1 and not is_obs2:
+            self.logger.info(f"Processing side-by-side comparison of {field_name1} vs {field_name2} as gridded data")
+            return self.gridded_handler._process_xy_side_by_side_plots(
+                current_field_index, field_name1, field_name2, plot_type, sdat1_dataset, sdat2_dataset)
+        else:
+            # Mixed data types - this is more complex
+            self.logger.warning(f"Mixed data types in comparison: {field_name1} is {'observational' if is_obs1 else 'gridded'} "
+                            f"and {field_name2} is {'observational' if is_obs2 else 'gridded'}")
+            
+            # Store the original handlers
+            orig_obs_handler = self.obs_handler
+            orig_gridded_handler = self.gridded_handler
+            
+            # Create temporary handlers for mixed data
+            if is_obs1:
+                # First dataset is observational, second is gridded
+                # Use observational handler but give it access to gridded methods
+                self.obs_handler.file_indices = self.file_indices
+                self.obs_handler.field_names = self.field_names
+                return self.obs_handler._process_xy_side_by_side_plots(
+                    current_field_index, field_name1, field_name2, plot_type, sdat1_dataset, sdat2_dataset)
+            else:
+                # First dataset is gridded, second is observational
+                # Use gridded handler but give it access to observational methods
+                self.gridded_handler.file_indices = self.file_indices
+                self.gridded_handler.field_names = self.field_names
+                return self.gridded_handler._process_xy_side_by_side_plots(
+                    current_field_index, field_name1, field_name2, plot_type, sdat1_dataset, sdat2_dataset)
+
+    def _process_other_side_by_side_plots(self, current_field_index, field_name1, field_name2, plot_type, sdat1_dataset, sdat2_dataset):
+        """Process side-by-side comparison plots for non-xy plot types.
+        
+        This method delegates to either the gridded_handler or obs_handler based on the data type.
+        """
+        # Determine if the datasets are observational
+        is_obs1 = self._is_observational_data(sdat1_dataset[field_name1])
+        is_obs2 = self._is_observational_data(sdat2_dataset[field_name2])
+        
+        # If both datasets are the same type, use the appropriate handler
+        if is_obs1 and is_obs2:
+            self.logger.info(f"Processing side-by-side comparison of {field_name1} vs {field_name2} as observational data")
+            return self.obs_handler._process_other_side_by_side_plots(
+                current_field_index, field_name1, field_name2, plot_type, sdat1_dataset, sdat2_dataset)
+        elif not is_obs1 and not is_obs2:
+            self.logger.info(f"Processing side-by-side comparison of {field_name1} vs {field_name2} as gridded data")
+            return self.gridded_handler._process_other_side_by_side_plots(
+                current_field_index, field_name1, field_name2, plot_type, sdat1_dataset, sdat2_dataset)
+        else:
+            # Mixed data types - this is more complex
+            self.logger.warning(f"Mixed data types in comparison: {field_name1} is {'observational' if is_obs1 else 'gridded'} "
+                            f"and {field_name2} is {'observational' if is_obs2 else 'gridded'}")
+            
+            # Store the original handlers
+            orig_obs_handler = self.obs_handler
+            orig_gridded_handler = self.gridded_handler
+            
+            # Create temporary handlers for mixed data
+            if is_obs1:
+                # First dataset is observational, second is gridded
+                # Use observational handler but give it access to gridded methods
+                self.obs_handler.file_indices = self.file_indices
+                self.obs_handler.field_names = self.field_names
+                return self.obs_handler._process_other_side_by_side_plots(
+                    current_field_index, field_name1, field_name2, plot_type, sdat1_dataset, sdat2_dataset)
+            else:
+                # First dataset is gridded, second is observational
+                # Use gridded handler but give it access to observational methods
+                self.gridded_handler.file_indices = self.file_indices
+                self.gridded_handler.field_names = self.field_names
+                return self.gridded_handler._process_other_side_by_side_plots(
+                    current_field_index, field_name1, field_name2, plot_type, sdat1_dataset, sdat2_dataset)
+
+    def _process_xy_comparison_plots(self, file_indices, current_field_index, field_name1, field_name2, plot_type, sdat1_dataset, sdat2_dataset):
+        """Process comparison plots for xy or polar plot types.
+        
+        This method delegates to either the gridded_handler or obs_handler based on the data type.
+        """
+        # Determine if the datasets are observational
+        is_obs1 = self._is_observational_data(sdat1_dataset[field_name1])
+        is_obs2 = self._is_observational_data(sdat2_dataset[field_name2])
+        
+        # If both datasets are the same type, use the appropriate handler
+        if is_obs1 and is_obs2:
+            self.logger.info(f"Processing comparison of {field_name1} vs {field_name2} as observational data")
+            return self.obs_handler._process_xy_comparison_plots(
+                file_indices, current_field_index, field_name1, field_name2, plot_type, sdat1_dataset, sdat2_dataset)
+        elif not is_obs1 and not is_obs2:
+            self.logger.info(f"Processing comparison of {field_name1} vs {field_name2} as gridded data")
+            return self.gridded_handler._process_xy_comparison_plots(
+                file_indices, current_field_index, field_name1, field_name2, plot_type, sdat1_dataset, sdat2_dataset)
+        else:
+            # Mixed data types - this is more complex
+            self.logger.warning(f"Mixed data types in comparison: {field_name1} is {'observational' if is_obs1 else 'gridded'} "
+                            f"and {field_name2} is {'observational' if is_obs2 else 'gridded'}")
+            
+            # For mixed data types, use the gridded handler as it's generally more flexible
+            self.gridded_handler.field_names = (field_name1, field_name2)
+            return self.gridded_handler._process_xy_comparison_plots(
+                file_indices, current_field_index, field_name1, field_name2, plot_type, sdat1_dataset, sdat2_dataset)
+
+    def _process_other_comparison_plots(self, file_indices, current_field_index, field_name1, field_name2, plot_type, sdat1_dataset, sdat2_dataset):
+        """Process comparison plots for other plot types.
+        
+        This method delegates to either the gridded_handler or obs_handler based on the data type.
+        """
+        # Determine if the datasets are observational
+        is_obs1 = self._is_observational_data(sdat1_dataset[field_name1])
+        is_obs2 = self._is_observational_data(sdat2_dataset[field_name2])
+        
+        # If both datasets are the same type, use the appropriate handler
+        if is_obs1 and is_obs2:
+            self.logger.info(f"Processing comparison of {field_name1} vs {field_name2} as observational data")
+            return self.obs_handler._process_other_comparison_plots(
+                file_indices, current_field_index, field_name1, field_name2, plot_type, sdat1_dataset, sdat2_dataset)
+        elif not is_obs1 and not is_obs2:
+            self.logger.info(f"Processing comparison of {field_name1} vs {field_name2} as gridded data")
+            return self.gridded_handler._process_other_comparison_plots(
+                file_indices, current_field_index, field_name1, field_name2, plot_type, sdat1_dataset, sdat2_dataset)
+        else:
+            # Mixed data types - this is more complex
+            self.logger.warning(f"Mixed data types in comparison: {field_name1} is {'observational' if is_obs1 else 'gridded'} "
+                            f"and {field_name2} is {'observational' if is_obs2 else 'gridded'}")
+            
+            # For mixed data types, use the gridded handler as it's generally more flexible
+            self.gridded_handler.field_names = (field_name1, field_name2)
+            return self.gridded_handler._process_other_comparison_plots(
+                file_indices, current_field_index, field_name1, field_name2, plot_type, sdat1_dataset, sdat2_dataset)
+
+            

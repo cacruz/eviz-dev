@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 import logging
 import warnings
+import matplotlib
 import numpy as np
 import pandas as pd
 import xarray as xr
@@ -44,7 +45,6 @@ class ObsSource(GenericSource):
         Returns:
             list: The geographical extent as [lon_min, lon_max, lat_min, lat_max]
         """
-        # Default extent (global)
         default_extent = [-180, 180, -90, 90]
         
         if data_array is None:
@@ -52,17 +52,14 @@ class ObsSource(GenericSource):
             return default_extent
             
         try:
-            # Try to get coordinate names
             xc_dim = self.config_manager.get_model_dim_name('xc') or 'lon'
             yc_dim = self.config_manager.get_model_dim_name('yc') or 'lat'
             
             # Check if coordinates exist in the DataArray
             if xc_dim in data_array.coords and yc_dim in data_array.coords:
-                # Get coordinate values
                 lon_vals = data_array[xc_dim].values
                 lat_vals = data_array[yc_dim].values
                 
-                # Calculate extent
                 lon_min = np.nanmin(lon_vals)
                 lon_max = np.nanmax(lon_vals)
                 lat_min = np.nanmin(lat_vals)
@@ -84,7 +81,6 @@ class ObsSource(GenericSource):
             
             # If standard coords not found, try alternative approaches
             
-            # Check for bounds attributes
             for attr_name in ['bounds', 'spatial_bounds', 'geospatial_bounds']:
                 if hasattr(data_array, attr_name):
                     bounds = getattr(data_array, attr_name)
@@ -92,7 +88,6 @@ class ObsSource(GenericSource):
                         self.logger.debug(f"Using bounds from {attr_name} attribute: {bounds}")
                         return bounds
             
-            # Check for explicit min/max attributes
             lon_min = getattr(data_array, 'geospatial_lon_min', None)
             lon_max = getattr(data_array, 'geospatial_lon_max', None)
             lat_min = getattr(data_array, 'geospatial_lat_min', None)
@@ -114,10 +109,8 @@ class ObsSource(GenericSource):
                     lat_min, lat_max = np.nanmin(lat_vals), np.nanmax(lat_vals)
             
             if all(var in locals() for var in ['lon_min', 'lon_max', 'lat_min', 'lat_max']):
-                # Add buffer
                 lon_buffer = (lon_max - lon_min) * 0.05
                 lat_buffer = (lat_max - lat_min) * 0.05
-                
                 extent = [
                     lon_min - lon_buffer,
                     lon_max + lon_buffer,
@@ -146,10 +139,8 @@ class ObsSource(GenericSource):
         """
         extent = self.get_data_extent(data_array)
         
-        # Update configuration with the extent
         self.config_manager.ax_opts['extent'] = extent
         
-        # Also set central longitude and latitude for projections
         central_lon = (extent[0] + extent[1]) / 2
         central_lat = (extent[2] + extent[3]) / 2
         self.config_manager.ax_opts['central_lon'] = central_lon
@@ -161,31 +152,6 @@ class ObsSource(GenericSource):
             self.logger.info(f"Applied extent {extent} to configuration")
         
         return extent
-    
-    def _get_xy(self, data_array, level=None, time_lev=None):
-        """
-        Extract XY slice from a DataArray and apply extent information.
-        
-        This method overrides the parent class method to add automatic
-        extent detection for observational data.
-        
-        Args:
-            data_array: The data array to process
-            level: Vertical level to extract
-            time_lev: Time level to extract
-            
-        Returns:
-            xr.DataArray: The processed 2D data array
-        """
-        # Call the parent method to get the 2D slice
-        data2d = super()._get_xy(data_array, level, time_lev)
-        
-        if data2d is not None:
-            # Extract and apply extent if not already set
-            if 'extent' not in self.config_manager.ax_opts:
-                self.apply_extent_to_config(data2d, data_array.name if hasattr(data_array, 'name') else None)
-        
-        return data2d
     
     def _process_xy_plot(self, data_array, field_name, file_index, plot_type, figure):
         """Process an XY plot."""
@@ -218,7 +184,6 @@ class ObsSource(GenericSource):
                 else:
                     data_at_time = data_array.squeeze()  # Assume single time if no time dim
                 
-                # Check if data at this time level is all NaN
                 if np.isnan(data_at_time).all():
                     self.logger.warning(f"Skipping time level {t} for {field_name} - all values are NaN")
                     continue
@@ -298,22 +263,29 @@ class ObsSource(GenericSource):
     def _get_xy(self, data_array, level=None, time_lev=None):
         """
         Extract XY slice from a DataArray and apply extent information.
+        
+        This method overrides the parent class method to add automatic
+        extent detection for observational data.
+        
+        Args:
+            data_array: The data array to process
+            level: Vertical level to extract
+            time_lev: Time level to extract
+            
+        Returns:
+            xr.DataArray: The processed 2D data array
         """
-        # Check if data is all NaN
         if np.isnan(data_array).all():
             self.logger.warning(f"All values are NaN for {data_array.name if hasattr(data_array, 'name') else 'unnamed field'}")
             return None
             
-        # Call the parent method to get the 2D slice
         data2d = super()._get_xy(data_array, level, time_lev)
         
         if data2d is not None:
-            # Check if the result is all NaN
             if np.isnan(data2d).all():
                 self.logger.warning("All values are NaN in the extracted 2D slice")
                 return None
                 
-            # Extract and apply extent if not already set
             if 'extent' not in self.config_manager.ax_opts:
                 self.apply_extent_to_config(data2d, data_array.name if hasattr(data_array, 'name') else None)
         
@@ -323,9 +295,295 @@ class ObsSource(GenericSource):
         """
         Extract XT data.
         """
-        # Call the parent method to get the data
         data2d = super()._get_xt(data_array, time_lev)
                 
         return data2d
 
+    def _process_xy_side_by_side_plots(self, current_field_index, field_name1, field_name2, plot_type, sdat1_dataset, sdat2_dataset):
+        """Process side-by-side comparison plots for xy or polar plot types."""
+        self.data2d_list = []
+
+        num_plots = len(self.config_manager.compare_exp_ids)
+        nrows = 1
+        ncols = num_plots
+
+        levels = self.config_manager.get_levels(field_name1, plot_type + 'plot')
+        if not levels:
+            return
+
+        for level_val in levels:
+            figure = Figure.create_eviz_figure(self.config_manager, plot_type,
+                                            nrows=nrows, ncols=ncols)
+            figure.set_axes()
+
+            self.config_manager.level = level_val
+
+            self.config_manager.is_regional = False  # Observational data is typically regional
+            
+            extent1 = self.get_data_extent(sdat1_dataset[field_name1])
+            extent2 = self.get_data_extent(sdat2_dataset[field_name2])
+            
+            combined_extent = [
+                min(extent1[0], extent2[0]), 
+                max(extent1[1], extent2[1]),
+                min(extent1[2], extent2[2]),
+                max(extent1[3], extent2[3]) 
+            ]
+            
+            self.config_manager.ax_opts['extent'] = combined_extent
+            self.config_manager.ax_opts['central_lon'] = (combined_extent[0] + combined_extent[1]) / 2
+            self.config_manager.ax_opts['central_lat'] = (combined_extent[2] + combined_extent[3]) / 2
+
+            self._create_xy_side_by_side_plot(current_field_index,
+                                            field_name1, field_name2, figure,
+                                            plot_type, sdat1_dataset, sdat2_dataset,
+                                            level_val)
+
+            pu.print_map(self.config_manager, plot_type, self.config_manager.findex, self.plot_result)
+
+        self.data2d_list = []
+
+    def _create_xy_side_by_side_plot(self, current_field_index,
+                                    field_name1, field_name2, figure,
+                                    plot_type, sdat1_dataset, sdat2_dataset, level=None):
+        """
+        Create a side-by-side comparison plot for the given data with a shared colorbar.
+        
+        This method creates multiple plots side by side for comparison. The colorbar
+        handling is delegated to the plotter in the library code.
+        """
+        num_plots = len(self.config_manager.compare_exp_ids)
+        self.comparison_plot = False
+        self.data2d_list = []  # Reset the list
+
+        # Plot first dataset (from a_list)
+        if self.config_manager.a_list:
+            self._process_side_by_side_plot(self.config_manager.a_list[0],
+                                            current_field_index,
+                                            field_name1, figure, 0,
+                                            sdat1_dataset[field_name1], plot_type,
+                                            level=level)
+
+        # Plot remaining datasets (from b_list)
+        for i, file_idx in enumerate(self.config_manager.b_list, start=1):
+            if i < num_plots:  # Only plot if we have a corresponding axis
+                self.logger.debug(f"Plotting dataset {i} to axis {i}")
+                
+                map_params = self.config_manager.map_params.get(file_idx)
+                if not map_params:
+                    continue
+                    
+                filename = map_params.get('filename')
+                if not filename:
+                    continue
+                    
+                data_source = self.config_manager.pipeline.get_data_source(filename)
+                if not data_source or not hasattr(data_source, 'dataset') or data_source.dataset is None:
+                    continue
+                    
+                dataset = data_source.dataset
+                
+                self._process_side_by_side_plot(file_idx,
+                                                current_field_index,
+                                                field_name2, figure, i,
+                                                dataset[field_name2], plot_type,
+                                                level=level)
+
+
+    def _process_side_by_side_plot(self, file_index, current_field_index,
+                                field_name, figure, ax_index, data_array, plot_type,
+                                level=None):
+        """Process a single plot for side-by-side comparison."""
+        self.config_manager.findex = file_index
+        self.config_manager.pindex = current_field_index
+        self.config_manager.axindex = ax_index
+        time_level_config = self.config_manager.ax_opts.get('time_lev', -1)
+
+        # Register the plot type
+        self.register_plot_type(field_name, plot_type)
+
+        # Track which dataset we're currently plotting and how many total
+        if self.config_manager.should_overlay_plots(field_name, plot_type[:2]):
+            if file_index in self.config_manager.a_list:
+                dataset_index = self.config_manager.a_list.index(file_index)
+            elif file_index in self.config_manager.b_list:
+                dataset_index = len(self.config_manager.a_list) + self.config_manager.b_list.index(file_index)
+            else:
+                dataset_index = 0
+                
+            self.config_manager.current_dataset_index = dataset_index
+            self.config_manager.total_datasets = len(self.config_manager.a_list) + len(self.config_manager.b_list)
+        
+        self.config_manager.ax_opts = figure.init_ax_opts(field_name)
+        
+        # Set a flag to use shared colorbar
+        self.config_manager.ax_opts['use_shared_colorbar'] = False
+
+        # Apply extent information for this specific dataset
+        extent = self.get_data_extent(data_array)
+        self.apply_extent_to_config(data_array)
+        
+        field_to_plot = self._get_field_to_plot(data_array, field_name,
+                                                file_index,
+                                                plot_type, figure,
+                                                time_level=time_level_config,
+                                                level=level)
+
+        if field_to_plot and field_to_plot[0] is not None:
+            self.data2d_list.append(field_to_plot[0])
+
+        if field_to_plot:
+            self.plot_result = self.create_plot(field_name, field_to_plot)
+
+    def _process_other_side_by_side_plots(self, current_field_index,
+                                        field_name1, field_name2, plot_type,
+                                        sdat1_dataset, sdat2_dataset):
+        """Process side-by-side comparison plots for other plot types."""
+        nrows, ncols = self.config_manager.input_config._comp_panels
+
+        # Check if we should use overlay mode
+        use_overlay = self.config_manager.should_overlay_plots(field_name1, plot_type[:2])
+        if use_overlay:
+            ncols = 1  # Use a single plot for overlay
+
+        figure = Figure.create_eviz_figure(self.config_manager, plot_type, nrows=nrows,
+                                        ncols=ncols)
+        figure.set_axes()
+        self.config_manager.level = None
+
+        self._create_other_side_by_side_plot(current_field_index,
+                                            field_name1, field_name2, figure,
+                                            plot_type, sdat1_dataset, sdat2_dataset)
+
+        pu.print_map(self.config_manager, plot_type, self.config_manager.findex, self.plot_result)
+
+    def _create_other_side_by_side_plot(self, current_field_index,
+                                    field_name1, field_name2, figure,
+                                    plot_type, sdat1_dataset, sdat2_dataset,
+                                    level=None):
+        """
+        Create a nx1 side-by-side comparison plot for the given data.
+        
+        The layout is:
+        - Left subplot: First dataset
+        - Right subplot: Second dataset
+        - etc... up to nx1
+        """
+        file_index1, file_index2 = self.file_indices
+
+        # Plot the first dataset in the left subplot
+        self.comparison_plot = False
+        self._process_side_by_side_plot(file_index1, current_field_index,
+                                    field_name1,
+                                    figure, 0, sdat1_dataset[field_name1],
+                                    plot_type, level=level)
+        
+        use_overlay = self.config_manager.should_overlay_plots(field_name1, plot_type[:2])
+        if use_overlay:
+            axes_index = 0
+        else:
+            axes_index = 1
+
+        # Plot the second dataset in the right subplot
+        self._process_side_by_side_plot(file_index2, current_field_index,
+                                    field_name2,
+                                    figure, axes_index, sdat2_dataset[field_name2],
+                                    plot_type, level=level)
+
+    def _create_xy_side_by_side_plot2(self, current_field_index,
+                                    field_name1, field_name2, figure,
+                                    plot_type, sdat1_dataset, sdat2_dataset, level=None):
+        """
+        Create a side-by-side comparison plot for the given data with a shared colorbar.
+        
+        This method creates multiple plots side by side for comparison. The colorbar
+        handling is delegated to the plotter in the library code.
+        """
+        num_plots = len(self.config_manager.compare_exp_ids)
+        self.comparison_plot = False
+        self.data2d_list = []  # Reset the list
+        
+        # Adjust subplot positions to make room for colorbar
+        figure.subplots_adjust(right=0.85)  # Leave 15% of figure width for colorbar
+        
+        # Plot first dataset (from a_list)
+        if self.config_manager.a_list:
+            self.logger.debug(f"Plotting first dataset (index 0)")
+            self._process_side_by_side_plot(self.config_manager.a_list[0],
+                                            current_field_index,
+                                            field_name1, figure, 0,
+                                            sdat1_dataset[field_name1], plot_type,
+                                            level=level)
+
+        # Plot remaining datasets (from b_list)
+        for i, file_idx in enumerate(self.config_manager.b_list, start=1):
+            if i < num_plots:  # Only plot if we have a corresponding axis
+                self.logger.debug(f"Plotting dataset {i} to axis {i}")
+                
+                # Get the correct dataset for this file_idx
+                map_params = next((params for idx, params in self.config_manager.map_params.items() 
+                                if params.get('file_index') == file_idx), None)
+                if not map_params:
+                    continue
+                    
+                filename = map_params.get('filename')
+                if not filename:
+                    continue
+                    
+                data_source = self.config_manager.pipeline.get_data_source(filename)
+                if not data_source or not hasattr(data_source, 'dataset') or data_source.dataset is None:
+                    continue
+                    
+                dataset = data_source.dataset
+                
+                # Use the correct dataset for this plot
+                self._process_side_by_side_plot(file_idx,
+                                                current_field_index,
+                                                field_name2, figure, i,
+                                                dataset[field_name2], plot_type,
+                                                level=level)
+        
+        # The shared colorbar is now handled by the plotter in the library code
+        return self.plot_result
+
+    def _process_side_by_side_plot2(self, file_index, current_field_index,
+                                field_name, figure, ax_index, data_array, plot_type,
+                                level=None):
+        """Process a single plot for side-by-side comparison."""
+        self.config_manager.findex = file_index
+        self.config_manager.pindex = current_field_index
+        self.config_manager.axindex = ax_index
+        time_level_config = self.config_manager.ax_opts.get('time_lev', 0)
+
+        # Register the plot type
+        self.register_plot_type(field_name, plot_type)
+
+        # Track which dataset we're currently plotting and how many total
+        if self.config_manager.should_overlay_plots(field_name, plot_type[:2]):
+            if file_index in self.config_manager.a_list:
+                dataset_index = self.config_manager.a_list.index(file_index)
+            elif file_index in self.config_manager.b_list:
+                dataset_index = len(self.config_manager.a_list) + self.config_manager.b_list.index(file_index)
+            else:
+                dataset_index = 0
+                
+            self.config_manager.current_dataset_index = dataset_index
+            self.config_manager.total_datasets = len(self.config_manager.a_list) + len(self.config_manager.b_list)
+        
+        self.config_manager.ax_opts = figure.init_ax_opts(field_name)
+        
+        # Set a flag to use shared colorbar
+        self.config_manager.ax_opts['use_shared_colorbar'] = True
+        
+        field_to_plot = self._get_field_to_plot(data_array, field_name,
+                                                file_index,
+                                                plot_type, figure,
+                                                time_level=time_level_config,
+                                                level=level)
+
+        if field_to_plot and field_to_plot[0] is not None:
+            self.data2d_list.append(field_to_plot[0])
+
+        if field_to_plot:
+            self.plot_result = self.create_plot(field_name, field_to_plot)
 

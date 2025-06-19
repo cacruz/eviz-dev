@@ -841,7 +841,7 @@ class GriddedSource(GenericSource):
         self.config_manager.findex = file_index
         self.config_manager.pindex = current_field_index
         self.config_manager.axindex = ax_index
-        time_level_config = self.config_manager.ax_opts.get('time_lev', 0)
+        time_level_config = self.config_manager.ax_opts.get('time_lev', -1)
 
         # TODO: This is a hack to get the plot type to work with the
         #       side-by-side comparison plots.

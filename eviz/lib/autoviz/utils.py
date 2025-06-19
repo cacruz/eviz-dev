@@ -280,10 +280,11 @@ def print_map(config, plot_type: str, findex: int, fig, level: int = None) -> No
             else:
             # Save with or without bbox_inches depending on extent
                 if config.ax_opts.get('extent'):
-                    fig.savefig(filename, dpi=300)
+                    fig.savefig(filename, bbox_inches='tight', dpi=300)
                 else:
                     fig.savefig(filename, bbox_inches='tight', dpi=300)
-        
+            # After plotting
+
         elif backend == 'altair':
             # For Altair, save as HTML
             if hasattr(fig, 'save'):
