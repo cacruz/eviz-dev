@@ -33,7 +33,7 @@ class MatplotlibXYPlotter(MatplotlibBasePlotter):
         self.fig = fig
         
         # Initialize collections for shared colorbar if in comparison mode
-        if config.compare or config.compare_diff:
+        if config.shared_cbar and (config.compare or config.compare_diff):
             # Use as class attributes for persistence across multiple plots
             if not hasattr(MatplotlibXYPlotter, 'cfilled_objects'):
                 MatplotlibXYPlotter.cfilled_objects = []
@@ -73,14 +73,14 @@ class MatplotlibXYPlotter(MatplotlibBasePlotter):
         cfilled = self._plot_xy_data(config, self.ax, data2d, x, y, field_name, fig, ax_opts, 0, plot_type, findex)
 
         # For comparison plots, collect cfilled objects for shared colorbar
-        if (config.compare or config.compare_diff) and cfilled is not None:
+        if config.shared_cbar and (config.compare or config.compare_diff) and cfilled is not None:
             MatplotlibXYPlotter.cfilled_objects.append(cfilled)
             MatplotlibXYPlotter.axes_list.append(self.ax)
             
             # Check if this is the last plot in the comparison series
             if hasattr(config, 'compare_exp_ids') and len(MatplotlibXYPlotter.cfilled_objects) == len(config.compare_exp_ids):
                 # Adjust subplot positions to make room for colorbar
-                fig.subplots_adjust(right=0.90)
+                fig.subplots_adjust(right=0.85)
                 self.add_shared_colorbar(fig, MatplotlibXYPlotter.cfilled_objects, MatplotlibXYPlotter.axes_list, field_name, config)
                 # Clear the lists for the next plot
                 MatplotlibXYPlotter.cfilled_objects = []
@@ -132,7 +132,7 @@ class MatplotlibXYPlotter(MatplotlibBasePlotter):
                 config._comparison_cbar_limits[field_name] = (vmin, vmax)
 
             # For comparison plots, suppress individual colorbars
-            if config.compare or config.compare_diff:
+            if config.shared_cbar and (config.compare or config.compare_diff):
                 # Don't create individual colorbars when using shared colorbar
                 ax_opts['suppress_colorbar'] = True
             else:

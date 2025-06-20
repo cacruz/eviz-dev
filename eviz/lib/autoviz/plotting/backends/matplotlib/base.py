@@ -270,13 +270,15 @@ class MatplotlibBasePlotter(BasePlotter):
         
         # Create a new axis for the colorbar
         cbar_ax = fig.add_axes([0.88, 0.15, 0.015, 0.7])  # [left, bottom, width, height]
-
-        # Create the shared colorbar
-        cbar = fig.colorbar(cfilled, cax=cbar_ax, 
-                        format=fmt, pad=0.01,
-                        ticks=ax_opts.get('clevs', None))
+        cbar = fig.colorbar(cfilled, cax=cbar_ax,
+                            orientation='vertical',
+                            pad=pu.cbar_pad(fig.subplots),
+                            fraction=pu.cbar_fraction(fig.subplots),
+                            ticks=ax_opts.get('clevs', None),
+                            format=fmt,
+                            shrink=pu.cbar_shrink(fig.subplots))
         
-        # Add scientific notation if requested
+       # Add scientific notation if requested
         if ax_opts['cbar_sci_notation']:
             cbar.ax.text(1.05, -0.05, r'$\times 10^{%d}$' % fmt.oom,
                         transform=cbar.ax.transAxes, va='center', ha='left',

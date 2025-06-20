@@ -1,9 +1,10 @@
-import matplotlib.pyplot as plt
 import numpy as np
 import matplotlib as mpl
 import pandas as pd
 import logging
+from sklearn.metrics import mean_squared_error
 from .base import MatplotlibBasePlotter
+import eviz.lib.autoviz.utils as pu
 
 
 class MatplotlibXTPlotter(MatplotlibBasePlotter):
@@ -103,10 +104,7 @@ class MatplotlibXTPlotter(MatplotlibBasePlotter):
         return fig
     
     def _plot_xt_data(self, config, ax, ax_opts, fig, data2d, field_name, findex):
-        """Helper method that plots the time series (xt) data."""
-        import eviz.lib.autoviz.utils as pu
-        from sklearn.metrics import mean_squared_error
-        
+        """Helper method that plots the time series (xt) data."""        
         with mpl.rc_context(rc=ax_opts.get('rc_params', {})):
             dmin = data2d.min(skipna=True).values
             dmax = data2d.max(skipna=True).values

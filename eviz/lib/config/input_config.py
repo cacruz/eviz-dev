@@ -43,7 +43,8 @@ class InputConfig:
     _subplot_specs: tuple = field(default=(1, 1), init=False)
     _use_cartopy: bool = field(default=False, init=False)
     _plot_backend: str = field(default="matplotlib", init=False)
-
+    _shared_cbar: bool = field(default=False, init=False)
+    
     # @log_method
     def initialize(self):
         """Initialize input configuration."""
@@ -409,6 +410,7 @@ class InputConfig:
         for_inputs = getattr(self.app_data, 'for_inputs', {})
 
         self._compare_exp_ids = []
+        self._overlay_exp_ids = []
         self._extra_diff_plot = False
         self._profile = False
         self._cmap = 'rainbow'
@@ -416,6 +418,7 @@ class InputConfig:
         self._comp_panels = for_inputs.get('comp_panels', (1, 1))
         self._subplot_specs = for_inputs.get('subplot_specs', (1, 1))
         self._plot_backend = for_inputs.get('plot_backend', 'matplotlib')
+        self._shared_cbar = for_inputs.get('shared_cbar', False)
 
         # Parse for_inputs to set _compare and _compare_diff
         self._parse_for_inputs(for_inputs)
@@ -456,10 +459,12 @@ class InputConfig:
 
         self.logger.debug(f"Initialized for_inputs with: "
                           f"backend={self._plot_backend}, "
+                          f"backend={self._shared_cbar}, "
                           f"overlay={self._overlay}, "
                           f"compare={self._compare}, "
                           f"compare_diff={self._compare_diff}, "
                           f"compare_exp_ids={self._compare_exp_ids}, "
+                          f"overlay_exp_ids={self._overlay_exp_ids}, "
                           f"extra_diff_plot={self._extra_diff_plot}, "
                           f"profile={self._profile}, "
                           f"cmap={self._cmap}, "
@@ -522,6 +527,7 @@ class InputConfig:
         self._compare = False
         self._compare_diff = False
         self._compare_exp_ids = []
+        self._overlay_exp_ids = []
 
         if 'overlay' in for_inputs:
             self._overlay = True
@@ -529,6 +535,7 @@ class InputConfig:
 
             if 'ids' in overlay_config:
                 self._overlay_exp_ids = overlay_config['ids'].split(',')
+                self._compare_exp_ids = self._overlay_exp_ids.copy()
 
         if 'compare' in for_inputs:
             self._compare = True

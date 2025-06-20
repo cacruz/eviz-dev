@@ -363,7 +363,6 @@ def print_map(config, plot_type: str, findex: int, fig, level: int = None) -> No
             else:
                 logger.warning(f"Don't know how to display plot of type {type(fig)} with backend {backend}")
     
-    logger.debug("Clearing figure")
 
 
 def legend_font_size(subplots):

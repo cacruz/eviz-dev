@@ -586,6 +586,8 @@ class GenericSource(BaseSource):
                                                          field1, field2,
                                                          plot_type, sdat1_dataset,
                                                          sdat2_dataset)
+                # Important: Reset for next plot
+                self.data2d_list = []
 
             current_field_index += 1
 
@@ -632,7 +634,7 @@ class GenericSource(BaseSource):
                                    'field'] == field2), None)
             if idx1_field is None or idx2_field is None:
                 continue
-
+            
             map1_params = self.config_manager.map_params[idx1_field]
             map2_params = self.config_manager.map_params[idx2_field]
 
@@ -668,10 +670,10 @@ class GenericSource(BaseSource):
             plot_types = map1_params.get('to_plot', ['xy'])
             if isinstance(plot_types, str):
                 plot_types = [pt.strip() for pt in plot_types.split(',')]
-            for plot_type in plot_types:
-                self.data2d_list = []
-                self.logger.info(f"Plotting {field1} vs {field2} , {plot_type} plot")
 
+            for plot_type in plot_types:
+                self.logger.info(f"Plotting {field1}, {plot_type} plot")
+                self.data2d_list = []
                 if 'xy' in plot_type or 'polar' in plot_type:
                     self._process_xy_side_by_side_plots(current_field_index,
                                                         field1, field2,
@@ -682,6 +684,7 @@ class GenericSource(BaseSource):
                                                            field1, field2,
                                                            plot_type, sdat1_dataset,
                                                            sdat2_dataset)
+                self.data2d_list = []
             current_field_index += 1
 
     # DATA SLICE PROCESSING METHODS

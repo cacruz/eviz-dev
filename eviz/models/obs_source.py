@@ -315,7 +315,6 @@ class ObsSource(GenericSource):
             figure = Figure.create_eviz_figure(self.config_manager, plot_type,
                                             nrows=nrows, ncols=ncols)
             figure.set_axes()
-
             self.config_manager.level = level_val
 
             self.config_manager.is_regional = False  # Observational data is typically regional
@@ -416,8 +415,8 @@ class ObsSource(GenericSource):
         
         self.config_manager.ax_opts = figure.init_ax_opts(field_name)
         
-        # Set a flag to use shared colorbar
-        self.config_manager.ax_opts['use_shared_colorbar'] = False
+        # # Set a flag to use shared colorbar
+        # self.config_manager.ax_opts['use_shared_colorbar'] = False
 
         # Apply extent information for this specific dataset
         extent = self.get_data_extent(data_array)
@@ -489,101 +488,4 @@ class ObsSource(GenericSource):
                                     field_name2,
                                     figure, axes_index, sdat2_dataset[field_name2],
                                     plot_type, level=level)
-
-    def _create_xy_side_by_side_plot2(self, current_field_index,
-                                    field_name1, field_name2, figure,
-                                    plot_type, sdat1_dataset, sdat2_dataset, level=None):
-        """
-        Create a side-by-side comparison plot for the given data with a shared colorbar.
-        
-        This method creates multiple plots side by side for comparison. The colorbar
-        handling is delegated to the plotter in the library code.
-        """
-        num_plots = len(self.config_manager.compare_exp_ids)
-        self.comparison_plot = False
-        self.data2d_list = []  # Reset the list
-        
-        # Adjust subplot positions to make room for colorbar
-        figure.subplots_adjust(right=0.85)  # Leave 15% of figure width for colorbar
-        
-        # Plot first dataset (from a_list)
-        if self.config_manager.a_list:
-            self.logger.debug(f"Plotting first dataset (index 0)")
-            self._process_side_by_side_plot(self.config_manager.a_list[0],
-                                            current_field_index,
-                                            field_name1, figure, 0,
-                                            sdat1_dataset[field_name1], plot_type,
-                                            level=level)
-
-        # Plot remaining datasets (from b_list)
-        for i, file_idx in enumerate(self.config_manager.b_list, start=1):
-            if i < num_plots:  # Only plot if we have a corresponding axis
-                self.logger.debug(f"Plotting dataset {i} to axis {i}")
-                
-                # Get the correct dataset for this file_idx
-                map_params = next((params for idx, params in self.config_manager.map_params.items() 
-                                if params.get('file_index') == file_idx), None)
-                if not map_params:
-                    continue
-                    
-                filename = map_params.get('filename')
-                if not filename:
-                    continue
-                    
-                data_source = self.config_manager.pipeline.get_data_source(filename)
-                if not data_source or not hasattr(data_source, 'dataset') or data_source.dataset is None:
-                    continue
-                    
-                dataset = data_source.dataset
-                
-                # Use the correct dataset for this plot
-                self._process_side_by_side_plot(file_idx,
-                                                current_field_index,
-                                                field_name2, figure, i,
-                                                dataset[field_name2], plot_type,
-                                                level=level)
-        
-        # The shared colorbar is now handled by the plotter in the library code
-        return self.plot_result
-
-    def _process_side_by_side_plot2(self, file_index, current_field_index,
-                                field_name, figure, ax_index, data_array, plot_type,
-                                level=None):
-        """Process a single plot for side-by-side comparison."""
-        self.config_manager.findex = file_index
-        self.config_manager.pindex = current_field_index
-        self.config_manager.axindex = ax_index
-        time_level_config = self.config_manager.ax_opts.get('time_lev', 0)
-
-        # Register the plot type
-        self.register_plot_type(field_name, plot_type)
-
-        # Track which dataset we're currently plotting and how many total
-        if self.config_manager.should_overlay_plots(field_name, plot_type[:2]):
-            if file_index in self.config_manager.a_list:
-                dataset_index = self.config_manager.a_list.index(file_index)
-            elif file_index in self.config_manager.b_list:
-                dataset_index = len(self.config_manager.a_list) + self.config_manager.b_list.index(file_index)
-            else:
-                dataset_index = 0
-                
-            self.config_manager.current_dataset_index = dataset_index
-            self.config_manager.total_datasets = len(self.config_manager.a_list) + len(self.config_manager.b_list)
-        
-        self.config_manager.ax_opts = figure.init_ax_opts(field_name)
-        
-        # Set a flag to use shared colorbar
-        self.config_manager.ax_opts['use_shared_colorbar'] = True
-        
-        field_to_plot = self._get_field_to_plot(data_array, field_name,
-                                                file_index,
-                                                plot_type, figure,
-                                                time_level=time_level_config,
-                                                level=level)
-
-        if field_to_plot and field_to_plot[0] is not None:
-            self.data2d_list.append(field_to_plot[0])
-
-        if field_to_plot:
-            self.plot_result = self.create_plot(field_name, field_to_plot)
 
