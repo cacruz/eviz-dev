@@ -80,7 +80,6 @@ class ObsSource(GenericSource):
                 return extent
             
             # If standard coords not found, try alternative approaches
-            
             for attr_name in ['bounds', 'spatial_bounds', 'geospatial_bounds']:
                 if hasattr(data_array, attr_name):
                     bounds = getattr(data_array, attr_name)
@@ -296,8 +295,6 @@ class ObsSource(GenericSource):
 
     def _process_xy_side_by_side_plots(self, current_field_index, field_name1, field_name2, plot_type, sdat1_dataset, sdat2_dataset):
         """Process side-by-side comparison plots for xy or polar plot types."""
-        self.data2d_list = []
-
         num_plots = len(self.config_manager.compare_exp_ids)
         nrows = 1
         ncols = num_plots
@@ -348,11 +345,11 @@ class ObsSource(GenericSource):
         """
         num_plots = len(self.config_manager.compare_exp_ids)
         self.comparison_plot = False
-        self.data2d_list = []  # Reset the list
+        # self.data2d_list = []  # Reset the list
 
         # Plot first dataset (from a_list)
         if self.config_manager.a_list:
-            self._process_side_by_side_plot(self.config_manager.a_list[0],
+            self._process_single_side_by_side_plot(self.config_manager.a_list[0],
                                             current_field_index,
                                             field_name1, figure, 0,
                                             sdat1_dataset[field_name1], plot_type,
@@ -361,8 +358,47 @@ class ObsSource(GenericSource):
         # Plot remaining datasets (from b_list)
         for i, file_idx in enumerate(self.config_manager.b_list, start=1):
             if i < num_plots:  # Only plot if we have a corresponding axis
-                self.logger.debug(f"Plotting dataset {i} to axis {i}")
+                self.logger.debug(f"Plotting dataset {i} to axis {i}")               
+                map_params = self.config_manager.map_params.get(file_idx)
+                filename = map_params.get('filename')
+                data_source = self.config_manager.pipeline.get_data_source(filename)
+                dataset = data_source.dataset
                 
+                self._process_single_side_by_side_plot(file_idx,
+                                                current_field_index,
+                                                field_name2, figure, i,
+                                                dataset[field_name2], plot_type,
+                                                level=level)
+
+    def _process_other_side_by_side_plots(self, current_field_index,
+                                       field_name1, field_name2, plot_type, sdat1_dataset,
+                                       sdat2_dataset):
+        """Process side-by-side comparison plots for xy or polar plot types."""
+        # self.data2d_list = []
+        num_plots = len(self.config_manager.compare_exp_ids)
+        nrows = 1
+        ncols = num_plots
+
+        use_overlay = self.config_manager.should_overlay_plots(field_name1, plot_type[:2])
+        if use_overlay:
+            ncols = 1  # Use a single plot for overlay
+
+
+        figure = Figure.create_eviz_figure(self.config_manager, plot_type,
+                                            nrows=nrows, ncols=ncols)
+        figure.set_axes()
+        self.config_manager.level = None
+
+        # Plot first dataset (from a_list)
+        if self.config_manager.a_list:
+            self._process_single_side_by_side_plot(self.config_manager.a_list[0],
+                                            current_field_index,
+                                            field_name1, figure, 0,
+                                            sdat1_dataset[field_name1], plot_type)
+
+        # Plot remaining datasets (from b_list)
+        for i, file_idx in enumerate(self.config_manager.b_list, start=1):
+            if i < num_plots:  # Only plot if we have a corresponding axis
                 map_params = self.config_manager.map_params.get(file_idx)
                 if not map_params:
                     continue
@@ -370,21 +406,23 @@ class ObsSource(GenericSource):
                 filename = map_params.get('filename')
                 if not filename:
                     continue
-                    
                 data_source = self.config_manager.pipeline.get_data_source(filename)
                 if not data_source or not hasattr(data_source, 'dataset') or data_source.dataset is None:
                     continue
                     
                 dataset = data_source.dataset
                 
-                self._process_side_by_side_plot(file_idx,
+                # Use the correct axis index based on overlay mode
+                axis_index = 0 if use_overlay else i
+                
+                self._process_single_side_by_side_plot(file_idx,
                                                 current_field_index,
-                                                field_name2, figure, i,
-                                                dataset[field_name2], plot_type,
-                                                level=level)
+                                                field_name2, figure, axis_index,
+                                                dataset[field_name2], plot_type)
 
+        pu.print_map(self.config_manager, plot_type, self.config_manager.findex, self.plot_result)
 
-    def _process_side_by_side_plot(self, file_index, current_field_index,
+    def _process_single_side_by_side_plot(self, file_index, current_field_index,
                                 field_name, figure, ax_index, data_array, plot_type,
                                 level=None):
         """Process a single plot for side-by-side comparison."""
@@ -410,11 +448,8 @@ class ObsSource(GenericSource):
         
         self.config_manager.ax_opts = figure.init_ax_opts(field_name)
         
-        # # Set a flag to use shared colorbar
-        # self.config_manager.ax_opts['use_shared_colorbar'] = False
-
         # Apply extent information for this specific dataset
-        extent = self.get_data_extent(data_array)
+        _ = self.get_data_extent(data_array)
         self.apply_extent_to_config(data_array)
         
         field_to_plot = self._get_field_to_plot(data_array, field_name,
@@ -424,63 +459,8 @@ class ObsSource(GenericSource):
                                                 level=level)
 
         if field_to_plot and field_to_plot[0] is not None:
-            self.data2d_list.append(field_to_plot[0])
+            self.data2d_list.append(field_to_plot[file_index])
 
         if field_to_plot:
             self.plot_result = self.create_plot(field_name, field_to_plot)
-
-    def _process_other_side_by_side_plots(self, current_field_index,
-                                        field_name1, field_name2, plot_type,
-                                        sdat1_dataset, sdat2_dataset):
-        """Process side-by-side comparison plots for other plot types."""
-        nrows, ncols = self.config_manager.input_config._comp_panels
-
-        # Check if we should use overlay mode
-        use_overlay = self.config_manager.should_overlay_plots(field_name1, plot_type[:2])
-        if use_overlay:
-            ncols = 1  # Use a single plot for overlay
-
-        figure = Figure.create_eviz_figure(self.config_manager, plot_type, nrows=nrows,
-                                        ncols=ncols)
-        figure.set_axes()
-        self.config_manager.level = None
-
-        self._create_other_side_by_side_plot(current_field_index,
-                                            field_name1, field_name2, figure,
-                                            plot_type, sdat1_dataset, sdat2_dataset)
-
-        pu.print_map(self.config_manager, plot_type, self.config_manager.findex, self.plot_result)
-
-    def _create_other_side_by_side_plot(self, current_field_index,
-                                    field_name1, field_name2, figure,
-                                    plot_type, sdat1_dataset, sdat2_dataset,
-                                    level=None):
-        """
-        Create a nx1 side-by-side comparison plot for the given data.
-        
-        The layout is:
-        - Left subplot: First dataset
-        - Right subplot: Second dataset
-        - etc... up to nx1
-        """
-        file_index1, file_index2 = self.file_indices
-
-        # Plot the first dataset in the left subplot
-        self.comparison_plot = False
-        self._process_side_by_side_plot(file_index1, current_field_index,
-                                    field_name1,
-                                    figure, 0, sdat1_dataset[field_name1],
-                                    plot_type, level=level)
-        
-        use_overlay = self.config_manager.should_overlay_plots(field_name1, plot_type[:2])
-        if use_overlay:
-            axes_index = 0
-        else:
-            axes_index = 1
-
-        # Plot the second dataset in the right subplot
-        self._process_side_by_side_plot(file_index2, current_field_index,
-                                    field_name2,
-                                    figure, axes_index, sdat2_dataset[field_name2],
-                                    plot_type, level=level)
 

@@ -48,6 +48,7 @@ class GenericSource(BaseSource):
         self.output_fname = None
         self.ax = None
         self.fig = None
+        self.data2d_list = []
 
         if self.use_mp_pool:
             # Set to avoid establishing a GUI in each sub-process:
@@ -494,6 +495,7 @@ class GenericSource(BaseSource):
         """
         self.logger.info("Generating comparison plots")
         current_field_index = 0
+        self.data2d_list = []
 
         all_data_sources = self.config_manager.pipeline.get_all_data_sources()
         if not all_data_sources:
@@ -575,7 +577,6 @@ class GenericSource(BaseSource):
                 plot_types = [pt.strip() for pt in plot_types.split(',')]
             for plot_type in plot_types:
                 self.logger.info(f"Plotting {field1} vs {field2}, {plot_type} plot")
-                self.data2d_list = []  # Reset for each plot type
 
                 if 'xy' in plot_type or 'po' in plot_type or 'polar' in plot_type:
                     self._process_xy_comparison_plots(file_indices,
@@ -636,7 +637,7 @@ class GenericSource(BaseSource):
                                    'field'] == field2), None)
             if idx1_field is None or idx2_field is None:
                 continue
-            
+
             self.config_manager.current_field_name = field1
             
             map1_params = self.config_manager.map_params[idx1_field]

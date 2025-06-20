@@ -614,7 +614,6 @@ class GriddedSource(GenericSource):
             else:
                 self.logger.error("Not enough data for difference plot")
                 field_to_plot = None
-            # Important: Reset for next plot
             # self.data2d_list = []
         else:
             # For the first two panels, plot as usual and store data for diff
@@ -624,8 +623,7 @@ class GriddedSource(GenericSource):
                                                             time_level=time_level_config,
                                                             level=level)
             if field_to_plot:
-                self.data2d_list.append(field_to_plot[0])
-
+                self.data2d_list.append(field_to_plot[file_index])
         if field_to_plot:
             self.plot_result = self.create_plot(field_name, field_to_plot)
 
@@ -662,12 +660,7 @@ class GriddedSource(GenericSource):
                 data2d1, data2d2 = self.data2d_list
                 proc = self.processor
                 dim1_name, dim2_name = self.config_manager.get_dim_names(plot_type)
-                
-                self.logger.debug(
-                    f"Regridding {field_name} over {dim1_name} and {dim2_name} for difference plot")
-                self.logger.debug(f"data2d1 shape: {data2d1.shape}, dims: {data2d1.dims}")
-                self.logger.debug(f"data2d2 shape: {data2d2.shape}, dims: {data2d2.dims}")
-                
+                                
                 try:
                     # Regrid data2d2 to match data2d1's grid
                     d2_on_d1 = proc.regrid(data2d1, data2d2, dims=(dim1_name, dim2_name))
@@ -784,12 +777,10 @@ class GriddedSource(GenericSource):
                                        field_name1, field_name2, plot_type, sdat1_dataset,
                                        sdat2_dataset):
         """Process side-by-side comparison plots for xy or polar plot types."""
-        # self.data2d_list = []
         num_plots = len(self.config_manager.compare_exp_ids)
         nrows = 1
         ncols = num_plots
 
-        # Check if we should use overlay mode
         use_overlay = self.config_manager.should_overlay_plots(field_name1, plot_type[:2])
         if use_overlay:
             ncols = 1  # Use a single plot for overlay
