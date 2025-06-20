@@ -145,12 +145,7 @@ class ObsSource(GenericSource):
         central_lat = (extent[2] + extent[3]) / 2
         self.config_manager.ax_opts['central_lon'] = central_lon
         self.config_manager.ax_opts['central_lat'] = central_lat
-        
-        if field_name:
-            self.logger.info(f"Applied extent {extent} to field {field_name}")
-        else:
-            self.logger.info(f"Applied extent {extent} to configuration")
-        
+                
         return extent
     
     def _process_xy_plot(self, data_array, field_name, file_index, plot_type, figure):

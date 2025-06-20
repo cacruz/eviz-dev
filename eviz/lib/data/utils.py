@@ -54,8 +54,8 @@ def apply_conversion(config, data2d, name):
                 try:
                     data2d = config.units.convert(data2d, name, config.spec_data[name]['units'])
                 except Exception as e:
-                    logger.error(f"Error converting units for {name}: {e}")
-                    logger.warning(f"Returning original data for {name} without unit conversion")
+                    logger.debug(f"Error converting units for {name}: {e}")
+                    logger.debug(f"Returning original data for {name} without unit conversion")
             else:
                 logger.warning(f"No units module found in config for {name}")
     else:

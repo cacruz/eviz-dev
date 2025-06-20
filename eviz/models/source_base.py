@@ -535,6 +535,8 @@ class GenericSource(BaseSource):
             if idx1_field is None or idx2_field is None:
                 continue
 
+            self.config_manager.current_field_name = field1
+
             map1_params = self.config_manager.map_params[idx1_field]
             map2_params = self.config_manager.map_params[idx2_field]
 
@@ -634,6 +636,8 @@ class GenericSource(BaseSource):
                                    'field'] == field2), None)
             if idx1_field is None or idx2_field is None:
                 continue
+            
+            self.config_manager.current_field_name = field1
             
             map1_params = self.config_manager.map_params[idx1_field]
             map2_params = self.config_manager.map_params[idx2_field]
