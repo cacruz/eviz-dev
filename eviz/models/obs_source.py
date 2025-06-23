@@ -567,3 +567,108 @@ class ObsSource(GenericSource):
         if field_to_plot:
             self.plot_result = self.create_plot(field_name, field_to_plot)
 
+    def _process_pearson_plot(self, data_array, field_name, file_index, plot_type, figure):
+        """Process a Pearson correlation plot for observational data."""
+        self.config_manager.level = None
+        time_level_config = self.config_manager.ax_opts.get('time_lev', 0)
+        tc_dim = self.config_manager.get_model_dim_name('tc') or 'time'
+
+        pearson_settings = {}
+        if hasattr(self.config_manager, 'input_config') and hasattr(self.config_manager.input_config, '_pearsonplot'):
+            pearson_settings = self.config_manager.input_config._pearsonplot
+            self.logger.debug(f"Found pearsonplot settings: {pearson_settings}")
+        else:
+            self.logger.debug("No pearsonplot settings found in input_config")
+        
+        # Determine correlation type (time or space)
+        do_time_corr = pearson_settings.get('time_corr', True)
+        do_space_corr = pearson_settings.get('space_corr', False)
+        
+        if do_time_corr:
+            time_level_config = 'all'
+            self.logger.debug("Using all time points for time correlation")
+        
+        # Get the fields to correlate
+        fields_str = pearson_settings.get('fields', '')
+        corr_fields = [f.strip() for f in fields_str.split(',') if f.strip()]
+        self.logger.debug(f"Correlation fields from config: {corr_fields}")
+        
+        # Find the reference field (the other field in the correlation pair)
+        reference_field = None
+        if len(corr_fields) == 2:
+            if corr_fields[0] == field_name:
+                reference_field = corr_fields[1]
+            elif corr_fields[1] == field_name:
+                reference_field = corr_fields[0]
+            self.logger.debug(f"Selected reference field: {reference_field}")
+        
+        # If no reference field found in global settings, try to get from ax_opts
+        if not reference_field:
+            reference_field = self.config_manager.ax_opts.get('reference_field')
+            self.logger.debug(f"Using reference field from ax_opts: {reference_field}")
+        
+        if not reference_field:
+            self.logger.error("No reference field specified for Pearson correlation plot")
+            return
+        
+        reference_data = None
+        if hasattr(self.config_manager, 'pipeline'):
+            all_data_sources = self.config_manager.pipeline.get_all_data_sources()
+            for source_name, data_source in all_data_sources.items():
+                if hasattr(data_source, 'dataset') and reference_field in data_source.dataset:
+                    reference_data = data_source.dataset[reference_field]
+                    self.logger.debug(f"Found reference field '{reference_field}' in data source '{source_name}'")
+                    break
+            
+            if reference_data is None:
+                try:
+                    reference_data = self.config_manager.pipeline.get_variable(reference_field)
+                    if reference_data is not None:
+                        self.logger.debug(f"Found reference field '{reference_field}' using get_variable")
+                except (AttributeError, KeyError) as e:
+                    self.logger.debug(f"Could not get reference field using get_variable: {e}")
+                    
+            if reference_data is None:
+                try:
+                    all_vars = self.config_manager.pipeline.get_all_variables()
+                    if reference_field in all_vars:
+                        reference_data = all_vars[reference_field]
+                        self.logger.debug(f"Found reference field '{reference_field}' in all variables")
+                except (AttributeError, KeyError) as e:
+                    self.logger.debug(f"Could not get reference field from all variables: {e}")
+        
+        if reference_data is None:
+            self.logger.error(f"Reference field '{reference_field}' not found in any data source")
+            return
+        
+        # For observational data, extract and apply extent information
+        extent = self.get_data_extent(data_array)
+        self.config_manager.ax_opts['extent'] = extent
+        self.config_manager.ax_opts['central_lon'] = (extent[0] + extent[1]) / 2
+        self.config_manager.ax_opts['central_lat'] = (extent[2] + extent[3]) / 2
+        
+        # Prepare both datasets
+        field_to_plot = self._prepare_field_to_plot(data_array, 
+                                                field_name, 
+                                                file_index, 
+                                                plot_type, 
+                                                figure,
+                                                time_level=time_level_config)
+                                                
+        reference_to_plot = self._prepare_field_to_plot(reference_data, 
+                                                    reference_field, 
+                                                    file_index, 
+                                                    plot_type, 
+                                                    figure,
+                                                    time_level=time_level_config)
+                                                    
+        if field_to_plot and reference_to_plot:
+            data_tuple = (field_to_plot[0], reference_to_plot[0])
+            
+            correlation_to_plot = (data_tuple,) + field_to_plot[1:]
+            
+            plot_result = self.create_plot(field_name, correlation_to_plot)
+            pu.print_map(self.config_manager, 
+                        plot_type, 
+                        self.config_manager.findex, 
+                        plot_result)

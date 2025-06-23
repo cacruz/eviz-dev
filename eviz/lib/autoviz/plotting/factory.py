@@ -9,6 +9,7 @@ from .backends.hvplot.xt_plot import HvplotXTPlotter
 from .backends.hvplot.scatter_plot import HvplotScatterPlotter
 from .backends.hvplot.box_plot import HvplotBoxPlotter
 from .backends.hvplot.line_plot import HvplotLinePlotter
+from .backends.hvplot.metric_plot import HvplotMetricPlotter
 from .backends.altair.xy_plot import AltairXYPlotter
 from .backends.altair.xt_plot import AltairXTPlotter
 from .backends.altair.scatter_plot import AltairScatterPlotter
@@ -44,6 +45,7 @@ class PlotterFactory:
             ("sc", "hvplot"): HvplotScatterPlotter,
             ("box", "hvplot"): HvplotBoxPlotter,
             ("line", "hvplot"): HvplotLinePlotter,
+            ("pearson", "hvplot"): HvplotMetricPlotter,
             ("xy", "altair"): AltairXYPlotter,
             ("xt", "altair"): AltairXTPlotter,
             ("sc", "altair"): AltairScatterPlotter,

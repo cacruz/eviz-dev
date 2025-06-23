@@ -78,6 +78,11 @@ class Crest(GenericSource):
                 handler._process_line_plot(data_array, field_name, file_index, plot_type, figure)
             else:
                 self.logger.warning(f"_process_line_plot not implemented for {handler.__class__.__name__}")
+        elif plot_type == 'pearson':
+            if hasattr(handler, '_process_pearson_plot'):
+                handler._process_pearson_plot(data_array, field_name, file_index, plot_type, figure)
+            else:
+                self.logger.warning(f"_process_pearson_plot not implemented for {handler.__class__.__name__}")
 
     def _process_xy_side_by_side_plots(self, current_field_index, field_name1, field_name2, plot_type, sdat1_dataset, sdat2_dataset):
         """Process side-by-side comparison plots for xy plot types.

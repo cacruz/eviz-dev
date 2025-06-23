@@ -43,7 +43,8 @@ class InputConfig:
     _subplot_specs: tuple = field(default=(1, 1), init=False)
     _use_cartopy: bool = field(default=False, init=False)
     _plot_backend: str = field(default="matplotlib", init=False)
-    _shared_cbar: bool = field(default=False, init=False)
+    _pearsonplot: Dict[str, str] = field(default_factory=dict)
+    _plot_backend: str = field(default="matplotlib", init=False)
     
     # @log_method
     def initialize(self):
@@ -418,6 +419,7 @@ class InputConfig:
         self._comp_panels = for_inputs.get('comp_panels', (1, 1))
         self._subplot_specs = for_inputs.get('subplot_specs', (1, 1))
         self._plot_backend = for_inputs.get('plot_backend', 'matplotlib')
+        self._pearsonplot = for_inputs.get('pearsonplot', {})
         self._shared_cbar = for_inputs.get('shared_cbar', False)
 
         # Parse for_inputs to set _compare and _compare_diff
@@ -458,8 +460,9 @@ class InputConfig:
             self._set_trop_height_file_list()  # Custom method for trop_height logic
 
         self.logger.debug(f"Initialized for_inputs with: "
+                          f"pearsonplot={self._pearsonplot}, "
                           f"backend={self._plot_backend}, "
-                          f"backend={self._shared_cbar}, "
+                          f"shared_cbar={self._shared_cbar}, "
                           f"overlay={self._overlay}, "
                           f"compare={self._compare}, "
                           f"compare_diff={self._compare_diff}, "

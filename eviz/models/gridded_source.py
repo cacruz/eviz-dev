@@ -882,8 +882,12 @@ class GriddedSource(GenericSource):
         if field_to_plot:
             self.plot_result = self.create_plot(field_name, field_to_plot)
 
-    def _process_xy_side_by_side_plots(self, current_field_index,
-                                       field_name1, field_name2, plot_type, sdat1_dataset,
+    def _process_xy_side_by_side_plots(self, 
+                                       current_field_index,
+                                       field_name1, 
+                                       field_name2, 
+                                       plot_type, 
+                                       sdat1_dataset,
                                        sdat2_dataset):
         """Process side-by-side comparison plots for xy or polar plot types."""
         num_plots = len(self.config_manager.compare_exp_ids)
@@ -1081,4 +1085,3 @@ class GriddedSource(GenericSource):
             self.data2d_list.append(field_to_plot[0])
         if field_to_plot:
             self.plot_result = self.create_plot(field_name, field_to_plot)
-

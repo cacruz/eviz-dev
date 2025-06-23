@@ -606,6 +606,11 @@ class ConfigManager:
         return self.input_config._shared_cbar
 
     @property
+    def pearsonplot(self):
+        """The pearsonplot options to use."""
+        return self.input_config._pearsonplot
+
+    @property
     def plot_backend(self):
         """The backend to use for plotting."""
         return self.input_config._plot_backend

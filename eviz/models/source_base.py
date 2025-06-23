@@ -123,8 +123,22 @@ class GenericSource(BaseSource):
                 self.process_comparison_plots()
             elif self.config_manager.overlay:
                 self.process_side_by_side_plots()
+            elif self.config_manager.pearsonplot:
+                self.process_pearson_plots()
             else:
-                self.process_single_plots()
+                has_pearson = False
+                for idx, params in self.config_manager.map_params.items():
+                    plot_types = params.get('to_plot', ['xy'])
+                    if isinstance(plot_types, str):
+                        plot_types = [pt.strip() for pt in plot_types.split(',')]
+                    if 'pearson' in plot_types:
+                        has_pearson = True
+                        break
+                
+                if has_pearson:
+                    self.process_pearson_plots()
+                else:
+                    self.process_single_plots()
 
         if self.config_manager.print_to_file:
             output_dirs = []
@@ -218,7 +232,7 @@ class GenericSource(BaseSource):
             if hasattr(self, '_process_polar_plot'):
                 self._process_polar_plot(data_array, field_name, file_index, plot_type, figure)
             else:
-                self.logger.warning(f"_process_xy_plot not implemented for {self.__class__.__name__}")
+                self.logger.warning(f"_process_polar_plot not implemented for {self.__class__.__name__}")
         elif plot_type == 'xt':
             if hasattr(self, '_process_xt_plot'):
                 self._process_xt_plot(data_array, field_name, file_index, plot_type, figure)
@@ -234,6 +248,11 @@ class GenericSource(BaseSource):
                 self._process_scatter_plot(data_array, field_name, file_index, plot_type, figure)
             else:
                 self.logger.warning(f"_process_scatter_plot not implemented for {self.__class__.__name__}")
+        elif plot_type == 'pearson':
+            if hasattr(self, '_process_pearson_plot'):
+                self._process_pearson_plot(data_array, field_name, file_index, plot_type, figure)
+            else:
+                self.logger.warning(f"_process_pearson_plot not implemented for {self.__class__.__name__}")
         else:
             if hasattr(self, '_process_other_plot'):
                 self._process_other_plot(data_array, field_name, file_index, plot_type, figure)
@@ -327,6 +346,8 @@ class GenericSource(BaseSource):
             data2d = self._extract_line_data(data_array, level=level, time_lev=time_level)
         elif 'box' in plot_type:
             data2d = self._extract_box_data(data_array, time_lev=time_level)
+        elif 'pearson' in plot_type:
+            data2d = self._extract_pearson_data(data_array, level=level, time_lev=time_level)
         else:
             self.logger.warning(
                 f"Unsupported plot type: {plot_type}")
@@ -460,7 +481,6 @@ class GenericSource(BaseSource):
             self.config_manager.findex = self.config_manager.get_file_index_by_filename(filename)
 
             data_source = self.config_manager.pipeline.get_data_source(filename)
-            # print(data_source)
             if not data_source:
                 self.logger.warning(f"No data source found in pipeline for {filename}")
                 continue
@@ -491,6 +511,7 @@ class GenericSource(BaseSource):
 
         if self.config_manager.make_gif:
             pu.create_gif(self.config_manager)
+
 
     def process_comparison_plots(self):
         """Generate comparison plots for paired data sources according to configuration.
@@ -691,6 +712,13 @@ class GenericSource(BaseSource):
                                                         plot_type,
                                                         sdat1_dataset, 
                                                         sdat2_dataset)
+                elif 'pearson' in plot_type:
+                    self._process_pearson_plots(current_field_index,
+                                                        field1, 
+                                                        field2,
+                                                        plot_type,
+                                                        sdat1_dataset, 
+                                                        sdat2_dataset)
                 else:
                     self._process_other_side_by_side_plots(current_field_index,
                                                            field1, 
@@ -700,6 +728,99 @@ class GenericSource(BaseSource):
                                                            sdat2_dataset)
                 self.data2d_list = []
             current_field_index += 1
+
+    def process_pearson_plots(self):
+        """Generate Pearson correlation plots."""
+        self.logger.info("Generating pearson correlation plots")
+
+        if not self.config_manager.map_params:
+            self.logger.error(
+                "No map_params available for plotting. Check your YAML configuration.")
+            return
+
+        all_data_sources = self.config_manager.pipeline.get_all_data_sources()
+        if not all_data_sources:
+            self.logger.error(
+                "No data sources available. Check your YAML configuration and ensure data files exist.")
+            return
+
+        # Get pearson plot settings from for_inputs
+        pearson_settings = {}
+        if hasattr(self.config_manager, 'input_config') and hasattr(self.config_manager.input_config, '_pearsonplot'):
+            pearson_settings = self.config_manager.input_config._pearsonplot
+            self.logger.debug(f"Found pearsonplot settings: {pearson_settings}")
+        else:
+            self.logger.debug("No pearsonplot settings found in input_config")
+        
+        # Get the fields to correlate
+        fields_str = pearson_settings.get('fields', '')
+        corr_fields = [f.strip() for f in fields_str.split(',') if f.strip()]
+        
+        if len(corr_fields) != 2:
+            self.logger.error(f"Expected exactly 2 fields for correlation, got {len(corr_fields)}: {corr_fields}")
+            return
+        
+        # Track which field pairs we've already processed
+        processed_pairs = set()
+        
+        # Process each field in the map_params
+        for idx, params in self.config_manager.map_params.items():
+            field_name = params.get('field')
+            if not field_name:
+                continue
+                
+            # Skip fields not in our correlation pair
+            if field_name not in corr_fields:
+                self.logger.debug(f"Skipping field {field_name} as it's not in the correlation fields: {corr_fields}")
+                continue
+            
+            # Find the reference field (the other field in the correlation pair)
+            reference_field = None
+            if field_name == corr_fields[0]:
+                reference_field = corr_fields[1]
+            else:
+                reference_field = corr_fields[0]
+            
+            # Create a unique identifier for this field pair (sorted to ensure consistency)
+            pair_id = tuple(sorted([field_name, reference_field]))
+            
+            # Skip if we've already processed this pair
+            if pair_id in processed_pairs:
+                self.logger.debug(f"Skipping duplicate correlation for pair: {pair_id}")
+                continue
+            
+            # Mark this pair as processed
+            processed_pairs.add(pair_id)
+                
+            self.config_manager.current_field_name = field_name
+            
+            filename = params.get('filename')
+            self.config_manager.findex = self.config_manager.get_file_index_by_filename(filename)
+            
+            data_source = self.config_manager.pipeline.get_data_source(filename)
+            if not data_source:
+                self.logger.warning(f"No data source found in pipeline for {filename}")
+                continue
+                
+            if hasattr(data_source, 'dataset') and data_source.dataset is not None:
+                field_data = data_source.dataset.get(field_name)
+            else:
+                field_data = None
+                
+            if field_data is None:
+                self.logger.warning(f"Field {field_name} not found in data source for {filename}")
+                continue
+                
+            field_data_array = data_source.dataset[field_name]
+            plot_types = params.get('to_plot', ['pearson'])
+            
+            if isinstance(plot_types, str):
+                plot_types = [pt.strip() for pt in plot_types.split(',')]
+                
+            for plot_type in plot_types:
+                if plot_type == 'pearson':
+                    self.logger.info(f"Plotting {field_name}, {plot_type} plot")
+                    self.process_plot(field_data_array, field_name, idx, plot_type)
 
     # DATA SLICE PROCESSING METHODS
     def _extract_yz_data(self, data_array, time_lev):
@@ -1552,3 +1673,87 @@ class GenericSource(BaseSource):
         else:
             return data2d
 
+    def _extract_pearson_data(self, data_array, level=None, time_lev=None):
+        """ Extract data for a Pearson correlation plot
+        
+        This method prepares data for Pearson correlation analysis by extracting
+        the appropriate slice of data based on level and time specifications.
+        
+        Args:
+            data_array: The xarray DataArray to process
+            level: Vertical level to extract (optional)
+            time_lev: Time level to extract (optional)
+            
+        Returns:
+            xarray.DataArray: The processed data array ready for correlation analysis
+        """
+        if data_array is None:
+            return None
+
+        # Check if we have global pearson plot settings in for_inputs
+        pearson_settings = {}
+        if hasattr(self.config_manager, 'input_config') and hasattr(self.config_manager.input_config, '_pearsonplot'):
+            pearson_settings = self.config_manager.input_config._pearsonplot
+        
+        # Determine correlation type (time or space)
+        do_time_corr = pearson_settings.get('time_corr', True)
+        
+        # For correlation analysis, we typically want to preserve the time dimension
+        # if it exists, as we'll correlate across time at each grid point
+        tc_dim = self.config_manager.get_model_dim_name('tc') or 'time'
+        zc_dim = self.config_manager.get_model_dim_name('zc') or 'lev'
+        
+        d_temp = data_array.copy()
+        
+        # Handle vertical level selection if specified
+        has_vertical_dim = zc_dim and zc_dim in d_temp.dims
+        if has_vertical_dim:
+            if level is not None:
+                try:
+                    # First try exact matching
+                    if level in d_temp[zc_dim].values:
+                        lev_idx = np.where(d_temp[zc_dim].values == level)[0][0]
+                        d_temp = d_temp.isel({zc_dim: lev_idx})
+                        self.logger.debug(f"Selected exact level {level} at index {lev_idx}")
+                    else:
+                        # Try nearest neighbor
+                        lev_idx = np.abs(d_temp[zc_dim].values - level).argmin()
+                        self.logger.debug(f"Level {level} not found exactly, using nearest level {d_temp[zc_dim].values[lev_idx]}")
+                        d_temp = d_temp.isel({zc_dim: lev_idx})
+                except Exception as e:
+                    self.logger.error(f"Error selecting level {level}: {e}")
+                    if d_temp[zc_dim].size > 0:
+                        d_temp = d_temp.isel({zc_dim: 0})
+            else:
+                # No level specified, use the first level
+                if d_temp[zc_dim].size > 0:
+                    d_temp = d_temp.isel({zc_dim: 0})
+                    self.logger.debug("No level specified, using first level")
+        
+        # For time correlation, we want to keep the time dimension
+        # For spatial correlation, we select a specific time point
+        if tc_dim in d_temp.dims:
+            if do_time_corr:
+                # Keep all time points for time correlation
+                self.logger.debug("Keeping all time points for time correlation")
+                # No need to select a specific time level
+            elif time_lev != 'all' and isinstance(time_lev, (int, np.integer)):
+                # For spatial correlation, select a specific time point
+                num_tc = d_temp[tc_dim].size
+                # Convert negative index to positive if needed
+                actual_time_lev = time_lev if time_lev >= 0 else num_tc + time_lev
+                
+                if 0 <= actual_time_lev < num_tc:
+                    d_temp = d_temp.isel({tc_dim: actual_time_lev})
+                    self.logger.debug(f"Selected time level {actual_time_lev} (specified as {time_lev}) for spatial correlation")
+                else:
+                    self.logger.warning(f"Time level {time_lev} out of range (0-{num_tc-1}), using first time level")
+                    d_temp = d_temp.isel({tc_dim: 0})
+        
+        # Apply any necessary conversions
+        data2d = apply_conversion(self.config_manager, d_temp, data_array.name)
+        
+        if np.isnan(data2d.values).all():
+            self.logger.warning(f"All values are NaN for {data_array.name if hasattr(data_array, 'name') else 'unnamed field'}")
+        
+        return data2d
