@@ -24,15 +24,16 @@ class HvplotBoxPlotter(BoxPlotter):
         
         Args:
             config: Configuration manager
-            data_to_plot: Tuple containing (data, categories, values, field_name, plot_type, findex, fig)
+            data_to_plot: Tuple containing (data, categories, values, field_name,
+                          plot_type, findex, fig)
         
         Returns:
             The created HvPlot object
 
         Notes:
 
-            * Each box summarizes the distribution of data_to_plot values across the entire 
-              spatial grid (all lat/lon points) at that time.
+            * Each box summarizes the distribution of data_to_plot values across the
+              entire spatial grid (all lat/lon points) at that time.
             * For each datetime, the boxplot shows:
                 * Median: Middle value of data over all grid cells
                 * Interquartile Range (IQR):

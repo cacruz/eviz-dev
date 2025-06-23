@@ -81,13 +81,15 @@ class PolarPlotter(BasePlotter):
         """Create a polar plot from the given data."""
         pass
 
+
 class BoxPlotter(BasePlotter):
     """Base class for box plotters."""
-    
+
     @abstractmethod
     def plot(self, config, data_to_plot):
         """Create a box plot from the given data."""
         pass
+
 
 class LinePlotter(BasePlotter):
     """Base class for line plotters."""
@@ -96,6 +98,7 @@ class LinePlotter(BasePlotter):
     def plot(self, config, data_to_plot):
         """Create a line plot from the given data."""
         pass
+
 
 class HistPlotter(BasePlotter):
     """Base class for histogram plotters."""

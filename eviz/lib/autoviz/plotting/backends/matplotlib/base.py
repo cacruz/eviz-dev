@@ -24,7 +24,8 @@ class MatplotlibBasePlotter(BasePlotter):
         self.ax = None
         self.logger = logging.getLogger(self.__class__.__name__)
 
-    def filled_contours(self, config, field_name, ax, x, y, data2d, transform=None, vmin=None, vmax=None):
+    def filled_contours(self, config, field_name, ax, x, y, data2d,
+                        transform=None, vmin=None, vmax=None):
         """Plot filled contours."""
         # Check if data is all NaN
         if np.isnan(data2d).all():
@@ -91,7 +92,8 @@ class MatplotlibBasePlotter(BasePlotter):
         
         # Check if data is all NaN
         if np.isnan(data2d).all():
-            self.logger.warning(f"All values are NaN for {field_name}. Cannot create contour levels.")
+            self.logger.warning(f"All values are NaN for {field_name}. Cannot create "
+                                f"contour levels.")
             # Set default contour levels to avoid errors
             ax_opts['clevs'] = np.array([0, 1])
             ax_opts['clevs_prec'] = 0
@@ -122,7 +124,7 @@ class MatplotlibBasePlotter(BasePlotter):
             clevs = np.around(np.linspace(dmin, dmax, 10), decimals=precision)
         else:
             clevs = np.around(np.linspace(dmin, dmax, ax_opts.get('num_clevs', 10)),
-                            decimals=precision)
+                              decimals=precision)
             clevs = np.unique(clevs)  # Remove duplicates
         
         # Check if levels are strictly increasing
@@ -143,7 +145,6 @@ class MatplotlibBasePlotter(BasePlotter):
         self.logger.debug(f'Created contour levels for {field_name}: {ax_opts["clevs"]}')
         if ax_opts['clevs'][0] == 0.0:
             ax_opts['extend_value'] = "max"
-
 
     def line_contours(self, fig, ax, ax_opts, x, y, data2d, transform=None):
         """Add line contours to the plot."""
@@ -195,8 +196,8 @@ class MatplotlibBasePlotter(BasePlotter):
             # Create formatter for colorbar ticks
             if ax_opts['cbar_sci_notation']:
                 fmt = pu.FlexibleOOMFormatter(min_val=data2d.min().compute().item(),
-                                            max_val=data2d.max().compute().item(),
-                                            math_text=True)
+                                              max_val=data2d.max().compute().item(),
+                                              math_text=True)
             else:
                 fmt = pu.OOMFormatter(prec=ax_opts['clevs_prec'], math_text=True)
 
@@ -236,13 +237,12 @@ class MatplotlibBasePlotter(BasePlotter):
             self.logger.error(f"Failed to add colorbar: {e}")
             return None
 
-    def add_shared_colorbar(self, fig, cfilled_objects, axes_list, field_name, config):
+    def add_shared_colorbar(self, fig, cfilled_objects, field_name, config):
         """Add a shared colorbar for all plots.
         
         Args:
             fig: The figure object
             cfilled_objects: List of filled contour objects
-            axes_list: List of axes objects
             field_name: Name of the field being plotted
             config: Configuration manager
             
@@ -263,8 +263,8 @@ class MatplotlibBasePlotter(BasePlotter):
         # Create formatter for colorbar ticks
         if ax_opts['cbar_sci_notation']:
             fmt = FlexibleOOMFormatter(min_val=cfilled.norm.vmin,
-                                    max_val=cfilled.norm.vmax,
-                                    math_text=True)
+                                       max_val=cfilled.norm.vmax,
+                                       math_text=True)
         else:
             fmt = OOMFormatter(prec=ax_opts['clevs_prec'], math_text=True)
         
@@ -281,8 +281,8 @@ class MatplotlibBasePlotter(BasePlotter):
        # Add scientific notation if requested
         if ax_opts['cbar_sci_notation']:
             cbar.ax.text(1.05, -0.05, r'$\times 10^{%d}$' % fmt.oom,
-                        transform=cbar.ax.transAxes, va='center', ha='left',
-                        fontsize=bar_font_size(fig.subplots))
+                         transform=cbar.ax.transAxes, va='center', ha='left',
+                         fontsize=bar_font_size(fig.subplots))
         
         # Set colorbar label
         units = self.get_units(config, field_name, None, source_name, config.findex)
@@ -300,7 +300,8 @@ class MatplotlibBasePlotter(BasePlotter):
         
         return cbar
 
-    def set_const_colorbar(self, cfilled, fig, ax):
+    @staticmethod
+    def set_const_colorbar(cfilled, fig, ax):
         _ = fig.colorbar(cfilled, ax=ax, shrink=0.5)
 
     def get_units(self, config, field_name, data2d, source_name, findex):

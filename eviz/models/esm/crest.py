@@ -1,6 +1,5 @@
 import warnings
 import logging
-import numpy as np
 from dataclasses import dataclass
 from eviz.lib.autoviz.figure import Figure
 from eviz.models.source_base import GenericSource

@@ -81,7 +81,7 @@ class MatplotlibXYPlotter(MatplotlibBasePlotter):
             if hasattr(config, 'compare_exp_ids') and len(MatplotlibXYPlotter.cfilled_objects) == len(config.compare_exp_ids):
                 # Adjust subplot positions to make room for colorbar
                 fig.subplots_adjust(right=0.85)
-                self.add_shared_colorbar(fig, MatplotlibXYPlotter.cfilled_objects, MatplotlibXYPlotter.axes_list, field_name, config)
+                self.add_shared_colorbar(fig, MatplotlibXYPlotter.cfilled_objects, field_name, config)
                 # Clear the lists for the next plot
                 MatplotlibXYPlotter.cfilled_objects = []
                 MatplotlibXYPlotter.axes_list = []    
@@ -112,14 +112,14 @@ class MatplotlibXYPlotter(MatplotlibBasePlotter):
                 vmin, vmax = config._comparison_cbar_limits[field_name]
 
             cfilled = self.filled_contours(config, field_name, ax, x, y, data2d, 
-                                        vmin=vmin, vmax=vmax, transform=data_transform)
+                                           vmin=vmin, vmax=vmax, transform=data_transform)
             if 'extent' in ax_opts:
                 self.set_cartopy_ticks(ax, ax_opts['extent'])
             else:
                 self.set_cartopy_ticks(ax, [-180, 180, -90, 90])
         else:
             cfilled = self.filled_contours(config, field_name, ax, x, y, data2d,
-                                        vmin=vmin, vmax=vmax)
+                                           vmin=vmin, vmax=vmax)
 
         if cfilled is None:
             self.set_const_colorbar(cfilled, fig, ax)
@@ -139,10 +139,10 @@ class MatplotlibXYPlotter(MatplotlibBasePlotter):
                 # Create individual colorbar for non-comparison plots
                 self.set_colorbar(config, cfilled, fig, ax, ax_opts, findex, field_name, data2d)
 
-
             if ax_opts.get('line_contours', False):
                 if fig.use_cartopy and is_cartopy_axis:
-                    self.line_contours(fig, ax, ax_opts, x, y, data2d, transform=data_transform)
+                    self.line_contours(fig, ax, ax_opts, x, y, data2d,
+                                       transform=data_transform)
                 else:
                     self.line_contours(fig, ax, ax_opts, x, y, data2d)
 
