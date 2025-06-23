@@ -254,7 +254,7 @@ class ObsSource(GenericSource):
             plot_result = self.create_plot(field_name, field_to_plot)
             pu.print_map(self.config_manager, plot_type, self.config_manager.findex, plot_result)
 
-    def _get_xy(self, data_array, level=None, time_lev=None):
+    def _extract_xy_data(self, data_array, level=None, time_lev=None):
         """
         Extract XY slice from a DataArray and apply extent information.
         
@@ -273,7 +273,7 @@ class ObsSource(GenericSource):
             self.logger.warning(f"All values are NaN for {data_array.name if hasattr(data_array, 'name') else 'unnamed field'}")
             return None
             
-        data2d = super()._get_xy(data_array, level, time_lev)
+        data2d = super()._extract_xy_data(data_array, level, time_lev)
         
         if data2d is not None:
             if np.isnan(data2d).all():
@@ -285,11 +285,11 @@ class ObsSource(GenericSource):
         
         return data2d
 
-    def _get_xt(self, data_array, time_lev=None):
+    def _extract_xt_data(self, data_array, time_lev=None):
         """
         Extract XT data.
         """
-        data2d = super()._get_xt(data_array, time_lev)
+        data2d = super()._extract_xt_data(data_array, time_lev)
                 
         return data2d
 

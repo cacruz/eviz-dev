@@ -40,7 +40,7 @@ class Fluxnet(GenericSource):
         model_data = self.config.readers[self.source_name].read_data(filename)
         return model_data
 
-    def _single_plots(self, plotter):
+    def process_single_plots(self, plotter):
         pass
 
     def _get_field_to_plot(self):

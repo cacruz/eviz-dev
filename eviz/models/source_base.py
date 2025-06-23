@@ -115,16 +115,16 @@ class GenericSource(BaseSource):
 
         if not self.config_manager.spec_data:
             plotter = SimplePlotter()
-            self._simple_plots(plotter)
+            self.process_simple_plots(plotter)
         else:
             if self.config_manager.compare and not self.config_manager.compare_diff:
-                self._side_by_side_plots()
+                self.process_side_by_side_plots()
             elif self.config_manager.compare_diff:
-                self._comparison_plots()
+                self.process_comparison_plots()
             elif self.config_manager.overlay:
-                self._side_by_side_plots()
+                self.process_side_by_side_plots()
             else:
-                self._single_plots()
+                self.process_single_plots()
 
         if self.config_manager.print_to_file:
             output_dirs = []
@@ -311,17 +311,17 @@ class GenericSource(BaseSource):
         data2d = None
 
         if 'xy' in plot_type or 'polar' in plot_type:
-            data2d = self._get_xy(data_array, level=level, time_lev=time_level)
+            data2d = self._extract_xy_data(data_array, level=level, time_lev=time_level)
         elif 'yz' in plot_type:
-            data2d = self._get_yz(data_array, time_lev=time_level)
+            data2d = self._extract_yz_data(data_array, time_lev=time_level)
         elif 'xt' in plot_type:
-            data2d = self._get_xt(data_array, time_lev=time_level)
+            data2d = self._extract_xt_data(data_array, time_lev=time_level)
         elif 'tx' in plot_type:
-            data2d = self._get_tx(data_array, level=level, time_lev=time_level)
+            data2d = self._extract_tx_data(data_array, level=level, time_lev=time_level)
         elif 'line' in plot_type:  # like xt but use in interactive backends
-            data2d = self._get_line(data_array, level=level, time_lev=time_level)
+            data2d = self._extract_line_data(data_array, level=level, time_lev=time_level)
         elif 'box' in plot_type:
-            data2d = self._get_box(data_array, time_lev=time_level)
+            data2d = self._extract_box_data(data_array, time_lev=time_level)
         else:
             self.logger.warning(
                 f"Unsupported plot type for _get_field_to_plot: {plot_type}")
@@ -420,11 +420,11 @@ class GenericSource(BaseSource):
         except Exception as e:
             self.config_manager.real_time = f"Time level {time_index}"
 
-    def _simple_plots(self, plotter):
+    def process_simple_plots(self, plotter):
         """Generate simple plots."""
         self.logger.info("Generating simple plots")
 
-    def _single_plots(self):
+    def process_single_plots(self):
         """Generate single plots."""
         self.logger.info("Generating single plots")
 
@@ -487,7 +487,7 @@ class GenericSource(BaseSource):
         if self.config_manager.make_gif:
             pu.create_gif(self.config_manager)
 
-    def _comparison_plots(self):
+    def process_comparison_plots(self):
         """Generate comparison plots for paired data sources according to configuration.
 
         Args:
@@ -594,7 +594,7 @@ class GenericSource(BaseSource):
 
             current_field_index += 1
 
-    def _side_by_side_plots(self):
+    def process_side_by_side_plots(self):
         """
         Generate side-by-side comparison plots for the given plotter.
 
@@ -693,7 +693,7 @@ class GenericSource(BaseSource):
             current_field_index += 1
 
     # DATA SLICE PROCESSING METHODS
-    def _get_yz(self, data_array, time_lev):
+    def _extract_yz_data(self, data_array, time_lev):
         """ Extract YZ slice (zonal mean) from a DataArray
 
         Note:
@@ -737,7 +737,7 @@ class GenericSource(BaseSource):
 
         return apply_conversion(self.config_manager, zonal_mean, data_array.name)
 
-    def _get_xy(self, data_array, level, time_lev):
+    def _extract_xy_data(self, data_array, level, time_lev):
         """ Extract XY slice (latlon) from a DataArray
 
         Note:
@@ -855,7 +855,7 @@ class GenericSource(BaseSource):
 
         return apply_conversion(self.config_manager, data2d, data_array.name)
 
-    def _get_xt(self, data_array, time_lev):
+    def _extract_xt_data(self, data_array, time_lev):
         """ Extract time-series from a DataArray
 
         Note:
@@ -1071,7 +1071,7 @@ class GenericSource(BaseSource):
             
         return apply_conversion(self.config_manager, data2d, data_array.name)
     
-    def _get_box(self, data_array, time_lev=None):
+    def _extract_box_data(self, data_array, time_lev=None):
         """Extract data for a box plot.
         
         This method prepares data for box plots by extracting values across a dimension
@@ -1189,7 +1189,7 @@ class GenericSource(BaseSource):
             self.logger.error(f"Error creating box plot data: {e}")
             return None
 
-    def _get_line(self, data_array, time_lev=None, level=None):
+    def _extract_line_data(self, data_array, time_lev=None, level=None):
         """Extract data for a line plot.
         
         This method prepares data for line plots, typically extracting a time series
@@ -1399,7 +1399,7 @@ class GenericSource(BaseSource):
             self.logger.error(traceback.format_exc())
             return None
 
-    def _get_tx(self, data_array, level=None, time_lev=0):
+    def _extract_tx_data(self, data_array, level=None, time_lev=0):
         """ Extract a time-series map from a DataArray
 
         Note:

@@ -39,7 +39,7 @@ class Airnow(ObsSource):
     def load_data_sources(self, *args, **kwargs):
         pass
 
-    def _simple_plots(self, plotter):
+    def process_simple_plots(self, plotter):
         map_params = self.config_manager.map_params
         field_num = 0
         self.config_manager.findex = 0

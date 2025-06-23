@@ -77,7 +77,7 @@ class GriddedSource(GenericSource):
         """
         pass
 
-    def _simple_plots(self, plotter):
+    def process_simple_plots(self, plotter):
         """
         Generate simple plots for all fields in the dataset when no SPECS file is provided
 
@@ -129,11 +129,11 @@ class GriddedSource(GenericSource):
         if 'xy' in plot_type:
             dim1_name = self.config_manager.get_model_dim_name('xc')
             dim2_name = self.config_manager.get_model_dim_name('yc')
-            data2d = self._get_xy_simple(data_array)
+            data2d = self._extract_xy_simple(data_array)
         elif 'yz' in plot_type:
             dim1_name = self.config_manager.get_model_dim_name('yc')
             dim2_name = self.config_manager.get_model_dim_name('zc')
-            data2d = self._get_yz_simple(data_array)
+            data2d = self._extract_yz_simple(data_array)
         elif 'sc' in plot_type:
             # Assuming scatter plots use lat/lon
             dim1_name = self.config_manager.get_model_dim_name('xc')
@@ -164,7 +164,7 @@ class GriddedSource(GenericSource):
 
         return data2d, dim1_coords, dim2_coords, field_name, plot_type
 
-    def _get_xy_simple(self, data_array: xr.DataArray) -> xr.DataArray:
+    def _extract_xy_simple(self, data_array: xr.DataArray) -> xr.DataArray:
         """ Extract XY slice from N-dim data field"""
         if data_array is None:
             return
@@ -186,7 +186,7 @@ class GriddedSource(GenericSource):
                 data2d = data2d.isel({zc_dim: 0})
         return data2d
 
-    def _get_yz_simple(self, data_array: xr.DataArray) -> xr.DataArray:
+    def _extract_yz_simple(self, data_array: xr.DataArray) -> xr.DataArray:
         if data_array is None:
             return None
         data2d = data_array.squeeze()

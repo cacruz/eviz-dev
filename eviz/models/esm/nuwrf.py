@@ -89,7 +89,7 @@ class NuWrf(GriddedSource):
             
         return source_data
 
-    def _simple_plots(self, plotter):
+    def process_simple_plots(self, plotter):
         """Common implementation for simple plots."""
         map_params = self.config_manager.map_params
         field_num = 0
@@ -192,7 +192,7 @@ class NuWrf(GriddedSource):
         
         return None
 
-    def _get_xy(self, d, level, time_lev):
+    def _extract_xy_data(self, d, level, time_lev):
         """ Extract XY slice from N-dim data field"""
         if d is None:
             return

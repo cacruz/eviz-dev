@@ -139,7 +139,7 @@ class Ghg(ObsSource):
                 
         return 'n.a.'  # Default if no match
 
-    def _simple_plots(self, plotter):
+    def process_simple_plots(self, plotter):
         """
         Generate simple plots for all fields in the dataset when no SPECS file is provided.
         
@@ -217,7 +217,7 @@ class Ghg(ObsSource):
             time_values = data.coords[time_dim].values
             return data, time_values, None, field_name, 'xt'
 
-    def _single_plots(self):
+    def process_single_plots(self):
         """
         Generate single plots for each source and field according to configuration.
         
@@ -339,7 +339,7 @@ class Ghg(ObsSource):
             time_values = data_array.coords[time_dim].values
             return data_array, time_values, None, field_name, 'xt', file_index, figure
 
-    def _comparison_plots(self, plotter):
+    def process_comparison_plots(self, plotter):
         """
         Generate comparison plots for paired data sources.
         
@@ -429,7 +429,7 @@ class Ghg(ObsSource):
                 # Print the map
                 pu.print_map(self.config_manager, plot_type, self.config_manager.findex, figure)
 
-    def _side_by_side_plots(self, plotter):
+    def process_side_by_side_plots(self, plotter):
         """
         Generate side-by-side comparison plots for paired data sources.
         

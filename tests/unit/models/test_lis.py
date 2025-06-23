@@ -32,7 +32,7 @@ def test_get_field_for_simple_plot(mock_config_manager):
     lis.source_data = {'vars': {'soil_moisture': MagicMock()}}
     lis._global_attrs = {'DX': 1000, 'DY': 1000}
     # Patch _get_xy to return a real array
-    lis._get_xy = MagicMock(return_value=np.ones((2, 2)))
+    lis._extract_xy_data = MagicMock(return_value=np.ones((2, 2)))
     # Patch _get_field to return arrays with NaN for testing NaN-filling logic
     lis._get_field = MagicMock(side_effect=lambda name, data: np.array([[np.nan, 2.0], [3.0, 4.0]]) if name == 'east_west' else np.array([[1.0, 2.0], [np.nan, 4.0]]))
     result = lis._get_field_for_simple_plot('soil_moisture', 'xy')

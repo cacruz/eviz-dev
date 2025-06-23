@@ -71,7 +71,7 @@ class Mopitt(GenericSource):
         else:
             return unzipped_data
 
-    def _simple_plots(self, plotter):
+    def process_simple_plots(self, plotter):
         map_params = self.config.map_params
         field_num = 0
         self.config.findex = 0
@@ -92,7 +92,7 @@ class Mopitt(GenericSource):
                 plotter.simple_plot(self.config, field_to_plot)
             field_num += 1
 
-    def _single_plots(self, plotter):
+    def process_single_plots(self, plotter):
         for s in range(len(self.config.source_names)):
             map_params = self.config.map_params
             field_num = 0
@@ -156,7 +156,7 @@ class Mopitt(GenericSource):
         dim1, dim2 = self.config.get_dim_names(plot_type)
         data2d = None
         if 'xy' in plot_type:
-            data2d = self._get_xy(source_data, field_name, level=level, time_lev=self.config.ax_opts['time_lev'])
+            data2d = self._extract_xy_data(source_data, field_name, level=level, time_lev=self.config.ax_opts['time_lev'])
         else:
             pass
 
@@ -198,7 +198,7 @@ class Mopitt(GenericSource):
                 data2d = data2d.isel(lev=0)
         return data2d
 
-    def _get_xy(self, d, name, level, time_lev):
+    def _extract_xy_data(self, d, name, level, time_lev):
         """ Extract XY slice from N-dim data field"""
         if d is None:
             return

@@ -37,7 +37,7 @@ class Omi(ObsSource):
     def load_data_sources(self, *args, **kwargs):
         pass
 
-    def _single_plots(self):
+    def process_single_plots(self):
         """Generate single plots for each source and field according to configuration."""
         self.logger.info("Generating single plots")
 

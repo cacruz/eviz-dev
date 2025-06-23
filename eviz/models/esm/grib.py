@@ -183,13 +183,13 @@ class Grib(GriddedSource):
 
         # Apply slicing and processing based on plot type
         if 'yz' in plot_type:
-            data2d = self._get_yz(data_array, time_lev=time_level)
+            data2d = self._extract_yz_data(data_array, time_lev=time_level)
         elif 'xt' in plot_type:
-            data2d = self._get_xt(data_array, time_lev=time_level)
+            data2d = self._extract_xt_data(data_array, time_lev=time_level)
         elif 'tx' in plot_type:
-            data2d = self._get_tx(data_array, level=level, time_lev=time_level)
+            data2d = self._extract_tx_data(data_array, level=level, time_lev=time_level)
         elif 'xy' in plot_type or 'polar' in plot_type:
-            data2d = self._get_xy(data_array, level=level, time_lev=time_level)
+            data2d = self._extract_xy_data(data_array, level=level, time_lev=time_level)
         else:
             return None
 
@@ -246,7 +246,7 @@ class Grib(GriddedSource):
 
     def _get_data(self, field_name, ax_opts, pid):
         d = self.config_manager.readers[0].get_field(field_name, self.config_manager.findex)
-        return self._get_xy(d, field_name, time_lev=ax_opts['time_lev'])
+        return self._extract_xy_data(d, field_name, time_lev=ax_opts['time_lev'])
 
     @staticmethod
     def __get_xy(d, name):
@@ -312,7 +312,7 @@ class Grib(GriddedSource):
         
         return data2d
 
-    def _get_xy(self, data_array, level, time_lev):
+    def _extract_xy_data(self, data_array, level, time_lev):
         """ Extract XY slice from N-dim data field"""
         if data_array is None:
             return None
