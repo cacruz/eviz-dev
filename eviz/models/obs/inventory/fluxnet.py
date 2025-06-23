@@ -43,5 +43,5 @@ class Fluxnet(GenericSource):
     def process_single_plots(self, plotter):
         pass
 
-    def _get_field_to_plot(self):
+    def _prepare_field_to_plot(self):
         pass

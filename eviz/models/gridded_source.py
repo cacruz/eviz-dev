@@ -240,9 +240,9 @@ class GriddedSource(GenericSource):
                 # If the data doesn't have a vertical dimension, we can't select a level
                 # In this case, we'll just use the data as is
                 if not has_vertical_dim:
-                    field_to_plot = self._get_field_to_plot(data_at_time, field_name, file_index, plot_type, figure, t)
+                    field_to_plot = self._prepare_field_to_plot(data_at_time, field_name, file_index, plot_type, figure, t)
                 else:
-                    field_to_plot = self._get_field_to_plot(data_at_time, field_name, file_index, plot_type, figure, t, level=level_val)
+                    field_to_plot = self._prepare_field_to_plot(data_at_time, field_name, file_index, plot_type, figure, t, level=level_val)
 
                 if field_to_plot:
                     plot_result = self.create_plot(field_name, field_to_plot)                    
@@ -284,9 +284,9 @@ class GriddedSource(GenericSource):
                 # If the data doesn't have a vertical dimension, we can't select a level
                 # In this case, we'll just use the data as is
                 if not has_vertical_dim:
-                    field_to_plot = self._get_field_to_plot(data_at_time, field_name, file_index, plot_type, figure, t)
+                    field_to_plot = self._prepare_field_to_plot(data_at_time, field_name, file_index, plot_type, figure, t)
                 else:
-                    field_to_plot = self._get_field_to_plot(data_at_time, field_name, file_index, plot_type, figure, t, level=level_val)
+                    field_to_plot = self._prepare_field_to_plot(data_at_time, field_name, file_index, plot_type, figure, t, level=level_val)
                 
                 if field_to_plot:
                     plot_result = self.create_plot(field_name, field_to_plot)                    
@@ -304,7 +304,7 @@ class GriddedSource(GenericSource):
         else:
             time_levels = [0]
 
-        field_to_plot = self._get_field_to_plot(data_array, field_name, file_index, plot_type, figure, time_level=time_level_config)
+        field_to_plot = self._prepare_field_to_plot(data_array, field_name, file_index, plot_type, figure, time_level=time_level_config)
         
         if field_to_plot:
             plot_result = self.create_plot(field_name, field_to_plot)
@@ -323,9 +323,9 @@ class GriddedSource(GenericSource):
         else:
             time_levels = [0]
 
-        field_to_plot = self._get_field_to_plot(data_array, field_name, file_index,
-                                                plot_type, figure,
-                                                time_level=time_level_config)
+        field_to_plot = self._prepare_field_to_plot(data_array, field_name, file_index,
+                                                    plot_type, figure,
+                                                    time_level=time_level_config)
         if field_to_plot:
             plot_result = self.create_plot(field_name, field_to_plot)
             pu.print_map(self.config_manager, plot_type, self.config_manager.findex, plot_result)
@@ -402,9 +402,9 @@ class GriddedSource(GenericSource):
         else:
             time_levels = [0]
 
-        field_to_plot = self._get_field_to_plot(data_array, field_name, file_index,
-                                                plot_type, figure,
-                                                time_level=time_level_config)
+        field_to_plot = self._prepare_field_to_plot(data_array, field_name, file_index,
+                                                    plot_type, figure,
+                                                    time_level=time_level_config)
         if field_to_plot:
             plot_result = self.create_plot(field_name, field_to_plot)
             pu.print_map(self.config_manager, plot_type, self.config_manager.findex, plot_result)
@@ -427,8 +427,8 @@ class GriddedSource(GenericSource):
                 data_at_time = data_array.squeeze()  # Assume single time if no time dim
 
             self._set_time_config(t, data_at_time)
-            field_to_plot = self._get_field_to_plot(data_at_time, field_name,
-                                                    file_index, plot_type, figure, t)
+            field_to_plot = self._prepare_field_to_plot(data_at_time, field_name,
+                                                        file_index, plot_type, figure, t)
             if field_to_plot:
                 plot_result = self.create_plot(field_name, field_to_plot)
                 pu.print_map(self.config_manager, plot_type, self.config_manager.findex, plot_result)
@@ -617,11 +617,11 @@ class GriddedSource(GenericSource):
             # self.data2d_list = []
         else:
             # For the first two panels, plot as usual and store data for diff
-            field_to_plot = self._get_field_to_plot(data_array, field_name,
-                                                            file_index,
-                                                            plot_type, figure,
-                                                            time_level=time_level_config,
-                                                            level=level)
+            field_to_plot = self._prepare_field_to_plot(data_array, field_name,
+                                                        file_index,
+                                                        plot_type, figure,
+                                                        time_level=time_level_config,
+                                                        level=level)
             if field_to_plot:
                 self.data2d_list.append(field_to_plot[file_index])
         if field_to_plot:
@@ -692,11 +692,11 @@ class GriddedSource(GenericSource):
                 field_to_plot = None
         else:
             # For the top row panels, plot as usual and store data for diff
-            field_to_plot = self._get_field_to_plot(data_array, field_name,
-                                                            file_index,
-                                                            plot_type, figure,
-                                                            time_level=time_level_config,
-                                                            level=level)
+            field_to_plot = self._prepare_field_to_plot(data_array, field_name,
+                                                        file_index,
+                                                        plot_type, figure,
+                                                        time_level=time_level_config,
+                                                        level=level)
             if field_to_plot and field_to_plot[0] is not None:
                 self.data2d_list.append(field_to_plot[file_index])
 
@@ -852,11 +852,11 @@ class GriddedSource(GenericSource):
             
         self.config_manager.ax_opts = figure.init_ax_opts(field_name)
         
-        field_to_plot = self._get_field_to_plot(data_array, field_name,
-                                                        file_index,
-                                                        plot_type, figure,
-                                                        time_level=time_level_config,
-                                                        level=level)
+        field_to_plot = self._prepare_field_to_plot(data_array, field_name,
+                                                    file_index,
+                                                    plot_type, figure,
+                                                    time_level=time_level_config,
+                                                    level=level)
 
         if field_to_plot and field_to_plot[0] is not None:
             self.data2d_list.append(field_to_plot[file_index])

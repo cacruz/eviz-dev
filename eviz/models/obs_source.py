@@ -190,9 +190,9 @@ class ObsSource(GenericSource):
                 # If the data doesn't have a vertical dimension, we can't select a level
                 # In this case, we'll just use the data as is
                 if not has_vertical_dim:
-                    field_to_plot = self._get_field_to_plot(data_at_time, field_name, file_index, plot_type, figure, t)
+                    field_to_plot = self._prepare_field_to_plot(data_at_time, field_name, file_index, plot_type, figure, t)
                 else:
-                    field_to_plot = self._get_field_to_plot(data_at_time, field_name, file_index, plot_type, figure, t, level=level_val)
+                    field_to_plot = self._prepare_field_to_plot(data_at_time, field_name, file_index, plot_type, figure, t, level=level_val)
 
                 if field_to_plot and not np.isnan(field_to_plot[0]).all():
                     plot_result = self.create_plot(field_name, field_to_plot)                    
@@ -212,7 +212,7 @@ class ObsSource(GenericSource):
         else:
             time_levels = [0]
 
-        field_to_plot = self._get_field_to_plot(data_array, field_name, file_index, plot_type, figure, time_level=time_level_config)
+        field_to_plot = self._prepare_field_to_plot(data_array, field_name, file_index, plot_type, figure, time_level=time_level_config)
         
         if field_to_plot:
             plot_result = self.create_plot(field_name, field_to_plot)
@@ -230,7 +230,7 @@ class ObsSource(GenericSource):
         else:
             time_levels = [0]
 
-        field_to_plot = self._get_field_to_plot(data_array, field_name, file_index, plot_type, figure, time_level=time_level_config)
+        field_to_plot = self._prepare_field_to_plot(data_array, field_name, file_index, plot_type, figure, time_level=time_level_config)
         
         if field_to_plot:
             plot_result = self.create_plot(field_name, field_to_plot)
@@ -248,7 +248,7 @@ class ObsSource(GenericSource):
         else:
             time_levels = [0]
 
-        field_to_plot = self._get_field_to_plot(data_array, field_name, file_index, plot_type, figure, time_level=time_level_config)
+        field_to_plot = self._prepare_field_to_plot(data_array, field_name, file_index, plot_type, figure, time_level=time_level_config)
         
         if field_to_plot:
             plot_result = self.create_plot(field_name, field_to_plot)
@@ -452,11 +452,11 @@ class ObsSource(GenericSource):
         _ = self.get_data_extent(data_array)
         self.apply_extent_to_config(data_array)
         
-        field_to_plot = self._get_field_to_plot(data_array, field_name,
-                                                file_index,
-                                                plot_type, figure,
-                                                time_level=time_level_config,
-                                                level=level)
+        field_to_plot = self._prepare_field_to_plot(data_array, field_name,
+                                                    file_index,
+                                                    plot_type, figure,
+                                                    time_level=time_level_config,
+                                                    level=level)
 
         if field_to_plot and field_to_plot[0] is not None:
             self.data2d_list.append(field_to_plot[file_index])

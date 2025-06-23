@@ -303,9 +303,9 @@ class GenericSource(BaseSource):
         # Not gridded!
         return False
 
-    def _get_field_to_plot(self, data_array: xr.DataArray, field_name: str,
-                           file_index: int, plot_type: str, figure, time_level,
-                           level=None) -> tuple:
+    def _prepare_field_to_plot(self, data_array: xr.DataArray, field_name: str,
+                               file_index: int, plot_type: str, figure, time_level,
+                               level=None) -> tuple:
         """Prepare the 2D data array and coordinates to be plotted."""
         dim1_name, dim2_name = self.config_manager.get_dim_names(plot_type)
         data2d = None
@@ -324,7 +324,7 @@ class GenericSource(BaseSource):
             data2d = self._extract_box_data(data_array, time_lev=time_level)
         else:
             self.logger.warning(
-                f"Unsupported plot type for _get_field_to_plot: {plot_type}")
+                f"Unsupported plot type: {plot_type}")
             return None
 
         if data2d is None:

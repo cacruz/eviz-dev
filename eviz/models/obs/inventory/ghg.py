@@ -278,13 +278,13 @@ class Ghg(ObsSource):
         figure = Figure.create_eviz_figure(self.config_manager, plot_type)
         self.config_manager.ax_opts = figure.init_ax_opts(field_name)
 
-        field_to_plot = self._get_field_to_plot(data_array, field_name, file_index, 
-                                              plot_type, figure, full_dataset=full_dataset)
+        field_to_plot = self._prepare_field_to_plot(data_array, field_name, file_index,
+                                                    plot_type, figure, full_dataset=full_dataset)
         if field_to_plot:
                 plot_result = self.create_plot(field_name, field_to_plot)
                 pu.print_map(self.config_manager, plot_type, self.config_manager.findex, plot_result)
 
-    def _get_field_to_plot(self, data_array, field_name, file_index, plot_type, figure, time_level=None, full_dataset=None):
+    def _prepare_field_to_plot(self, data_array, field_name, file_index, plot_type, figure, time_level=None, full_dataset=None):
         """
         Prepare the data array and coordinates for plotting.
         
@@ -410,8 +410,8 @@ class Ghg(ObsSource):
                 self.config_manager.axindex = 0
                 self.config_manager.ax_opts = figure.init_ax_opts(field1)
                 
-                field_to_plot1 = self._get_field_to_plot(data1[field1], field1, idx1_field, 
-                                                      plot_type, figure, full_dataset=data1)
+                field_to_plot1 = self._prepare_field_to_plot(data1[field1], field1, idx1_field,
+                                                             plot_type, figure, full_dataset=data1)
                 if field_to_plot1:
                     plotter.comparison_plots(self.config_manager, field_to_plot1)
                 
@@ -421,8 +421,8 @@ class Ghg(ObsSource):
                 self.config_manager.axindex = 1
                 self.config_manager.ax_opts = figure.init_ax_opts(field2)
                 
-                field_to_plot2 = self._get_field_to_plot(data2[field2], field2, idx2_field, 
-                                                      plot_type, figure, full_dataset=data2)
+                field_to_plot2 = self._prepare_field_to_plot(data2[field2], field2, idx2_field,
+                                                             plot_type, figure, full_dataset=data2)
                 if field_to_plot2:
                     plotter.comparison_plots(self.config_manager, field_to_plot2)
                 
@@ -500,8 +500,8 @@ class Ghg(ObsSource):
                 self.config_manager.axindex = 0
                 self.config_manager.ax_opts = figure.init_ax_opts(field1)
                 
-                field_to_plot1 = self._get_field_to_plot(data1[field1], field1, idx1_field, 
-                                                      plot_type, figure, full_dataset=data1)
+                field_to_plot1 = self._prepare_field_to_plot(data1[field1], field1, idx1_field,
+                                                             plot_type, figure, full_dataset=data1)
                 if field_to_plot1:
                     plotter.comparison_plots(self.config_manager, field_to_plot1)
                 
@@ -511,8 +511,8 @@ class Ghg(ObsSource):
                 self.config_manager.axindex = 1
                 self.config_manager.ax_opts = figure.init_ax_opts(field2)
                 
-                field_to_plot2 = self._get_field_to_plot(data2[field2], field2, idx2_field, 
-                                                      plot_type, figure, full_dataset=data2)
+                field_to_plot2 = self._prepare_field_to_plot(data2[field2], field2, idx2_field,
+                                                             plot_type, figure, full_dataset=data2)
                 if field_to_plot2:
                     plotter.comparison_plots(self.config_manager, field_to_plot2)
                 
