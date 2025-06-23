@@ -93,12 +93,18 @@ class Grib(GriddedSource):
                 # If the data doesn't have a vertical dimension, we can't select a level
                 # In this case, we'll just use the data as is
                 if not has_vertical_dim:
-                    field_to_plot = self._prepare_field_to_plot(data_at_time, field_name,
-                                                                file_index, plot_type, figure,
+                    field_to_plot = self._prepare_field_to_plot(data_at_time, 
+                                                                field_name,
+                                                                file_index, 
+                                                                plot_type, 
+                                                                figure,
                                                                 t)
                 else:
-                    field_to_plot = self._prepare_field_to_plot(data_at_time, field_name,
-                                                                file_index, plot_type, figure,
+                    field_to_plot = self._prepare_field_to_plot(data_at_time, 
+                                                                field_name,
+                                                                file_index, 
+                                                                plot_type, 
+                                                                figure,
                                                                 t,
                                                                 level=level_val)
 
@@ -125,12 +131,18 @@ class Grib(GriddedSource):
         # Assuming these plot types (xt, tx) might not need time slicing here,
         # or slicing is handled within _prepare_field_to_plot
         # Pass the full data_array and let _prepare_field_to_plot handle slicing if needed
-        field_to_plot = self._prepare_field_to_plot(data_array, field_name, file_index,
-                                                    plot_type, figure,
+        field_to_plot = self._prepare_field_to_plot(data_array, 
+                                                    field_name, 
+                                                    file_index,
+                                                    plot_type, 
+                                                    figure,
                                                     time_level=time_level_config)
         if field_to_plot:
             plot_result = self.create_plot(field_name, field_to_plot)
-            print_map(self.config_manager, plot_type, self.config_manager.findex, plot_result)
+            print_map(self.config_manager, 
+                      plot_type, 
+                      self.config_manager.findex, 
+                      plot_result)
 
     def _process_zsum_plots(self, data_array: xr.DataArray, field_name: str,
                             file_index: int, plot_type: str, figure,
@@ -150,13 +162,19 @@ class Grib(GriddedSource):
                 data_at_time = data_array.squeeze()  # Assume single time if no time dim
 
             self._set_time_config(t, data_at_time)
-            field_to_plot = self._prepare_field_to_plot(data_at_time, field_name,
+            field_to_plot = self._prepare_field_to_plot(data_at_time, 
+                                                        field_name,
                                                         # Pass None for ax initially
-                                                        file_index, plot_type, figure, t)
+                                                        file_index, 
+                                                        plot_type, 
+                                                        figure, 
+                                                        t)
             if field_to_plot:
                 plot_result = self.create_plot(field_name, field_to_plot)
-                print_map(self.config_manager, plot_type, self.config_manager.findex,
-                             plot_result)
+                print_map(self.config_manager, 
+                          plot_type, 
+                          self.config_manager.findex,
+                          plot_result)
 
     def _set_grib_extents(self, xs, ys):
         """Set GRIB-specific map extents."""
@@ -169,8 +187,12 @@ class Grib(GriddedSource):
         self.config_manager.ax_opts['central_lon'] = np.mean([lonW, lonE])
         self.config_manager.ax_opts['central_lat'] = np.mean([latS, latN])
 
-    def _prepare_field_to_plot(self, data_array: xr.DataArray, field_name: str,
-                               file_index: int, plot_type: str, figure, time_level,
+    def _prepare_field_to_plot(self, data_array: xr.DataArray, 
+                               field_name: str,
+                               file_index: int, 
+                               plot_type: str, 
+                               figure, 
+                               time_level,
                                level=None) -> tuple:
         """Prepare the data array and coordinates for plotting."""
         if data_array is None:

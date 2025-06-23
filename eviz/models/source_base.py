@@ -303,8 +303,13 @@ class GenericSource(BaseSource):
         # Not gridded!
         return False
 
-    def _prepare_field_to_plot(self, data_array: xr.DataArray, field_name: str,
-                               file_index: int, plot_type: str, figure, time_level,
+    def _prepare_field_to_plot(self, 
+                               data_array: xr.DataArray, 
+                               field_name: str,
+                               file_index: int, 
+                               plot_type: str, 
+                               figure, 
+                               time_level,
                                level=None) -> tuple:
         """Prepare the 2D data array and coordinates to be plotted."""
         dim1_name, dim2_name = self.config_manager.get_dim_names(plot_type)
@@ -681,13 +686,17 @@ class GenericSource(BaseSource):
                 self.data2d_list = []
                 if 'xy' in plot_type or 'polar' in plot_type:
                     self._process_xy_side_by_side_plots(current_field_index,
-                                                        field1, field2,
+                                                        field1, 
+                                                        field2,
                                                         plot_type,
-                                                        sdat1_dataset, sdat2_dataset)
+                                                        sdat1_dataset, 
+                                                        sdat2_dataset)
                 else:
                     self._process_other_side_by_side_plots(current_field_index,
-                                                           field1, field2,
-                                                           plot_type, sdat1_dataset,
+                                                           field1, 
+                                                           field2,
+                                                           plot_type, 
+                                                           sdat1_dataset,
                                                            sdat2_dataset)
                 self.data2d_list = []
             current_field_index += 1

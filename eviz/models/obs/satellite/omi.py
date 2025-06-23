@@ -112,7 +112,10 @@ class Omi(ObsSource):
                                                     time_level=time_level)
         if field_to_plot:
             plot_result = self.create_plot(field_name, field_to_plot)
-            pu.print_map(self.config_manager, plot_type, self.config_manager.findex, plot_result)
+            pu.print_map(self.config_manager, 
+                         plot_type, 
+                         self.config_manager.findex, 
+                         plot_result)
 
     def _prepare_field_to_plot(self, ds_short: xr.Dataset, field_name: str,
                                file_index: int, plot_type: str, figure, time_level=None,

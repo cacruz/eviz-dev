@@ -74,17 +74,25 @@ class Airnow(ObsSource):
         self.config_manager.level = None
         time_level_config = self.config_manager.ax_opts.get('time_lev', 0)
 
-        field_to_plot = self._prepare_field_to_plot(data_array, field_name, file_index,
-                                                    plot_type, figure,
+        field_to_plot = self._prepare_field_to_plot(data_array, 
+                                                    field_name, 
+                                                    file_index,
+                                                    plot_type, 
+                                                    figure,
                                                     time_level=time_level_config)
         if field_to_plot:
             plot_result = self.create_plot(field_name, field_to_plot)
-            pu.print_map(self.config_manager, plot_type, self.config_manager.findex,
+            pu.print_map(self.config_manager, 
+                         plot_type, 
+                         self.config_manager.findex,
                          plot_result)
 
-    def _prepare_field_to_plot(self, data_array: pd.DataFrame, field_name: str,
+    def _prepare_field_to_plot(self, data_array: pd.DataFrame, 
+                               field_name: str,
                                file_index: int,
-                               plot_type: str, figure, time_level=None, ) -> tuple:
+                               plot_type: str, 
+                               figure, 
+                               time_level=None, ) -> tuple:
         self.config_manager.ax_opts = figure.init_ax_opts(field_name)
         data2d = None
 

@@ -147,7 +147,12 @@ class ObsSource(GenericSource):
                 
         return extent
     
-    def _process_xy_plot(self, data_array, field_name, file_index, plot_type, figure):
+    def _process_xy_plot(self, 
+                         data_array, 
+                         field_name, 
+                         file_index, 
+                         plot_type, 
+                         figure):
         """Process an XY plot."""
         levels = self.config_manager.get_levels(field_name, plot_type + 'plot')
         do_zsum = self.config_manager.ax_opts.get('zsum', False)
@@ -160,9 +165,22 @@ class ObsSource(GenericSource):
         if not levels and not do_zsum:
             return
 
-        self._process_level_plot(data_array, field_name, file_index, plot_type, figure, time_levels, levels)
+        self._process_level_plot(data_array, 
+                                 field_name, 
+                                 file_index, 
+                                 plot_type, 
+                                 figure, 
+                                 time_levels, 
+                                 levels)
 
-    def _process_level_plot(self, data_array, field_name, file_index, plot_type, figure, time_levels, levels):
+    def _process_level_plot(self, 
+                            data_array, 
+                            field_name, 
+                            file_index, 
+                            plot_type, 
+                            figure, 
+                            time_levels, 
+                            levels):
         """Process plots for specific vertical levels."""
         self.logger.debug("Processing XY level plots")
         zc_dim = self.config_manager.get_model_dim_name('zc') or 'lev'
@@ -190,13 +208,28 @@ class ObsSource(GenericSource):
                 # If the data doesn't have a vertical dimension, we can't select a level
                 # In this case, we'll just use the data as is
                 if not has_vertical_dim:
-                    field_to_plot = self._prepare_field_to_plot(data_at_time, field_name, file_index, plot_type, figure, t)
+                    field_to_plot = self._prepare_field_to_plot(data_at_time, 
+                                                                field_name, 
+                                                                file_index, 
+                                                                plot_type, 
+                                                                figure, 
+                                                                t)
                 else:
-                    field_to_plot = self._prepare_field_to_plot(data_at_time, field_name, file_index, plot_type, figure, t, level=level_val)
+                    field_to_plot = self._prepare_field_to_plot(data_at_time, 
+                                                                field_name, 
+                                                                file_index, 
+                                                                plot_type, 
+                                                                figure, 
+                                                                t, 
+                                                                level=level_val)
 
                 if field_to_plot and not np.isnan(field_to_plot[0]).all():
                     plot_result = self.create_plot(field_name, field_to_plot)                    
-                    pu.print_map(self.config_manager, plot_type, self.config_manager.findex, plot_result, level=level_val)
+                    pu.print_map(self.config_manager, 
+                                 plot_type, 
+                                 self.config_manager.findex, 
+                                 plot_result, 
+                                 level=level_val)
                 else:
                     self.logger.warning(f"Skipping plot for time level {t} - no valid data after processing")
 
@@ -212,11 +245,19 @@ class ObsSource(GenericSource):
         else:
             time_levels = [0]
 
-        field_to_plot = self._prepare_field_to_plot(data_array, field_name, file_index, plot_type, figure, time_level=time_level_config)
+        field_to_plot = self._prepare_field_to_plot(data_array, 
+                                                    field_name, 
+                                                    file_index, 
+                                                    plot_type, 
+                                                    figure, 
+                                                    time_level=time_level_config)
         
         if field_to_plot:
             plot_result = self.create_plot(field_name, field_to_plot)
-            pu.print_map(self.config_manager, plot_type, self.config_manager.findex, plot_result)
+            pu.print_map(self.config_manager, 
+                         plot_type, 
+                         self.config_manager.findex, 
+                         plot_result)
 
     def _process_box_plot(self, data_array, field_name, file_index, plot_type, figure):
         """Process plots for specific time or vertical levels."""
@@ -230,11 +271,19 @@ class ObsSource(GenericSource):
         else:
             time_levels = [0]
 
-        field_to_plot = self._prepare_field_to_plot(data_array, field_name, file_index, plot_type, figure, time_level=time_level_config)
+        field_to_plot = self._prepare_field_to_plot(data_array, 
+                                                    field_name, 
+                                                    file_index, 
+                                                    plot_type, 
+                                                    figure, 
+                                                    time_level=time_level_config)
         
         if field_to_plot:
             plot_result = self.create_plot(field_name, field_to_plot)
-            pu.print_map(self.config_manager, plot_type, self.config_manager.findex, plot_result)
+            pu.print_map(self.config_manager, 
+                         plot_type, 
+                         self.config_manager.findex, 
+                         plot_result)
 
     def _process_line_plot(self, data_array, field_name, file_index, plot_type, figure):
         """Process a LINE plot."""
@@ -248,11 +297,19 @@ class ObsSource(GenericSource):
         else:
             time_levels = [0]
 
-        field_to_plot = self._prepare_field_to_plot(data_array, field_name, file_index, plot_type, figure, time_level=time_level_config)
+        field_to_plot = self._prepare_field_to_plot(data_array, 
+                                                    field_name, 
+                                                    file_index, 
+                                                    plot_type, 
+                                                    figure, 
+                                                    time_level=time_level_config)
         
         if field_to_plot:
             plot_result = self.create_plot(field_name, field_to_plot)
-            pu.print_map(self.config_manager, plot_type, self.config_manager.findex, plot_result)
+            pu.print_map(self.config_manager, 
+                         plot_type, 
+                         self.config_manager.findex, 
+                         plot_result)
 
     def _extract_xy_data(self, data_array, level=None, time_lev=None):
         """
@@ -293,7 +350,13 @@ class ObsSource(GenericSource):
                 
         return data2d
 
-    def _process_xy_side_by_side_plots(self, current_field_index, field_name1, field_name2, plot_type, sdat1_dataset, sdat2_dataset):
+    def _process_xy_side_by_side_plots(self, 
+                                       current_field_index, 
+                                       field_name1, 
+                                       field_name2, 
+                                       plot_type, 
+                                       sdat1_dataset, 
+                                       sdat2_dataset):
         """Process side-by-side comparison plots for xy or polar plot types."""
         num_plots = len(self.config_manager.compare_exp_ids)
         nrows = 1
@@ -326,17 +389,30 @@ class ObsSource(GenericSource):
             self.config_manager.ax_opts['central_lat'] = (combined_extent[2] + combined_extent[3]) / 2
 
             self._create_xy_side_by_side_plot(current_field_index,
-                                            field_name1, field_name2, figure,
-                                            plot_type, sdat1_dataset, sdat2_dataset,
-                                            level_val)
+                                              field_name1, 
+                                              field_name2, 
+                                              figure,
+                                              plot_type, 
+                                              sdat1_dataset, 
+                                              sdat2_dataset,
+                                              level_val)
 
-            pu.print_map(self.config_manager, plot_type, self.config_manager.findex, self.plot_result)
+            pu.print_map(self.config_manager, 
+                         plot_type, 
+                         self.config_manager.findex, 
+                         self.plot_result)
 
         self.data2d_list = []
 
-    def _create_xy_side_by_side_plot(self, current_field_index,
-                                    field_name1, field_name2, figure,
-                                    plot_type, sdat1_dataset, sdat2_dataset, level=None):
+    def _create_xy_side_by_side_plot(self, 
+                                     current_field_index,
+                                     field_name1, 
+                                     field_name2, 
+                                     figure,
+                                     plot_type, 
+                                     sdat1_dataset, 
+                                     sdat2_dataset, 
+                                     level=None):
         """
         Create a side-by-side comparison plot for the given data with a shared colorbar.
         
@@ -350,10 +426,13 @@ class ObsSource(GenericSource):
         # Plot first dataset (from a_list)
         if self.config_manager.a_list:
             self._process_single_side_by_side_plot(self.config_manager.a_list[0],
-                                            current_field_index,
-                                            field_name1, figure, 0,
-                                            sdat1_dataset[field_name1], plot_type,
-                                            level=level)
+                                                   current_field_index,
+                                                   field_name1, 
+                                                   figure, 
+                                                   0,
+                                                   sdat1_dataset[field_name1], 
+                                                   plot_type,
+                                                   level=level)
 
         # Plot remaining datasets (from b_list)
         for i, file_idx in enumerate(self.config_manager.b_list, start=1):
@@ -365,14 +444,21 @@ class ObsSource(GenericSource):
                 dataset = data_source.dataset
                 
                 self._process_single_side_by_side_plot(file_idx,
-                                                current_field_index,
-                                                field_name2, figure, i,
-                                                dataset[field_name2], plot_type,
-                                                level=level)
+                                                       current_field_index,
+                                                       field_name2, 
+                                                       figure, 
+                                                       i,
+                                                       dataset[field_name2], 
+                                                       plot_type,
+                                                       level=level)
 
-    def _process_other_side_by_side_plots(self, current_field_index,
-                                       field_name1, field_name2, plot_type, sdat1_dataset,
-                                       sdat2_dataset):
+    def _process_other_side_by_side_plots(self, 
+                                          current_field_index,
+                                          field_name1, 
+                                          field_name2, 
+                                          plot_type, 
+                                          sdat1_dataset,
+                                          sdat2_dataset):
         """Process side-by-side comparison plots for xy or polar plot types."""
         # self.data2d_list = []
         num_plots = len(self.config_manager.compare_exp_ids)
@@ -392,9 +478,12 @@ class ObsSource(GenericSource):
         # Plot first dataset (from a_list)
         if self.config_manager.a_list:
             self._process_single_side_by_side_plot(self.config_manager.a_list[0],
-                                            current_field_index,
-                                            field_name1, figure, 0,
-                                            sdat1_dataset[field_name1], plot_type)
+                                                   current_field_index,
+                                                   field_name1, 
+                                                   figure, 
+                                                   0,
+                                                   sdat1_dataset[field_name1], 
+                                                   plot_type)
 
         # Plot remaining datasets (from b_list)
         for i, file_idx in enumerate(self.config_manager.b_list, start=1):
@@ -416,15 +505,27 @@ class ObsSource(GenericSource):
                 axis_index = 0 if use_overlay else i
                 
                 self._process_single_side_by_side_plot(file_idx,
-                                                current_field_index,
-                                                field_name2, figure, axis_index,
-                                                dataset[field_name2], plot_type)
+                                                       current_field_index,
+                                                       field_name2, 
+                                                       figure, 
+                                                       axis_index,
+                                                       dataset[field_name2], 
+                                                       plot_type)
 
-        pu.print_map(self.config_manager, plot_type, self.config_manager.findex, self.plot_result)
+        pu.print_map(self.config_manager, 
+                     plot_type, 
+                     self.config_manager.findex, 
+                     self.plot_result)
 
-    def _process_single_side_by_side_plot(self, file_index, current_field_index,
-                                field_name, figure, ax_index, data_array, plot_type,
-                                level=None):
+    def _process_single_side_by_side_plot(self, 
+                                          file_index, 
+                                          current_field_index,
+                                          field_name, 
+                                          figure, 
+                                          ax_index, 
+                                          data_array, 
+                                          plot_type,
+                                          level=None):
         """Process a single plot for side-by-side comparison."""
         self.config_manager.findex = file_index
         self.config_manager.pindex = current_field_index
@@ -452,14 +553,16 @@ class ObsSource(GenericSource):
         _ = self.get_data_extent(data_array)
         self.apply_extent_to_config(data_array)
         
-        field_to_plot = self._prepare_field_to_plot(data_array, field_name,
+        field_to_plot = self._prepare_field_to_plot(data_array, 
+                                                    field_name,
                                                     file_index,
-                                                    plot_type, figure,
+                                                    plot_type, 
+                                                    figure,
                                                     time_level=time_level_config,
                                                     level=level)
 
         if field_to_plot and field_to_plot[0] is not None:
-            self.data2d_list.append(field_to_plot[file_index])
+            self.data2d_list.append(field_to_plot[0])
 
         if field_to_plot:
             self.plot_result = self.create_plot(field_name, field_to_plot)

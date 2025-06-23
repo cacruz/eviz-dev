@@ -119,7 +119,11 @@ class Mopitt(GenericSource):
                                 continue
                             for level in levels:
                                 field_to_plot = self._prepare_field_to_plot(source_data,
-                                                                            field_name, file_index, pt, figure, level=level)
+                                                                            field_name, 
+                                                                            file_index, 
+                                                                            pt, 
+                                                                            figure, 
+                                                                            level=level)
                                 if self.use_mp_pool:
                                     p = multiprocessing.Process(target=plotter.single_plots,
                                                                 args=(self.config, field_to_plot, level))
@@ -128,10 +132,18 @@ class Mopitt(GenericSource):
                                     p.start()
                                 else:
                                     plotter.single_plots(self.config, field_to_plot=field_to_plot, level=level)
-                                    print_map(self.config, pt, self.config.findex, figure, level=level)
+                                    print_map(self.config, 
+                                              pt, 
+                                              self.config.findex, 
+                                              figure, 
+                                              level=level)
 
                         else:
-                            field_to_plot = self._prepare_field_to_plot(source_data, field_name, file_index, pt, figure)
+                            field_to_plot = self._prepare_field_to_plot(source_data, 
+                                                                        field_name, 
+                                                                        file_index, 
+                                                                        pt, 
+                                                                        figure)
                             if self.use_mp_pool:
                                 p = multiprocessing.Process(target=plotter.single_plots,
                                                             args=(self.config, field_to_plot))
@@ -141,7 +153,10 @@ class Mopitt(GenericSource):
 
                             else:
                                 plotter.single_plots(self.config, field_to_plot=field_to_plot)
-                                print_map(self.config, pt, self.config.findex, figure)
+                                print_map(self.config, 
+                                          pt, 
+                                          self.config.findex, 
+                                          figure)
 
                     field_num += 1
 
@@ -150,7 +165,13 @@ class Mopitt(GenericSource):
                 self.logger.info(f"process{p.name} is done")
                 p.join()
 
-    def _prepare_field_to_plot(self, source_data, field_name, file_index, plot_type, figure, level=None):
+    def _prepare_field_to_plot(self,
+                               source_data, 
+                               field_name, 
+                               file_index, 
+                               plot_type, 
+                               figure, 
+                               level=None):
         _, ax = figure.get_fig_ax()
         self.config.ax_opts = figure.init_ax_opts(field_name)
         dim1, dim2 = self.config.get_dim_names(plot_type)
