@@ -184,7 +184,17 @@ if prompt "Source: lis, with 2 files (compare multiple fields)"; then
    python autoviz.py -s lis -v 0 -f $EVIZ_CONFIG_PATH/lis/lis_compare.yaml
    echo
 fi
-   
+
+if prompt "Source: crest, (GIF of SM obs)"; then
+   python autoviz.py -s crest -v 0 -f $EVIZ_CONFIG_PATH/crest/crest.yaml
+   echo
+fi
+
+if prompt "Source: crest, (zarr data)"; then
+   python autoviz.py -s crest -v 0 -f $EVIZ_CONFIG_PATH/crest/crest_zarr.yaml
+   echo
+fi
+
 #echo "Source: 'ccm' vs 'omi' "
 #python autoviz.py -s ccm,omi -v 0
 
@@ -212,6 +222,15 @@ if prompt "Source: 'gridded' - altair backend"; then
 fi
    
 # Hvplot backend
+if prompt "Source: crest, pearson map  - hvplot backend"; then
+   python autoviz.py -s crest -v 0 -f $EVIZ_CONFIG_PATH/crest/crest_pearson.yaml
+   echo
+fi
+
+if prompt "Source: crest, box plots - hvplot backend"; then
+   python autoviz.py -s crest -v 0 -f $EVIZ_CONFIG_PATH/crest/crest_box.yaml
+   echo
+fi
 
 if prompt "Source: 'gridded' - hvplot backend"; then
    python autoviz.py -s gridded -f $EVIZ_CONFIG_PATH/gridded/gridded_hvplot.yaml -v 0
