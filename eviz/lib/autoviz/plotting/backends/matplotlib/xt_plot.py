@@ -4,7 +4,7 @@ import pandas as pd
 import logging
 from sklearn.metrics import mean_squared_error
 import eviz.lib.autoviz.utils as pu
-from eviz.lib.autoviz.base import MatplotlibBasePlotter
+from .base import MatplotlibBasePlotter
 
 
 class MatplotlibXTPlotter(MatplotlibBasePlotter):

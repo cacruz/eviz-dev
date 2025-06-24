@@ -2,7 +2,7 @@ import numpy as np
 import logging
 from matplotlib.ticker import FormatStrFormatter, NullFormatter
 import eviz.lib.autoviz.utils as pu
-from eviz.lib.autoviz.base import MatplotlibBasePlotter
+from .base import MatplotlibBasePlotter
 
 
 class MatplotlibYZPlotter(MatplotlibBasePlotter):

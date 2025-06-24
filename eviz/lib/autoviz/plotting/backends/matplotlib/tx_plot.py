@@ -6,7 +6,7 @@ import cartopy.crs as ccrs
 import cartopy.feature as cfeature
 from matplotlib import colors
 from eviz.lib.data.pipeline.reader import get_data_coords
-from eviz.lib.autoviz.base import MatplotlibBasePlotter
+from .base import MatplotlibBasePlotter
 
 
 class MatplotlibTXPlotter(MatplotlibBasePlotter):
