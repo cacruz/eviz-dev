@@ -1200,7 +1200,7 @@ class GenericSource(BaseSource):
                 f"Output contains NaN values: {np.sum(np.isnan(data2d.values))} NaNs")
             
         return apply_conversion(self.config_manager, data2d, data_array.name)
-    
+
     def _extract_box_data(self, data_array, time_lev=None):
         """Extract data for a box plot.
         
@@ -1212,11 +1212,7 @@ class GenericSource(BaseSource):
             time_lev: Time level to extract (optional)
             
         Returns:
-            tuple: (data_df, field_name, plot_type, file_index)
-                data_df: pandas DataFrame with columns for categories and values
-                field_name: Name of the field being plotted
-                plot_type: Type of plot ('box')
-                file_index: Index of the file being plotted
+            pandas.DataFrame: DataFrame with columns for categories and values
         """
         self.logger.debug(f"Extracting box plot data from {data_array.name if hasattr(data_array, 'name') else 'unnamed array'}")
         
@@ -1224,99 +1220,153 @@ class GenericSource(BaseSource):
         zc_dim = self.config_manager.get_model_dim_name('zc') or 'lev'
         xc_dim = self.config_manager.get_model_dim_name('xc') or 'lon'
         yc_dim = self.config_manager.get_model_dim_name('yc') or 'lat'
-        num_times = data_array[tc_dim].size
-        self.logger.debug(f"'{data_array.name}' field has {num_times} time levels")
+        
+        # Make a copy of the data array to avoid modifying the original
+        d_temp = data_array.copy()
+        
+        # Handle time dimension selection
+        if tc_dim and tc_dim in d_temp.dims:
+            num_tc = d_temp[tc_dim].size
+            
+            # If time_lev is None, we'll use the last time step
+            # If time_lev is an integer, select that specific time step
+            if time_lev is None:
+                # Default to using the last time step if none specified
+                d_temp = d_temp.isel({tc_dim: -1})
+                self.logger.debug(f"No time level specified, using last time level ({num_tc-1})")
+            elif time_lev == 'all':
+                # Keep all time levels
+                self.logger.debug("Using all time levels for box plot")
+            elif isinstance(time_lev, int):
+                # Convert negative index to positive if needed
+                actual_time_lev = time_lev if time_lev >= 0 else num_tc + time_lev
+                
+                # Check if the index is valid
+                if 0 <= actual_time_lev < num_tc:
+                    d_temp = d_temp.isel({tc_dim: actual_time_lev})
+                    self.logger.debug(f"Selected time level {actual_time_lev} (specified as {time_lev})")
+                else:
+                    self.logger.warning(f"Time level {time_lev} out of range (0-{num_tc-1}), using first time level")
+                    d_temp = d_temp.isel({tc_dim: 0})
+            elif time_lev == 'all':
+                # Keep all time levels
+                self.logger.debug("Using all time levels for box plot")
+            elif time_lev is None:
+                # Default to using the last time step if none specified
+                d_temp = d_temp.isel({tc_dim: -1})
+                self.logger.debug(f"No time level specified, using last time level ({num_tc-1})")
         
         # Check if all data is NaN
-        if np.isnan(data_array).all():
+        if np.isnan(d_temp).all():
             self.logger.warning(f"All values are NaN for {data_array.name if hasattr(data_array, 'name') else 'unnamed field'}")
             return None
         
-        if np.isnan(data_array.values).any():
-            self.logger.info(
-                f"Output contains NaN values: {np.sum(np.isnan(data_array.values))} NaNs")
-        
-        # If time_lev is None and we have a time dimension, use all time levels
-        if time_lev is None and tc_dim in data_array.dims:
-            self.logger.debug("Using all time levels for box plot")
-            # No need to select a specific time level
-        elif time_lev is not None and tc_dim in data_array.dims:
-            self.logger.debug(f"Selecting time level: {time_lev}")
-            data_array = data_array.isel({tc_dim: time_lev})
+        if np.isnan(d_temp.values).any():
+            self.logger.info(f"Output contains NaN values: {np.sum(np.isnan(d_temp.values))} NaNs")
         
         # Get field name
         field_name = data_array.name if hasattr(data_array, 'name') else 'unnamed'
-
+        
         # Convert to pandas DataFrame
         try:
-            # df = data_array.stack(points=(yc_dim, xc_dim)).to_dataframe(name=field_name).reset_index()
             # For spatial data, we want to create a box plot of values across the spatial domain
             # First, flatten the spatial dimensions
-            if len(data_array.dims) > 1:
-                # Stack all non-time dimensions to create a single dimension for spatial points
-                dims_to_stack = [dim for dim in data_array.dims if dim != tc_dim]
-                if dims_to_stack:
-                    stacked = data_array.stack(point=dims_to_stack)
-                    df = stacked.to_dataframe()
-                else:
-                    df = data_array.to_dataframe()
-            else:
-                # If there's only one dimension, use it directly
-                df = data_array.to_dataframe()
-            
-            # If we have a time dimension and didn't select a specific level,
-            # we can create a box plot for each time step
-            if tc_dim in data_array.dims and time_lev is None:
-                # Ensure the time column is properly formatted
-                if tc_dim in df.index.names:
-                    # Reset index to make time a column
-                    df = df.reset_index()
+            if len(d_temp.dims) > 1:
+                # If we have a time dimension and we're using all time steps,
+                # we can create a box plot for each time step
+                if tc_dim in d_temp.dims and (time_lev == 'all' or time_lev is None and len(d_temp[tc_dim]) > 1):
+                    # Create a DataFrame with time as a category
+                    time_values = d_temp[tc_dim].values
+                    num_times = len(time_values)
                     
-                    # Convert time to string format for better display
-                    if pd.api.types.is_datetime64_any_dtype(df[tc_dim]):
-                        df[tc_dim] = df[tc_dim].dt.strftime('%Y-%m-%d %H:%M')
-                
-                # The DataFrame should have a column for time and a column for values
-                data_df = df.rename(columns={field_name: 'value'})
-                category_col = tc_dim
-            else:
-                # Without time or with a specific time selected, we might want to use another
-                # categorical variable if available, otherwise just use the values
-                data_df = df.reset_index()
-                
-                # Try to find a suitable categorical column
-                categorical_cols = [col for col in data_df.columns 
-                                if col != field_name and data_df[col].nunique() < 30]
-                
-                if categorical_cols:
-                    category_col = categorical_cols[0]
+                    # Create an empty list to store data for each time step
+                    all_data = []
+                    
+                    for t in range(num_times):
+                        # Extract data for this time step
+                        time_slice = d_temp.isel({tc_dim: t})
+                        
+                        # Convert time to string format for better display
+                        time_str = str(time_values[t])
+                        if hasattr(time_values[t], 'strftime'):
+                            time_str = time_values[t].strftime('%Y-%m-%d %H:%M')
+                        
+                        # Flatten the spatial dimensions
+                        flat_data = time_slice.values.flatten()
+                        
+                        # Skip if all values are NaN
+                        if np.isnan(flat_data).all():
+                            self.logger.debug(f"Skipping time {time_str} - all values are NaN")
+                            continue
+                        
+                        # Create a DataFrame for this time step
+                        df_time = pd.DataFrame({
+                            'time': time_str,
+                            'value': flat_data
+                        })
+                        
+                        all_data.append(df_time)
+                    
+                    # Combine all time steps
+                    if all_data:
+                        df = pd.concat(all_data, ignore_index=True)
+                    else:
+                        self.logger.warning(f"No valid data for box plot of {field_name}")
+                        return None
                 else:
-                    # If no good categorical column, we'll just have a single box
-                    data_df['category'] = 'All Data'
-                    category_col = 'category'
-                
-                # Rename the value column
-                data_df = data_df.rename(columns={field_name: 'value'})
-
+                    # No time dimension or single time step, just flatten all spatial dimensions
+                    flat_data = d_temp.values.flatten()
+                    
+                    # Create a DataFrame with a single category
+                    if tc_dim in d_temp.dims and len(d_temp[tc_dim]) == 1:
+                        # Use time value as category if available
+                        time_value = d_temp[tc_dim].values[0]
+                        time_str = str(time_value)
+                        if hasattr(time_value, 'strftime'):
+                            time_str = time_value.strftime('%Y-%m-%d %H:%M')
+                        category = f"Time: {time_str}"
+                    else:
+                        category = "All Data"
+                    
+                    df = pd.DataFrame({
+                        'category': category,
+                        'value': flat_data
+                    })
+            else:
+                # 1D data, use as is
+                df = pd.DataFrame({
+                    'category': "All Data",
+                    'value': d_temp.values
+                })
+            
             # Handle fill values if specified
             if hasattr(self.config_manager, 'spec_data') and field_name in self.config_manager.spec_data:
-                if 'fill_value' in self.config_manager.spec_data[field_name].get('boxplot', {}):
-                    fill_value = self.config_manager.spec_data[field_name]['boxplot']['fill_value']
-                    data_df = data_df[data_df['value'] != fill_value]
+                if 'boxplot' in self.config_manager.spec_data[field_name]:
+                    if 'fill_value' in self.config_manager.spec_data[field_name]['boxplot']:
+                        fill_value = self.config_manager.spec_data[field_name]['boxplot']['fill_value']
+                        df = df[df['value'] != fill_value]
             
             # Remove NaN values
-            data_df = data_df.dropna(subset=['value'])
+            df = df.dropna(subset=['value'])
             
             # Check if we have data
-            if len(data_df) == 0:
+            if len(df) == 0:
                 self.logger.warning(f"No valid data for box plot of {field_name}")
                 return None
             
-            self.logger.debug(f"Created DataFrame with {len(data_df)} rows for box plot")
-            return data_df
+            # Sample the data if it's too large (for better performance)
+            max_points = 10000  # Maximum number of points to include in the box plot
+            if len(df) > max_points:
+                self.logger.debug(f"Sampling {max_points} points from {len(df)} total points")
+                df = df.sample(max_points, random_state=42)
+            
+            self.logger.debug(f"Created DataFrame with {len(df)} rows for box plot")
+            return df
         
         except Exception as e:
             self.logger.error(f"Error creating box plot data: {e}")
+            import traceback
+            self.logger.error(traceback.format_exc())
             return None
 
     def _extract_line_data(self, data_array, time_lev=None, level=None):

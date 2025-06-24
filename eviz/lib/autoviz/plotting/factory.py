@@ -36,16 +36,6 @@ class PlotterFactory:
         """
         # Dictionary mapping (plot_type, backend) to plotter class
         plotters = {
-            ("xy", "altair"): AltairXYPlotter,
-            ("xt", "altair"): AltairXTPlotter,
-            ("sc", "altair"): AltairScatterPlotter,
-            ("pearson", "altair"): AltairMetricPlotter,
-
-            ("xy", "hvplot"): HvplotXYPlotter,
-            ("xt", "hvplot"): HvplotXTPlotter,
-            ("sc", "hvplot"): HvplotScatterPlotter,
-            ("pearson", "hvplot"): HvplotMetricPlotter,
-
             ("xy", "matplotlib"): MatplotlibXYPlotter,
             ("xt", "matplotlib"): MatplotlibXTPlotter,
             ("sc", "matplotlib"): MatplotlibScatterPlotter,
@@ -53,8 +43,19 @@ class PlotterFactory:
             ("tx", "matplotlib"): MatplotlibTXPlotter,
             ("polar", "matplotlib"): MatplotlibPolarPlotter,
             ("pearson", "matplotlib"): MatplotlibMetricPlotter,
+
+            ("xy", "hvplot"): HvplotXYPlotter,
+            ("xt", "hvplot"): HvplotXTPlotter,
+            ("sc", "hvplot"): HvplotScatterPlotter,
+            ("pearson", "hvplot"): HvplotMetricPlotter,
             ("box", "hvplot"): HvplotBoxPlotter,
             ("line", "hvplot"): HvplotLinePlotter,
+
+            ("xy", "altair"): AltairXYPlotter,
+            ("xt", "altair"): AltairXTPlotter,
+            ("sc", "altair"): AltairScatterPlotter,
+            ("pearson", "altair"): AltairMetricPlotter,
+
             # Add other combinations as they are implemented
         }
         

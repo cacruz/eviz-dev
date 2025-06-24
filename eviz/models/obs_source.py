@@ -260,30 +260,67 @@ class ObsSource(GenericSource):
                          plot_result)
 
     def _process_box_plot(self, data_array, field_name, file_index, plot_type, figure):
-        """Process plots for specific time or vertical levels."""
+        """Process a box plot for observational data."""
         self.config_manager.level = None
-        time_level_config = self.config_manager.ax_opts.get('time_lev', 0)
+        
+        # Get time level from configuration
+        time_level_config = None
+        
+        # First check if there's a specific time_lev in the field's boxplot configuration
+        if (hasattr(self.config_manager, 'spec_data') and 
+            field_name in self.config_manager.spec_data and 
+            'boxplot' in self.config_manager.spec_data[field_name] and
+            'time_lev' in self.config_manager.spec_data[field_name]['boxplot']):
+            
+            time_level_config = self.config_manager.spec_data[field_name]['boxplot']['time_lev']
+            self.logger.debug(f"Using time level {time_level_config} from field-specific boxplot configuration")
+        
+        # If not found in field-specific config, check ax_opts
+        if time_level_config is None:
+            time_level_config = self.config_manager.ax_opts.get('time_lev', -1)  # Default to last time level
+            self.logger.debug(f"Using time level {time_level_config} from ax_opts")
+        
+        # Convert string to int if needed
+        if isinstance(time_level_config, str) and time_level_config.strip('-').isdigit():
+            time_level_config = int(time_level_config)
+            self.logger.debug(f"Converted time level to integer: {time_level_config}")
+        
         tc_dim = self.config_manager.get_model_dim_name('tc') or 'time'
-
+        
+        # Log the time dimension and level
         if tc_dim in data_array.dims:
             num_times = data_array[tc_dim].size
-            time_levels = range(num_times) if time_level_config == 'all' else [time_level_config]
-        else:
-            time_levels = [0]
+            self.logger.debug(f"Time dimension '{tc_dim}' has {num_times} levels")
+            if isinstance(time_level_config, int):
+                actual_time_lev = time_level_config if time_level_config >= 0 else num_times + time_level_config
+                self.logger.debug(f"Will use time level {actual_time_lev} (specified as {time_level_config})")
 
-        field_to_plot = self._prepare_field_to_plot(data_array, 
-                                                    field_name, 
-                                                    file_index, 
-                                                    plot_type, 
-                                                    figure, 
-                                                    time_level=time_level_config)
+        # Prepare the data for box plot
+        box_data = self._extract_box_data(data_array, time_lev=time_level_config)
         
-        if field_to_plot:
-            plot_result = self.create_plot(field_name, field_to_plot)
+        if box_data is None:
+            self.logger.error(f"Failed to prepare box plot data for {field_name}")
+            return
+        
+        # Create the field_to_plot tuple
+        field_to_plot = (box_data, None, None, field_name, plot_type, file_index, figure)
+        
+        # Create the plot
+        plot_result = self.create_plot(field_name, field_to_plot)
+        
+        # Save the plot
+        if isinstance(plot_result, tuple) and len(plot_result) >= 1:
+            fig = plot_result[0]  # Extract the figure from the tuple
             pu.print_map(self.config_manager, 
-                         plot_type, 
-                         self.config_manager.findex, 
-                         plot_result)
+                        plot_type, 
+                        self.config_manager.findex, 
+                        fig)  # Pass just the figure
+        else:
+            # If it's not a tuple, pass it directly
+            pu.print_map(self.config_manager, 
+                        plot_type, 
+                        self.config_manager.findex, 
+                        plot_result)
 
     def _process_line_plot(self, data_array, field_name, file_index, plot_type, figure):
         """Process a LINE plot."""
