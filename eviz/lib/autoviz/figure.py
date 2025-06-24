@@ -95,9 +95,9 @@ class Figure(mfigure.Figure):
             # Side-by-side comparison
             if self._subplots[1] == 3:
                 # [nrows, ncols, width, height] - wider for 3 columns
-                _frame_params[rindex] = [1, 3, 18, 6]
+                _frame_params[rindex] = [1, 3, 24, 6]
             else:
-                _frame_params[rindex] = [1, 2, 12, 6]  # Original 2-column layout
+                _frame_params[rindex] = [1, 2, 18, 6]  # Original 2-column layout
         elif self.config_manager.compare_diff:
             # Comparison with difference
             if self._subplots == (3, 1):
@@ -212,6 +212,7 @@ class Figure(mfigure.Figure):
 
     def create_subplot_grid(self) -> "Figure":
         """Create a grid of subplots based on the figure frame layout."""
+        # TODO: Check this!!!
         # Hack to distinguish regional plots, which look better in square aspect ratio
         if ('tx' in self.plot_type or 'sc' in self.plot_type or 'xy' in self.plot_type) and  'extent' in self._ax_opts:
             if self._ax_opts['extent'] != [-180, 180, -90, 90]:
@@ -232,7 +233,8 @@ class Figure(mfigure.Figure):
             self.gs = gridspec.GridSpec(*self._subplots)
             
         return self
-    
+
+        
     @classmethod
     def create_eviz_figure(cls, config_manager, 
                         plot_type, 
@@ -283,19 +285,6 @@ class Figure(mfigure.Figure):
         # Create figure with rc_params applied
         fig = cls(config_manager, plot_type, nrows=nrows, ncols=ncols)
         
-        # Apply rc_params directly to the figure
-        if rc_params:
-            # Apply figure-specific params
-            for param, value in rc_params.items():
-                if param.startswith('figure.'):
-                    if param == 'figure.facecolor':
-                        fig.patch.set_facecolor(value)
-                    elif param == 'figure.figsize':
-                        if isinstance(value, list) and len(value) == 2:
-                            fig.set_size_inches(value[0], value[1])
-                    elif param == 'figure.dpi':
-                        fig.set_dpi(value)
-                    # Add other figure parameters as needed
         
         # Store rc_params in ax_opts for later use with axes
         if not hasattr(fig, '_ax_opts'):
@@ -303,6 +292,18 @@ class Figure(mfigure.Figure):
         fig._ax_opts['rc_params'] = rc_params
         
         return fig
+
+    def set_us_map_layout(self):
+        """Adjust figure layout for US maps."""
+        # Set a wider figure size
+        self.set_size_inches(18, 6)
+        
+        # Adjust subplot spacing
+        self.subplots_adjust(wspace=0.1, right=0.85)
+        
+        # Set aspect ratio for all axes
+        for ax in self.axes_array:
+            ax.set_aspect('auto')
 
     def create_subplots(self):
         """
@@ -704,8 +705,8 @@ class Figure(mfigure.Figure):
         title_fontsize = title_size or fontsize
         loc = kwargs.get('location', 'left')
 
-        self.logger.info(f"Setting title for {field_name} with size {title_fontsize}")
-        self.logger.info(f"Current title size: {ax.title.get_size()}")
+        self.logger.debug(f"Setting title for {field_name} with size {title_fontsize}")
+        self.logger.debug(f"Current title size: {ax.title.get_size()}")
 
         findex = self.config_manager.findex
         sname = self.config_manager.config.map_params[findex]['source_name']

@@ -1,7 +1,7 @@
 import numpy as np
 import pandas as pd
 import altair as alt
-from ....plotting.base import XYPlotter
+from eviz.lib.autoviz.plotting.base import XYPlotter
 
 
 class AltairXYPlotter(XYPlotter):

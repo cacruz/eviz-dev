@@ -180,7 +180,7 @@ def test_simple_plots(nuwrf):
     nuwrf._get_field_for_simple_plot = MagicMock(return_value='field_data')
     
     # Call _simple_plots
-    nuwrf._simple_plots(mock_plotter)
+    nuwrf.process_simple_plots(mock_plotter)
     
     # Check that plotter.simple_plot was called
     mock_plotter.simple_plot.assert_called_once_with(nuwrf.config_manager, 'field_data')

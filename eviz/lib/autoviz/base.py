@@ -5,6 +5,7 @@ import time
 from typing import Optional
 from argparse import Namespace
 from dataclasses import dataclass, field
+
 from eviz.lib.config.config import Config
 from eviz.lib.config.config_manager import ConfigManager
 from eviz.lib.config.configuration_adapter import ConfigurationAdapter
@@ -22,6 +23,9 @@ from eviz.models.source_factory import (AirnowFactory,
                                         FluxnetFactory,
                                         )
 from eviz.lib.config.paths_config import PathsConfig
+
+# Suppress matplotlib debug messages
+logging.getLogger('matplotlib').setLevel(logging.WARNING)
 
 
 def get_config_path_from_env() -> Optional[str]:

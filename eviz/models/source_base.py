@@ -48,6 +48,7 @@ class GenericSource(BaseSource):
         self.output_fname = None
         self.ax = None
         self.fig = None
+        self.data2d_list = []
 
         if self.use_mp_pool:
             # Set to avoid establishing a GUI in each sub-process:
@@ -114,16 +115,30 @@ class GenericSource(BaseSource):
 
         if not self.config_manager.spec_data:
             plotter = SimplePlotter()
-            self._simple_plots(plotter)
+            self.process_simple_plots(plotter)
         else:
             if self.config_manager.compare and not self.config_manager.compare_diff:
-                self._side_by_side_plots()
+                self.process_side_by_side_plots()
             elif self.config_manager.compare_diff:
-                self._comparison_plots()
+                self.process_comparison_plots()
             elif self.config_manager.overlay:
-                self._side_by_side_plots()
+                self.process_side_by_side_plots()
+            elif self.config_manager.pearsonplot:
+                self.process_pearson_plots()
             else:
-                self._single_plots()
+                has_pearson = False
+                for idx, params in self.config_manager.map_params.items():
+                    plot_types = params.get('to_plot', ['xy'])
+                    if isinstance(plot_types, str):
+                        plot_types = [pt.strip() for pt in plot_types.split(',')]
+                    if 'pearson' in plot_types:
+                        has_pearson = True
+                        break
+                
+                if has_pearson:
+                    self.process_pearson_plots()
+                else:
+                    self.process_single_plots()
 
         if self.config_manager.print_to_file:
             output_dirs = []
@@ -217,7 +232,7 @@ class GenericSource(BaseSource):
             if hasattr(self, '_process_polar_plot'):
                 self._process_polar_plot(data_array, field_name, file_index, plot_type, figure)
             else:
-                self.logger.warning(f"_process_xy_plot not implemented for {self.__class__.__name__}")
+                self.logger.warning(f"_process_polar_plot not implemented for {self.__class__.__name__}")
         elif plot_type == 'xt':
             if hasattr(self, '_process_xt_plot'):
                 self._process_xt_plot(data_array, field_name, file_index, plot_type, figure)
@@ -233,6 +248,11 @@ class GenericSource(BaseSource):
                 self._process_scatter_plot(data_array, field_name, file_index, plot_type, figure)
             else:
                 self.logger.warning(f"_process_scatter_plot not implemented for {self.__class__.__name__}")
+        elif plot_type == 'pearson':
+            if hasattr(self, '_process_pearson_plot'):
+                self._process_pearson_plot(data_array, field_name, file_index, plot_type, figure)
+            else:
+                self.logger.warning(f"_process_pearson_plot not implemented for {self.__class__.__name__}")
         else:
             if hasattr(self, '_process_other_plot'):
                 self._process_other_plot(data_array, field_name, file_index, plot_type, figure)
@@ -302,28 +322,35 @@ class GenericSource(BaseSource):
         # Not gridded!
         return False
 
-    def _get_field_to_plot(self, data_array: xr.DataArray, field_name: str,
-                           file_index: int, plot_type: str, figure, time_level,
-                           level=None) -> tuple:
+    def _prepare_field_to_plot(self, 
+                               data_array: xr.DataArray, 
+                               field_name: str,
+                               file_index: int, 
+                               plot_type: str, 
+                               figure, 
+                               time_level,
+                               level=None) -> tuple:
         """Prepare the 2D data array and coordinates to be plotted."""
         dim1_name, dim2_name = self.config_manager.get_dim_names(plot_type)
         data2d = None
 
         if 'xy' in plot_type or 'polar' in plot_type:
-            data2d = self._get_xy(data_array, level=level, time_lev=time_level)
+            data2d = self._extract_xy_data(data_array, level=level, time_lev=time_level)
         elif 'yz' in plot_type:
-            data2d = self._get_yz(data_array, time_lev=time_level)
+            data2d = self._extract_yz_data(data_array, time_lev=time_level)
         elif 'xt' in plot_type:
-            data2d = self._get_xt(data_array, time_lev=time_level)
+            data2d = self._extract_xt_data(data_array, time_lev=time_level)
         elif 'tx' in plot_type:
-            data2d = self._get_tx(data_array, level=level, time_lev=time_level)
+            data2d = self._extract_tx_data(data_array, level=level, time_lev=time_level)
         elif 'line' in plot_type:  # like xt but use in interactive backends
-            data2d = self._get_line(data_array, level=level, time_lev=time_level)
+            data2d = self._extract_line_data(data_array, level=level, time_lev=time_level)
         elif 'box' in plot_type:
-            data2d = self._get_box(data_array, time_lev=time_level)
+            data2d = self._extract_box_data(data_array, time_lev=time_level)
+        elif 'pearson' in plot_type:
+            data2d = self._extract_pearson_data(data_array, level=level, time_lev=time_level)
         else:
             self.logger.warning(
-                f"Unsupported plot type for _get_field_to_plot: {plot_type}")
+                f"Unsupported plot type: {plot_type}")
             return None
 
         if data2d is None:
@@ -419,11 +446,11 @@ class GenericSource(BaseSource):
         except Exception as e:
             self.config_manager.real_time = f"Time level {time_index}"
 
-    def _simple_plots(self, plotter):
+    def process_simple_plots(self, plotter):
         """Generate simple plots."""
         self.logger.info("Generating simple plots")
 
-    def _single_plots(self):
+    def process_single_plots(self):
         """Generate single plots."""
         self.logger.info("Generating single plots")
 
@@ -454,7 +481,6 @@ class GenericSource(BaseSource):
             self.config_manager.findex = self.config_manager.get_file_index_by_filename(filename)
 
             data_source = self.config_manager.pipeline.get_data_source(filename)
-            # print(data_source)
             if not data_source:
                 self.logger.warning(f"No data source found in pipeline for {filename}")
                 continue
@@ -486,7 +512,8 @@ class GenericSource(BaseSource):
         if self.config_manager.make_gif:
             pu.create_gif(self.config_manager)
 
-    def _comparison_plots(self):
+
+    def process_comparison_plots(self):
         """Generate comparison plots for paired data sources according to configuration.
 
         Args:
@@ -494,6 +521,7 @@ class GenericSource(BaseSource):
         """
         self.logger.info("Generating comparison plots")
         current_field_index = 0
+        self.data2d_list = []
 
         all_data_sources = self.config_manager.pipeline.get_all_data_sources()
         if not all_data_sources:
@@ -535,6 +563,8 @@ class GenericSource(BaseSource):
             if idx1_field is None or idx2_field is None:
                 continue
 
+            self.config_manager.current_field_name = field1
+
             map1_params = self.config_manager.map_params[idx1_field]
             map2_params = self.config_manager.map_params[idx2_field]
 
@@ -573,7 +603,6 @@ class GenericSource(BaseSource):
                 plot_types = [pt.strip() for pt in plot_types.split(',')]
             for plot_type in plot_types:
                 self.logger.info(f"Plotting {field1} vs {field2}, {plot_type} plot")
-                self.data2d_list = []  # Reset for each plot type
 
                 if 'xy' in plot_type or 'po' in plot_type or 'polar' in plot_type:
                     self._process_xy_comparison_plots(file_indices,
@@ -586,10 +615,12 @@ class GenericSource(BaseSource):
                                                          field1, field2,
                                                          plot_type, sdat1_dataset,
                                                          sdat2_dataset)
+                # Important: Reset for next plot
+                self.data2d_list = []
 
             current_field_index += 1
 
-    def _side_by_side_plots(self):
+    def process_side_by_side_plots(self):
         """
         Generate side-by-side comparison plots for the given plotter.
 
@@ -633,6 +664,8 @@ class GenericSource(BaseSource):
             if idx1_field is None or idx2_field is None:
                 continue
 
+            self.config_manager.current_field_name = field1
+            
             map1_params = self.config_manager.map_params[idx1_field]
             map2_params = self.config_manager.map_params[idx2_field]
 
@@ -668,24 +701,129 @@ class GenericSource(BaseSource):
             plot_types = map1_params.get('to_plot', ['xy'])
             if isinstance(plot_types, str):
                 plot_types = [pt.strip() for pt in plot_types.split(',')]
-            for plot_type in plot_types:
-                self.data2d_list = []
-                self.logger.info(f"Plotting {field1} vs {field2} , {plot_type} plot")
 
+            for plot_type in plot_types:
+                self.logger.info(f"Plotting {field1}, {plot_type} plot")
+                self.data2d_list = []
                 if 'xy' in plot_type or 'polar' in plot_type:
                     self._process_xy_side_by_side_plots(current_field_index,
-                                                        field1, field2,
+                                                        field1, 
+                                                        field2,
                                                         plot_type,
-                                                        sdat1_dataset, sdat2_dataset)
+                                                        sdat1_dataset, 
+                                                        sdat2_dataset)
+                elif 'pearson' in plot_type:
+                    self._process_pearson_plots(current_field_index,
+                                                        field1, 
+                                                        field2,
+                                                        plot_type,
+                                                        sdat1_dataset, 
+                                                        sdat2_dataset)
                 else:
                     self._process_other_side_by_side_plots(current_field_index,
-                                                           field1, field2,
-                                                           plot_type, sdat1_dataset,
+                                                           field1, 
+                                                           field2,
+                                                           plot_type, 
+                                                           sdat1_dataset,
                                                            sdat2_dataset)
+                self.data2d_list = []
             current_field_index += 1
 
+    def process_pearson_plots(self):
+        """Generate Pearson correlation plots."""
+        self.logger.info("Generating pearson correlation plots")
+
+        if not self.config_manager.map_params:
+            self.logger.error(
+                "No map_params available for plotting. Check your YAML configuration.")
+            return
+
+        all_data_sources = self.config_manager.pipeline.get_all_data_sources()
+        if not all_data_sources:
+            self.logger.error(
+                "No data sources available. Check your YAML configuration and ensure data files exist.")
+            return
+
+        # Get pearson plot settings from for_inputs
+        pearson_settings = {}
+        if hasattr(self.config_manager, 'input_config') and hasattr(self.config_manager.input_config, '_pearsonplot'):
+            pearson_settings = self.config_manager.input_config._pearsonplot
+            self.logger.debug(f"Found pearsonplot settings: {pearson_settings}")
+        else:
+            self.logger.debug("No pearsonplot settings found in input_config")
+        
+        # Get the fields to correlate
+        fields_str = pearson_settings.get('fields', '')
+        corr_fields = [f.strip() for f in fields_str.split(',') if f.strip()]
+        
+        if len(corr_fields) != 2:
+            self.logger.error(f"Expected exactly 2 fields for correlation, got {len(corr_fields)}: {corr_fields}")
+            return
+        
+        # Track which field pairs we've already processed
+        processed_pairs = set()
+        
+        # Process each field in the map_params
+        for idx, params in self.config_manager.map_params.items():
+            field_name = params.get('field')
+            if not field_name:
+                continue
+                
+            # Skip fields not in our correlation pair
+            if field_name not in corr_fields:
+                self.logger.debug(f"Skipping field {field_name} as it's not in the correlation fields: {corr_fields}")
+                continue
+            
+            # Find the reference field (the other field in the correlation pair)
+            reference_field = None
+            if field_name == corr_fields[0]:
+                reference_field = corr_fields[1]
+            else:
+                reference_field = corr_fields[0]
+            
+            # Create a unique identifier for this field pair (sorted to ensure consistency)
+            pair_id = tuple(sorted([field_name, reference_field]))
+            
+            # Skip if we've already processed this pair
+            if pair_id in processed_pairs:
+                self.logger.debug(f"Skipping duplicate correlation for pair: {pair_id}")
+                continue
+            
+            # Mark this pair as processed
+            processed_pairs.add(pair_id)
+                
+            self.config_manager.current_field_name = field_name
+            
+            filename = params.get('filename')
+            self.config_manager.findex = self.config_manager.get_file_index_by_filename(filename)
+            
+            data_source = self.config_manager.pipeline.get_data_source(filename)
+            if not data_source:
+                self.logger.warning(f"No data source found in pipeline for {filename}")
+                continue
+                
+            if hasattr(data_source, 'dataset') and data_source.dataset is not None:
+                field_data = data_source.dataset.get(field_name)
+            else:
+                field_data = None
+                
+            if field_data is None:
+                self.logger.warning(f"Field {field_name} not found in data source for {filename}")
+                continue
+                
+            field_data_array = data_source.dataset[field_name]
+            plot_types = params.get('to_plot', ['pearson'])
+            
+            if isinstance(plot_types, str):
+                plot_types = [pt.strip() for pt in plot_types.split(',')]
+                
+            for plot_type in plot_types:
+                if plot_type == 'pearson':
+                    self.logger.info(f"Plotting {field_name}, {plot_type} plot")
+                    self.process_plot(field_data_array, field_name, idx, plot_type)
+
     # DATA SLICE PROCESSING METHODS
-    def _get_yz(self, data_array, time_lev):
+    def _extract_yz_data(self, data_array, time_lev):
         """ Extract YZ slice (zonal mean) from a DataArray
 
         Note:
@@ -729,7 +867,7 @@ class GenericSource(BaseSource):
 
         return apply_conversion(self.config_manager, zonal_mean, data_array.name)
 
-    def _get_xy(self, data_array, level, time_lev):
+    def _extract_xy_data(self, data_array, level, time_lev):
         """ Extract XY slice (latlon) from a DataArray
 
         Note:
@@ -743,15 +881,24 @@ class GenericSource(BaseSource):
         zc_dim = self.config_manager.get_model_dim_name('zc')
 
         d_temp = data_array.copy()
-
         if tc_dim and tc_dim in d_temp.dims:
             num_tc = d_temp[tc_dim].size
-            if isinstance(time_lev, int) and time_lev < num_tc:
-                d_temp = d_temp.isel({tc_dim: time_lev})
+            # Handle negative indices (e.g., -1 for the last time level)
+            if isinstance(time_lev, int):
+                # Convert negative index to positive if needed
+                actual_time_lev = time_lev if time_lev >= 0 else num_tc + time_lev
+                
+                # Check if the index is valid
+                if 0 <= actual_time_lev < num_tc:
+                    d_temp = d_temp.isel({tc_dim: actual_time_lev})
+                    self.logger.debug(f"Selected time level {actual_time_lev} (specified as {time_lev})")
+                else:
+                    self.logger.warning(f"Time level {time_lev} out of range (0-{num_tc-1}), using first time level")
+                    d_temp = d_temp.isel({tc_dim: 0})
             else:
-                d_temp = d_temp.isel({tc_dim: 0})
-        else:
-            self.logger.debug(f"No time dimension found matching {tc_dim}")
+                self.logger.warning(f"No time dimension found matching {tc_dim}")
+
+
 
         has_vertical_dim = zc_dim and zc_dim in d_temp.dims
         if has_vertical_dim:
@@ -838,7 +985,7 @@ class GenericSource(BaseSource):
 
         return apply_conversion(self.config_manager, data2d, data_array.name)
 
-    def _get_xt(self, data_array, time_lev):
+    def _extract_xt_data(self, data_array, time_lev):
         """ Extract time-series from a DataArray
 
         Note:
@@ -1053,8 +1200,8 @@ class GenericSource(BaseSource):
                 f"Output contains NaN values: {np.sum(np.isnan(data2d.values))} NaNs")
             
         return apply_conversion(self.config_manager, data2d, data_array.name)
-    
-    def _get_box(self, data_array, time_lev=None):
+
+    def _extract_box_data(self, data_array, time_lev=None):
         """Extract data for a box plot.
         
         This method prepares data for box plots by extracting values across a dimension
@@ -1065,114 +1212,140 @@ class GenericSource(BaseSource):
             time_lev: Time level to extract (optional)
             
         Returns:
-            tuple: (data_df, field_name, plot_type, file_index)
-                data_df: pandas DataFrame with columns for categories and values
-                field_name: Name of the field being plotted
-                plot_type: Type of plot ('box')
-                file_index: Index of the file being plotted
+            pandas.DataFrame: DataFrame with columns for categories and values
         """
         self.logger.debug(f"Extracting box plot data from {data_array.name if hasattr(data_array, 'name') else 'unnamed array'}")
         
         tc_dim = self.config_manager.get_model_dim_name('tc') or 'time'
-        zc_dim = self.config_manager.get_model_dim_name('zc') or 'lev'
-        xc_dim = self.config_manager.get_model_dim_name('xc') or 'lon'
-        yc_dim = self.config_manager.get_model_dim_name('yc') or 'lat'
-        num_times = data_array[tc_dim].size
-        self.logger.debug(f"'{data_array.name}' field has {num_times} time levels")
+        d_temp = data_array.copy()
         
-        # Check if all data is NaN
-        if np.isnan(data_array).all():
+        # Handle time dimension selection
+        if tc_dim and tc_dim in d_temp.dims:
+            num_tc = d_temp[tc_dim].size
+            
+            # If time_lev is None, we'll use the last time step
+            # If time_lev is an integer, select that specific time step
+            if time_lev is None:
+                d_temp = d_temp.isel({tc_dim: -1})
+                self.logger.debug(f"No time level specified, using last time level ({num_tc-1})")
+            elif time_lev == 'all':
+                self.logger.debug("Using all time levels for box plot")
+            elif isinstance(time_lev, int):
+                actual_time_lev = time_lev if time_lev >= 0 else num_tc + time_lev
+                
+                if 0 <= actual_time_lev < num_tc:
+                    d_temp = d_temp.isel({tc_dim: actual_time_lev})
+                    self.logger.debug(f"Selected time level {actual_time_lev} (specified as {time_lev})")
+                else:
+                    self.logger.warning(f"Time level {time_lev} out of range (0-{num_tc-1}), using first time level")
+                    d_temp = d_temp.isel({tc_dim: 0})
+            elif time_lev == 'all':
+                self.logger.debug("Using all time levels for box plot")
+            elif time_lev is None:
+                d_temp = d_temp.isel({tc_dim: -1})
+                self.logger.debug(f"No time level specified, using last time level ({num_tc-1})")
+        
+        if np.isnan(d_temp).all():
             self.logger.warning(f"All values are NaN for {data_array.name if hasattr(data_array, 'name') else 'unnamed field'}")
             return None
         
-        if np.isnan(data_array.values).any():
-            self.logger.info(
-                f"Output contains NaN values: {np.sum(np.isnan(data_array.values))} NaNs")
+        if np.isnan(d_temp.values).any():
+            self.logger.info(f"Output contains NaN values: {np.sum(np.isnan(d_temp.values))} NaNs")
         
-        # If time_lev is None and we have a time dimension, use all time levels
-        if time_lev is None and tc_dim in data_array.dims:
-            self.logger.debug("Using all time levels for box plot")
-            # No need to select a specific time level
-        elif time_lev is not None and tc_dim in data_array.dims:
-            self.logger.debug(f"Selecting time level: {time_lev}")
-            data_array = data_array.isel({tc_dim: time_lev})
-        
-        # Get field name
         field_name = data_array.name if hasattr(data_array, 'name') else 'unnamed'
-
+        
         # Convert to pandas DataFrame
         try:
-            # df = data_array.stack(points=(yc_dim, xc_dim)).to_dataframe(name=field_name).reset_index()
             # For spatial data, we want to create a box plot of values across the spatial domain
             # First, flatten the spatial dimensions
-            if len(data_array.dims) > 1:
-                # Stack all non-time dimensions to create a single dimension for spatial points
-                dims_to_stack = [dim for dim in data_array.dims if dim != tc_dim]
-                if dims_to_stack:
-                    stacked = data_array.stack(point=dims_to_stack)
-                    df = stacked.to_dataframe()
-                else:
-                    df = data_array.to_dataframe()
-            else:
-                # If there's only one dimension, use it directly
-                df = data_array.to_dataframe()
-            
-            # If we have a time dimension and didn't select a specific level,
-            # we can create a box plot for each time step
-            if tc_dim in data_array.dims and time_lev is None:
-                # Ensure the time column is properly formatted
-                if tc_dim in df.index.names:
-                    # Reset index to make time a column
-                    df = df.reset_index()
+            if len(d_temp.dims) > 1:
+                # If we have a time dimension and we're using all time steps,
+                # we can create a box plot for each time step
+                if tc_dim in d_temp.dims and (time_lev == 'all' or time_lev is None and len(d_temp[tc_dim]) > 1):
+                    # Create a DataFrame with time as a category
+                    time_values = d_temp[tc_dim].values
+                    num_times = len(time_values)
                     
-                    # Convert time to string format for better display
-                    if pd.api.types.is_datetime64_any_dtype(df[tc_dim]):
-                        df[tc_dim] = df[tc_dim].dt.strftime('%Y-%m-%d %H:%M')
-                
-                # The DataFrame should have a column for time and a column for values
-                data_df = df.rename(columns={field_name: 'value'})
-                category_col = tc_dim
-            else:
-                # Without time or with a specific time selected, we might want to use another
-                # categorical variable if available, otherwise just use the values
-                data_df = df.reset_index()
-                
-                # Try to find a suitable categorical column
-                categorical_cols = [col for col in data_df.columns 
-                                if col != field_name and data_df[col].nunique() < 30]
-                
-                if categorical_cols:
-                    category_col = categorical_cols[0]
+                    all_data = []
+                    
+                    for t in range(num_times):
+                        time_slice = d_temp.isel({tc_dim: t})
+                        
+                        # Convert time to string format for better display
+                        time_str = str(time_values[t])
+                        if hasattr(time_values[t], 'strftime'):
+                            time_str = time_values[t].strftime('%Y-%m-%d %H:%M')
+                        
+                        flat_data = time_slice.values.flatten()
+                        
+                        if np.isnan(flat_data).all():
+                            self.logger.debug(f"Skipping time {time_str} - all values are NaN")
+                            continue
+                        
+                        df_time = pd.DataFrame({
+                            'time': time_str,
+                            'value': flat_data
+                        })
+                        
+                        all_data.append(df_time)
+                    
+                    # Combine all time steps
+                    if all_data:
+                        df = pd.concat(all_data, ignore_index=True)
+                    else:
+                        self.logger.warning(f"No valid data for box plot of {field_name}")
+                        return None
                 else:
-                    # If no good categorical column, we'll just have a single box
-                    data_df['category'] = 'All Data'
-                    category_col = 'category'
-                
-                # Rename the value column
-                data_df = data_df.rename(columns={field_name: 'value'})
-
-            # Handle fill values if specified
+                    flat_data = d_temp.values.flatten()
+                    
+                    if tc_dim in d_temp.dims and len(d_temp[tc_dim]) == 1:
+                        time_value = d_temp[tc_dim].values[0]
+                        time_str = str(time_value)
+                        if hasattr(time_value, 'strftime'):
+                            time_str = time_value.strftime('%Y-%m-%d %H:%M')
+                        category = f"Time: {time_str}"
+                    else:
+                        category = "All Data"
+                    
+                    df = pd.DataFrame({
+                        'category': category,
+                        'value': flat_data
+                    })
+            else:
+                # 1D data, use as is
+                df = pd.DataFrame({
+                    'category': "All Data",
+                    'value': d_temp.values
+                })
+            
             if hasattr(self.config_manager, 'spec_data') and field_name in self.config_manager.spec_data:
-                if 'fill_value' in self.config_manager.spec_data[field_name].get('boxplot', {}):
-                    fill_value = self.config_manager.spec_data[field_name]['boxplot']['fill_value']
-                    data_df = data_df[data_df['value'] != fill_value]
+                if 'boxplot' in self.config_manager.spec_data[field_name]:
+                    if 'fill_value' in self.config_manager.spec_data[field_name]['boxplot']:
+                        fill_value = self.config_manager.spec_data[field_name]['boxplot']['fill_value']
+                        df = df[df['value'] != fill_value]
             
-            # Remove NaN values
-            data_df = data_df.dropna(subset=['value'])
+            df = df.dropna(subset=['value'])
             
-            # Check if we have data
-            if len(data_df) == 0:
+            if len(df) == 0:
                 self.logger.warning(f"No valid data for box plot of {field_name}")
                 return None
             
-            self.logger.debug(f"Created DataFrame with {len(data_df)} rows for box plot")
-            return data_df
+            # Sample the data if it's too large (for better performance)
+            max_points = 10000  # Maximum number of points to include in the box plot
+            if len(df) > max_points:
+                self.logger.debug(f"Sampling {max_points} points from {len(df)} total points")
+                df = df.sample(max_points, random_state=42)
+            
+            self.logger.debug(f"Created DataFrame with {len(df)} rows for box plot")
+            return df
         
         except Exception as e:
             self.logger.error(f"Error creating box plot data: {e}")
+            import traceback
+            self.logger.error(traceback.format_exc())
             return None
 
-    def _get_line(self, data_array, time_lev=None, level=None):
+    def _extract_line_data(self, data_array, time_lev=None, level=None):
         """Extract data for a line plot.
         
         This method prepares data for line plots, typically extracting a time series
@@ -1194,13 +1367,11 @@ class GenericSource(BaseSource):
         """
         self.logger.debug(f"Extracting line plot data from {data_array.name if hasattr(data_array, 'name') else 'unnamed array'}")
         
-        # Get dimension names
         tc_dim = self.config_manager.get_model_dim_name('tc') or 'time'
         zc_dim = self.config_manager.get_model_dim_name('zc') or 'lev'
         xc_dim = self.config_manager.get_model_dim_name('xc') or 'lon'
         yc_dim = self.config_manager.get_model_dim_name('yc') or 'lat'
         
-        # Get field name
         field_name = data_array.name if hasattr(data_array, 'name') else 'unnamed'
         
         try:
@@ -1220,28 +1391,21 @@ class GenericSource(BaseSource):
                     # 1. Select a specific point (if coordinates are provided in config)
                     # 2. Average over the spatial domain
                     
-                    # Check if specific coordinates are provided
                     x_point = self.config_manager.ax_opts.get('x_point', None)
                     y_point = self.config_manager.ax_opts.get('y_point', None)
                     
                     if x_point is not None and y_point is not None and xc_dim in data_array.dims and yc_dim in data_array.dims:
-                        # Select the nearest point to the specified coordinates
                         data_array = data_array.sel({xc_dim: x_point, yc_dim: y_point}, method='nearest')
                         point_label = f"({x_point}, {y_point})"
                     else:
-                        # Average over remaining spatial dimensions
                         for dim in spatial_dims:
                             if dim in data_array.dims:
                                 data_array = data_array.mean(dim=dim)
                         point_label = "Spatial Average"
                 
-                # Convert to DataFrame
                 df = data_array.to_dataframe()
-                
                 # Reset index to make time a column
-                df = df.reset_index()
-                
-                # Rename columns for clarity
+                df = df.reset_index()                
                 x_col = tc_dim
                 y_col = field_name
                 
@@ -1265,25 +1429,19 @@ class GenericSource(BaseSource):
                     y_point = self.config_manager.ax_opts.get('y_point', None)
                     
                     if y_point is not None:
-                        # Select the nearest latitude
                         data_array = data_array.sel({yc_dim: y_point}, method='nearest')
                         lat_label = f"Latitude: {y_point}"
                     else:
-                        # Average over latitude
                         data_array = data_array.mean(dim=yc_dim)
                         lat_label = "Latitude Average"
                 
-                # Convert to DataFrame
                 df = data_array.to_dataframe()
-                
-                # Reset index to make longitude a column
                 df = df.reset_index()
-                
+    
                 # Rename columns for clarity
                 x_col = xc_dim
                 y_col = field_name
                 
-                # Add a label column if we have latitude information
                 if 'lat_label' in locals():
                     df['label'] = lat_label
             
@@ -1310,12 +1468,8 @@ class GenericSource(BaseSource):
                     else:
                         point_label = "Horizontal Average"
                 
-                # Convert to DataFrame
-                df = data_array.to_dataframe()
-                
-                # Reset index to make level a column
+                df = data_array.to_dataframe()                
                 df = df.reset_index()
-                
                 # Rename columns for clarity
                 x_col = field_name
                 y_col = zc_dim  # For vertical profiles, we typically put height/pressure on y-axis
@@ -1326,10 +1480,7 @@ class GenericSource(BaseSource):
             
             # Case 4: Simple 1D array (just plot as is)
             else:
-                # Convert to DataFrame
                 df = data_array.to_dataframe()
-                
-                # Reset index
                 df = df.reset_index()
                 
                 # If there's only one column besides the index, create an index column
@@ -1356,16 +1507,13 @@ class GenericSource(BaseSource):
                         x_col = 'index'
                         y_col = 'value'
             
-            # Handle fill values if specified
             if hasattr(self.config_manager, 'spec_data') and field_name in self.config_manager.spec_data:
                 if 'fill_value' in self.config_manager.spec_data[field_name].get('lineplot', {}):
                     fill_value = self.config_manager.spec_data[field_name]['lineplot']['fill_value']
                     df = df[df[y_col] != fill_value]
             
-            # Remove NaN values
             df = df.dropna(subset=[x_col, y_col])
             
-            # Check if we have data
             if len(df) == 0:
                 self.logger.warning(f"No valid data for line plot of {field_name}")
                 return None
@@ -1382,7 +1530,7 @@ class GenericSource(BaseSource):
             self.logger.error(traceback.format_exc())
             return None
 
-    def _get_tx(self, data_array, level=None, time_lev=0):
+    def _extract_tx_data(self, data_array, level=None, time_lev=0):
         """ Extract a time-series map from a DataArray
 
         Note:
@@ -1526,3 +1674,80 @@ class GenericSource(BaseSource):
         else:
             return data2d
 
+    def _extract_pearson_data(self, data_array, level=None, time_lev=None):
+        """ Extract data for a Pearson correlation plot
+        
+        This method prepares data for Pearson correlation analysis by extracting
+        the appropriate slice of data based on level and time specifications.
+        
+        Args:
+            data_array: The xarray DataArray to process
+            level: Vertical level to extract (optional)
+            time_lev: Time level to extract (optional)
+            
+        Returns:
+            xarray.DataArray: The processed data array ready for correlation analysis
+        """
+        if data_array is None:
+            return None
+
+        pearson_settings = {}
+        if hasattr(self.config_manager, 'input_config') and hasattr(self.config_manager.input_config, '_pearsonplot'):
+            pearson_settings = self.config_manager.input_config._pearsonplot
+        
+        # Determine correlation type (time or space)
+        do_time_corr = pearson_settings.get('time_corr', True)
+        
+        # For correlation analysis, we typically want to preserve the time dimension
+        # if it exists, as we'll correlate across time at each grid point
+        tc_dim = self.config_manager.get_model_dim_name('tc') or 'time'
+        zc_dim = self.config_manager.get_model_dim_name('zc') or 'lev'
+        
+        d_temp = data_array.copy()
+        
+        has_vertical_dim = zc_dim and zc_dim in d_temp.dims
+        if has_vertical_dim:
+            if level is not None:
+                try:
+                    if level in d_temp[zc_dim].values:
+                        lev_idx = np.where(d_temp[zc_dim].values == level)[0][0]
+                        d_temp = d_temp.isel({zc_dim: lev_idx})
+                        self.logger.debug(f"Selected exact level {level} at index {lev_idx}")
+                    else:
+                        lev_idx = np.abs(d_temp[zc_dim].values - level).argmin()
+                        self.logger.debug(f"Level {level} not found exactly, using nearest level {d_temp[zc_dim].values[lev_idx]}")
+                        d_temp = d_temp.isel({zc_dim: lev_idx})
+                except Exception as e:
+                    self.logger.error(f"Error selecting level {level}: {e}")
+                    if d_temp[zc_dim].size > 0:
+                        d_temp = d_temp.isel({zc_dim: 0})
+            else:
+                # No level specified, use the first level
+                if d_temp[zc_dim].size > 0:
+                    d_temp = d_temp.isel({zc_dim: 0})
+                    self.logger.debug("No level specified, using first level")
+        
+        # For time correlation, we want to keep the time dimension
+        # For spatial correlation, we select a specific time point
+        if tc_dim in d_temp.dims:
+            if do_time_corr:
+                self.logger.debug("Keeping all time points for time correlation")
+                # No need to select a specific time level
+            elif time_lev != 'all' and isinstance(time_lev, (int, np.integer)):
+                # For spatial correlation, select a specific time point
+                num_tc = d_temp[tc_dim].size
+                actual_time_lev = time_lev if time_lev >= 0 else num_tc + time_lev
+                
+                if 0 <= actual_time_lev < num_tc:
+                    d_temp = d_temp.isel({tc_dim: actual_time_lev})
+                    self.logger.debug(f"Selected time level {actual_time_lev} (specified as {time_lev}) for spatial correlation")
+                else:
+                    self.logger.warning(f"Time level {time_lev} out of range (0-{num_tc-1}), using first time level")
+                    d_temp = d_temp.isel({tc_dim: 0})
+        
+        data2d = apply_conversion(self.config_manager, d_temp, data_array.name)
+        
+        if np.isnan(data2d.values).all():
+            self.logger.warning(f"All values are NaN for {data_array.name if hasattr(data_array, 'name') else 'unnamed field'}")
+        
+        return data2d

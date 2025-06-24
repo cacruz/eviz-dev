@@ -157,7 +157,7 @@ class Wrf(NuWrf):
             dim2 = dims[1]
         return dim1, dim2
 
-    def _get_yz(self, d, time_lev=0):
+    def _extract_yz_data(self, d, time_lev=0):
         """ Create YZ slice from N-dim data field"""
         d = d.squeeze()
         if self.get_model_dim_name('tc') in d.dims:
@@ -179,7 +179,7 @@ class Wrf(NuWrf):
             data2d = data2d.mean(dim=self.get_model_dim_name('xc'))
         return apply_conversion(self.config_manager, data2d, d.name)
 
-    def _get_xt(self, d, time_lev, level=None):
+    def _extract_xt_data(self, d, time_lev, level=None):
         """ Extract time-series from a DataArray
 
         Note:

@@ -236,17 +236,16 @@ class DataSource(ABC):
             return None
             
         model_name = self.model_name
-        
-        self.logger.debug(f"Looking for model '{model_name}' in meta_coords['{gridded_dim_name}']")
-        self.logger.debug(f"Available models for {gridded_dim_name}: {list(meta_coords[gridded_dim_name].keys())}")
-        
+
         if not model_name or model_name not in meta_coords[gridded_dim_name]:
             # Try to use a default model if available
             if 'gridded' in meta_coords[gridded_dim_name]:
-                self.logger.debug(f"Using 'gridded' mapping for model '{model_name}' and dimension '{gridded_dim_name}'")
+                self.logger.debug(f"Using 'gridded' mapping for model '{model_name}' "
+                                  f"and dimension '{gridded_dim_name}'")
                 model_name = 'gridded'
             else:
-                self.logger.warning(f"No mapping found for model '{model_name}' and dimension '{gridded_dim_name}'")
+                self.logger.warning(f"No mapping found for model '{model_name}' and "
+                                    f"dimension '{gridded_dim_name}'")
                 return None
         
         coords = meta_coords[gridded_dim_name][model_name]
@@ -276,7 +275,6 @@ class DataSource(ABC):
             return None
         
         elif isinstance(coords, str):
-            # If coords is a string, handle comma-separated list of possible dimension names
             if ',' in coords:
                 coord_candidates = coords.split(',')
                 if available_dims:

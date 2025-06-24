@@ -71,7 +71,7 @@ class Mopitt(GenericSource):
         else:
             return unzipped_data
 
-    def _simple_plots(self, plotter):
+    def process_simple_plots(self, plotter):
         map_params = self.config.map_params
         field_num = 0
         self.config.findex = 0
@@ -92,7 +92,7 @@ class Mopitt(GenericSource):
                 plotter.simple_plot(self.config, field_to_plot)
             field_num += 1
 
-    def _single_plots(self, plotter):
+    def process_single_plots(self, plotter):
         for s in range(len(self.config.source_names)):
             map_params = self.config.map_params
             field_num = 0
@@ -118,8 +118,12 @@ class Mopitt(GenericSource):
                                 self.logger.warning(f' -> No levels specified for {field_name}')
                                 continue
                             for level in levels:
-                                field_to_plot = self._get_field_to_plot(source_data,
-                                                                        field_name, file_index, pt, figure, level=level)
+                                field_to_plot = self._prepare_field_to_plot(source_data,
+                                                                            field_name, 
+                                                                            file_index, 
+                                                                            pt, 
+                                                                            figure, 
+                                                                            level=level)
                                 if self.use_mp_pool:
                                     p = multiprocessing.Process(target=plotter.single_plots,
                                                                 args=(self.config, field_to_plot, level))
@@ -128,10 +132,18 @@ class Mopitt(GenericSource):
                                     p.start()
                                 else:
                                     plotter.single_plots(self.config, field_to_plot=field_to_plot, level=level)
-                                    print_map(self.config, pt, self.config.findex, figure, level=level)
+                                    print_map(self.config, 
+                                              pt, 
+                                              self.config.findex, 
+                                              figure, 
+                                              level=level)
 
                         else:
-                            field_to_plot = self._get_field_to_plot(source_data, field_name, file_index, pt, figure)
+                            field_to_plot = self._prepare_field_to_plot(source_data, 
+                                                                        field_name, 
+                                                                        file_index, 
+                                                                        pt, 
+                                                                        figure)
                             if self.use_mp_pool:
                                 p = multiprocessing.Process(target=plotter.single_plots,
                                                             args=(self.config, field_to_plot))
@@ -141,7 +153,10 @@ class Mopitt(GenericSource):
 
                             else:
                                 plotter.single_plots(self.config, field_to_plot=field_to_plot)
-                                print_map(self.config, pt, self.config.findex, figure)
+                                print_map(self.config, 
+                                          pt, 
+                                          self.config.findex, 
+                                          figure)
 
                     field_num += 1
 
@@ -150,13 +165,19 @@ class Mopitt(GenericSource):
                 self.logger.info(f"process{p.name} is done")
                 p.join()
 
-    def _get_field_to_plot(self, source_data, field_name, file_index, plot_type, figure, level=None):
+    def _prepare_field_to_plot(self,
+                               source_data, 
+                               field_name, 
+                               file_index, 
+                               plot_type, 
+                               figure, 
+                               level=None):
         _, ax = figure.get_fig_ax()
         self.config.ax_opts = figure.init_ax_opts(field_name)
         dim1, dim2 = self.config.get_dim_names(plot_type)
         data2d = None
         if 'xy' in plot_type:
-            data2d = self._get_xy(source_data, field_name, level=level, time_lev=self.config.ax_opts['time_lev'])
+            data2d = self._extract_xy_data(source_data, field_name, level=level, time_lev=self.config.ax_opts['time_lev'])
         else:
             pass
 
@@ -198,7 +219,7 @@ class Mopitt(GenericSource):
                 data2d = data2d.isel(lev=0)
         return data2d
 
-    def _get_xy(self, d, name, level, time_lev):
+    def _extract_xy_data(self, d, name, level, time_lev):
         """ Extract XY slice from N-dim data field"""
         if d is None:
             return

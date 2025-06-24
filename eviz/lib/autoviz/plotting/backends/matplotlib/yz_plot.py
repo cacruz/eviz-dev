@@ -168,7 +168,10 @@ class MatplotlibYZPlotter(MatplotlibBasePlotter):
                 self._plot_profile(config, data2d, fig, ax, ax_opts, (prof_dim, dep_var))
 
             if config.overlay:
-                all_plotted = config.current_dataset_index == config.total_datasets - 1            
+                all_plotted = False
+                if hasattr(config, 'current_dataset_index') and hasattr(config, 'total_datasets'):
+                    all_plotted = config.current_dataset_index == config.total_datasets - 1            
+                
                 if all_plotted or ax_opts.get('force_legend', False):
                     legend = ax.legend(loc='best', fontsize=pu.legend_font_size(fig.subplots))                
                     frame = legend.get_frame()
@@ -319,7 +322,7 @@ class MatplotlibYZPlotter(MatplotlibBasePlotter):
         xlabels = ax.get_xticklabels()
         for label in xlabels:
             label.set_fontsize(pu.axis_tick_font_size(fig.subplots))
-    
+
     def _set_ax_ranges(self, config, field_name, fig, ax, ax_opts, y, units):
         """Set axis ranges and scales for YZ plots."""
         # Define standard pressure levels

@@ -13,6 +13,11 @@ import time
 import matplotlib
 import matplotlib.pyplot as plt
 import numpy as np
+import holoviews as hv
+from IPython.display import display
+import tempfile
+import webbrowser
+
 from matplotlib.ticker import LogFormatter
 import glob
 from PIL import Image
@@ -194,6 +199,7 @@ def create_gif(config):
         except OSError as e:
             logger.warning(f"Warning: Could not remove {my_file}: {e}")
 
+
 def print_map(config, plot_type: str, findex: int, fig, level: int = None) -> None:
     """Save or display a plot, handling output directory, file naming, and optional archiving.
 
@@ -221,7 +227,7 @@ def print_map(config, plot_type: str, findex: int, fig, level: int = None) -> No
     def build_filename(config, plot_type: str, findex: int, level: int = None) -> str:
         """Construct the output filename based on config and plot type."""
         map_params = config.map_params
-        field_name = config.current_field_name  or map_params[findex]['field']
+        field_name = config.current_field_name or map_params[findex]['field']
         exp_id = map_params[findex].get('exp_id', None)
 
         levstr = f"_{level}" if level is not None else ""
@@ -235,8 +241,9 @@ def print_map(config, plot_type: str, findex: int, fig, level: int = None) -> No
                 exp_id_suf = f"_{findex}_{time_level}."
         # else: exp_id_suf remains "."
 
+        # Add plot type to filename to make it unique for each field and plot type
         if 'xy' in plot_type:
-            fname = f"{field_name}{levstr}{exp_id_suf}"
+            fname = f"{field_name}_xy{levstr}{exp_id_suf}"  # Added _xy to ensure uniqueness
         elif 'yz' in plot_type:
             fname = f"{field_name}_yz{exp_id_suf}"
         else:
@@ -263,13 +270,11 @@ def print_map(config, plot_type: str, findex: int, fig, level: int = None) -> No
     logger.debug(f"Saving plot to: {filename}")
 
     if config.print_to_file:
-        # Save the figure based on the backend
         if backend == 'matplotlib':
             # For matplotlib, use the traditional approach
             if hasattr(fig, 'tight_layout'):
                 fig.tight_layout()
             
-             # Get rc_params if available
             rc_params = {}
             if hasattr(fig, '_ax_opts') and 'rc_params' in fig._ax_opts:
                 rc_params = fig._ax_opts['rc_params']
@@ -280,22 +285,20 @@ def print_map(config, plot_type: str, findex: int, fig, level: int = None) -> No
             else:
             # Save with or without bbox_inches depending on extent
                 if config.ax_opts.get('extent'):
-                    fig.savefig(filename, dpi=300)
+                    fig.savefig(filename, bbox_inches='tight', dpi=300)
                 else:
                     fig.savefig(filename, bbox_inches='tight', dpi=300)
-        
+            
+            plt.close(fig)
+
         elif backend == 'altair':
-            # For Altair, save as HTML
             if hasattr(fig, 'save'):
                 fig.save(filename)
             else:
                 logger.warning(f"Cannot save Altair plot: {filename}. Object doesn't have save method.")
         
         elif backend == 'hvplot':
-            # For HvPlot, save as HTML
             try:
-                # Import holoviews for saving
-                import holoviews as hv
                 hv.save(fig, filename)
                 logger.debug(f"Saved HvPlot using holoviews.save to {filename}")
             except (ImportError, AttributeError) as e:
@@ -315,7 +318,8 @@ def print_map(config, plot_type: str, findex: int, fig, level: int = None) -> No
             else:
                 logger.warning(f"Don't know how to save plot of type {type(fig)} with backend {backend}")
 
-        logger.debug(f"Figure saved to {filename}")
+        # Changed from debug to info for better visibility
+        logger.info(f"Figure saved to {filename}")
 
         if getattr(config, "archive_web_results", False):
             # Remove file extension from fname for JSON
@@ -325,19 +329,13 @@ def print_map(config, plot_type: str, findex: int, fig, level: int = None) -> No
             )
             logger.debug(f"Archived web results for {json_fname}")
     else:
-        # Show the figure based on the backend
         if backend == 'matplotlib':
             plt.tight_layout()
             plt.show()
         elif backend == 'altair':
-            # For Altair in notebooks, display directly
             try:
-                from IPython.display import display
                 display(fig)
             except ImportError:
-                # If not in a notebook, open in browser
-                import tempfile
-                import webbrowser
                 temp_file = os.path.join(tempfile.gettempdir(), f"{fname}.html")
                 if hasattr(fig, 'save'):
                     fig.save(temp_file)
@@ -345,13 +343,9 @@ def print_map(config, plot_type: str, findex: int, fig, level: int = None) -> No
         elif backend == 'hvplot':
             # For HvPlot in notebooks, display directly
             try:
-                from IPython.display import display
                 display(fig)
             except ImportError:
                 # If not in a notebook, open in browser
-                import tempfile
-                import webbrowser
-                import holoviews as hv
                 temp_file = os.path.join(tempfile.gettempdir(), f"{fname}.html")
                 hv.save(fig, temp_file)
                 webbrowser.open(f"file://{temp_file}")
@@ -361,8 +355,6 @@ def print_map(config, plot_type: str, findex: int, fig, level: int = None) -> No
                 fig.show()
             else:
                 logger.warning(f"Don't know how to display plot of type {type(fig)} with backend {backend}")
-    
-    logger.debug("Clearing figure")
 
 
 def legend_font_size(subplots):

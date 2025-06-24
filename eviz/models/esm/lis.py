@@ -51,11 +51,11 @@ class Lis(NuWrf):
         time_lev = 0
         
         if 'xt' in plot_type:
-            data2d = self._get_xt(d, time_lev=self.ax_opts['time_lev'], level=None)
+            data2d = self._extract_xt_data(d, time_lev=self.ax_opts['time_lev'], level=None)
         elif 'tx' in plot_type:
-            data2d = self._get_tx(d, level=None, time_lev=self.ax_opts['time_lev'])
+            data2d = self._extract_tx_data(d, level=None, time_lev=self.ax_opts['time_lev'])
         elif 'xy' in plot_type:
-            data2d = self._get_xy(d, level, time_lev)
+            data2d = self._extract_xy_data(d, level, time_lev)
         else:
             pass
 
@@ -88,7 +88,7 @@ class Lis(NuWrf):
 
     def _get_data(self, field_name, ax_opts, pid):
         d = self.config_manager.readers[0].get_field(field_name, self.config_manager.findex)
-        return self._get_xy(d, level=0, time_lev=ax_opts['time_lev'])
+        return self._extract_xy_data(d, level=0, time_lev=ax_opts['time_lev'])
 
     @staticmethod
     def __get_xy(d, name):
@@ -165,7 +165,7 @@ class Lis(NuWrf):
         dim = list(common)[0] if common else None
         return dim
 
-    def _get_xt(self, d, time_lev, level=None):
+    def _extract_xt_data(self, d, time_lev, level=None):
         """ Extract time-series from a DataArray
 
         Note:

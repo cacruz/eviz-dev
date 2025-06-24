@@ -601,6 +601,16 @@ class ConfigManager:
         return self.input_config._extra_diff_plot
 
     @property
+    def shared_cbar(self):
+        """Use a shared colorbar in comparison plots."""
+        return self.input_config._shared_cbar
+
+    @property
+    def pearsonplot(self):
+        """The pearsonplot options to use."""
+        return self.input_config._pearsonplot
+
+    @property
     def plot_backend(self):
         """The backend to use for plotting."""
         return self.input_config._plot_backend

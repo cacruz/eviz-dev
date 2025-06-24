@@ -2,7 +2,7 @@ import numpy as np
 import pandas as pd
 import logging
 import holoviews as hv
-from ....plotting.base import XTPlotter
+from eviz.lib.autoviz.plotting.base import XTPlotter
 
 
 class HvplotXTPlotter(XTPlotter):
@@ -34,18 +34,13 @@ class HvplotXTPlotter(XTPlotter):
             self.logger.warning("No data to plot")
             return None
         
-        # Log data shape and type for debugging
-        self.logger.debug(f"Data shape: {data2d.shape if hasattr(data2d, 'shape') else 'scalar'}")
         
-        # Get axes options from config
         ax_opts = config.ax_opts
         
-        # Get title
         title = field_name
         if 'name' in config.spec_data[field_name]:
             title = config.spec_data[field_name]['name']
         
-        # Get units
         units = "n.a."
         if 'units' in config.spec_data[field_name]:
             units = config.spec_data[field_name]['units']
@@ -54,14 +49,12 @@ class HvplotXTPlotter(XTPlotter):
         elif hasattr(data2d, 'units'):
             units = data2d.units
         
-        # Get time coordinates
         tc_dim = config.get_model_dim_name('tc')
         try:
             if tc_dim and tc_dim in data2d.coords:
                 time_coords = data2d.coords[tc_dim].values
                 time_dim = tc_dim
             else:
-                # Try to find time dimension
                 time_dim = None
                 if hasattr(data2d, 'dims'):
                     for dim in data2d.dims:
@@ -73,7 +66,6 @@ class HvplotXTPlotter(XTPlotter):
                     self.logger.debug(f"Using {time_dim} as time dimension")
                     time_coords = data2d[time_dim].values
                 elif len(data2d.dims) > 0:
-                    # Use the first dimension as time
                     time_dim = data2d.dims[0]
                     self.logger.debug(f"Using first dimension {time_dim} as time")
                     time_coords = data2d[time_dim].values
@@ -99,12 +91,10 @@ class HvplotXTPlotter(XTPlotter):
                         window_size = config.spec_data[field_name]['xtplot']['window_size']
         
         try:
-            # Create the plot
             if hasattr(data2d, 'hvplot'):
                 # If data2d is an xarray DataArray with hvplot accessor
                 self.logger.debug("Using hvplot accessor for xarray DataArray")
                 
-                # Set up plot options
                 plot_opts = {
                     'x': time_dim,
                     'title': title,
@@ -116,13 +106,11 @@ class HvplotXTPlotter(XTPlotter):
                     'tools': ['pan', 'wheel_zoom', 'box_zoom', 'reset', 'hover'],
                 }
                 
-                # Add rolling mean if specified
                 if window_size > 0:
                     self.logger.debug(f"Applying rolling mean with window size {window_size}")
                     plot_opts['rolling'] = window_size
                     plot_opts['rolling_center'] = True
                 
-                # Create the plot
                 plot = data2d.hvplot.line(**plot_opts)
                 
                 # Add trend line if specified
@@ -138,18 +126,13 @@ class HvplotXTPlotter(XTPlotter):
                         plot = plot * trend
                 
             else:
-                # If data2d is not an xarray DataArray or doesn't have hvplot accessor
                 self.logger.debug("Converting to DataFrame for plotting")
-                
-                # Convert to DataFrame
                 df = self._convert_to_dataframe(data2d, time_coords)
                 
-                # Apply rolling mean if specified
                 if window_size > 0:
                     self.logger.debug(f"Applying rolling mean with window size {window_size}")
                     df['value'] = df['value'].rolling(window=window_size, center=True).mean().dropna()
                 
-                # Create the plot using HoloViews
                 curve = hv.Curve(df, 'time', 'value')
                 plot = curve.opts(
                     title=title,
@@ -161,7 +144,6 @@ class HvplotXTPlotter(XTPlotter):
                     tools=['hover']
                 )
                 
-                # Add trend line if specified
                 if field_name in config.spec_data and 'xtplot' in config.spec_data[field_name]:
                     if 'add_trend' in config.spec_data[field_name]['xtplot'] and config.spec_data[field_name]['xtplot']['add_trend']:
                         self.logger.debug("Adding trend line")
@@ -197,10 +179,8 @@ class HvplotXTPlotter(XTPlotter):
             try:
                 self.logger.debug("Trying simpler approach")
                 
-                # Convert to DataFrame
                 df = self._convert_to_dataframe(data2d, time_coords)
                 
-                # Create a simple curve
                 curve = hv.Curve(df, 'time', 'value')
                 plot = curve.opts(
                     title=title,
@@ -226,18 +206,15 @@ class HvplotXTPlotter(XTPlotter):
             pandas DataFrame with columns 'time', 'value'
         """
         try:
-            # Get data values
             if hasattr(data2d, 'values'):
                 values = data2d.values
             else:
                 values = np.array(data2d)
             
-            # Ensure values is 1D
             if len(values.shape) > 1:
                 self.logger.debug(f"Flattening values from shape {values.shape}")
                 values = values.flatten()
             
-            # Ensure time_coords and values have the same length
             if len(time_coords) != len(values):
                 self.logger.warning(f"Time coordinates length ({len(time_coords)}) doesn't match values length ({len(values)})")
                 # Use the shorter length
@@ -255,13 +232,11 @@ class HvplotXTPlotter(XTPlotter):
                     self.logger.warning(f"Error converting cftime to pandas datetime: {e}")
                     time_coords = pd.date_range(start='2000-01-01', periods=len(values), freq='D')
             
-            # Create DataFrame
             df = pd.DataFrame({
                 'time': time_coords,
                 'value': values
             })
             
-            # Drop NaN values
             df = df.dropna()
             
             return df

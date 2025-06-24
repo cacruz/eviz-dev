@@ -1,8 +1,9 @@
-import matplotlib.pyplot as plt
 import numpy as np
 import matplotlib as mpl
 import pandas as pd
 import logging
+from sklearn.metrics import mean_squared_error
+import eviz.lib.autoviz.utils as pu
 from .base import MatplotlibBasePlotter
 
 
@@ -26,21 +27,16 @@ class MatplotlibXTPlotter(MatplotlibBasePlotter):
         """
         data2d, _, _, field_name, plot_type, findex, fig = data_to_plot
         
-        # Store the figure for later use
         self.fig = fig
         
-        # Get axes options from config
         ax_opts = config.ax_opts
         
-        # Set up axes if not already done
         if not config.compare and not config.compare_diff and not config.overlay:
             fig.set_axes()
         
-        # Get the appropriate axes based on the figure layout
         ax_temp = fig.get_axes()
         axes_shape = fig.subplots
         
-        # Determine which axis to use based on the figure layout
         if axes_shape == (3, 1):
             if ax_opts['is_diff_field']:
                 self.ax = ax_temp[2]
@@ -61,15 +57,12 @@ class MatplotlibXTPlotter(MatplotlibBasePlotter):
         else:
             self.ax = ax_temp[0]
         
-        # Skip if no data
         if data2d is None:
             return fig
         
-        # Update axes options and add plot text
         ax_opts = fig.update_ax_opts(field_name, self.ax, 'xt', level=0)
         fig.plot_text(field_name, self.ax, 'xt', data=data2d)
         
-        # Plot the data
         self._plot_xt_data(config, self.ax, ax_opts, fig, data2d, field_name, findex)
         
         # Handle overlay mode
@@ -97,16 +90,12 @@ class MatplotlibXTPlotter(MatplotlibBasePlotter):
             if config.add_logo:
                 self._add_logo_ax(fig, desired_width_ratio=0.05)
         
-        # Store the plot object
         self.plot_object = fig
         
         return fig
     
     def _plot_xt_data(self, config, ax, ax_opts, fig, data2d, field_name, findex):
-        """Helper method that plots the time series (xt) data."""
-        import eviz.lib.autoviz.utils as pu
-        from sklearn.metrics import mean_squared_error
-        
+        """Helper method that plots the time series (xt) data."""        
         with mpl.rc_context(rc=ax_opts.get('rc_params', {})):
             dmin = data2d.min(skipna=True).values
             dmax = data2d.max(skipna=True).values

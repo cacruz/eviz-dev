@@ -2,7 +2,7 @@ import numpy as np
 import pandas as pd
 import altair as alt
 import logging
-from ....plotting.base import ScatterPlotter
+from eviz.lib.autoviz.plotting.base import ScatterPlotter
 
 
 class AltairScatterPlotter(ScatterPlotter):

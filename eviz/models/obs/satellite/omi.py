@@ -37,7 +37,7 @@ class Omi(ObsSource):
     def load_data_sources(self, *args, **kwargs):
         pass
 
-    def _single_plots(self):
+    def process_single_plots(self):
         """Generate single plots for each source and field according to configuration."""
         self.logger.info("Generating single plots")
 
@@ -107,16 +107,19 @@ class Omi(ObsSource):
         else:
             time_level = [0]
 
-        field_to_plot = self._get_field_to_plot(ds_short, field_name, file_index,
-                                                plot_type, figure,
-                                                time_level=time_level)
+        field_to_plot = self._prepare_field_to_plot(ds_short, field_name, file_index,
+                                                    plot_type, figure,
+                                                    time_level=time_level)
         if field_to_plot:
             plot_result = self.create_plot(field_name, field_to_plot)
-            pu.print_map(self.config_manager, plot_type, self.config_manager.findex, plot_result)
+            pu.print_map(self.config_manager, 
+                         plot_type, 
+                         self.config_manager.findex, 
+                         plot_result)
 
-    def _get_field_to_plot(self, ds_short: xr.Dataset, field_name: str,
-                           file_index: int, plot_type: str, figure, time_level=None,
-                           level=None) -> tuple:
+    def _prepare_field_to_plot(self, ds_short: xr.Dataset, field_name: str,
+                               file_index: int, plot_type: str, figure, time_level=None,
+                               level=None) -> tuple:
         self.config_manager.ax_opts = figure.init_ax_opts(field_name)
 
         data2d, lats, lons = extract_field_with_coords(ds_short, field_name)

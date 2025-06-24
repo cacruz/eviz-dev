@@ -5,9 +5,11 @@ import matplotlib.pyplot as plt
 from matplotlib import colors
 import logging
 from matplotlib.ticker import FixedLocator
+from eviz.lib.autoviz.utils import FlexibleOOMFormatter, OOMFormatter
 
 from eviz.lib.autoviz.plotting.base import BasePlotter
 import eviz.lib.autoviz.utils as pu
+from eviz.lib.autoviz.utils import bar_font_size, contour_tick_font_size
 
 
 class MatplotlibBasePlotter(BasePlotter):
@@ -22,7 +24,8 @@ class MatplotlibBasePlotter(BasePlotter):
         self.ax = None
         self.logger = logging.getLogger(self.__class__.__name__)
 
-    def filled_contours(self, config, field_name, ax, x, y, data2d, transform=None, vmin=None, vmax=None):
+    def filled_contours(self, config, field_name, ax, x, y, data2d,
+                        transform=None, vmin=None, vmax=None):
         """Plot filled contours."""
         # Check if data is all NaN
         if np.isnan(data2d).all():
@@ -89,7 +92,8 @@ class MatplotlibBasePlotter(BasePlotter):
         
         # Check if data is all NaN
         if np.isnan(data2d).all():
-            self.logger.warning(f"All values are NaN for {field_name}. Cannot create contour levels.")
+            self.logger.warning(f"All values are NaN for {field_name}. Cannot create "
+                                f"contour levels.")
             # Set default contour levels to avoid errors
             ax_opts['clevs'] = np.array([0, 1])
             ax_opts['clevs_prec'] = 0
@@ -120,7 +124,7 @@ class MatplotlibBasePlotter(BasePlotter):
             clevs = np.around(np.linspace(dmin, dmax, 10), decimals=precision)
         else:
             clevs = np.around(np.linspace(dmin, dmax, ax_opts.get('num_clevs', 10)),
-                            decimals=precision)
+                              decimals=precision)
             clevs = np.unique(clevs)  # Remove duplicates
         
         # Check if levels are strictly increasing
@@ -141,7 +145,6 @@ class MatplotlibBasePlotter(BasePlotter):
         self.logger.debug(f'Created contour levels for {field_name}: {ax_opts["clevs"]}')
         if ax_opts['clevs'][0] == 0.0:
             ax_opts['extend_value'] = "max"
-
 
     def line_contours(self, fig, ax, ax_opts, x, y, data2d, transform=None):
         """Add line contours to the plot."""
@@ -183,6 +186,11 @@ class MatplotlibBasePlotter(BasePlotter):
     def set_colorbar(self, config, cfilled, fig, ax, ax_opts, findex, field_name, data2d):
         """Add a colorbar to the plot."""
         try:
+            # Skip colorbar creation if suppressed (for shared colorbar)
+            if ax_opts.get('suppress_colorbar', False):
+                self.logger.debug(f"Suppressing individual colorbar for {field_name}")
+                return None
+                
             source_name = config.source_names[config.ds_index]
 
             # Create formatter for colorbar ticks
@@ -207,8 +215,8 @@ class MatplotlibBasePlotter(BasePlotter):
             # Add scientific notation if requested
             if ax_opts['cbar_sci_notation']:
                 cbar.ax.text(1.05, -0.5, r'$\times 10^{%d}$' % fmt.oom,
-                             transform=cbar.ax.transAxes, va='center', ha='left',
-                             fontsize=12)
+                            transform=cbar.ax.transAxes, va='center', ha='left',
+                            fontsize=12)
 
             units = self.get_units(config, field_name, data2d, source_name, findex)
 
@@ -223,10 +231,77 @@ class MatplotlibBasePlotter(BasePlotter):
             for t in cbar.ax.get_yticklabels():
                 t.set_fontsize(pu.contour_tick_font_size(fig.subplots))
 
+            return cbar
+
         except Exception as e:
             self.logger.error(f"Failed to add colorbar: {e}")
+            return None
 
-    def set_const_colorbar(self, cfilled, fig, ax):
+    def add_shared_colorbar(self, fig, cfilled_objects, field_name, config):
+        """Add a shared colorbar for all plots.
+        
+        Args:
+            fig: The figure object
+            cfilled_objects: List of filled contour objects
+            field_name: Name of the field being plotted
+            config: Configuration manager
+            
+        Returns:
+            The created colorbar object
+        """
+        if not cfilled_objects:
+            self.logger.warning("No filled contour objects found for shared colorbar")
+            return None
+        
+        # Get the first cfilled object to use as reference
+        cfilled = cfilled_objects[0]
+        
+        # Get colorbar parameters
+        source_name = config.source_names[config.ds_index]
+        ax_opts = config.ax_opts
+        
+        # Create formatter for colorbar ticks
+        if ax_opts['cbar_sci_notation']:
+            fmt = FlexibleOOMFormatter(min_val=cfilled.norm.vmin,
+                                       max_val=cfilled.norm.vmax,
+                                       math_text=True)
+        else:
+            fmt = OOMFormatter(prec=ax_opts['clevs_prec'], math_text=True)
+        
+        # Create a new axis for the colorbar
+        cbar_ax = fig.add_axes([0.88, 0.15, 0.015, 0.7])  # [left, bottom, width, height]
+        cbar = fig.colorbar(cfilled, cax=cbar_ax,
+                            orientation='vertical',
+                            pad=pu.cbar_pad(fig.subplots),
+                            fraction=pu.cbar_fraction(fig.subplots),
+                            ticks=ax_opts.get('clevs', None),
+                            format=fmt,
+                            shrink=pu.cbar_shrink(fig.subplots))
+        
+       # Add scientific notation if requested
+        if ax_opts['cbar_sci_notation']:
+            cbar.ax.text(1.05, -0.05, r'$\times 10^{%d}$' % fmt.oom,
+                         transform=cbar.ax.transAxes, va='center', ha='left',
+                         fontsize=bar_font_size(fig.subplots))
+        
+        # Set colorbar label
+        units = self.get_units(config, field_name, None, source_name, config.findex)
+        
+        if ax_opts['clabel'] is None:
+            cbar_label = units
+        else:
+            cbar_label = ax_opts['clabel']
+        
+        cbar.set_label(cbar_label, size=bar_font_size(fig.subplots))
+        
+        # Set tick font size
+        for t in cbar.ax.get_yticklabels():
+            t.set_fontsize(contour_tick_font_size(fig.subplots))
+        
+        return cbar
+
+    @staticmethod
+    def set_const_colorbar(cfilled, fig, ax):
         _ = fig.colorbar(cfilled, ax=ax, shrink=0.5)
 
     def get_units(self, config, field_name, data2d, source_name, findex):
@@ -417,3 +492,5 @@ class MatplotlibBasePlotter(BasePlotter):
         """Add a logo to the figure."""
         import eviz.lib.autoviz.utils as pu
         return pu.add_logo_ax(fig, desired_width_ratio)
+
+

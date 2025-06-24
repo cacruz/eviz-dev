@@ -28,14 +28,14 @@ def make_config_manager(tc_name='time', zc_name='lev', xc_name='lon', yc_name='l
 def test_get_xy_simple_basic():
     arr = xr.DataArray(np.random.rand(2, 3, 4), dims=('time', 'lev', 'lat'))
     g = GriddedSource(config_manager=make_config_manager())
-    result = g._get_xy_simple(arr)
+    result = g._extract_xy_simple(arr)
     assert isinstance(result, xr.DataArray)
     assert result.ndim <= 2
 
 
 def test_get_xy_simple_none():
     g = GriddedSource(config_manager=make_config_manager())
-    assert g._get_xy_simple(None) is None
+    assert g._extract_xy_simple(None) is None
 
 
 def test_get_field_for_simple_plot_xy():
@@ -57,7 +57,7 @@ def test_get_yz_simple_basic():
     g = GriddedSource(config_manager=make_config_manager())
     # Patch apply_conversion to just return its input
     with patch('eviz.models.source_base.apply_conversion', lambda cm, da, name: da):
-        result = g._get_yz_simple(arr)
+        result = g._extract_yz_simple(arr)
     assert isinstance(result, xr.DataArray)
 
 
@@ -81,13 +81,13 @@ def test_get_field_for_simple_plot_badtype():
 
 def test_get_yz_simple_none():
     g = GriddedSource(config_manager=make_config_manager())
-    assert g._get_yz_simple(None) is None
+    assert g._extract_yz_simple(None) is None
 
 
 def test_get_yz_simple_missing_dim():
     arr = xr.DataArray(np.random.rand(2, 3), dims=('time', 'lat'))
     g = GriddedSource(config_manager=make_config_manager())
-    result = g._get_yz_simple(arr)
+    result = g._extract_yz_simple(arr)
     # Should return a 1D array over 'lat'
     assert isinstance(result, xr.DataArray)
     assert result.dims == ('lat',) or result.ndim == 1
@@ -97,7 +97,7 @@ def test_get_yz_simple_zonal_mean_missing_dim():
     arr = xr.DataArray(np.random.rand(2, 3), dims=('lev', 'lat'))
     g = GriddedSource(config_manager=make_config_manager())
     g.config_manager.get_model_dim_name = lambda x: {'xc': 'lon', 'tc': 'time', 'zc': 'lev'}.get(x)
-    result = g._get_yz_simple(arr)
+    result = g._extract_yz_simple(arr)
     # Should return a 2D array over ('lev', 'lat')
     assert isinstance(result, xr.DataArray)
     assert result.dims == ('lev', 'lat') or result.ndim == 2
