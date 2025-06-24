@@ -2,7 +2,7 @@ import numpy as np
 import pandas as pd
 import logging
 import holoviews as hv
-from ....plotting.base import ScatterPlotter
+from eviz.lib.autoviz.plotting.base import ScatterPlotter
 
 
 class HvplotScatterPlotter(ScatterPlotter):
@@ -66,7 +66,6 @@ class HvplotScatterPlotter(ScatterPlotter):
             df = self._convert_to_dataframe(x_data, y_data, z_data)
             
             if z_data is not None:
-                # Use hvplot with color dimension
                 plot = df.hvplot.scatter(
                     x='x',
                     y='y',
@@ -96,17 +95,14 @@ class HvplotScatterPlotter(ScatterPlotter):
                     tools=['pan', 'wheel_zoom', 'box_zoom', 'reset', 'hover']
                 )
             
-            # Add regression line if specified
             if ax_opts.get('add_regression', False):
                 try:
                     from scipy import stats
                     
-                    # Calculate regression line
                     slope, intercept, r_value, p_value, std_err = stats.linregress(df['x'], df['y'])
                     line_x = np.array([df['x'].min(), df['x'].max()])
                     line_y = slope * line_x + intercept
                     
-                    # Create regression line plot
                     line_df = pd.DataFrame({'x': line_x, 'y': line_y})
                     line_plot = line_df.hvplot.line(
                         x='x',
@@ -115,7 +111,6 @@ class HvplotScatterPlotter(ScatterPlotter):
                         line_width=2
                     )
                     
-                    # Add R² text
                     r_squared = r_value**2
                     text = hv.Text(df['x'].min() + 0.1 * (df['x'].max() - df['x'].min()),
                                   df['y'].max() - 0.1 * (df['y'].max() - df['y'].min()),
@@ -143,7 +138,6 @@ class HvplotScatterPlotter(ScatterPlotter):
                 if z_data is not None:
                     z_values = z_data.values if hasattr(z_data, 'values') else np.array(z_data)
                     
-                    # Create scatter with color dimension
                     scatter = hv.Scatter((x_values, y_values, z_values), 
                                         kdims=[x_label, y_label], 
                                         vdims=['Color'])

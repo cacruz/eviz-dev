@@ -2,9 +2,11 @@ import numpy as np
 import pandas as pd
 import logging
 import xarray as xr
+from scipy.interpolate import griddata
 from scipy.stats import pearsonr
 import altair as alt
-from ....plotting.base import XYPlotter
+from eviz.lib.autoviz.plotting.base import XYPlotter
+
 
 class AltairMetricPlotter(XYPlotter):
     """Altair implementation for metric visualization (e.g., correlation maps)."""
@@ -14,7 +16,6 @@ class AltairMetricPlotter(XYPlotter):
         self.plot_object = None
         self.logger = logging.getLogger(self.__class__.__name__)
         
-        # Set Altair renderer to default
         try:
             alt.renderers.enable('default')
             # Set a reasonable max rows limit for Altair
@@ -27,26 +28,19 @@ class AltairMetricPlotter(XYPlotter):
         """Compute pixel-wise Pearson correlation coefficient between two datasets."""
         self.logger.debug("Computing correlation map")
         
-        # Ensure both datasets have the same dimensions and coordinates
         if not isinstance(data1, xr.DataArray) or not isinstance(data2, xr.DataArray):
             self.logger.error("Both inputs must be xarray DataArrays")
             return None
             
-        # Check if we need to regrid
         if data1.shape != data2.shape:
             self.logger.warning(f"Data shapes don't match: {data1.shape} vs {data2.shape}, correlation may not be meaningful")
         
-        # Get dimension names
         dims1 = list(data1.dims)
         
         # Handle 3D data (time, lat, lon)
         if len(dims1) == 3:
-            self.logger.debug(f"Processing 3D data with dimensions {dims1}")
-            
-            # Identify time dimension (usually the first dimension)
-            time_dim = dims1[0]
-            
-            # Get spatial dimensions
+            self.logger.debug(f"Processing 3D data with dimensions {dims1}")            
+            time_dim = dims1[0]            
             spatial_dims = dims1[1:]
             
             # Create output array with same spatial coordinates as data1
@@ -54,7 +48,6 @@ class AltairMetricPlotter(XYPlotter):
             template = data1.isel({time_dim: 0}).copy()
             corr_data = xr.zeros_like(template)
             
-            # Get the shapes for easier access
             time_len = data1.shape[0]
             y_len, x_len = data1.shape[1], data1.shape[2]
             
@@ -67,18 +60,15 @@ class AltairMetricPlotter(XYPlotter):
                     ts1 = data1[:, i, j].values
                     ts2 = data2[:, i, j].values
                     
-                    # Skip if either series has all NaNs
                     if np.isnan(ts1).all() or np.isnan(ts2).all():
                         corr_data[i, j] = np.nan
                         continue
                         
-                    # Remove NaNs for correlation calculation
                     mask = ~np.isnan(ts1) & ~np.isnan(ts2)
                     if np.sum(mask) < 2:  # Need at least 2 points for correlation
                         corr_data[i, j] = np.nan
                         continue
                         
-                    # Calculate correlation
                     try:
                         r, _ = pearsonr(ts1[mask], ts2[mask])
                         corr_data[i, j] = r
@@ -86,7 +76,6 @@ class AltairMetricPlotter(XYPlotter):
                         self.logger.debug(f"Error computing correlation at point ({i},{j}): {e}")
                         corr_data[i, j] = np.nan
             
-            # Add metadata
             corr_data.attrs['long_name'] = 'Pearson Correlation Coefficient'
             corr_data.attrs['units'] = 'dimensionless'
             corr_data.attrs['description'] = f'Correlation between {data1.name} and {data2.name} across time'
@@ -97,18 +86,15 @@ class AltairMetricPlotter(XYPlotter):
         elif len(dims1) == 2:
             self.logger.debug(f"Processing 2D data with dimensions {dims1}")
             
-            # Create output array with same coordinates as data1
             corr_data = xr.zeros_like(data1)
             
             # For 2D data, we can't compute pixel-wise correlation across time
             # Instead, compute spatial correlation or return a warning
             self.logger.warning("Input data is 2D, computing spatial correlation instead of pixel-wise temporal correlation")
             
-            # Flatten arrays and compute single correlation
             flat1 = data1.values.flatten()
             flat2 = data2.values.flatten()
             
-            # Remove NaNs
             mask = ~np.isnan(flat1) & ~np.isnan(flat2)
             if np.sum(mask) < 2:
                 self.logger.error("Not enough valid data points for correlation")
@@ -116,10 +102,8 @@ class AltairMetricPlotter(XYPlotter):
                 
             try:
                 r, _ = pearsonr(flat1[mask], flat2[mask])
-                # Fill the entire map with this value
                 corr_data.values.fill(r)
                 
-                # Add metadata
                 corr_data.attrs['long_name'] = 'Pearson Correlation Coefficient (Spatial)'
                 corr_data.attrs['units'] = 'dimensionless'
                 corr_data.attrs['description'] = f'Spatial correlation between {data1.name} and {data2.name}'
@@ -144,9 +128,7 @@ class AltairMetricPlotter(XYPlotter):
         Returns:
             The created Altair chart object
         """
-        # Check if we need to compute correlation or if it's already computed
         if isinstance(data_to_plot[0], tuple) and len(data_to_plot[0]) == 2:
-            # We have two datasets to correlate
             data1, data2 = data_to_plot[0]
             self.logger.debug("Computing correlation between two datasets")
             data2d = self.compute_correlation_map(data1, data2)
@@ -160,7 +142,6 @@ class AltairMetricPlotter(XYPlotter):
             plot_type, findex, fig = data_to_plot[4], data_to_plot[5], data_to_plot[6]
             data_to_plot = (data2d, x, y, field_name, plot_type, findex, fig)
         else:
-            # Assume data2d is already a correlation map
             data2d = data_to_plot[0]
          
         if data2d is None:
@@ -169,37 +150,29 @@ class AltairMetricPlotter(XYPlotter):
         
         self.logger.debug(f"Data shape: {data2d.shape}")
         
-        # Get axes options from config
         ax_opts = config.ax_opts
         
-        # Get colormap - use a diverging colormap for correlation
         cmap = ax_opts.get('use_cmap', 'RdBu_r')
         
-        # Get title
         field_name = data_to_plot[3]
         title = field_name
         if hasattr(config, 'spec_data') and field_name in config.spec_data and 'name' in config.spec_data[field_name]:
             title = config.spec_data[field_name]['name']
         
-        # Get units - correlation is dimensionless
         units = "dimensionless"
         
         try:
-            # Get dimension names
             x_dim = config.get_model_dim_name('xc') or 'lon'
             y_dim = config.get_model_dim_name('yc') or 'lat'
             
-            # Check if we're dealing with an irregular grid
             x_coords = data2d[x_dim].values
             y_coords = data2d[y_dim].values
             
-            # Determine the actual data extent
             x_min, x_max = np.nanmin(x_coords), np.nanmax(x_coords)
             y_min, y_max = np.nanmin(y_coords), np.nanmax(y_coords)
             
             self.logger.debug(f"Data extent: lon [{x_min}, {x_max}], lat [{y_min}, {y_max}]")
             
-            # Check if extent is provided in ax_opts
             if 'extent' in config.ax_opts:
                 # Use the provided extent
                 x_min, x_max, y_min, y_max = config.ax_opts['extent']
@@ -238,27 +211,20 @@ class AltairMetricPlotter(XYPlotter):
                 
                 # Interpolate the data to the regular grid
                 try:
-                    from scipy.interpolate import griddata
                     
-                    # Extract coordinates and values from original data
                     points = np.column_stack([x_coords.flatten(), y_coords.flatten()])
                     values = data2d.values.flatten()
                     
-                    # Remove NaN values
                     valid = ~np.isnan(values)
                     points = points[valid]
                     values = values[valid]
                     
-                    # Create meshgrid for the new coordinates
                     X, Y = np.meshgrid(new_x, new_y)
                     
-                    # Interpolate
                     interp_values = griddata(points, values, (X, Y), method='linear')
                     
-                    # Update the new DataArray
                     new_data.values = interp_values
                     
-                    # Use the interpolated data
                     data2d = new_data
                     self.logger.debug("Successfully interpolated irregular grid to regular grid")
                 except Exception as e:
@@ -267,11 +233,9 @@ class AltairMetricPlotter(XYPlotter):
             # Convert to DataFrame for Altair
             df = data2d.to_dataframe(name='correlation').reset_index()
             
-            # Check if the DataFrame has the expected structure
             self.logger.debug(f"DataFrame columns: {df.columns}")
             self.logger.debug(f"DataFrame shape: {df.shape}")
             
-            # Ensure the DataFrame has the right types
             if x_dim in df.columns:
                 df[x_dim] = df[x_dim].astype(float)
             if y_dim in df.columns:
@@ -282,7 +246,6 @@ class AltairMetricPlotter(XYPlotter):
             df = df[(df[x_dim] >= x_min) & (df[x_dim] <= x_max) & 
                     (df[y_dim] >= y_min) & (df[y_dim] <= y_max)]
             
-            # Create a base chart with proper encoding - explicitly specify types and domains
             base = alt.Chart(df).encode(
                 x=alt.X(f'{x_dim}:Q', 
                     title='Longitude',
@@ -292,9 +255,7 @@ class AltairMetricPlotter(XYPlotter):
                     scale=alt.Scale(domain=[y_min, y_max]))   # Set explicit domain for y
             )
             
-            # Try different mark types to see which works best
             try:
-                # First try square marks
                 square_plot = base.mark_square(size=10).encode(
                     color=alt.Color('correlation:Q', 
                                 scale=alt.Scale(domain=[-1, 1], scheme=cmap),
@@ -302,7 +263,6 @@ class AltairMetricPlotter(XYPlotter):
                 )
                 chart = square_plot
             except Exception:
-                # Fall back to rect marks
                 chart = base.mark_rect().encode(
                     color=alt.Color('correlation:Q', 
                                 scale=alt.Scale(domain=[-1, 1], scheme=cmap),

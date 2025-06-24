@@ -56,14 +56,11 @@ class HvplotLinePlotter(BasePlotter):
             units = data.units
         
         try:
-            # Convert data to DataFrame for hvplot
             if isinstance(data, pd.DataFrame):
                 df = data
             elif hasattr(data, 'to_dataframe'):
-                # For xarray objects
                 df = data.to_dataframe().reset_index()
             else:
-                # For numpy arrays or other data types
                 if x is not None and y is not None:
                     # If x and y are provided directly
                     df = pd.DataFrame({'x': x, 'y': y})
@@ -75,7 +72,7 @@ class HvplotLinePlotter(BasePlotter):
                         'y': data.values
                     })
                 else:
-                    # For simple arrays
+                    # Simple arrays
                     df = pd.DataFrame({
                         'x': np.arange(len(data)),
                         'y': data
@@ -84,7 +81,6 @@ class HvplotLinePlotter(BasePlotter):
             self.logger.debug(f"DataFrame shape: {df.shape}")
             self.logger.debug(f"DataFrame columns: {df.columns}")
             
-            # Get x and y column names
             x_col = 'x' if 'x' in df.columns else df.columns[0]
             y_col = 'y' if 'y' in df.columns else df.columns[1]
             
@@ -100,7 +96,6 @@ class HvplotLinePlotter(BasePlotter):
                 legend='top'
             )
             
-            # Check if we should add markers
             if ax_opts.get('markers', False):
                 scatter = df.hvplot.scatter(
                     x=x_col,
@@ -118,7 +113,6 @@ class HvplotLinePlotter(BasePlotter):
         except Exception as e:
             self.logger.error(f"Error creating hvplot line plot: {e}")
             
-            # Try using HoloViews directly as a fallback
             try:
                 self.logger.debug("Trying alternative approach with HoloViews")
                 
@@ -138,10 +132,8 @@ class HvplotLinePlotter(BasePlotter):
                 x_col = 'x' if 'x' in df.columns else df.columns[0]
                 y_col = 'y' if 'y' in df.columns else df.columns[1]
                 
-                # Create a HoloViews Curve object directly
                 curve = hv.Curve(df, x_col, y_col)
                 
-                # Apply styling options
                 plot = curve.opts(
                     title=title,
                     width=800,
@@ -151,7 +143,6 @@ class HvplotLinePlotter(BasePlotter):
                     ylabel=f"{title} ({units})"
                 )
                 
-                # Add markers if specified
                 if ax_opts.get('markers', False):
                     scatter = hv.Scatter(df, x_col, y_col).opts(color='red', size=8)
                     plot = plot * scatter

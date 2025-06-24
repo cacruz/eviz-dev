@@ -4,7 +4,7 @@ import logging
 import holoviews as hv
 import hvplot.xarray  # register the hvplot method with xarray objects
 import hvplot.pandas
-from ....plotting.base import XYPlotter
+from eviz.lib.autoviz.plotting.base import XYPlotter
 
 
 class HvplotXYPlotter(XYPlotter):
@@ -19,7 +19,6 @@ class HvplotXYPlotter(XYPlotter):
         # Set up HoloViews and hvplot extensions
         try:
             hv.extension('bokeh')
-            import hvplot.xarray  # Register hvplot with xarray again to be safe
             self.logger.debug("Successfully initialized HoloViews and hvplot extensions")
         except Exception as e:
             self.logger.warning(f"Could not initialize HoloViews/hvplot extensions: {e}")   
@@ -68,20 +67,16 @@ class HvplotXYPlotter(XYPlotter):
         
         ax_opts = config.ax_opts
         
-        # Handle fill values
         if 'fill_value' in config.spec_data[field_name]['xyplot']:
             fill_value = config.spec_data[field_name]['xyplot']['fill_value']
             data2d = data2d.where(data2d != fill_value, np.nan)
         
-        # Get colormap
         cmap = ax_opts.get('use_cmap', 'viridis')
         
-        # Get title
         title = field_name
         if 'name' in config.spec_data[field_name]:
             title = config.spec_data[field_name]['name']
         
-        # Get units
         units = "n.a."
         if 'units' in config.spec_data[field_name]:
             units = config.spec_data[field_name]['units']
@@ -114,11 +109,9 @@ class HvplotXYPlotter(XYPlotter):
         except Exception as e:
             self.logger.error(f"Error creating hvplot: {e}")
             
-            # Try using HoloViews directly as a fallback
             try:
                 self.logger.info("Trying alternative approach with HoloViews")
                 
-                # Convert xarray DataArray to numpy arrays
                 if hasattr(data2d, 'values'):
                     z_values = data2d.values
                 else:
@@ -127,12 +120,10 @@ class HvplotXYPlotter(XYPlotter):
                 x_values = x.values if hasattr(x, 'values') else np.array(x)
                 y_values = y.values if hasattr(y, 'values') else np.array(y)
                 
-                # Create a HoloViews Image object directly
                 image = hv.Image((x_values, y_values, z_values), 
                                 kdims=[x_dim, y_dim], 
                                 vdims=[field_name])
                 
-                # Apply styling options
                 plot = image.opts(
                     cmap=cmap,
                     colorbar=True,

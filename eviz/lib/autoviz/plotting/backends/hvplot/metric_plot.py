@@ -6,7 +6,7 @@ import hvplot.xarray  # register the hvplot method with xarray objects
 import hvplot.pandas
 import xarray as xr
 from scipy.stats import pearsonr
-from ....plotting.base import XYPlotter
+from eviz.lib.autoviz.plotting.base import XYPlotter
 
 
 class HvplotMetricPlotter(XYPlotter):
@@ -93,13 +93,11 @@ class HvplotMetricPlotter(XYPlotter):
                 'rasterize': True  # For better performance with large datasets
             }
             
-            # Add x and y dimensions if they exist in the data
             if x_dim in data2d.dims:
                 plot_opts['x'] = x_dim
             if y_dim in data2d.dims:
                 plot_opts['y'] = y_dim
             
-            # Create the plot
             plot = data2d.hvplot(**plot_opts)
             
             self.logger.debug("Successfully created correlation map")
@@ -117,7 +115,6 @@ class HvplotMetricPlotter(XYPlotter):
         try:
             self.logger.info("Using HoloViews QuadMesh instead of Image for irregularly sampled data")
             
-            # Convert xarray DataArray to numpy arrays
             if hasattr(data2d, 'values'):
                 z_values = data2d.values
             else:
@@ -133,7 +130,6 @@ class HvplotMetricPlotter(XYPlotter):
                                 kdims=[x_dim, y_dim], 
                                 vdims=[field_name])
             
-            # Apply styling options
             plot = quadmesh.opts(
                 cmap=cmap,
                 colorbar=True,
@@ -185,15 +181,9 @@ class HvplotMetricPlotter(XYPlotter):
         if not data2.chunks:
             data2 = data2.chunk({'time': -1, 'lat': 'auto', 'lon': 'auto'})
 
-        # Identify time dimension
         time_dim = data1.dims[0]
-
-        # Compute correlation along time dimension
         corr = xr.corr(data1, data2, dim=time_dim)
-
-        # Compute the result
         result = corr.compute()
-
         return result
 
     def save(self, filename, **kwargs):
@@ -204,7 +194,6 @@ class HvplotMetricPlotter(XYPlotter):
                 if not filename.endswith('.html'):
                     filename += '.html'
                 
-                # Save using holoviews
                 hv.save(self.plot_object, filename)
                 self.logger.info(f"Saved interactive correlation map to {filename}")
             except Exception as e:

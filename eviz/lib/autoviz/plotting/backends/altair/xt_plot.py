@@ -2,7 +2,7 @@ import numpy as np
 import pandas as pd
 import altair as alt
 import logging
-from ....plotting.base import XTPlotter
+from eviz.lib.autoviz.plotting.base import XTPlotter
 
 
 class AltairXTPlotter(XTPlotter):
@@ -32,21 +32,13 @@ class AltairXTPlotter(XTPlotter):
         if data2d is None:
             self.logger.warning("No data to plot")
             return None
-        
-        # Print raw data for debugging
-        self.logger.debug(f"Raw data: {data2d}")
-        self.logger.debug(f"Data shape: {data2d.shape if hasattr(data2d, 'shape') else 'scalar'}")
-        self.logger.debug(f"Data type: {type(data2d)}")
-        
-        # Get axes options from config
+                
         ax_opts = config.ax_opts
         
-        # Get title
         title = field_name
         if 'name' in config.spec_data[field_name]:
             title = config.spec_data[field_name]['name']
         
-        # Get units
         units = "n.a."
         if 'units' in config.spec_data[field_name]:
             units = config.spec_data[field_name]['units']
@@ -62,9 +54,7 @@ class AltairXTPlotter(XTPlotter):
             if hasattr(data2d, 'values'):
                 values = data2d.values
                 
-                # Get time coordinates
                 if hasattr(data2d, 'coords'):
-                    # Try to find time coordinate
                     time_coords = None
                     for coord_name, coord in data2d.coords.items():
                         if coord_name.lower() in ['time', 't', 'date', 'datetime']:
@@ -72,37 +62,27 @@ class AltairXTPlotter(XTPlotter):
                             break
                     
                     if time_coords is None:
-                        # Use the first coordinate as time
                         coord_name = list(data2d.coords.keys())[0]
                         time_coords = data2d.coords[coord_name].values
                 else:
-                    # Create a time range
                     time_coords = pd.date_range(start='2000-01-01', periods=len(values), freq='D')
             else:
-                # If data2d is a numpy array or other type
                 values = np.array(data2d)
                 time_coords = pd.date_range(start='2000-01-01', periods=len(values), freq='D')
             
-            # Print values for debugging
             self.logger.debug(f"Values: {values}")
             self.logger.debug(f"Time coords: {time_coords}")
             
-            # Create DataFrame
             df = pd.DataFrame({
                 'time': time_coords,
                 'value': values
             })
             
-            # Replace extreme values with NaN
             df['value'] = df['value'].replace([np.inf, -np.inf], np.nan)
             df['value'] = df['value'].mask(df['value'].abs() > 1e30, np.nan)
             
-            # Drop NaN values
             df = df.dropna()
-            
-            # Print DataFrame for debugging
-            self.logger.debug(f"DataFrame: {df}")
-            
+                        
             # If DataFrame is empty, create a dummy one for testing
             if df.empty:
                 self.logger.warning("DataFrame is empty, creating dummy data")
@@ -119,9 +99,7 @@ class AltairXTPlotter(XTPlotter):
                 'value': np.random.rand(10)
             })
         
-        # Create the time series chart
         try:
-            # Create a simple line chart
             chart = alt.Chart(df).mark_line(color='blue').encode(
                 x=alt.X('time:T', title='Time'),
                 y=alt.Y('value:Q', title=units)
@@ -153,7 +131,6 @@ class AltairXTPlotter(XTPlotter):
                 title=f"{title} (fallback visualization)"
             )
         
-        # Store the chart object
         self.plot_object = chart
         
         return chart

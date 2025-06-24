@@ -3,8 +3,7 @@ import numpy as np
 import matplotlib as mpl
 import cartopy.crs as ccrs
 from cartopy.mpl.geoaxes import GeoAxes
-
-from .base import MatplotlibBasePlotter
+from eviz.lib.autoviz.base import MatplotlibBasePlotter
 
 
 class MatplotlibScatterPlotter(MatplotlibBasePlotter):

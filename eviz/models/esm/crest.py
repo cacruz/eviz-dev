@@ -89,11 +89,9 @@ class Crest(GenericSource):
         
         This method delegates to either the gridded_handler or obs_handler based on the data type.
         """
-        # Determine if the datasets are observational
         is_obs1 = self._is_observational_data(sdat1_dataset[field_name1])
         is_obs2 = self._is_observational_data(sdat2_dataset[field_name2])
         
-        # If both datasets are the same type, use the appropriate handler
         if is_obs1 and is_obs2:
             self.logger.info(f"Processing side-by-side comparison of {field_name1} vs {field_name2} as observational data")
             return self.obs_handler._process_xy_side_by_side_plots(
@@ -103,11 +101,9 @@ class Crest(GenericSource):
             return self.gridded_handler._process_xy_side_by_side_plots(
                 current_field_index, field_name1, field_name2, plot_type, sdat1_dataset, sdat2_dataset)
         else:
-            # Mixed data types - this is more complex
             self.logger.warning(f"Mixed data types in comparison: {field_name1} is {'observational' if is_obs1 else 'gridded'} "
                             f"and {field_name2} is {'observational' if is_obs2 else 'gridded'}")
             
-            # Store the original handlers
             orig_obs_handler = self.obs_handler
             orig_gridded_handler = self.gridded_handler
             
@@ -132,11 +128,9 @@ class Crest(GenericSource):
         
         This method delegates to either the gridded_handler or obs_handler based on the data type.
         """
-        # Determine if the datasets are observational
         is_obs1 = self._is_observational_data(sdat1_dataset[field_name1])
         is_obs2 = self._is_observational_data(sdat2_dataset[field_name2])
         
-        # If both datasets are the same type, use the appropriate handler
         if is_obs1 and is_obs2:
             self.logger.info(f"Processing side-by-side comparison of {field_name1} vs {field_name2} as observational data")
             return self.obs_handler._process_other_side_by_side_plots(
@@ -150,7 +144,6 @@ class Crest(GenericSource):
             self.logger.warning(f"Mixed data types in comparison: {field_name1} is {'observational' if is_obs1 else 'gridded'} "
                             f"and {field_name2} is {'observational' if is_obs2 else 'gridded'}")
             
-            # Store the original handlers
             orig_obs_handler = self.obs_handler
             orig_gridded_handler = self.gridded_handler
             
@@ -175,11 +168,9 @@ class Crest(GenericSource):
         
         This method delegates to either the gridded_handler or obs_handler based on the data type.
         """
-        # Determine if the datasets are observational
         is_obs1 = self._is_observational_data(sdat1_dataset[field_name1])
         is_obs2 = self._is_observational_data(sdat2_dataset[field_name2])
         
-        # If both datasets are the same type, use the appropriate handler
         if is_obs1 and is_obs2:
             self.logger.info(f"Processing comparison of {field_name1} vs {field_name2} as observational data")
             return self.obs_handler._process_xy_comparison_plots(
@@ -203,11 +194,9 @@ class Crest(GenericSource):
         
         This method delegates to either the gridded_handler or obs_handler based on the data type.
         """
-        # Determine if the datasets are observational
         is_obs1 = self._is_observational_data(sdat1_dataset[field_name1])
         is_obs2 = self._is_observational_data(sdat2_dataset[field_name2])
         
-        # If both datasets are the same type, use the appropriate handler
         if is_obs1 and is_obs2:
             self.logger.info(f"Processing comparison of {field_name1} vs {field_name2} as observational data")
             return self.obs_handler._process_other_comparison_plots(

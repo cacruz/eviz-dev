@@ -1217,11 +1217,6 @@ class GenericSource(BaseSource):
         self.logger.debug(f"Extracting box plot data from {data_array.name if hasattr(data_array, 'name') else 'unnamed array'}")
         
         tc_dim = self.config_manager.get_model_dim_name('tc') or 'time'
-        zc_dim = self.config_manager.get_model_dim_name('zc') or 'lev'
-        xc_dim = self.config_manager.get_model_dim_name('xc') or 'lon'
-        yc_dim = self.config_manager.get_model_dim_name('yc') or 'lat'
-        
-        # Make a copy of the data array to avoid modifying the original
         d_temp = data_array.copy()
         
         # Handle time dimension selection
@@ -1231,17 +1226,13 @@ class GenericSource(BaseSource):
             # If time_lev is None, we'll use the last time step
             # If time_lev is an integer, select that specific time step
             if time_lev is None:
-                # Default to using the last time step if none specified
                 d_temp = d_temp.isel({tc_dim: -1})
                 self.logger.debug(f"No time level specified, using last time level ({num_tc-1})")
             elif time_lev == 'all':
-                # Keep all time levels
                 self.logger.debug("Using all time levels for box plot")
             elif isinstance(time_lev, int):
-                # Convert negative index to positive if needed
                 actual_time_lev = time_lev if time_lev >= 0 else num_tc + time_lev
                 
-                # Check if the index is valid
                 if 0 <= actual_time_lev < num_tc:
                     d_temp = d_temp.isel({tc_dim: actual_time_lev})
                     self.logger.debug(f"Selected time level {actual_time_lev} (specified as {time_lev})")
@@ -1249,14 +1240,11 @@ class GenericSource(BaseSource):
                     self.logger.warning(f"Time level {time_lev} out of range (0-{num_tc-1}), using first time level")
                     d_temp = d_temp.isel({tc_dim: 0})
             elif time_lev == 'all':
-                # Keep all time levels
                 self.logger.debug("Using all time levels for box plot")
             elif time_lev is None:
-                # Default to using the last time step if none specified
                 d_temp = d_temp.isel({tc_dim: -1})
                 self.logger.debug(f"No time level specified, using last time level ({num_tc-1})")
         
-        # Check if all data is NaN
         if np.isnan(d_temp).all():
             self.logger.warning(f"All values are NaN for {data_array.name if hasattr(data_array, 'name') else 'unnamed field'}")
             return None
@@ -1264,7 +1252,6 @@ class GenericSource(BaseSource):
         if np.isnan(d_temp.values).any():
             self.logger.info(f"Output contains NaN values: {np.sum(np.isnan(d_temp.values))} NaNs")
         
-        # Get field name
         field_name = data_array.name if hasattr(data_array, 'name') else 'unnamed'
         
         # Convert to pandas DataFrame
@@ -1279,11 +1266,9 @@ class GenericSource(BaseSource):
                     time_values = d_temp[tc_dim].values
                     num_times = len(time_values)
                     
-                    # Create an empty list to store data for each time step
                     all_data = []
                     
                     for t in range(num_times):
-                        # Extract data for this time step
                         time_slice = d_temp.isel({tc_dim: t})
                         
                         # Convert time to string format for better display
@@ -1291,15 +1276,12 @@ class GenericSource(BaseSource):
                         if hasattr(time_values[t], 'strftime'):
                             time_str = time_values[t].strftime('%Y-%m-%d %H:%M')
                         
-                        # Flatten the spatial dimensions
                         flat_data = time_slice.values.flatten()
                         
-                        # Skip if all values are NaN
                         if np.isnan(flat_data).all():
                             self.logger.debug(f"Skipping time {time_str} - all values are NaN")
                             continue
                         
-                        # Create a DataFrame for this time step
                         df_time = pd.DataFrame({
                             'time': time_str,
                             'value': flat_data
@@ -1314,12 +1296,9 @@ class GenericSource(BaseSource):
                         self.logger.warning(f"No valid data for box plot of {field_name}")
                         return None
                 else:
-                    # No time dimension or single time step, just flatten all spatial dimensions
                     flat_data = d_temp.values.flatten()
                     
-                    # Create a DataFrame with a single category
                     if tc_dim in d_temp.dims and len(d_temp[tc_dim]) == 1:
-                        # Use time value as category if available
                         time_value = d_temp[tc_dim].values[0]
                         time_str = str(time_value)
                         if hasattr(time_value, 'strftime'):
@@ -1339,17 +1318,14 @@ class GenericSource(BaseSource):
                     'value': d_temp.values
                 })
             
-            # Handle fill values if specified
             if hasattr(self.config_manager, 'spec_data') and field_name in self.config_manager.spec_data:
                 if 'boxplot' in self.config_manager.spec_data[field_name]:
                     if 'fill_value' in self.config_manager.spec_data[field_name]['boxplot']:
                         fill_value = self.config_manager.spec_data[field_name]['boxplot']['fill_value']
                         df = df[df['value'] != fill_value]
             
-            # Remove NaN values
             df = df.dropna(subset=['value'])
             
-            # Check if we have data
             if len(df) == 0:
                 self.logger.warning(f"No valid data for box plot of {field_name}")
                 return None
@@ -1391,13 +1367,11 @@ class GenericSource(BaseSource):
         """
         self.logger.debug(f"Extracting line plot data from {data_array.name if hasattr(data_array, 'name') else 'unnamed array'}")
         
-        # Get dimension names
         tc_dim = self.config_manager.get_model_dim_name('tc') or 'time'
         zc_dim = self.config_manager.get_model_dim_name('zc') or 'lev'
         xc_dim = self.config_manager.get_model_dim_name('xc') or 'lon'
         yc_dim = self.config_manager.get_model_dim_name('yc') or 'lat'
         
-        # Get field name
         field_name = data_array.name if hasattr(data_array, 'name') else 'unnamed'
         
         try:
@@ -1417,28 +1391,21 @@ class GenericSource(BaseSource):
                     # 1. Select a specific point (if coordinates are provided in config)
                     # 2. Average over the spatial domain
                     
-                    # Check if specific coordinates are provided
                     x_point = self.config_manager.ax_opts.get('x_point', None)
                     y_point = self.config_manager.ax_opts.get('y_point', None)
                     
                     if x_point is not None and y_point is not None and xc_dim in data_array.dims and yc_dim in data_array.dims:
-                        # Select the nearest point to the specified coordinates
                         data_array = data_array.sel({xc_dim: x_point, yc_dim: y_point}, method='nearest')
                         point_label = f"({x_point}, {y_point})"
                     else:
-                        # Average over remaining spatial dimensions
                         for dim in spatial_dims:
                             if dim in data_array.dims:
                                 data_array = data_array.mean(dim=dim)
                         point_label = "Spatial Average"
                 
-                # Convert to DataFrame
                 df = data_array.to_dataframe()
-                
                 # Reset index to make time a column
-                df = df.reset_index()
-                
-                # Rename columns for clarity
+                df = df.reset_index()                
                 x_col = tc_dim
                 y_col = field_name
                 
@@ -1462,25 +1429,19 @@ class GenericSource(BaseSource):
                     y_point = self.config_manager.ax_opts.get('y_point', None)
                     
                     if y_point is not None:
-                        # Select the nearest latitude
                         data_array = data_array.sel({yc_dim: y_point}, method='nearest')
                         lat_label = f"Latitude: {y_point}"
                     else:
-                        # Average over latitude
                         data_array = data_array.mean(dim=yc_dim)
                         lat_label = "Latitude Average"
                 
-                # Convert to DataFrame
                 df = data_array.to_dataframe()
-                
-                # Reset index to make longitude a column
                 df = df.reset_index()
-                
+    
                 # Rename columns for clarity
                 x_col = xc_dim
                 y_col = field_name
                 
-                # Add a label column if we have latitude information
                 if 'lat_label' in locals():
                     df['label'] = lat_label
             
@@ -1507,12 +1468,8 @@ class GenericSource(BaseSource):
                     else:
                         point_label = "Horizontal Average"
                 
-                # Convert to DataFrame
-                df = data_array.to_dataframe()
-                
-                # Reset index to make level a column
+                df = data_array.to_dataframe()                
                 df = df.reset_index()
-                
                 # Rename columns for clarity
                 x_col = field_name
                 y_col = zc_dim  # For vertical profiles, we typically put height/pressure on y-axis
@@ -1523,10 +1480,7 @@ class GenericSource(BaseSource):
             
             # Case 4: Simple 1D array (just plot as is)
             else:
-                # Convert to DataFrame
                 df = data_array.to_dataframe()
-                
-                # Reset index
                 df = df.reset_index()
                 
                 # If there's only one column besides the index, create an index column
@@ -1553,16 +1507,13 @@ class GenericSource(BaseSource):
                         x_col = 'index'
                         y_col = 'value'
             
-            # Handle fill values if specified
             if hasattr(self.config_manager, 'spec_data') and field_name in self.config_manager.spec_data:
                 if 'fill_value' in self.config_manager.spec_data[field_name].get('lineplot', {}):
                     fill_value = self.config_manager.spec_data[field_name]['lineplot']['fill_value']
                     df = df[df[y_col] != fill_value]
             
-            # Remove NaN values
             df = df.dropna(subset=[x_col, y_col])
             
-            # Check if we have data
             if len(df) == 0:
                 self.logger.warning(f"No valid data for line plot of {field_name}")
                 return None
@@ -1740,7 +1691,6 @@ class GenericSource(BaseSource):
         if data_array is None:
             return None
 
-        # Check if we have global pearson plot settings in for_inputs
         pearson_settings = {}
         if hasattr(self.config_manager, 'input_config') and hasattr(self.config_manager.input_config, '_pearsonplot'):
             pearson_settings = self.config_manager.input_config._pearsonplot
@@ -1755,18 +1705,15 @@ class GenericSource(BaseSource):
         
         d_temp = data_array.copy()
         
-        # Handle vertical level selection if specified
         has_vertical_dim = zc_dim and zc_dim in d_temp.dims
         if has_vertical_dim:
             if level is not None:
                 try:
-                    # First try exact matching
                     if level in d_temp[zc_dim].values:
                         lev_idx = np.where(d_temp[zc_dim].values == level)[0][0]
                         d_temp = d_temp.isel({zc_dim: lev_idx})
                         self.logger.debug(f"Selected exact level {level} at index {lev_idx}")
                     else:
-                        # Try nearest neighbor
                         lev_idx = np.abs(d_temp[zc_dim].values - level).argmin()
                         self.logger.debug(f"Level {level} not found exactly, using nearest level {d_temp[zc_dim].values[lev_idx]}")
                         d_temp = d_temp.isel({zc_dim: lev_idx})
@@ -1784,13 +1731,11 @@ class GenericSource(BaseSource):
         # For spatial correlation, we select a specific time point
         if tc_dim in d_temp.dims:
             if do_time_corr:
-                # Keep all time points for time correlation
                 self.logger.debug("Keeping all time points for time correlation")
                 # No need to select a specific time level
             elif time_lev != 'all' and isinstance(time_lev, (int, np.integer)):
                 # For spatial correlation, select a specific time point
                 num_tc = d_temp[tc_dim].size
-                # Convert negative index to positive if needed
                 actual_time_lev = time_lev if time_lev >= 0 else num_tc + time_lev
                 
                 if 0 <= actual_time_lev < num_tc:
@@ -1800,7 +1745,6 @@ class GenericSource(BaseSource):
                     self.logger.warning(f"Time level {time_lev} out of range (0-{num_tc-1}), using first time level")
                     d_temp = d_temp.isel({tc_dim: 0})
         
-        # Apply any necessary conversions
         data2d = apply_conversion(self.config_manager, d_temp, data_array.name)
         
         if np.isnan(data2d.values).all():

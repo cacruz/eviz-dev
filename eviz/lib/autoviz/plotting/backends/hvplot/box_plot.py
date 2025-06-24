@@ -1,9 +1,8 @@
-import numpy as np
 import pandas as pd
 import logging
 import holoviews as hv
 import hvplot.xarray  # register the hvplot method with xarray objects
-from ....plotting.base import BoxPlotter
+from eviz.lib.autoviz.plotting.base import BoxPlotter
 
 
 class HvplotBoxPlotter(BoxPlotter):
@@ -36,7 +35,6 @@ class HvplotBoxPlotter(BoxPlotter):
             self.logger.warning("No data to plot")
             return None
         
-        # Check if data is a DataFrame (from _extract_box_data)
         if isinstance(data, pd.DataFrame):
             df = data
             self.logger.debug(f"Using provided DataFrame with {len(df)} rows")
@@ -44,12 +42,10 @@ class HvplotBoxPlotter(BoxPlotter):
             self.logger.warning("Expected DataFrame for box plot, got something else")
             return None
         
-        # Get title
         title = field_name
         if hasattr(config, 'spec_data') and field_name in config.spec_data and 'name' in config.spec_data[field_name]:
             title = config.spec_data[field_name]['name']
         
-        # Get units
         units = "n.a."
         if hasattr(config, 'spec_data') and field_name in config.spec_data and 'units' in config.spec_data[field_name]:
             units = config.spec_data[field_name]['units']
@@ -59,14 +55,12 @@ class HvplotBoxPlotter(BoxPlotter):
             units = data.units
         
         try:
-            # Determine the category column
             category_col = None
             if 'time' in df.columns:
                 category_col = 'time'
             elif 'category' in df.columns:
                 category_col = 'category'
             else:
-                # Use the first column that's not 'value'
                 for col in df.columns:
                     if col != 'value':
                         category_col = col
@@ -76,7 +70,6 @@ class HvplotBoxPlotter(BoxPlotter):
                 self.logger.warning("No category column found for box plot")
                 return None
             
-            # Create the box plot
             plot = df.hvplot.box(
                 y='value',
                 by=category_col,
