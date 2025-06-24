@@ -2,6 +2,7 @@ import pandas as pd
 import logging
 import holoviews as hv
 import hvplot.xarray  # register the hvplot method with xarray objects
+import hvplot.pandas  # noqa
 from eviz.lib.autoviz.plotting.base import BoxPlotter
 
 
@@ -75,10 +76,10 @@ class HvplotBoxPlotter(BoxPlotter):
                 by=category_col,
                 title=title,
                 ylabel=f"{title} ({units})",
-                width=800,
-                height=500,
+                width=400,
+                height=400,
                 tools=['pan', 'wheel_zoom', 'box_zoom', 'reset', 'hover'],
-                legend='top'
+                legend='top_left'
             )
             
             self.logger.debug("Successfully created hvplot box plot")

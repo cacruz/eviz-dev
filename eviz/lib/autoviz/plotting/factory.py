@@ -5,6 +5,7 @@ from .backends.matplotlib.tx_plot import MatplotlibTXPlotter
 from .backends.matplotlib.polar_plot import MatplotlibPolarPlotter
 from .backends.matplotlib.scatter_plot import MatplotlibScatterPlotter
 from .backends.matplotlib.metric_plot import MatplotlibMetricPlotter
+from .backends.matplotlib.box_plot import MatplotlibBoxPlotter
 from .backends.hvplot.xy_plot import HvplotXYPlotter
 from .backends.hvplot.xt_plot import HvplotXTPlotter
 from .backends.hvplot.scatter_plot import HvplotScatterPlotter
@@ -43,6 +44,7 @@ class PlotterFactory:
             ("tx", "matplotlib"): MatplotlibTXPlotter,
             ("polar", "matplotlib"): MatplotlibPolarPlotter,
             ("pearson", "matplotlib"): MatplotlibMetricPlotter,
+            ("box", "matplotlib"): MatplotlibBoxPlotter,
 
             ("xy", "hvplot"): HvplotXYPlotter,
             ("xt", "hvplot"): HvplotXTPlotter,
