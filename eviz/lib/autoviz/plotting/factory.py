@@ -4,6 +4,7 @@ from .backends.matplotlib.xt_plot import MatplotlibXTPlotter
 from .backends.matplotlib.tx_plot import MatplotlibTXPlotter
 from .backends.matplotlib.polar_plot import MatplotlibPolarPlotter
 from .backends.matplotlib.scatter_plot import MatplotlibScatterPlotter
+from .backends.matplotlib.metric_plot import MatplotlibMetricPlotter
 from .backends.hvplot.xy_plot import HvplotXYPlotter
 from .backends.hvplot.xt_plot import HvplotXTPlotter
 from .backends.hvplot.scatter_plot import HvplotScatterPlotter
@@ -13,6 +14,7 @@ from .backends.hvplot.metric_plot import HvplotMetricPlotter
 from .backends.altair.xy_plot import AltairXYPlotter
 from .backends.altair.xt_plot import AltairXTPlotter
 from .backends.altair.scatter_plot import AltairScatterPlotter
+from .backends.altair.metric_plot import AltairMetricPlotter
 
 
 class PlotterFactory:
@@ -34,21 +36,25 @@ class PlotterFactory:
         """
         # Dictionary mapping (plot_type, backend) to plotter class
         plotters = {
-            ("xy", "matplotlib"): MatplotlibXYPlotter,
-            ("yz", "matplotlib"): MatplotlibYZPlotter,
-            ("xt", "matplotlib"): MatplotlibXTPlotter,
-            ("tx", "matplotlib"): MatplotlibTXPlotter,
-            ("polar", "matplotlib"): MatplotlibPolarPlotter,
-            ("sc", "matplotlib"): MatplotlibScatterPlotter,
-            ("xy", "hvplot"): HvplotXYPlotter,
-            ("xt", "hvplot"): HvplotXTPlotter,
-            ("sc", "hvplot"): HvplotScatterPlotter,
-            ("box", "hvplot"): HvplotBoxPlotter,
-            ("line", "hvplot"): HvplotLinePlotter,
-            ("pearson", "hvplot"): HvplotMetricPlotter,
             ("xy", "altair"): AltairXYPlotter,
             ("xt", "altair"): AltairXTPlotter,
             ("sc", "altair"): AltairScatterPlotter,
+            ("pearson", "altair"): AltairMetricPlotter,
+
+            ("xy", "hvplot"): HvplotXYPlotter,
+            ("xt", "hvplot"): HvplotXTPlotter,
+            ("sc", "hvplot"): HvplotScatterPlotter,
+            ("pearson", "hvplot"): HvplotMetricPlotter,
+
+            ("xy", "matplotlib"): MatplotlibXYPlotter,
+            ("xt", "matplotlib"): MatplotlibXTPlotter,
+            ("sc", "matplotlib"): MatplotlibScatterPlotter,
+            ("yz", "matplotlib"): MatplotlibYZPlotter,
+            ("tx", "matplotlib"): MatplotlibTXPlotter,
+            ("polar", "matplotlib"): MatplotlibPolarPlotter,
+            ("pearson", "matplotlib"): MatplotlibMetricPlotter,
+            ("box", "hvplot"): HvplotBoxPlotter,
+            ("line", "hvplot"): HvplotLinePlotter,
             # Add other combinations as they are implemented
         }
         

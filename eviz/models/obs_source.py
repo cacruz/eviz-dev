@@ -668,7 +668,15 @@ class ObsSource(GenericSource):
             correlation_to_plot = (data_tuple,) + field_to_plot[1:]
             
             plot_result = self.create_plot(field_name, correlation_to_plot)
-            pu.print_map(self.config_manager, 
-                        plot_type, 
-                        self.config_manager.findex, 
-                        plot_result)
+            if isinstance(plot_result, tuple) and len(plot_result) >= 1:
+                fig = plot_result[0]  # Extract the figure from the tuple
+                pu.print_map(self.config_manager, 
+                            plot_type, 
+                            self.config_manager.findex, 
+                            fig)  # Pass just the figure
+            else:
+                # If it's not a tuple, pass it directly
+                pu.print_map(self.config_manager, 
+                            plot_type, 
+                            self.config_manager.findex, 
+                            plot_result)
