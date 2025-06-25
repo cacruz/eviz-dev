@@ -199,8 +199,6 @@ class GenericSource(BaseSource):
         Returns:
             The created plot object
         """
-        # TODO: This gets a backend per plot, but we should probably get it once and pass it around
-        # Does this degrade performance?
         backend = getattr(self.config_manager, 'plot_backend', 'matplotlib')
         
         plot_type = self.get_plot_type(field_name)
@@ -1510,12 +1508,6 @@ class GenericSource(BaseSource):
             
             self.logger.debug(f"Created DataFrame with {len(df)} rows for box plot")
 
-            # Add debug logging before returning
-            if df is not None:
-                self.logger.info(f"DataFrame has experiment column: {'experiment' in df.columns}")
-            self.logger.info(f"DataFrame shape: {df.shape}")   
-            self.logger.info(f"Unique experiment values: {df['experiment'].unique()}")
-
             return df
         
         except Exception as e:
@@ -1523,38 +1515,6 @@ class GenericSource(BaseSource):
             import traceback
             self.logger.error(traceback.format_exc())
             return None
-
-    # def _extract_comparison_box_data(self, data_arrays_dict, time_lev=None):
-    #     """Extract data for comparison box plots.
-        
-    #     Args:
-    #         data_arrays_dict: Dict of {exp_id: data_array} pairs
-    #         time_lev: Time level to extract (optional)
-            
-    #     Returns:
-    #         Combined DataFrame with experiment labels
-    #     """
-    #     all_dfs = []
-        
-    #     for exp_id, data_array in data_arrays_dict.items():
-    #         df = self._extract_box_data(data_array, time_lev, exp_id)
-    #         if df is not None:
-    #             all_dfs.append(df)
-        
-    #     if all_dfs:
-    #         return pd.concat(all_dfs, ignore_index=True)
-    #     return None
-
-    # def _create_box_comparison_plot(self, file_indices, current_field_index, field_name1, field_name2, figure, plot_type, sdat1_dataset, sdat2_dataset):
-    #     """Create a box comparison plot."""
-    #     file_index1, file_index2 = file_indices
-
-    #     # Plot the first dataset
-    #     self._process_single_box_plot(file_index1, current_field_index, field_name1, figure, 0, sdat1_dataset[field_name1], plot_type)
-
-    #     # Plot the second dataset
-    #     self._process_single_box_plot(file_index2, current_field_index, field_name2, figure, 1, sdat2_dataset[field_name2], plot_type)
-
 
     def _extract_line_data(self, data_array, time_lev=None, level=None):
         """Extract data for a line plot.

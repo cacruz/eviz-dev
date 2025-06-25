@@ -81,17 +81,11 @@ class MatplotlibBoxPlotter(BoxPlotter):
                     # Use default color cycle
                     box_colors = config.ax_opts.get('color_cycle', plt.rcParams['axes.prop_cycle'].by_key()['color'])
                 elif isinstance(box_colors, str):
-                    # If it's a single color string, convert to a list with one element
                     box_colors = [box_colors]
 
            
             # Check if we have multiple experiments for side-by-side box plots
             has_multiple_experiments = 'experiment' in df.columns and len(df['experiment'].unique()) > 1
-
-            self.logger.info(f"has_multiple_experiments: {has_multiple_experiments}")
-            self.logger.info(f"hasattr(config, 'overlay'): {hasattr(config, 'overlay')}")
-            self.logger.info(f"config.overlay: {config.overlay if hasattr(config, 'overlay') else False}")
-
 
             if has_multiple_experiments and hasattr(config, 'overlay') and config.overlay:
                 self.logger.info("Creating side-by-side box plots")
@@ -99,12 +93,10 @@ class MatplotlibBoxPlotter(BoxPlotter):
                 num_experiments = len(experiments)
                 self.logger.info(f"Found {num_experiments} experiments: {experiments}")
                 
-                # Group data by category and experiment
                 all_categories = df[category_col].unique()
                 num_categories = len(all_categories)
-                self.logger.info(f"Found {num_categories} categories: {all_categories}")
+                self.logger.debug(f"Found {num_categories} categories: {all_categories}")
                 
-                # ADD SORTING CODE HERE
                 if category_col == 'time':
                     # Try to convert time strings to datetime for proper sorting
                     try:
@@ -132,13 +124,11 @@ class MatplotlibBoxPlotter(BoxPlotter):
                 if fig_input is None:
                     fig, ax = plt.subplots(figsize=(max(10, num_categories * 2), 6))
                 
-                # Calculate positions for side-by-side boxes
                 positions = []
                 box_data = []
                 box_colors = []
                 box_labels = []  # For debugging
                 
-                # Width settings for side-by-side boxes
                 group_width = 0.8
                 box_width = group_width / num_experiments
                 
@@ -150,7 +140,6 @@ class MatplotlibBoxPlotter(BoxPlotter):
                         offset = (j - (num_experiments - 1) / 2) * box_width
                         position = category_center + offset
                         
-                        # Get data for this category and experiment
                         mask = (df[category_col] == category) & (df['experiment'] == experiment)
                         values = df.loc[mask, 'value'].values
                         
@@ -163,22 +152,17 @@ class MatplotlibBoxPlotter(BoxPlotter):
                 self.logger.info(f"Box positions: {positions}")
                 self.logger.info(f"Box labels: {box_labels}")
                 
-                # Create the box plot with custom positions
                 box_plot = ax.boxplot(box_data, positions=positions, patch_artist=True, widths=box_width * 0.9)
                 
-                # Set box colors based on experiment
                 for i, box in enumerate(box_plot['boxes']):
                     box.set(facecolor=box_colors[i % len(box_colors)], alpha=0.7)
                 
-                # Set x-ticks at category centers
                 category_centers = [i + 1 for i in range(num_categories)]
                 ax.set_xticks(category_centers)
                 ax.set_xticklabels(all_categories)
                 
-                # Set x-axis limits to ensure all boxes are visible
                 ax.set_xlim(0.5, num_categories + 0.5)
                 
-                # Add a legend for experiments
                 legend_handles = [plt.Rectangle((0, 0), 1, 1, color=box_colors[i % len(box_colors)], alpha=0.7) 
                                 for i in range(num_experiments)]
                 ax.legend(legend_handles, experiments, loc='best')
@@ -189,9 +173,7 @@ class MatplotlibBoxPlotter(BoxPlotter):
                 grouped_data = df.groupby(category_col)['value'].apply(list).to_dict()
                 categories = list(grouped_data.keys())
                 
-                # ADD SORTING CODE HERE
                 if category_col == 'time':
-                    # Try to convert time strings to datetime for proper sorting
                     try:
                         # Convert time strings to datetime objects
                         time_categories = pd.to_datetime(categories)
