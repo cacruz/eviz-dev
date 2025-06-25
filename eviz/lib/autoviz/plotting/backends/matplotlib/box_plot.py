@@ -88,15 +88,13 @@ class MatplotlibBoxPlotter(BoxPlotter):
             has_multiple_experiments = 'experiment' in df.columns and len(df['experiment'].unique()) > 1
 
             if has_multiple_experiments and hasattr(config, 'overlay') and config.overlay:
-                self.logger.info("Creating side-by-side box plots")
                 experiments = df['experiment'].unique()
                 num_experiments = len(experiments)
-                self.logger.info(f"Found {num_experiments} experiments: {experiments}")
                 
                 all_categories = df[category_col].unique()
                 num_categories = len(all_categories)
-                self.logger.debug(f"Found {num_categories} categories: {all_categories}")
-                
+                self.logger.debug(f"Found {num_experiments} experiments and {num_categories} categories")   
+
                 if category_col == 'time':
                     # Try to convert time strings to datetime for proper sorting
                     try:
@@ -106,7 +104,6 @@ class MatplotlibBoxPlotter(BoxPlotter):
                         sorted_indices = np.argsort(time_categories)
                         # Reorder categories
                         all_categories = [all_categories[i] for i in sorted_indices]
-                        self.logger.info(f"Sorted categories by datetime: {all_categories}")
                     except:
                         # If conversion fails, try numeric sorting
                         try:
@@ -114,11 +111,9 @@ class MatplotlibBoxPlotter(BoxPlotter):
                             numeric_categories = [float(cat) for cat in all_categories]
                             sorted_indices = np.argsort(numeric_categories)
                             all_categories = [all_categories[i] for i in sorted_indices]
-                            self.logger.info(f"Sorted categories numerically: {all_categories}")
                         except:
                             # If all else fails, use lexicographic sorting
                             all_categories = sorted(all_categories)
-                            self.logger.info(f"Sorted categories lexicographically: {all_categories}")
                 
                 # Create a figure with enough width
                 if fig_input is None:

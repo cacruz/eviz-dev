@@ -890,17 +890,10 @@ class GenericSource(BaseSource):
 
     def _process_box_plots(self, current_field_index, field_name1, field_name2, plot_type, sdat1_dataset, sdat2_dataset):
         """Process side-by-side comparison plots for box plot types."""
-        # Use a consistent time level for both plots
-        time_level_config = self.config_manager.ax_opts.get('time_lev', -1)
-        
-        # Check if we should use overlay mode
+        time_level_config = self.config_manager.ax_opts.get('time_lev', -1)        
         use_overlay = self.config_manager.should_overlay_plots(field_name1, plot_type[:2])
-        self.logger.info(f"Using overlay mode: {use_overlay}")
         
-        # Get experiment IDs
         exp_id1 = self.config_manager.get_file_exp_id(self.config_manager.a_list[0])
-        
-        # Extract data for first dataset with experiment ID
         df1 = self._extract_box_data(sdat1_dataset[field_name1], time_level_config, exp_id1)
         
         # Create a list to collect all DataFrames
@@ -921,74 +914,35 @@ class GenericSource(BaseSource):
                 continue
                 
             dataset = data_source.dataset
-            
-            # Get experiment ID for this dataset
-            exp_id2 = self.config_manager.get_file_exp_id(file_idx)
-            
-            # Extract data with experiment ID
+            exp_id2 = self.config_manager.get_file_exp_id(file_idx)            
             df2 = self._extract_box_data(dataset[field_name2], time_level_config, exp_id2)
             
             if df2 is not None:
                 all_dfs.append(df2)
         
-        # Combine all DataFrames
         if not all_dfs:
             self.logger.error("No valid data for box plots")
             return
             
         combined_df = pd.concat(all_dfs, ignore_index=True)
         
-        # Log the combined DataFrame info
-        self.logger.info(f"Combined DataFrame has {len(combined_df)} rows")
-        self.logger.info(f"Combined DataFrame has experiment column: {'experiment' in combined_df.columns}")
-        self.logger.info(f"Unique experiment values: {combined_df['experiment'].unique()}")
-        
-        # Create a single figure
         figure = Figure.create_eviz_figure(self.config_manager, plot_type, nrows=1, ncols=1)
         figure.set_axes()
         
-        # Register the plot type
         self.register_plot_type(field_name1, plot_type)
         
-        # Initialize axis options
         self.config_manager.ax_opts = figure.init_ax_opts(field_name1)
         
-        # Prepare the combined data for plotting
-        field_to_plot = (combined_df, None, None, field_name1, plot_type, self.config_manager.a_list[0], figure)
+        field_to_plot = (
+            combined_df, None, None, field_name1, plot_type, self.config_manager.a_list[0], figure
+            )
         
-        # Create the plot
         self.plot_result = self.create_plot(field_name1, field_to_plot)
         
-        # Print the map
-        pu.print_map(self.config_manager, plot_type, self.config_manager.findex, self.plot_result)
-
-    # def _process_single_box_plot(self, file_index, current_field_index, field_name, figure, ax_index, data_array, plot_type):
-    #     """Process a single box plot for comparison."""
-    #     self.config_manager.findex = file_index
-    #     self.config_manager.pindex = current_field_index
-    #     self.config_manager.axindex = ax_index
-    #     if 'time_lev' in self.config_manager.spec_data[field_name]['boxplot']:
-    #         time_level_config = self.config_manager.spec_data[field_name]['boxplot']['time_lev']
-    #     else:
-    #         time_level_config = -1
-
-    #     # Register the plot type
-    #     self.register_plot_type(field_name, plot_type)
-
-    #     self.config_manager.ax_opts = figure.init_ax_opts(field_name)
-
-    #     field_to_plot = self._prepare_field_to_plot(data_array, 
-    #                                                 field_name,
-    #                                                 file_index,
-    #                                                 plot_type, 
-    #                                                 figure,
-    #                                                 time_level=time_level_config)
-
-    #     if field_to_plot and field_to_plot[0] is not None:
-    #         self.data2d_list.append(field_to_plot[0])
-    
-    #     if field_to_plot:
-    #         self.plot_result = self.create_plot(field_name, field_to_plot)
+        pu.print_map(self.config_manager, 
+                     plot_type, 
+                     self.config_manager.findex, 
+                     self.plot_result)
 
     # DATA SLICE PROCESSING METHODS
     def _extract_yz_data(self, data_array, time_lev):
