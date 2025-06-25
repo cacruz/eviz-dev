@@ -45,14 +45,13 @@ class MatplotlibBoxPlotter(BoxPlotter):
         if hasattr(config, 'spec_data') and field_name in config.spec_data and 'units' in config.spec_data[field_name]:
             units = config.spec_data[field_name]['units']
 
-        box_colors = None
+        color_settings = None
         if config.compare or config.compare_diff:
-            box_colors = config.box_colors
-
+            color_settings = config.box_colors
         else:
-            if field_name in config.spec_data and 'box_color' in config.spec_data[field_name]['boxplot']:
-                box_colors = config.spec_data[field_name]['boxplot'].get('box_color', 'blue')
-        
+            if field_name in config.spec_data and 'boxplot' in config.spec_data[field_name] and 'box_color' in config.spec_data[field_name]['boxplot']:
+                color_settings = config.spec_data[field_name]['boxplot'].get('box_color', 'blue')
+
         try:
             # Determine the category column
             category_col = None
@@ -76,12 +75,13 @@ class MatplotlibBoxPlotter(BoxPlotter):
                 else:
                     fig, ax = plt.subplots(figsize=(10, 6))
 
-                # Standardize box_colors to always be a list
-                if box_colors is None:
-                    # Use default color cycle
-                    box_colors = config.ax_opts.get('color_cycle', plt.rcParams['axes.prop_cycle'].by_key()['color'])
-                elif isinstance(box_colors, str):
-                    box_colors = [box_colors]
+            # Standardize color_settings to always be a list
+            if color_settings is None:
+                # Use default color cycle
+                color_settings = config.ax_opts.get('color_cycle', plt.rcParams['axes.prop_cycle'].by_key()['color'])
+            elif isinstance(color_settings, str):
+                # If it's a single color string, convert to a list with one element
+                color_settings = [color_settings]
 
            
             # Check if we have multiple experiments for side-by-side box plots
@@ -141,9 +141,17 @@ class MatplotlibBoxPlotter(BoxPlotter):
                         if len(values) > 0:
                             positions.append(position)
                             box_data.append(values)
-                            box_colors.append(box_colors[j % len(box_colors)])
-                            box_labels.append(f"{category}_{experiment}")  # For debugging
-                
+                            
+                            # Use color from color_settings
+                            if len(color_settings) == 1:
+                                # If there's only one color specified, use it for all boxes
+                                box_colors.append(color_settings[0])
+                            else:
+                                # Otherwise use the color cycle
+                                box_colors.append(color_settings[j % len(color_settings)])
+                    
+                box_labels.append(f"{category}_{experiment}")  # For debugging
+                                
                 self.logger.info(f"Box positions: {positions}")
                 self.logger.info(f"Box labels: {box_labels}")
                 
@@ -167,6 +175,7 @@ class MatplotlibBoxPlotter(BoxPlotter):
                 # Group data by category
                 grouped_data = df.groupby(category_col)['value'].apply(list).to_dict()
                 categories = list(grouped_data.keys())
+                values = [grouped_data[cat] for cat in categories]
                 
                 if category_col == 'time':
                     try:
@@ -199,9 +208,13 @@ class MatplotlibBoxPlotter(BoxPlotter):
                 box_plot = ax.boxplot(values, patch_artist=True, labels=categories)
                 
                 for i, box in enumerate(box_plot['boxes']):
-                    box_color = box_colors[i % len(box_colors)]
-                    box.set(facecolor=box_color, alpha=0.7)
-
+                    if len(color_settings) == 1:
+                        # If there's only one color specified, use it for all boxes
+                        box.set(facecolor=color_settings[0], alpha=0.7)
+                    else:
+                        # Otherwise use the color cycle
+                        box.set(facecolor=color_settings[i % len(color_settings)], alpha=0.7)
+                        
             ax.set_title(title)
             ax.set_xlabel(category_col)
             ax.set_ylabel(f"{title} ({units})")
