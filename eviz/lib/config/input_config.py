@@ -45,6 +45,7 @@ class InputConfig:
     _plot_backend: str = field(default="matplotlib", init=False)
     _pearsonplot: Dict[str, str] = field(default_factory=dict)
     _plot_backend: str = field(default="matplotlib", init=False)
+    _box_colors: List[str] = field(default_factory=list, init=False)
     
     # @log_method
     def initialize(self):
@@ -460,6 +461,7 @@ class InputConfig:
             self._set_trop_height_file_list()  # Custom method for trop_height logic
 
         self.logger.debug(f"Initialized for_inputs with: "
+                          f"box_colors={self._box_colors}, "
                           f"pearsonplot={self._pearsonplot}, "
                           f"backend={self._plot_backend}, "
                           f"shared_cbar={self._shared_cbar}, "

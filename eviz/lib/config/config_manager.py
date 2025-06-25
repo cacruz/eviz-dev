@@ -198,8 +198,8 @@ class ConfigManager:
         Returns:
             bool: True if plots should be overlaid, False otherwise
         """
-        # Only consider overlaying for profile plots and time series
-        if plot_type not in ['yz', 'xt']:
+        # Only consider overlaying for profile plot, box plots,  and time series
+        if plot_type not in ['yz', 'xt', 'bo']:
             return False
             
         # Sanity check
@@ -208,7 +208,7 @@ class ConfigManager:
             is_profile = 'profile_dim' in self.spec_data[field_name].get('yzplot', {})
         
         # Return True if this is a profile or time series and overlay is requested
-        return (is_profile or plot_type == 'xt') and self.overlay
+        return (is_profile or plot_type == 'xt' or plot_type == 'bo') and self.overlay
 
     def get_file_format(self, file_path: str) -> Optional[str]:
         """
@@ -609,6 +609,11 @@ class ConfigManager:
     def pearsonplot(self):
         """The pearsonplot options to use."""
         return self.input_config._pearsonplot
+
+    @property
+    def box_colors(self):
+        """List of colors used in box plots"""
+        return self.input_config._box_colors
 
     @property
     def plot_backend(self):

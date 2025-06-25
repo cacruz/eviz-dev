@@ -259,60 +259,6 @@ class ObsSource(GenericSource):
                          self.config_manager.findex, 
                          plot_result)
 
-    def _process_box_plot(self, data_array, field_name, file_index, plot_type, figure):
-        """Process a box plot for observational data."""
-        self.config_manager.level = None        
-        time_level_config = None
-        
-        if (hasattr(self.config_manager, 'spec_data') and 
-            field_name in self.config_manager.spec_data and 
-            'boxplot' in self.config_manager.spec_data[field_name] and
-            'time_lev' in self.config_manager.spec_data[field_name]['boxplot']):
-            
-            time_level_config = self.config_manager.spec_data[field_name]['boxplot']['time_lev']
-            self.logger.debug(f"Using time level {time_level_config} from field-specific boxplot configuration")
-        
-        # If not found in field-specific config, check ax_opts
-        if time_level_config is None:
-            time_level_config = self.config_manager.ax_opts.get('time_lev', -1)  # Default to last time level
-            self.logger.debug(f"Using time level {time_level_config} from ax_opts")
-        
-        if isinstance(time_level_config, str) and time_level_config.strip('-').isdigit():
-            time_level_config = int(time_level_config)
-            self.logger.debug(f"Converted time level to integer: {time_level_config}")
-        
-        tc_dim = self.config_manager.get_model_dim_name('tc') or 'time'
-        
-        if tc_dim in data_array.dims:
-            num_times = data_array[tc_dim].size
-            self.logger.debug(f"Time dimension '{tc_dim}' has {num_times} levels")
-            if isinstance(time_level_config, int):
-                actual_time_lev = time_level_config if time_level_config >= 0 else num_times + time_level_config
-                self.logger.debug(f"Will use time level {actual_time_lev} (specified as {time_level_config})")
-
-        box_data = self._extract_box_data(data_array, time_lev=time_level_config)
-        
-        if box_data is None:
-            self.logger.error(f"Failed to prepare box plot data for {field_name}")
-            return
-        
-        field_to_plot = (box_data, None, None, field_name, plot_type, file_index, figure)
-        
-        plot_result = self.create_plot(field_name, field_to_plot)
-        
-        if isinstance(plot_result, tuple) and len(plot_result) >= 1:
-            fig = plot_result[0]  # Extract the figure from the tuple
-            pu.print_map(self.config_manager, 
-                        plot_type, 
-                        self.config_manager.findex, 
-                        fig)  # Pass just the figure
-        else:
-            # If it's not a tuple, pass it directly
-            pu.print_map(self.config_manager, 
-                        plot_type, 
-                        self.config_manager.findex, 
-                        plot_result)
-
     def _process_line_plot(self, data_array, field_name, file_index, plot_type, figure):
         """Process a LINE plot."""
         self.config_manager.level = None

@@ -24,11 +24,11 @@ CARTOPY_DATA_DIR = '/discover/nobackup/projects/jh_tutorials/JH_examples/JH_data
 AIRMASS_URL = 'https://portal.nccs.nasa.gov/datashare/astg/eviz/airmass/RefD2.tavg24_3d_dac_Np.AIRMASS.ANN.nc4'
 
 SUPPORTED_MODELS = [
-    'geos', 'ccm', 'cf', 'wrf', 'lis', 'gridded',
+    'geos', 'ccm', 'cf', 'wrf', 'lis', 'gridded', 'crest',
     'fluxnet', 'airnow', 'test', 'omi', 'landsat', 'mopitt'
 ]
 
-PLOT_TYPES = ['xy', 'yz', 'xt', 'tx', 'polar', 'sc']
+PLOT_TYPES = ['xy', 'yz', 'xt', 'tx', 'polar', 'sc', 'box', 'pearson']
 
 FORMAT_PNG = 'png'
 META_ATTRS_NAME = 'meta_attributes.yaml'
@@ -51,3 +51,5 @@ XT_PLOT = 'xt'
 TX_PLOT = 'tx'
 POLAR_PLOT = 'polar'
 SC_PLOT = 'sc'
+BOX_PLOT = 'box'
+PEARSON_PLOT = 'pearson'

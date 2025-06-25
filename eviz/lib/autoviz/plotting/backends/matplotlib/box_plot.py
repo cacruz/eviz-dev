@@ -11,7 +11,6 @@ class MatplotlibBoxPlotter(BoxPlotter):
     
     def __init__(self):
         super().__init__()
-        self.plot_object = None
         self.logger = logging.getLogger(self.__class__.__name__)
     
     def plot(self, config, data_to_plot):
@@ -45,6 +44,14 @@ class MatplotlibBoxPlotter(BoxPlotter):
         units = "n.a."
         if hasattr(config, 'spec_data') and field_name in config.spec_data and 'units' in config.spec_data[field_name]:
             units = config.spec_data[field_name]['units']
+
+        box_colors = None
+        if config.compare or config.compare_diff:
+            box_colors = config.box_colors
+
+        else:
+            if field_name in config.spec_data and 'box_color' in config.spec_data[field_name]['boxplot']:
+                box_colors = config.spec_data[field_name]['boxplot'].get('box_color', 'blue')
         
         try:
             # Determine the category column
@@ -59,11 +66,7 @@ class MatplotlibBoxPlotter(BoxPlotter):
                     if col != 'value':
                         category_col = col
                         break
-            
-            if category_col is None:
-                self.logger.warning("No category column found for box plot")
-                return None
-            
+
             if fig_input is None:
                 fig, ax = plt.subplots(figsize=(10, 6))
             else:
@@ -72,36 +75,170 @@ class MatplotlibBoxPlotter(BoxPlotter):
                     ax = fig.gca()
                 else:
                     fig, ax = plt.subplots(figsize=(10, 6))
-            
-            color_cycle = config.ax_opts.get('color_cycle', plt.rcParams['axes.prop_cycle'].by_key()['color'])
-            
-            # Group data by category
-            grouped_data = df.groupby(category_col)['value'].apply(list).to_dict()
-            categories = list(grouped_data.keys())
-            values = [grouped_data[cat] for cat in categories]
-            
-            box_plot = ax.boxplot(values, patch_artist=True, labels=categories)
-            
-            for i, box in enumerate(box_plot['boxes']):
-                box_color = color_cycle[i % len(color_cycle)]
-                box.set(facecolor=box_color, alpha=0.7)
+
+                # Standardize box_colors to always be a list
+                if box_colors is None:
+                    # Use default color cycle
+                    box_colors = config.ax_opts.get('color_cycle', plt.rcParams['axes.prop_cycle'].by_key()['color'])
+                elif isinstance(box_colors, str):
+                    # If it's a single color string, convert to a list with one element
+                    box_colors = [box_colors]
+
+           
+            # Check if we have multiple experiments for side-by-side box plots
+            has_multiple_experiments = 'experiment' in df.columns and len(df['experiment'].unique()) > 1
+
+            self.logger.info(f"has_multiple_experiments: {has_multiple_experiments}")
+            self.logger.info(f"hasattr(config, 'overlay'): {hasattr(config, 'overlay')}")
+            self.logger.info(f"config.overlay: {config.overlay if hasattr(config, 'overlay') else False}")
+
+
+            if has_multiple_experiments and hasattr(config, 'overlay') and config.overlay:
+                self.logger.info("Creating side-by-side box plots")
+                experiments = df['experiment'].unique()
+                num_experiments = len(experiments)
+                self.logger.info(f"Found {num_experiments} experiments: {experiments}")
                 
+                # Group data by category and experiment
+                all_categories = df[category_col].unique()
+                num_categories = len(all_categories)
+                self.logger.info(f"Found {num_categories} categories: {all_categories}")
+                
+                # ADD SORTING CODE HERE
+                if category_col == 'time':
+                    # Try to convert time strings to datetime for proper sorting
+                    try:
+                        # Convert time strings to datetime objects
+                        time_categories = pd.to_datetime(all_categories)
+                        # Sort and get the sorted indices
+                        sorted_indices = np.argsort(time_categories)
+                        # Reorder categories
+                        all_categories = [all_categories[i] for i in sorted_indices]
+                        self.logger.info(f"Sorted categories by datetime: {all_categories}")
+                    except:
+                        # If conversion fails, try numeric sorting
+                        try:
+                            # Try to convert to numeric values
+                            numeric_categories = [float(cat) for cat in all_categories]
+                            sorted_indices = np.argsort(numeric_categories)
+                            all_categories = [all_categories[i] for i in sorted_indices]
+                            self.logger.info(f"Sorted categories numerically: {all_categories}")
+                        except:
+                            # If all else fails, use lexicographic sorting
+                            all_categories = sorted(all_categories)
+                            self.logger.info(f"Sorted categories lexicographically: {all_categories}")
+                
+                # Create a figure with enough width
+                if fig_input is None:
+                    fig, ax = plt.subplots(figsize=(max(10, num_categories * 2), 6))
+                
+                # Calculate positions for side-by-side boxes
+                positions = []
+                box_data = []
+                box_colors = []
+                box_labels = []  # For debugging
+                
+                # Width settings for side-by-side boxes
+                group_width = 0.8
+                box_width = group_width / num_experiments
+                
+                for i, category in enumerate(all_categories):
+                    category_center = i + 1  # Center position for this category group
+                    
+                    for j, experiment in enumerate(experiments):
+                        # Calculate offset from center for this experiment's box
+                        offset = (j - (num_experiments - 1) / 2) * box_width
+                        position = category_center + offset
+                        
+                        # Get data for this category and experiment
+                        mask = (df[category_col] == category) & (df['experiment'] == experiment)
+                        values = df.loc[mask, 'value'].values
+                        
+                        if len(values) > 0:
+                            positions.append(position)
+                            box_data.append(values)
+                            box_colors.append(box_colors[j % len(box_colors)])
+                            box_labels.append(f"{category}_{experiment}")  # For debugging
+                
+                self.logger.info(f"Box positions: {positions}")
+                self.logger.info(f"Box labels: {box_labels}")
+                
+                # Create the box plot with custom positions
+                box_plot = ax.boxplot(box_data, positions=positions, patch_artist=True, widths=box_width * 0.9)
+                
+                # Set box colors based on experiment
+                for i, box in enumerate(box_plot['boxes']):
+                    box.set(facecolor=box_colors[i % len(box_colors)], alpha=0.7)
+                
+                # Set x-ticks at category centers
+                category_centers = [i + 1 for i in range(num_categories)]
+                ax.set_xticks(category_centers)
+                ax.set_xticklabels(all_categories)
+                
+                # Set x-axis limits to ensure all boxes are visible
+                ax.set_xlim(0.5, num_categories + 0.5)
+                
+                # Add a legend for experiments
+                legend_handles = [plt.Rectangle((0, 0), 1, 1, color=box_colors[i % len(box_colors)], alpha=0.7) 
+                                for i in range(num_experiments)]
+                ax.legend(legend_handles, experiments, loc='best')
+
+            else:
+                # Standard box plot (single experiment or not overlaid)
+                # Group data by category
+                grouped_data = df.groupby(category_col)['value'].apply(list).to_dict()
+                categories = list(grouped_data.keys())
+                
+                # ADD SORTING CODE HERE
+                if category_col == 'time':
+                    # Try to convert time strings to datetime for proper sorting
+                    try:
+                        # Convert time strings to datetime objects
+                        time_categories = pd.to_datetime(categories)
+                        # Sort and get the sorted indices
+                        sorted_indices = np.argsort(time_categories)
+                        # Reorder categories
+                        sorted_categories = [categories[i] for i in sorted_indices]
+                        # Reorder values to match sorted categories
+                        values = [grouped_data[categories[i]] for i in sorted_indices]
+                        categories = sorted_categories
+                    except:
+                        # If conversion fails, try numeric sorting
+                        try:
+                            # Try to convert to numeric values
+                            numeric_categories = [float(cat) for cat in categories]
+                            sorted_indices = np.argsort(numeric_categories)
+                            sorted_categories = [categories[i] for i in sorted_indices]
+                            values = [grouped_data[categories[i]] for i in sorted_indices]
+                            categories = sorted_categories
+                        except:
+                            # If all else fails, use lexicographic sorting
+                            sorted_categories = sorted(categories)
+                            values = [grouped_data[cat] for cat in sorted_categories]
+                            categories = sorted_categories
+                else:
+                    values = [grouped_data[cat] for cat in categories]
+                
+                box_plot = ax.boxplot(values, patch_artist=True, labels=categories)
+                
+                for i, box in enumerate(box_plot['boxes']):
+                    box_color = box_colors[i % len(box_colors)]
+                    box.set(facecolor=box_color, alpha=0.7)
+
             ax.set_title(title)
             ax.set_xlabel(category_col)
             ax.set_ylabel(f"{title} ({units})")
-            
+
             ax.grid(True, linestyle='--', alpha=0.7)
-            
+
             # Rotate x-axis labels if they're long or there are many categories
-            if len(categories) > 5 or any(len(str(cat)) > 10 for cat in categories):
+            if len(df[category_col].unique()) > 5 or any(len(str(cat)) > 10 for cat in df[category_col].unique()):
                 plt.xticks(rotation=45, ha='right')
-            
+
             fig.tight_layout()
-            
-            self.plot_object = (fig, ax)
-            
-            return (fig, ax)
-            
+                    
+            return fig
+
         except Exception as e:
             self.logger.error(f"Error creating matplotlib box plot: {e}")
             import traceback
@@ -110,20 +247,7 @@ class MatplotlibBoxPlotter(BoxPlotter):
     
     def save(self, filename, **kwargs):
         """Save the plot to a file."""
-        if self.plot_object is not None:
-            try:
-                fig, ax = self.plot_object
-                
-                # Get DPI from kwargs or use default
-                dpi = kwargs.get('dpi', 300)
-                
-                # Save figure
-                fig.savefig(filename, dpi=dpi, bbox_inches='tight')
-                self.logger.info(f"Saved box plot to {filename}")
-            except Exception as e:
-                self.logger.error(f"Error saving plot: {e}")
-        else:
-            self.logger.warning("No plot to save")
+        pass
 
     def show(self):
         """Display the plot."""
