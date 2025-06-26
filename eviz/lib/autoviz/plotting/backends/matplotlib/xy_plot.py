@@ -155,7 +155,7 @@ class MatplotlibXYPlotter(MatplotlibBasePlotter):
                             fontsize=self._image_font_size(fig.subplots))
         
         elif config.compare:
-            fig.suptitle_eviz(text=config.map_params[findex].get('field', 'No name'), 
+            fig.suptitle_eviz(text=field_name, 
                             fontweight='bold',
                             fontstyle='italic',
                             fontsize=self._image_font_size(fig.subplots))

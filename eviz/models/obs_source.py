@@ -1,9 +1,7 @@
 from dataclasses import dataclass
 import logging
 import warnings
-import matplotlib
 import numpy as np
-import pandas as pd
 import xarray as xr
 from eviz.lib.autoviz.figure import Figure
 from eviz.models.source_base import GenericSource
@@ -148,11 +146,11 @@ class ObsSource(GenericSource):
         return extent
     
     def _process_xy_plot(self, 
-                         data_array, 
-                         field_name, 
-                         file_index, 
-                         plot_type, 
-                         figure):
+                         data_array: xr.DataArray, 
+                         field_name: str, 
+                         file_index: int, 
+                         plot_type: str, 
+                         figure: Figure):
         """Process an XY plot."""
         levels = self.config_manager.get_levels(field_name, plot_type + 'plot')
         do_zsum = self.config_manager.ax_opts.get('zsum', False)
@@ -233,8 +231,13 @@ class ObsSource(GenericSource):
                 else:
                     self.logger.warning(f"Skipping plot for time level {t} - no valid data after processing")
 
-    def _process_xt_plot(self, data_array, field_name, file_index, plot_type, figure):
-        """Process an XT plot."""
+    def _process_xt_plot(self,
+                         data_array: xr.DataArray, 
+                         field_name: str, 
+                         file_index: int, 
+                         plot_type: str, 
+                         figure: Figure):
+        """Process a time-series plot."""
         self.config_manager.level = None
         time_level_config = self.config_manager.ax_opts.get('time_lev', 0)
         tc_dim = self.config_manager.get_model_dim_name('tc') or 'time'

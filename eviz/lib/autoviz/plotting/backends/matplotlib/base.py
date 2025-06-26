@@ -110,14 +110,14 @@ class MatplotlibBasePlotter(BasePlotter):
 
     def _create_clevs(self, field_name, ax_opts, data2d, vmin=None, vmax=None):
         """Create contour levels for the plot."""
+        self.logger.debug(f"Create contour levels for {field_name}")
         # Check if clevs already exists and is not empty
         if 'clevs' in ax_opts and ax_opts['clevs'] is not None and len(ax_opts['clevs']) > 0:
             return
         
         # Check if data is all NaN
         if np.isnan(data2d).all():
-            self.logger.warning(f"All values are NaN for {field_name}. Cannot create "
-                                f"contour levels.")
+            self.logger.warning("All values are NaN! Cannot create contour levels.")
             # Set default contour levels to avoid errors
             ax_opts['clevs'] = np.array([0, 1])
             ax_opts['clevs_prec'] = 0
@@ -134,7 +134,6 @@ class MatplotlibBasePlotter(BasePlotter):
         
         # Check if min equals max (constant field)
         if np.isclose(dmin, dmax):
-            self.logger.debug(f"Constant field detected for {field_name}: {dmin}")
             # Create simple contour levels around the constant value
             ax_opts['clevs'] = np.array([dmin - 0.1, dmin, dmin + 0.1])
             ax_opts['clevs_prec'] = 1
@@ -158,7 +157,7 @@ class MatplotlibBasePlotter(BasePlotter):
         # Check if levels are strictly increasing
         # If not enough unique levels, regenerate with more precision or fallback
         if len(set(clevs)) <= 2:
-            self.logger.debug(f"Not enough unique contour levels for {field_name}.")
+            self.logger.debug("Not enough unique contour levels.")
             # Try with more levels and higher precision
             clevs = np.linspace(dmin, dmax, 10)
             clevs = np.unique(np.around(clevs, decimals=6))
@@ -170,7 +169,7 @@ class MatplotlibBasePlotter(BasePlotter):
         clevs = np.unique(clevs)  # Remove duplicates, again
         ax_opts['clevs'] = clevs
         
-        self.logger.debug(f'Created contour levels for {field_name}: {ax_opts["clevs"]}')
+        self.logger.debug(f'Created contour levels: {ax_opts["clevs"]}')
         if ax_opts['clevs'][0] == 0.0:
             ax_opts['extend_value'] = "max"
 
@@ -227,10 +226,11 @@ class MatplotlibBasePlotter(BasePlotter):
 
     def set_colorbar(self, config, cfilled, fig, ax, ax_opts, findex, field_name, data2d):
         """Add a colorbar to the plot."""
+        self.logger.debug(f"Create colorbar for {field_name}")
         try:
             # Skip colorbar creation if suppressed (for shared colorbar)
             if ax_opts.get("suppress_colorbar", False):
-                self.logger.debug(f"Suppressing individual colorbar for {field_name}")
+                self.logger.debug("Suppressing individual colorbar")
                 return None
 
             source_name = config.source_names[config.ds_index]
@@ -304,6 +304,7 @@ class MatplotlibBasePlotter(BasePlotter):
         Returns:
             The created colorbar object
         """
+        self.logger.debug(f"Create shared colorbar for {field_name}")
         if not cfilled_objects:
             self.logger.warning("No filled contour objects found for shared colorbar")
             return None
@@ -364,6 +365,7 @@ class MatplotlibBasePlotter(BasePlotter):
 
     def get_units(self, config, field_name, data2d, source_name, findex):
         """Get units for the field."""
+        self.logger.debug(f"Get units for {field_name}")
         try:
             if (
                 field_name in config.spec_data
