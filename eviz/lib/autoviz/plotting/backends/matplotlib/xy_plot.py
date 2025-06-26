@@ -29,7 +29,6 @@ class MatplotlibXYPlotter(MatplotlibBasePlotter):
         if data2d is None:
             return fig
         
-        # Store the figure for later use
         self.fig = fig
         
         ax_opts = config.ax_opts
@@ -156,8 +155,6 @@ class MatplotlibXYPlotter(MatplotlibBasePlotter):
                             fontsize=self._image_font_size(fig.subplots))
         
         elif config.compare:
-            if not config.is_regional:
-                fig.set_size_inches(16, 6)
             fig.suptitle_eviz(text=config.map_params[findex].get('field', 'No name'), 
                             fontweight='bold',
                             fontstyle='italic',
