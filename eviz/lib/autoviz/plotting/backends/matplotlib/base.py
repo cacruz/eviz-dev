@@ -13,7 +13,6 @@ from eviz.lib.autoviz.utils import bar_font_size, contour_tick_font_size
 
 class MatplotlibBasePlotter(BasePlotter):
     """Base class for all Matplotlib plotters with common functionality."""
-
     def plot(self, config, data_to_plot):
         pass
 
@@ -28,7 +27,8 @@ class MatplotlibBasePlotter(BasePlotter):
         """Plot filled contours."""
         # Check if data is all NaN
         if np.isnan(data2d).all():
-            self.logger.warning(f"All values are NaN for {field_name}. Cannot create contour plot.")
+            self.logger.warning(f"All values are NaN for {field_name}. "
+                                f"Cannot create contour plot.")
             ax.set_facecolor("whitesmoke")
             ax.text(
                 0.5,
@@ -175,8 +175,6 @@ class MatplotlibBasePlotter(BasePlotter):
 
     def line_contours(self, fig, ax, ax_opts, x, y, data2d, transform=None):
         """Add line contours to the plot."""
-        import eviz.lib.autoviz.utils as pu
-
         with mpl.rc_context(rc=ax_opts.get("rc_params", {})):
             try:
                 # Check if clevs exists and has enough levels
@@ -185,7 +183,6 @@ class MatplotlibBasePlotter(BasePlotter):
                     or ax_opts["clevs"] is None
                     or len(ax_opts["clevs"]) < 2
                 ):
-                    self.logger.warning("Not enough contour levels for line contours")
                     return
 
                 try:
@@ -195,7 +192,6 @@ class MatplotlibBasePlotter(BasePlotter):
                     )
                 except IndexError:
                     # Handle the case where contour_format_from_levels fails
-                    self.logger.warning("Could not determine contour format, using default")
                     contour_format = "%.1f"
 
                 clines = ax.contour(
@@ -211,7 +207,6 @@ class MatplotlibBasePlotter(BasePlotter):
                 if len(clines.allsegs) == 0 or all(
                     len(seg) == 0 for seg in clines.allsegs
                 ):
-                    self.logger.warning("No contours were generated. Skipping contour labeling.")
                     return
 
                 ax.clabel(
@@ -306,7 +301,6 @@ class MatplotlibBasePlotter(BasePlotter):
         """
         self.logger.debug(f"Create shared colorbar for {field_name}")
         if not cfilled_objects:
-            self.logger.warning("No filled contour objects found for shared colorbar")
             return None
         
         # Get the first cfilled object to use as reference
@@ -409,7 +403,6 @@ class MatplotlibBasePlotter(BasePlotter):
 
     def set_cartopy_ticks(self, ax, extent, labelsize=10):
         """Add gridlines and tick labels to a Cartopy map."""
-        import cartopy.crs as ccrs
 
         if not extent or len(extent) != 4:
             self.logger.warning(f"Invalid extent {extent}, using default")
@@ -448,8 +441,6 @@ class MatplotlibBasePlotter(BasePlotter):
         Adds gridlines and tick labels (in degrees) outside the map for Lambert and PlateCarree.
         Places longitude labels below the map, latitude on the left.
         """
-        import numpy as np
-
         if not extent or len(extent) != 4:
             self.logger.warning(f"Invalid extent {extent}, using default")
             extent = [-180, 180, -90, 90]

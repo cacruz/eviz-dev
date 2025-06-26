@@ -96,17 +96,20 @@ class MatplotlibYZPlotter(MatplotlibBasePlotter):
 
         if isinstance(ax, list):
             for single_ax in ax:
-                self._plot_yz_data(config, single_ax, data2d, x, y, field_name, fig, ax_opts,
-                            vertical_units,
-                            plot_type, findex)
+                self._plot_yz_data(config, single_ax, data2d,
+                                   x, y, field_name, fig, ax_opts, vertical_units,
+                                   plot_type, findex)
         else:
-            self._plot_yz_data(config, ax, data2d, x, y, field_name, fig, ax_opts, vertical_units,
-                        plot_type, findex)
+            self._plot_yz_data(config, ax, data2d,
+                               x, y, field_name, fig, ax_opts, vertical_units,
+                               plot_type, findex)
         # reset rc params to default
         # matplotlib.rcParams.update(matplotlib.rcParamsDef   
         return fig
 
-    def _plot_yz_data(self, config, ax, data2d, x, y, field_name, fig, ax_opts, vertical_units, plot_type, findex):
+    def _plot_yz_data(self, config, ax, data2d,
+                      x, y, field_name, fig, ax_opts, vertical_units,
+                      plot_type, findex):
         """Helper function to plot YZ data on a single axes."""
         source_name = config.source_names[config.ds_index]
 

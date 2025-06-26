@@ -256,8 +256,8 @@ class Autoviz:
                 self.logger.error(f"Error accessing pipeline: {e}")
 
             if not all_data_sources:
-                self.logger.error(
-                    "No data sources were loaded. Check if the input files exist and are accessible.")
+                self.logger.error("No data sources were loaded. "
+                                  "Check if the input files exist and are accessible.")
                 for i, entry in enumerate(self._config_manager.app_data.inputs):
                     file_path = os.path.join(entry.get('location', ''),
                                              entry.get('name', ''))

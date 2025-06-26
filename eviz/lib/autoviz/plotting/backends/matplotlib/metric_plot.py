@@ -10,7 +10,6 @@ from .base import MatplotlibBasePlotter
 
 class MatplotlibMetricPlotter(MatplotlibBasePlotter):
     """Matplotlib implementation for metric visualization (e.g., correlation maps)."""
-    
     def __init__(self):
         super().__init__()
         self.plot_object = None
@@ -45,12 +44,8 @@ class MatplotlibMetricPlotter(MatplotlibBasePlotter):
         else:
             # Assume data2d is already a correlation map
             data2d = data_to_plot[0]
-         
-        if data2d is None:
-            return fig
-                
+
         self.fig = fig
-        
         ax_opts = config.ax_opts
         field_name = data_to_plot[3]
 
@@ -82,11 +77,13 @@ class MatplotlibMetricPlotter(MatplotlibBasePlotter):
 
         ax_opts = fig.update_ax_opts(field_name, self.ax, 'pearson', level=0)
         fig.plot_text(field_name, self.ax, 'pearson', level=0, data=data2d)
-        self._plot_pearson_data(config, self.ax, data2d, x, y, field_name, fig, ax_opts, 0, plot_type, findex)
+        self._plot_pearson_data(config, self.ax, data2d, x, y, field_name,
+                                fig, ax_opts, findex)
 
         return fig
 
-    def _plot_pearson_data(self, config, ax, data2d, x, y, field_name, fig, ax_opts, level, plot_type, findex):
+    def _plot_pearson_data(self, config, ax, data2d, x, y, field_name,
+                           fig, ax_opts, findex):
         # Set default colormap if not specified
         cmap_name = ax_opts.get('use_cmap', 'RdBu_r')
         # Check if we're using Cartopy and if the axis is a GeoAxes
@@ -135,7 +132,8 @@ class MatplotlibMetricPlotter(MatplotlibBasePlotter):
             
         # Regrid?
         if data1.shape != data2.shape:
-            self.logger.warning(f"Data shapes don't match: {data1.shape} vs {data2.shape}, correlation may not be meaningful")
+            self.logger.warning(f"Data shapes don't match: {data1.shape} vs {data2.shape}, "
+                                f"correlation may not be meaningful")
         
         dims1 = list(data1.dims)
         
@@ -155,7 +153,8 @@ class MatplotlibMetricPlotter(MatplotlibBasePlotter):
             time_len = data1.shape[0]
             y_len, x_len = data1.shape[1], data1.shape[2]
             
-            self.logger.debug(f"Computing correlation across {time_len} time points for a {y_len}x{x_len} grid")
+            self.logger.debug(f"Computing correlation across {time_len} time points "
+                              f"for a {y_len}x{x_len} grid")
             
             # Compute correlation coefficient for each grid point
             for i in range(y_len):
@@ -176,7 +175,8 @@ class MatplotlibMetricPlotter(MatplotlibBasePlotter):
                         r, _ = pearsonr(ts1[mask], ts2[mask])
                         corr_data[i, j] = r
                     except Exception as e:
-                        self.logger.debug(f"Error computing correlation at point ({i},{j}): {e}")
+                        self.logger.debug(f"Error computing correlation at point "
+                                          f"({i},{j}): {e}")
                         corr_data[i, j] = np.nan
             
             corr_data.attrs['long_name'] = 'Pearson Correlation Coefficient'
@@ -193,7 +193,8 @@ class MatplotlibMetricPlotter(MatplotlibBasePlotter):
             
             # For 2D data, we can't compute pixel-wise correlation across time
             # Instead, compute spatial correlation or return a warning
-            self.logger.warning("Input data is 2D, computing spatial correlation instead of pixel-wise temporal correlation")
+            self.logger.warning("Input data is 2D, computing spatial correlation instead "
+                                "of pixel-wise temporal correlation")
             
             flat1 = data1.values.flatten()
             flat2 = data2.values.flatten()
@@ -219,7 +220,6 @@ class MatplotlibMetricPlotter(MatplotlibBasePlotter):
         else:
             self.logger.error(f"Unsupported data dimensions: {dims1}")
             return None
-    
 
     def save(self, filename, **kwargs):
         """Save the plot to a file."""

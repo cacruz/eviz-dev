@@ -220,9 +220,6 @@ class Ghg(ObsSource):
     def process_single_plots(self):
         """
         Generate single plots for each source and field according to configuration.
-        
-        Args:
-            plotter: The plotter object to use for generating plots
         """
         self.logger.info("Generating single plots")
 

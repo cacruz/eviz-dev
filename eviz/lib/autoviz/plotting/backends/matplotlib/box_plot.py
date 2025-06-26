@@ -25,11 +25,11 @@ class MatplotlibBoxPlotter(MatplotlibBasePlotter):
         """
         data, _, _, field_name, plot_type, findex, fig = data_to_plot
         if data is None or not isinstance(data, pd.DataFrame) or data.empty:
-            self.logger.warning("No data to plot or DataFrame is empty")
             return fig
         required_cols = {'value', 'experiment'}
         if not required_cols.issubset(data.columns):
-            self.logger.warning(f"DataFrame missing required columns: {required_cols - set(data.columns)}")
+            self.logger.warning(f"DataFrame missing required columns: "
+                                f"{required_cols - set(data.columns)}")
             return fig
         
         self.fig = fig
@@ -61,8 +61,7 @@ class MatplotlibBoxPlotter(MatplotlibBasePlotter):
                 self.ax = ax_temp
         else:
             self.ax = ax_temp[0]
-        
-        
+
         ax_opts = fig.update_ax_opts(field_name, self.ax, 'box', level=0)
         fig.plot_text(field_name, self.ax, 'box', data=df)
         
@@ -76,7 +75,8 @@ class MatplotlibBoxPlotter(MatplotlibBasePlotter):
                             fontsize=self._image_font_size(fig.subplots))
         elif config.compare:
             title_text = config.map_params[findex].get('field', 'No name')
-            if hasattr(config, 'spec_data') and field_name in config.spec_data and 'name' in config.spec_data[field_name]:
+            if hasattr(config, 'spec_data') and field_name in config.spec_data and \
+                    'name' in config.spec_data[field_name]:
                 title_text = config.spec_data[field_name]['name']
             fig.suptitle_eviz(title_text, 
                             fontweight='bold', fontstyle='italic',
@@ -91,22 +91,27 @@ class MatplotlibBoxPlotter(MatplotlibBasePlotter):
         """Helper method that plots the time series (xt) data."""        
 
         title = field_name
-        if hasattr(config, 'spec_data') and field_name in config.spec_data and 'name' in config.spec_data[field_name]:
+        if hasattr(config, 'spec_data') and \
+                field_name in config.spec_data and \
+                'name' in config.spec_data[field_name]:
             title = config.spec_data[field_name]['name']
         
         units = "n.a."
-        if hasattr(config, 'spec_data') and field_name in config.spec_data and 'units' in config.spec_data[field_name]:
+        if hasattr(config, 'spec_data') and \
+                field_name in config.spec_data and \
+                'units' in config.spec_data[field_name]:
             units = config.spec_data[field_name]['units']
 
         color_settings = None
         if config.compare or config.compare_diff or config.overlay:
             color_settings = config.box_colors
         else:
-            if field_name in config.spec_data and 'boxplot' in config.spec_data[field_name] and 'box_color' in config.spec_data[field_name]['boxplot']:
+            if field_name in config.spec_data and \
+                    'boxplot' in config.spec_data[field_name] and \
+                    'box_color' in config.spec_data[field_name]['boxplot']:
                 color_settings = config.spec_data[field_name]['boxplot'].get('box_color', 'blue')
 
         try:
-            # Determine the category column
             category_col = None
             if 'time' in df.columns:
                 category_col = 'time'

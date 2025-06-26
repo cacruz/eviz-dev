@@ -182,4 +182,3 @@ class MatplotlibXYPlotter(MatplotlibBasePlotter):
                 self.logger.error(f"Error showing figure: {e}")
         else:
             self.logger.warning("No figure to show")
-

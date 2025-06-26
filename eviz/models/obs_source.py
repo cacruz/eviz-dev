@@ -304,7 +304,6 @@ class ObsSource(GenericSource):
             xr.DataArray: The processed 2D data array
         """
         if np.isnan(data_array).all():
-            self.logger.warning(f"All values are NaN for {data_array.name if hasattr(data_array, 'name') else 'unnamed field'}")
             return None
             
         data2d = super()._extract_xy_data(data_array, level, time_lev)
@@ -582,8 +581,7 @@ class ObsSource(GenericSource):
         # If no reference field found in global settings, try to get from ax_opts
         if not reference_field:
             reference_field = self.config_manager.ax_opts.get('reference_field')
-            self.logger.debug(f"Using reference field from ax_opts: {reference_field}")
-        
+
         if not reference_field:
             self.logger.error("No reference field specified for Pearson correlation plot")
             return
@@ -594,14 +592,11 @@ class ObsSource(GenericSource):
             for source_name, data_source in all_data_sources.items():
                 if hasattr(data_source, 'dataset') and reference_field in data_source.dataset:
                     reference_data = data_source.dataset[reference_field]
-                    self.logger.debug(f"Found reference field '{reference_field}' in data source '{source_name}'")
                     break
             
             if reference_data is None:
                 try:
                     reference_data = self.config_manager.pipeline.get_variable(reference_field)
-                    if reference_data is not None:
-                        self.logger.debug(f"Found reference field '{reference_field}' using get_variable")
                 except (AttributeError, KeyError) as e:
                     self.logger.debug(f"Could not get reference field using get_variable: {e}")
                     
@@ -610,7 +605,6 @@ class ObsSource(GenericSource):
                     all_vars = self.config_manager.pipeline.get_all_variables()
                     if reference_field in all_vars:
                         reference_data = all_vars[reference_field]
-                        self.logger.debug(f"Found reference field '{reference_field}' in all variables")
                 except (AttributeError, KeyError) as e:
                     self.logger.debug(f"Could not get reference field from all variables: {e}")
         

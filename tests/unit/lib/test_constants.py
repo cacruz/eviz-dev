@@ -27,12 +27,12 @@ def test_const_attrs(value, expected):
 
 def test_supported_models():
     assert constants.SUPPORTED_MODELS == [
-        'geos', 'ccm', 'cf', 'wrf', 'lis', 'gridded',
+        'geos', 'ccm', 'cf', 'wrf', 'lis', 'gridded', 'crest',
         'fluxnet', 'airnow', 'test', 'omi', 'landsat', 'mopitt'
     ]
 
 def test_supported_plot_types():
-    assert constants.PLOT_TYPES == ['xy', 'yz', 'xt', 'tx', 'polar', 'sc']
+    assert constants.PLOT_TYPES == ['xy', 'yz', 'xt', 'tx', 'polar', 'sc', 'box', 'pearson']
 
 def test_format_png():
     assert constants.FORMAT_PNG == 'png'

@@ -9,24 +9,20 @@ from eviz.lib.autoviz.plotting.base import XYPlotter
 
 class HvplotXYPlotter(XYPlotter):
     """HvPlot implementation of XY plotting."""
-    
     def __init__(self):
         super().__init__()
         self.plot_object = None
         self.logger = logging.getLogger(self.__class__.__name__)
         self._apply_numpy_compatibility_patch()
 
-        # Set up HoloViews and hvplot extensions
         try:
             hv.extension('bokeh')
-            self.logger.debug("Successfully initialized HoloViews and hvplot extensions")
         except Exception as e:
             self.logger.warning(f"Could not initialize HoloViews/hvplot extensions: {e}")   
 
     def _apply_numpy_compatibility_patch(self):
         """Apply compatibility patch for NumPy 1.20+ with older HoloViews/hvplot."""
         try:
-            import numpy as np
             if not hasattr(np, 'bool'):
                 self.logger.debug("Applying NumPy compatibility patch for bool")
                 np.bool = bool

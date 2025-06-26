@@ -13,9 +13,9 @@ class HvplotBoxPlotter(BoxPlotter):
         super().__init__()
         self.plot_object = None
         self.logger = logging.getLogger(self.__class__.__name__)
+
         try:
             hv.extension('bokeh')
-            self.logger.debug("Successfully initialized HoloViews and hvplot extensions")
         except Exception as e:
             self.logger.warning(f"Could not initialize HoloViews/hvplot extensions: {e}")   
         
@@ -44,11 +44,15 @@ class HvplotBoxPlotter(BoxPlotter):
             return None
         
         title = field_name
-        if hasattr(config, 'spec_data') and field_name in config.spec_data and 'name' in config.spec_data[field_name]:
+        if hasattr(config, 'spec_data') and \
+                field_name in config.spec_data \
+                and 'name' in config.spec_data[field_name]:
             title = config.spec_data[field_name]['name']
         
         units = "n.a."
-        if hasattr(config, 'spec_data') and field_name in config.spec_data and 'units' in config.spec_data[field_name]:
+        if hasattr(config, 'spec_data') and \
+                field_name in config.spec_data and \
+                'units' in config.spec_data[field_name]:
             units = config.spec_data[field_name]['units']
         elif hasattr(data, 'attrs') and 'units' in data.attrs:
             units = data.attrs['units']

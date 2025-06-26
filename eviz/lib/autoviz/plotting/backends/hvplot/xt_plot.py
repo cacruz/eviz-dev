@@ -7,12 +7,11 @@ from eviz.lib.autoviz.plotting.base import XTPlotter
 
 class HvplotXTPlotter(XTPlotter):
     """HvPlot implementation of XT (time-series) plotting."""
-    
     def __init__(self):
         super().__init__()
         self.plot_object = None
         self.logger = logging.getLogger(self.__class__.__name__)
-        # Set up HoloViews extension and default renderer
+
         try:
             hv.extension('bokeh')
         except Exception as e:
@@ -31,10 +30,8 @@ class HvplotXTPlotter(XTPlotter):
         data2d, _, _, field_name, plot_type, findex, _ = data_to_plot
         
         if data2d is None:
-            self.logger.warning("No data to plot")
             return None
-        
-        
+
         ax_opts = config.ax_opts
         
         title = field_name
@@ -61,7 +58,6 @@ class HvplotXTPlotter(XTPlotter):
                         if dim.lower() in ['time', 't', 'date', 'datetime']:
                             time_dim = dim
                             break
-                
                 if time_dim:
                     self.logger.debug(f"Using {time_dim} as time dimension")
                     time_coords = data2d[time_dim].values
@@ -92,7 +88,7 @@ class HvplotXTPlotter(XTPlotter):
         
         try:
             if hasattr(data2d, 'hvplot'):
-                # If data2d is an xarray DataArray with hvplot accessor
+                # If data2d is a xarray DataArray with hvplot accessor
                 self.logger.debug("Using hvplot accessor for xarray DataArray")
                 
                 plot_opts = {
@@ -115,7 +111,8 @@ class HvplotXTPlotter(XTPlotter):
                 
                 # Add trend line if specified
                 if field_name in config.spec_data and 'xtplot' in config.spec_data[field_name]:
-                    if 'add_trend' in config.spec_data[field_name]['xtplot'] and config.spec_data[field_name]['xtplot']['add_trend']:
+                    if 'add_trend' in config.spec_data[field_name]['xtplot'] and \
+                            config.spec_data[field_name]['xtplot']['add_trend']:
                         self.logger.debug("Adding trend line")
                         trend = data2d.hvplot.line(
                             x=time_dim,
@@ -145,7 +142,8 @@ class HvplotXTPlotter(XTPlotter):
                 )
                 
                 if field_name in config.spec_data and 'xtplot' in config.spec_data[field_name]:
-                    if 'add_trend' in config.spec_data[field_name]['xtplot'] and config.spec_data[field_name]['xtplot']['add_trend']:
+                    if 'add_trend' in config.spec_data[field_name]['xtplot'] and \
+                            config.spec_data[field_name]['xtplot']['add_trend']:
                         self.logger.debug("Adding trend line")
                         from scipy import stats
                         
@@ -216,14 +214,16 @@ class HvplotXTPlotter(XTPlotter):
                 values = values.flatten()
             
             if len(time_coords) != len(values):
-                self.logger.warning(f"Time coordinates length ({len(time_coords)}) doesn't match values length ({len(values)})")
+                self.logger.warning(f"Time coordinates length ({len(time_coords)}) "
+                                    f"doesn't match values length ({len(values)})")
                 # Use the shorter length
                 min_len = min(len(time_coords), len(values))
                 time_coords = time_coords[:min_len]
                 values = values[:min_len]
             
             # Handle cftime objects
-            if len(time_coords) > 0 and (hasattr(time_coords[0], '_cftime') or str(type(time_coords[0])).find('cftime') >= 0):
+            if len(time_coords) > 0 and (hasattr(time_coords[0], '_cftime') or
+                                         str(type(time_coords[0])).find('cftime') >= 0):
                 try:
                     # Convert to pandas datetime
                     self.logger.debug("Converting cftime objects to pandas datetime")

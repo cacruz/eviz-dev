@@ -16,13 +16,17 @@ import eviz.lib.autoviz.utils as pu
 
 
 class Figure(mfigure.Figure):
-    """
-    Enhanced Figure class inheriting from matplotlib's Figure with eViz framework customizations.
+    """ Enhanced Figure class inheriting from Matplotlib's Figure with eViz framework
+        customizations.
 
     Parameters:
-    config_manager (ConfigManager): Representation of the model configuration 
-    plot_type (str): Type of plot to be created
-    
+        config_manager (ConfigManager): Representation of the model configuration
+        plot_type (str): Type of plot to be created
+
+        See also
+        --------
+        matplotlib.figure.Figure
+
     """
     def __init__(self, config_manager, plot_type, 
         *,
@@ -30,21 +34,7 @@ class Figure(mfigure.Figure):
         ncols=None,
         **kwargs,
     ):
-        """
-        Parameters
-        ----------
-        %(figure.figure)s
 
-        Other parameters
-        ----------------
-        %(figure.format)s
-        **kwargs
-            Passed to `matplotlib.figure.Figure`.
-
-        See also
-        --------
-        matplotlib.figure.Figure
-        """     
         self._gridspec = None
         self._panel_dict = {"left": [], "right": [], "bottom": [], "top": []}
         self._subplot_dict = {}  # subplots indexed by number
@@ -234,7 +224,6 @@ class Figure(mfigure.Figure):
             
         return self
 
-        
     @classmethod
     def create_eviz_figure(cls, config_manager, 
                         plot_type, 
@@ -284,8 +273,7 @@ class Figure(mfigure.Figure):
         
         # Create figure with rc_params applied
         fig = cls(config_manager, plot_type, nrows=nrows, ncols=ncols)
-        
-        
+
         # Store rc_params in ax_opts for later use with axes
         if not hasattr(fig, '_ax_opts'):
             fig._ax_opts = {}
@@ -325,7 +313,8 @@ class Figure(mfigure.Figure):
         # Check if we have a field_name and can get projection from spec_data
         if hasattr(self, 'field_name') and self.field_name:
             if (self.config_manager.spec_data and
-                self.field_name in self.config_manager.spec_data):
+                    self.field_name in self.config_manager.spec_data
+            ):
                 # Check for projection at the top level of the field spec
                 if 'projection' in self.config_manager.spec_data[self.field_name]:
                     projection_name = self.config_manager.spec_data[self.field_name]['projection']
@@ -784,7 +773,10 @@ class Figure(mfigure.Figure):
                         ha='right', va='bottom', fontsize=10,
                         transform=ax.transAxes)
             if self.config_manager.use_history:
-                ax.set_title(self.config_manager.history_expid + " (" + self.config_manager.history_expdsc + ")", fontsize=title_fontsize)
+                ax.set_title(
+                    self.config_manager.history_expid + " (" + self.config_manager.history_expdsc + ")",
+                    fontsize=title_fontsize
+                )
             else:
                 ax.set_title(title_string, loc=loc, fontsize=title_fontsize)
 
@@ -799,9 +791,15 @@ class Figure(mfigure.Figure):
 
         elif 'tx' in pid:
             if self.config_manager.use_history:
-                ax.set_title(self.config_manager.history_expid + " (" + self.config_manager.history_expdsc + ")", fontsize=10)
+                ax.set_title(
+                    self.config_manager.history_expid + " (" + self.config_manager.history_expdsc + ")",
+                    fontsize=10
+                )
             else:
-                ax.set_title(title_string, loc=kwargs.get('loc', 'right'), fontsize=kwargs.get('fontsize', 10))
+                ax.set_title(
+                    title_string, loc=kwargs.get('loc', 'right'),
+                    fontsize=kwargs.get('fontsize', 10)
+                )
 
             ax.text(0.5 * (left + right), bottom + top + 0.5,
                     name,

@@ -7,12 +7,10 @@ from ....plotting.base import BasePlotter
 
 class HvplotLinePlotter(BasePlotter):
     """HvPlot implementation of Line plotting."""
-    
     def __init__(self):
         super().__init__()
         self.plot_object = None
         self.logger = logging.getLogger(self.__class__.__name__)
-        # Set up HoloViews extension and default renderer
         try:
             hv.extension('bokeh')
         except Exception as e:
@@ -39,7 +37,8 @@ class HvplotLinePlotter(BasePlotter):
         ax_opts = config.ax_opts
         
         # Handle fill values if specified
-        if 'lineplot' in config.spec_data[field_name] and 'fill_value' in config.spec_data[field_name]['lineplot']:
+        if 'lineplot' in config.spec_data[field_name] and \
+                'fill_value' in config.spec_data[field_name]['lineplot']:
             fill_value = config.spec_data[field_name]['lineplot']['fill_value']
             data = data.where(data != fill_value, np.nan)
         
@@ -191,3 +190,4 @@ class HvplotLinePlotter(BasePlotter):
                     self.logger.error(f"Error saving temporary file: {e}")
         else:
             self.logger.warning("No plot to show")
+            

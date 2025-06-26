@@ -517,12 +517,8 @@ class GenericSource(BaseSource):
         if self.config_manager.make_gif:
             pu.create_gif(self.config_manager)
 
-
     def process_comparison_plots(self):
         """Generate comparison plots for paired data sources according to configuration.
-
-        Args:
-            plotter (instance of ComparisonPlotter): The plotter instance to use for generating plots.
         """
         self.logger.info("Generating comparison plots")
         current_field_index = 0
@@ -628,10 +624,6 @@ class GenericSource(BaseSource):
     def process_side_by_side_plots(self):
         """
         Generate side-by-side comparison plots for the given plotter.
-
-        Args:
-            plotter (instance of ComparisonPlotter): The plotter instance to use for generating plots.
-
         """
         self.logger.info("Generating side-by-side comparison plots")
         current_field_index = 0
