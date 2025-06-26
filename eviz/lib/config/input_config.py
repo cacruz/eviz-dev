@@ -44,7 +44,6 @@ class InputConfig:
     _use_cartopy: bool = field(default=False, init=False)
     _plot_backend: str = field(default="matplotlib", init=False)
     _pearsonplot: Dict[str, str] = field(default_factory=dict)
-    _plot_backend: str = field(default="matplotlib", init=False)
     _box_colors: List[str] = field(default_factory=list, init=False)
     
     # @log_method
@@ -420,6 +419,7 @@ class InputConfig:
         self._comp_panels = for_inputs.get('comp_panels', (1, 1))
         self._subplot_specs = for_inputs.get('subplot_specs', (1, 1))
         self._plot_backend = for_inputs.get('plot_backend', 'matplotlib')
+        self._box_colors = for_inputs.get('box_colors', False)
         self._pearsonplot = for_inputs.get('pearsonplot', {})
         self._shared_cbar = for_inputs.get('shared_cbar', False)
 
@@ -541,6 +541,9 @@ class InputConfig:
             if 'ids' in overlay_config:
                 self._overlay_exp_ids = overlay_config['ids'].split(',')
                 self._compare_exp_ids = self._overlay_exp_ids.copy()
+
+            if 'box_colors' in overlay_config:
+                self._box_colors = overlay_config['box_colors'].split(',')
 
         if 'compare' in for_inputs:
             self._compare = True

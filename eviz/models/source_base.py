@@ -890,15 +890,22 @@ class GenericSource(BaseSource):
 
     def _process_box_plots(self, current_field_index, field_name1, field_name2, plot_type, sdat1_dataset, sdat2_dataset):
         """Process side-by-side comparison plots for box plot types."""
-        time_level_config = self.config_manager.ax_opts.get('time_lev', -1)        
-        use_overlay = self.config_manager.should_overlay_plots(field_name1, plot_type[:2])
-        
+        # Use a consistent time level for both plots
+        if (hasattr(self.config_manager, 'spec_data') and 
+            field_name1 in self.config_manager.spec_data and 
+            'boxplot' in self.config_manager.spec_data[field_name1] and
+            'time_lev' in self.config_manager.spec_data[field_name1]['boxplot']):
+            
+            time_level_config = self.config_manager.spec_data[field_name1]['boxplot']['time_lev']
+            self.logger.debug(f"Using time level {time_level_config} from field-specific boxplot configuration")
+
         exp_id1 = self.config_manager.get_file_exp_id(self.config_manager.a_list[0])
+        
+        use_all_times = time_level_config == 'all'
         df1 = self._extract_box_data(sdat1_dataset[field_name1], time_level_config, exp_id1)
         
-        # Create a list to collect all DataFrames
         all_dfs = [df1] if df1 is not None else []
-        
+
         # Process second dataset(s)
         for i, file_idx in enumerate(self.config_manager.b_list, start=1):
             map_params = self.config_manager.map_params.get(file_idx)
@@ -913,19 +920,23 @@ class GenericSource(BaseSource):
             if not data_source or not hasattr(data_source, 'dataset') or data_source.dataset is None:
                 continue
                 
-            dataset = data_source.dataset
-            exp_id2 = self.config_manager.get_file_exp_id(file_idx)            
+            dataset = data_source.dataset            
+            exp_id2 = self.config_manager.get_file_exp_id(file_idx)
             df2 = self._extract_box_data(dataset[field_name2], time_level_config, exp_id2)
             
             if df2 is not None:
                 all_dfs.append(df2)
         
+        # Combine all DataFrames
         if not all_dfs:
             self.logger.error("No valid data for box plots")
             return
             
         combined_df = pd.concat(all_dfs, ignore_index=True)
-        
+        # Log the combined DataFrame info
+        self.logger.debug(f"Combined DataFrame has {len(combined_df)} rows")
+        self.logger.debug(f"Combined DataFrame has experiment column: {'experiment' in combined_df.columns}")
+                   
         figure = Figure.create_eviz_figure(self.config_manager, plot_type, nrows=1, ncols=1)
         figure.set_axes()
         
@@ -933,9 +944,7 @@ class GenericSource(BaseSource):
         
         self.config_manager.ax_opts = figure.init_ax_opts(field_name1)
         
-        field_to_plot = (
-            combined_df, None, None, field_name1, plot_type, self.config_manager.a_list[0], figure
-            )
+        field_to_plot = (combined_df, None, None, field_name1, plot_type, self.config_manager.a_list[0], figure)
         
         self.plot_result = self.create_plot(field_name1, field_to_plot)
         
@@ -1340,29 +1349,79 @@ class GenericSource(BaseSource):
         self.logger.debug(f"Extracting box plot data from {data_array.name if hasattr(data_array, 'name') else 'unnamed array'}")
         tc_dim = self.config_manager.get_model_dim_name('tc') or 'time'
         d_temp = data_array.copy()
-        
+
         # Handle time dimension selection
         if tc_dim and tc_dim in d_temp.dims:
             num_tc = d_temp[tc_dim].size
+            self.logger.debug(f"Time dimension '{tc_dim}' has {num_tc} levels")
             
-            # If time_lev is None, we'll use the last time step
-            # If time_lev is an integer, select that specific time step
-            if time_lev is None:
-                d_temp = d_temp.isel({tc_dim: -1})
-            elif time_lev == 'all':
-                self.logger.debug("Using all time levels for box plot")
+            if time_lev == 'all' and tc_dim in d_temp.dims:
+                time_values = d_temp[tc_dim].values
+                num_times = len(time_values)
+                
+                all_data = []
+                valid_time_count = 0
+                
+                for t in range(num_times):
+                    time_slice = d_temp.isel({tc_dim: t})
+                    
+                    # Convert time to string format for better display
+                    time_str = str(time_values[t])
+                    if hasattr(time_values[t], 'strftime'):
+                        time_str = time_values[t].strftime('%Y-%m-%d %H:%M')
+                    
+                    flat_data = time_slice.values.flatten()
+                    
+                    # Skip time steps with all NaN values
+                    if np.isnan(flat_data).all():
+                        self.logger.debug(f"Skipping time {time_str} - all values are NaN")
+                        continue
+                        
+                    # Skip time steps with no valid data
+                    valid_data = flat_data[~np.isnan(flat_data)]
+                    if len(valid_data) == 0:
+                        self.logger.debug(f"Skipping time {time_str} - no valid data after removing NaNs")
+                        continue
+                        
+                    # Skip time steps with all identical values (no variation)
+                    if np.min(valid_data) == np.max(valid_data):
+                        self.logger.debug(f"Skipping time {time_str} - all values are identical: {np.min(valid_data)}")
+                        continue
+                        
+                    valid_time_count += 1
+                    
+                    df_time = pd.DataFrame({
+                        'time': time_str,
+                        'time_idx': t,
+                        'value': flat_data,
+                        'experiment': exp_id or 'default'
+                    })
+                    
+                    all_data.append(df_time)
+                
+                # Combine all time steps
+                if all_data:
+                    df = pd.concat(all_data, ignore_index=True)
+                    self.logger.debug(f"Created DataFrame with {len(df)} rows for {valid_time_count} valid time levels (out of {num_times} total)")
+                    return df
+                else:
+                    self.logger.warning(f"No valid data for box plot of {data_array.name if hasattr(data_array, 'name') else 'unnamed field'}")
+                    return None
+            
             elif isinstance(time_lev, int):
                 actual_time_lev = time_lev if time_lev >= 0 else num_tc + time_lev
                 
                 if 0 <= actual_time_lev < num_tc:
                     d_temp = d_temp.isel({tc_dim: actual_time_lev})
+                    self.logger.debug(f"Selected time level {actual_time_lev} (specified as {time_lev})")
                 else:
                     self.logger.warning(f"Time level {time_lev} out of range (0-{num_tc-1}), using first time level")
                     d_temp = d_temp.isel({tc_dim: 0})
-            elif time_lev == 'all':
-                self.logger.debug("Using all time levels for box plot")
-            elif time_lev is None:
+            else:
+                # Default to last time level if not specified
                 d_temp = d_temp.isel({tc_dim: -1})
+                self.logger.debug(f"No time level specified, using last time level ({num_tc-1})")
+
         
         if np.isnan(d_temp).all():
             self.logger.warning(f"All values are NaN for {data_array.name if hasattr(data_array, 'name') else 'unnamed field'}")
@@ -1436,10 +1495,17 @@ class GenericSource(BaseSource):
                         'experiment': exp_id or 'default'
                     })
             else:
-                # 1D data, use as is
+                # For single time level or no time dimension
+                flat_data = d_temp.values.flatten()
+
+                if np.isnan(flat_data).all():
+                    self.logger.warning(f"All values are NaN for {data_array.name if hasattr(data_array, 'name') else 'unnamed field'}")
+                    return None
+                
                 df = pd.DataFrame({
                     'category': "All Data",
-                    'value': d_temp.values
+                    'value': flat_data,
+                    'experiment': exp_id or 'default'
                 })
             
             if hasattr(self.config_manager, 'spec_data') and field_name in self.config_manager.spec_data:
