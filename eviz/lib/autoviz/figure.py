@@ -354,8 +354,9 @@ class Figure(mfigure.Figure):
             ax.coastlines()
             ax.add_feature(cfeature.BORDERS, linestyle=':')
             ax.add_feature(cfeature.LAND, edgecolor='black')
-            ax.add_feature(cfeature.LAKES, edgecolor='black')
-
+            ax.add_feature(cfeature.LAKES, edgecolor='black', color='white', zorder=0)
+            ax.add_feature(cfeature.OCEAN, color='white', zorder=0)
+            
         return self
 
     def get_gs_geometry(self):
