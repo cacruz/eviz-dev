@@ -4,11 +4,11 @@ import xarray as xr
 import cartopy.crs as ccrs
 from scipy.stats import pearsonr
 import matplotlib.pyplot as plt
-import cartopy.feature as cfeature
-from eviz.lib.autoviz.plotting.base import XYPlotter
+from cartopy.mpl.geoaxes import GeoAxes
+from .base import MatplotlibBasePlotter
 
 
-class MatplotlibMetricPlotter(XYPlotter):
+class MatplotlibMetricPlotter(MatplotlibBasePlotter):
     """Matplotlib implementation for metric visualization (e.g., correlation maps)."""
     
     def __init__(self):
@@ -16,6 +16,115 @@ class MatplotlibMetricPlotter(XYPlotter):
         self.plot_object = None
         self.logger = logging.getLogger(self.__class__.__name__)
     
+    def plot(self, config, data_to_plot):
+        """Create a correlation map using Matplotlib.
+        
+        Args:
+            config: Configuration manager
+            data_to_plot: Tuple containing (data2d, x, y, field_name, plot_type, findex, fig)
+                If data2d is a tuple of two DataArrays, compute correlation between them
+                Otherwise, assume data2d is already a correlation map
+        
+        Returns:
+            The created Matplotlib figure and axes
+        """
+        if isinstance(data_to_plot[0], tuple) and len(data_to_plot[0]) == 2:
+            # We have two datasets to correlate
+            data1, data2 = data_to_plot[0]
+            self.logger.debug("Computing correlation between two datasets")
+            data2d = self.compute_correlation_map(data1, data2)
+            if data2d is None:
+                self.logger.error("Failed to compute correlation map")
+                return None
+                
+            # Reconstruct data_to_plot with the correlation map
+            x, y = data_to_plot[1], data_to_plot[2]
+            field_name = data_to_plot[3] + "_correlation"
+            plot_type, findex, fig = data_to_plot[4], data_to_plot[5], data_to_plot[6]
+            data_to_plot = (data2d, x, y, field_name, plot_type, findex, fig)
+        else:
+            # Assume data2d is already a correlation map
+            data2d = data_to_plot[0]
+         
+        if data2d is None:
+            return fig
+                
+        self.fig = fig
+        
+        ax_opts = config.ax_opts
+        field_name = data_to_plot[3]
+
+        if not config.compare and not config.compare_diff:
+            fig.set_axes()
+        
+        ax_temp = fig.get_axes()
+        axes_shape = fig.subplots
+        
+        if axes_shape == (3, 1):
+            if ax_opts['is_diff_field']:
+                self.ax = ax_temp[2]
+            else:
+                self.ax = ax_temp[config.axindex]
+        elif axes_shape == (2, 2):
+            if ax_opts['is_diff_field']:
+                self.ax = ax_temp[2]
+                if config.ax_opts['add_extra_field_type']:
+                    self.ax = ax_temp[3]
+            else:
+                self.ax = ax_temp[config.axindex]
+        elif axes_shape == (1, 2) or axes_shape == (1, 3):
+            if isinstance(ax_temp, list):
+                self.ax = ax_temp[config.axindex]
+            else:
+                self.ax = ax_temp
+        else:
+            self.ax = ax_temp[0]
+
+        ax_opts = fig.update_ax_opts(field_name, self.ax, 'pearson', level=0)
+        fig.plot_text(field_name, self.ax, 'pearson', level=0, data=data2d)
+        self._plot_pearson_data(config, self.ax, data2d, x, y, field_name, fig, ax_opts, 0, plot_type, findex)
+
+        return fig
+
+    def _plot_pearson_data(self, config, ax, data2d, x, y, field_name, fig, ax_opts, level, plot_type, findex):
+        # Set default colormap if not specified
+        cmap_name = ax_opts.get('use_cmap', 'RdBu_r')
+        # Check if we're using Cartopy and if the axis is a GeoAxes
+        is_cartopy_axis = False
+        try:
+            is_cartopy_axis = isinstance(ax, GeoAxes)
+        except ImportError:
+            pass
+
+        data_transform = ccrs.PlateCarree()
+
+        vmin, vmax = None, None
+        # Ensure contour levels are created based on vmin and vmax
+        self._create_clevs(field_name, ax_opts, data2d, vmin, vmax)
+
+        if len(x.shape) == 1 and len(y.shape) == 1:
+            X, Y = np.meshgrid(x, y)
+            cfilled = ax.pcolormesh(X, Y, data2d.values, 
+                                cmap=cmap_name, 
+                                vmin=-1, vmax=1,
+                                shading='auto')
+        else:
+            if fig.use_cartopy and is_cartopy_axis:
+                cfilled = self.filled_contours(config, field_name, ax, x, y, data2d, 
+                                            vmin=vmin, vmax=vmax, transform=data_transform)
+                if 'extent' in ax_opts:
+                    self.set_cartopy_ticks(ax, ax_opts['extent'])
+                else:
+                    self.set_cartopy_ticks(ax, [-180, 180, -90, 90])
+            else:
+                cfilled = self.filled_contours(config, field_name, ax, x, y, data2d,
+                                            vmin=vmin, vmax=vmax)
+
+        if cfilled is None:
+            self.set_const_colorbar(cfilled, fig, ax)
+        else:
+            self.set_colorbar(config, cfilled, fig, ax, ax_opts, findex, field_name, data2d)
+
     def compute_correlation_map(self, data1, data2):
         """Compute pixel-wise Pearson correlation coefficient between two datasets."""
         self.logger.debug("Computing correlation map")
@@ -111,129 +220,7 @@ class MatplotlibMetricPlotter(XYPlotter):
             self.logger.error(f"Unsupported data dimensions: {dims1}")
             return None
     
-    def plot(self, config, data_to_plot):
-        """Create a correlation map using Matplotlib.
-        
-        Args:
-            config: Configuration manager
-            data_to_plot: Tuple containing (data2d, x, y, field_name, plot_type, findex, fig)
-                If data2d is a tuple of two DataArrays, compute correlation between them
-                Otherwise, assume data2d is already a correlation map
-        
-        Returns:
-            The created Matplotlib figure and axes
-        """
-        if isinstance(data_to_plot[0], tuple) and len(data_to_plot[0]) == 2:
-            # We have two datasets to correlate
-            data1, data2 = data_to_plot[0]
-            self.logger.debug("Computing correlation between two datasets")
-            data2d = self.compute_correlation_map(data1, data2)
-            if data2d is None:
-                self.logger.error("Failed to compute correlation map")
-                return None
-                
-            # Reconstruct data_to_plot with the correlation map
-            x, y = data_to_plot[1], data_to_plot[2]
-            field_name = data_to_plot[3] + "_correlation"
-            plot_type, findex, fig = data_to_plot[4], data_to_plot[5], data_to_plot[6]
-            data_to_plot = (data2d, x, y, field_name, plot_type, findex, fig)
-        else:
-            # Assume data2d is already a correlation map
-            data2d = data_to_plot[0]
-         
-        if data2d is None:
-            self.logger.warning("No data to plot")
-            return None
-        
-        self.logger.debug(f"Data shape: {data2d.shape}")
-        
-        ax_opts = config.ax_opts
-        
-        cmap_name = ax_opts.get('use_cmap', 'RdBu_r')
-        
-        field_name = data_to_plot[3]
-        title = field_name
-        if hasattr(config, 'spec_data') and field_name in config.spec_data and 'name' in config.spec_data[field_name]:
-            title = config.spec_data[field_name]['name']
-        
-        units = "dimensionless"
-        
-        try:
-            x_dim = config.get_model_dim_name('xc') or 'lon'
-            y_dim = config.get_model_dim_name('yc') or 'lat'
-            
-            x_coords = data2d[x_dim].values
-            y_coords = data2d[y_dim].values
-            
-            fig = data_to_plot[6] if data_to_plot[6] is not None else plt.figure(figsize=(10, 8))
-            
-            # Check if we should use a map projection
-            use_map = ax_opts.get('use_map', True)
-            
-            if use_map and -180 <= np.min(x_coords) <= 180 and -90 <= np.min(y_coords) <= 90:
-                try:                    
-                    proj = ax_opts.get('projection', 'PlateCarree')
-                    if isinstance(proj, str):
-                        if hasattr(ccrs, proj):
-                            projection = getattr(ccrs, proj)()
-                        else:
-                            self.logger.warning(f"Unknown projection: {proj}, using PlateCarree")
-                            projection = ccrs.PlateCarree()
-                    else:
-                        projection = ccrs.PlateCarree()
-                    
-                    ax = fig.add_subplot(111, projection=projection)
-                    
-                    ax.coastlines(resolution='50m', linewidth=0.5)
-                    ax.add_feature(cfeature.BORDERS, linewidth=0.3)
-                    ax.add_feature(cfeature.STATES, linewidth=0.3)
-                    
-                    gl = ax.gridlines(crs=ccrs.PlateCarree(), draw_labels=True,
-                                     linewidth=0.2, color='gray', alpha=0.5, linestyle='--')
-                    gl.top_labels = False
-                    gl.right_labels = False
-                    
-                    if 'extent' in ax_opts:
-                        ax.set_extent(ax_opts['extent'], crs=ccrs.PlateCarree())
-                    
-                except ImportError:
-                    self.logger.warning("Cartopy not available, using regular axes")
-                    ax = fig.add_subplot(111)
-            else:
-                # Use regular axes
-                ax = fig.add_subplot(111)
-            
-            if len(x_coords.shape) == 1 and len(y_coords.shape) == 1:
-                # Regular grid
-                X, Y = np.meshgrid(x_coords, y_coords)
-                im = ax.pcolormesh(X, Y, data2d.values, 
-                                  cmap=cmap_name, 
-                                  vmin=-1, vmax=1,
-                                  shading='auto')
-            else:
-                # Irregular grid - use contourf instead
-                im = ax.contourf(x_coords, y_coords, data2d.values,
-                                levels=np.linspace(-1, 1, 21),
-                                cmap=cmap_name,
-                                extend='both')
-            
-            cbar = fig.colorbar(im, ax=ax, orientation='vertical', pad=0.02)
-            cbar.set_label(units)
-            
-            ax.set_title(title)
-            ax.set_xlabel(x_dim)
-            ax.set_ylabel(y_dim)
-            
-            self.plot_object = (fig, ax)
-            
-            return (fig, ax)
-            
-        except Exception as e:
-            self.logger.error(f"Error creating correlation map with Matplotlib: {e}")
-            import traceback
-            self.logger.error(traceback.format_exc())
-            return None
-    
+
     def save(self, filename, **kwargs):
         """Save the plot to a file."""
         if self.plot_object is not None:
