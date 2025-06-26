@@ -3,7 +3,6 @@ import matplotlib as mpl
 import pandas as pd
 import logging
 from sklearn.metrics import mean_squared_error
-import eviz.lib.autoviz.utils as pu
 from .base import MatplotlibBasePlotter
 
 

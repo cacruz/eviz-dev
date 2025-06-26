@@ -1,5 +1,4 @@
 import numpy as np
-import pandas as pd
 import logging
 import xarray as xr
 from scipy.interpolate import griddata
@@ -33,7 +32,8 @@ class AltairMetricPlotter(XYPlotter):
             return None
             
         if data1.shape != data2.shape:
-            self.logger.warning(f"Data shapes don't match: {data1.shape} vs {data2.shape}, correlation may not be meaningful")
+            self.logger.warning(f"Data shapes don't match: {data1.shape} vs {data2.shape}, "
+                                f"correlation may not be meaningful")
         
         dims1 = list(data1.dims)
         
@@ -51,7 +51,8 @@ class AltairMetricPlotter(XYPlotter):
             time_len = data1.shape[0]
             y_len, x_len = data1.shape[1], data1.shape[2]
             
-            self.logger.debug(f"Computing correlation across {time_len} time points for a {y_len}x{x_len} grid")
+            self.logger.debug(f"Computing correlation across {time_len} time points for a "
+                              f"{y_len}x{x_len} grid")
             
             # Compute correlation coefficient for each grid point
             for i in range(y_len):
@@ -73,7 +74,8 @@ class AltairMetricPlotter(XYPlotter):
                         r, _ = pearsonr(ts1[mask], ts2[mask])
                         corr_data[i, j] = r
                     except Exception as e:
-                        self.logger.debug(f"Error computing correlation at point ({i},{j}): {e}")
+                        self.logger.debug(f"Error computing correlation at point "
+                                          f"({i},{j}): {e}")
                         corr_data[i, j] = np.nan
             
             corr_data.attrs['long_name'] = 'Pearson Correlation Coefficient'
@@ -90,8 +92,7 @@ class AltairMetricPlotter(XYPlotter):
             
             # For 2D data, we can't compute pixel-wise correlation across time
             # Instead, compute spatial correlation or return a warning
-            self.logger.warning("Input data is 2D, computing spatial correlation instead of pixel-wise temporal correlation")
-            
+
             flat1 = data1.values.flatten()
             flat2 = data2.values.flatten()
             
@@ -188,13 +189,13 @@ class AltairMetricPlotter(XYPlotter):
                     # Set extent to continental US with a small buffer
                     x_min, x_max = -130, -65
                     y_min, y_max = 23, 51
-                    self.logger.debug(f"Setting extent to continental US: lon [{x_min}, {x_max}], lat [{y_min}, {y_max}]")
+                    self.logger.debug(f"Setting extent to continental US: "
+                                      f"lon [{x_min}, {x_max}], lat [{y_min}, {y_max}]")
             
             irregular_grid = False
             if len(x_coords.shape) > 1 or len(y_coords.shape) > 1:
                 irregular_grid = True
-                self.logger.debug("Detected irregular grid, will convert to regular grid for Altair")
-            
+
             # For irregular grids, we need to convert to a regular grid
             if irregular_grid:
                 # Create a new regular grid with reasonable resolution

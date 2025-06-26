@@ -295,7 +295,8 @@ def print_map(config, plot_type: str, findex: int, fig, level: int = None) -> No
             if hasattr(fig, 'save'):
                 fig.save(filename)
             else:
-                logger.warning(f"Cannot save Altair plot: {filename}. Object doesn't have save method.")
+                logger.warning(f"Cannot save Altair plot: "
+                               f"{filename}. Object doesn't have save method.")
         
         elif backend == 'hvplot':
             try:
@@ -307,7 +308,8 @@ def print_map(config, plot_type: str, findex: int, fig, level: int = None) -> No
                 if hasattr(fig, 'save'):
                     fig.save(filename)
                 else:
-                    logger.warning(f"Cannot save HvPlot: {filename}. Object doesn't support saving.")
+                    logger.warning(f"Cannot save HvPlot: "
+                                   f"{filename}. Object doesn't support saving.")
         
         else:
             # Generic approach - try common save methods
@@ -316,7 +318,8 @@ def print_map(config, plot_type: str, findex: int, fig, level: int = None) -> No
             elif hasattr(fig, 'save'):
                 fig.save(filename)
             else:
-                logger.warning(f"Don't know how to save plot of type {type(fig)} with backend {backend}")
+                logger.warning(f"Don't know how to save plot of type "
+                               f"{type(fig)} with backend {backend}")
 
         # Changed from debug to info for better visibility
         logger.info(f"Figure saved to {filename}")
@@ -354,7 +357,8 @@ def print_map(config, plot_type: str, findex: int, fig, level: int = None) -> No
             if hasattr(fig, 'show'):
                 fig.show()
             else:
-                logger.warning(f"Don't know how to display plot of type {type(fig)} with backend {backend}")
+                logger.warning(f"Don't know how to display plot of type "
+                               f"{type(fig)} with backend {backend}")
 
 
 def legend_font_size(subplots):

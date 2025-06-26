@@ -18,7 +18,7 @@ class MatplotlibScatterPlotter(MatplotlibBasePlotter):
         
         Args:
             config: Configuration manager
-            data_to_plot: Tuple containing (x_data, y_data, z_data, field_name, plot_type, findex, fig)
+            data_to_plot: Tuple containing (x, y, z_data, field_name, plot_type, findex, fig)
                 where z_data is optional and can be used for coloring points
         
         Returns:
@@ -99,62 +99,3 @@ class MatplotlibScatterPlotter(MatplotlibBasePlotter):
                 self.set_colorbar(config, scat, fig, ax, ax_opts, findex, field_name, data2d)
 
             ax.set_title(f'{field_name}')   
-
-    def _plot_scatter_data_alt(self, config, ax, ax_opts, x_data, y_data, z_data, field_name, findex):
-        """Helper method that plots the scatter data."""        
-        with mpl.rc_context(rc=ax_opts.get('rc_params', {})):
-            marker_size = ax_opts.get('marker_size', 20)
-            marker_style = ax_opts.get('marker_style', 'o')
-            cmap = ax_opts.get('use_cmap', 'viridis')
-            alpha = ax_opts.get('alpha', 0.7)
-            
-            units = "n.a."
-            if 'units' in config.spec_data[field_name]:
-                units = config.spec_data[field_name]['units']
-            elif hasattr(z_data, 'attrs') and 'units' in z_data.attrs:
-                units = z_data.attrs['units']
-            elif hasattr(z_data, 'units'):
-                units = z_data.units
-            
-            x_values = x_data.values if hasattr(x_data, 'values') else np.array(x_data)
-            y_values = y_data.values if hasattr(y_data, 'values') else np.array(y_data)
-            
-            if z_data is not None:
-                z_values = z_data.values if hasattr(z_data, 'values') else np.array(z_data)
-                
-                scatter = ax.scatter(x_values, y_values, c=z_values, 
-                                    s=marker_size, marker=marker_style, 
-                                    cmap=cmap, alpha=alpha)
-                
-                cbar = plt.colorbar(scatter, ax=ax)
-                cbar.set_label(units)
-            else:
-                scatter = ax.scatter(x_values, y_values, 
-                                    s=marker_size, marker=marker_style, 
-                                    alpha=alpha)
-            
-            x_label = ax_opts.get('xlabel', x_data.name if hasattr(x_data, 'name') else 'X')
-            y_label = ax_opts.get('ylabel', y_data.name if hasattr(y_data, 'name') else 'Y')
-            
-            ax.set_xlabel(x_label)
-            ax.set_ylabel(y_label)
-            
-            if ax_opts.get('add_grid', True):
-                ax.grid(True, linestyle='--', alpha=0.7)
-            
-            if ax_opts.get('add_regression', False):
-                try:
-                    from scipy import stats
-                    
-                    slope, intercept, r_value, p_value, std_err = stats.linregress(x_values, y_values)
-                    line_x = np.array([min(x_values), max(x_values)])
-                    line_y = slope * line_x + intercept
-                    
-                    ax.plot(line_x, line_y, 'r-', linewidth=2)
-                    
-                    r_squared = r_value**2
-                    ax.text(0.05, 0.95, f'$R^2 = {r_squared:.3f}$', 
-                            transform=ax.transAxes, fontsize=10,
-                            verticalalignment='top', bbox=dict(boxstyle='round', facecolor='white', alpha=0.5))
-                except Exception as e:
-                    self.logger.warning(f"Error adding regression line: {e}")

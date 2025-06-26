@@ -18,10 +18,8 @@ class HvplotMetricPlotter(XYPlotter):
         self.logger = logging.getLogger(self.__class__.__name__)
         self._apply_numpy_compatibility_patch()
 
-        # Set up HoloViews and hvplot extensions
         try:
             hv.extension('bokeh')
-            self.logger.debug("Successfully initialized HoloViews and hvplot extensions")
         except Exception as e:
             self.logger.warning(f"Could not initialize HoloViews/hvplot extensions: {e}")   
 
@@ -57,11 +55,8 @@ class HvplotMetricPlotter(XYPlotter):
             data2d = data_to_plot[0]
         
         if data2d is None:
-            self.logger.warning("No data to plot")
             return None
-        
-        self.logger.debug(f"Data shape: {data2d.shape}")
-        
+
         ax_opts = config.ax_opts
         
         # Use a diverging colormap for correlation
@@ -69,7 +64,9 @@ class HvplotMetricPlotter(XYPlotter):
         
         field_name = data_to_plot[3]
         title = field_name
-        if hasattr(config, 'spec_data') and field_name in config.spec_data and 'name' in config.spec_data[field_name]:
+        if hasattr(config, 'spec_data') and \
+                field_name in config.spec_data and \
+                'name' in config.spec_data[field_name]:
             title = config.spec_data[field_name]['name']
         
         units = "dimensionless"
@@ -172,7 +169,8 @@ class HvplotMetricPlotter(XYPlotter):
         except Exception as e:
             self.logger.warning(f"Failed to apply NumPy compatibility patch: {e}")
 
-    def compute_correlation_map(self, data1, data2):
+    @staticmethod
+    def compute_correlation_map(data1, data2):
         """Compute correlation using Dask for parallel processing."""
 
         # Convert to dask arrays if they aren't already
@@ -223,4 +221,3 @@ class HvplotMetricPlotter(XYPlotter):
                     self.logger.error(f"Error saving temporary file: {e}")
         else:
             self.logger.warning("No plot to show")
-

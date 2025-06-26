@@ -1,9 +1,7 @@
 from dataclasses import dataclass
 import logging
 import warnings
-import matplotlib
 import numpy as np
-import pandas as pd
 import xarray as xr
 from eviz.lib.autoviz.figure import Figure
 from eviz.models.source_base import GenericSource
@@ -148,11 +146,11 @@ class ObsSource(GenericSource):
         return extent
     
     def _process_xy_plot(self, 
-                         data_array, 
-                         field_name, 
-                         file_index, 
-                         plot_type, 
-                         figure):
+                         data_array: xr.DataArray, 
+                         field_name: str, 
+                         file_index: int, 
+                         plot_type: str, 
+                         figure: Figure):
         """Process an XY plot."""
         levels = self.config_manager.get_levels(field_name, plot_type + 'plot')
         do_zsum = self.config_manager.ax_opts.get('zsum', False)
@@ -233,8 +231,13 @@ class ObsSource(GenericSource):
                 else:
                     self.logger.warning(f"Skipping plot for time level {t} - no valid data after processing")
 
-    def _process_xt_plot(self, data_array, field_name, file_index, plot_type, figure):
-        """Process an XT plot."""
+    def _process_xt_plot(self,
+                         data_array: xr.DataArray, 
+                         field_name: str, 
+                         file_index: int, 
+                         plot_type: str, 
+                         figure: Figure):
+        """Process a time-series plot."""
         self.config_manager.level = None
         time_level_config = self.config_manager.ax_opts.get('time_lev', 0)
         tc_dim = self.config_manager.get_model_dim_name('tc') or 'time'
@@ -258,60 +261,6 @@ class ObsSource(GenericSource):
                          plot_type, 
                          self.config_manager.findex, 
                          plot_result)
-
-    def _process_box_plot(self, data_array, field_name, file_index, plot_type, figure):
-        """Process a box plot for observational data."""
-        self.config_manager.level = None        
-        time_level_config = None
-        
-        if (hasattr(self.config_manager, 'spec_data') and 
-            field_name in self.config_manager.spec_data and 
-            'boxplot' in self.config_manager.spec_data[field_name] and
-            'time_lev' in self.config_manager.spec_data[field_name]['boxplot']):
-            
-            time_level_config = self.config_manager.spec_data[field_name]['boxplot']['time_lev']
-            self.logger.debug(f"Using time level {time_level_config} from field-specific boxplot configuration")
-        
-        # If not found in field-specific config, check ax_opts
-        if time_level_config is None:
-            time_level_config = self.config_manager.ax_opts.get('time_lev', -1)  # Default to last time level
-            self.logger.debug(f"Using time level {time_level_config} from ax_opts")
-        
-        if isinstance(time_level_config, str) and time_level_config.strip('-').isdigit():
-            time_level_config = int(time_level_config)
-            self.logger.debug(f"Converted time level to integer: {time_level_config}")
-        
-        tc_dim = self.config_manager.get_model_dim_name('tc') or 'time'
-        
-        if tc_dim in data_array.dims:
-            num_times = data_array[tc_dim].size
-            self.logger.debug(f"Time dimension '{tc_dim}' has {num_times} levels")
-            if isinstance(time_level_config, int):
-                actual_time_lev = time_level_config if time_level_config >= 0 else num_times + time_level_config
-                self.logger.debug(f"Will use time level {actual_time_lev} (specified as {time_level_config})")
-
-        box_data = self._extract_box_data(data_array, time_lev=time_level_config)
-        
-        if box_data is None:
-            self.logger.error(f"Failed to prepare box plot data for {field_name}")
-            return
-        
-        field_to_plot = (box_data, None, None, field_name, plot_type, file_index, figure)
-        
-        plot_result = self.create_plot(field_name, field_to_plot)
-        
-        if isinstance(plot_result, tuple) and len(plot_result) >= 1:
-            fig = plot_result[0]  # Extract the figure from the tuple
-            pu.print_map(self.config_manager, 
-                        plot_type, 
-                        self.config_manager.findex, 
-                        fig)  # Pass just the figure
-        else:
-            # If it's not a tuple, pass it directly
-            pu.print_map(self.config_manager, 
-                        plot_type, 
-                        self.config_manager.findex, 
-                        plot_result)
 
     def _process_line_plot(self, data_array, field_name, file_index, plot_type, figure):
         """Process a LINE plot."""
@@ -355,7 +304,6 @@ class ObsSource(GenericSource):
             xr.DataArray: The processed 2D data array
         """
         if np.isnan(data_array).all():
-            self.logger.warning(f"All values are NaN for {data_array.name if hasattr(data_array, 'name') else 'unnamed field'}")
             return None
             
         data2d = super()._extract_xy_data(data_array, level, time_lev)
@@ -633,8 +581,7 @@ class ObsSource(GenericSource):
         # If no reference field found in global settings, try to get from ax_opts
         if not reference_field:
             reference_field = self.config_manager.ax_opts.get('reference_field')
-            self.logger.debug(f"Using reference field from ax_opts: {reference_field}")
-        
+
         if not reference_field:
             self.logger.error("No reference field specified for Pearson correlation plot")
             return
@@ -645,14 +592,11 @@ class ObsSource(GenericSource):
             for source_name, data_source in all_data_sources.items():
                 if hasattr(data_source, 'dataset') and reference_field in data_source.dataset:
                     reference_data = data_source.dataset[reference_field]
-                    self.logger.debug(f"Found reference field '{reference_field}' in data source '{source_name}'")
                     break
             
             if reference_data is None:
                 try:
                     reference_data = self.config_manager.pipeline.get_variable(reference_field)
-                    if reference_data is not None:
-                        self.logger.debug(f"Found reference field '{reference_field}' using get_variable")
                 except (AttributeError, KeyError) as e:
                     self.logger.debug(f"Could not get reference field using get_variable: {e}")
                     
@@ -661,7 +605,6 @@ class ObsSource(GenericSource):
                     all_vars = self.config_manager.pipeline.get_all_variables()
                     if reference_field in all_vars:
                         reference_data = all_vars[reference_field]
-                        self.logger.debug(f"Found reference field '{reference_field}' in all variables")
                 except (AttributeError, KeyError) as e:
                     self.logger.debug(f"Could not get reference field from all variables: {e}")
         

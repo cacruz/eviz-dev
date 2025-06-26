@@ -498,7 +498,8 @@ class Units:
     def logger(self) -> logging.Logger:
         return logging.getLogger(__name__)
 
-    def convert_chem(self, data, species_name, to_unit, air_column_density=None,
+    def convert_chem(self, data, species_name, to_unit,
+                     air_column_density=None,
                      airmass=None):
         """ Conversion method for chemical species
 
@@ -507,6 +508,7 @@ class Units:
             to_unit (str): data destination unit
             species_name (str): species name of the data
             air_column_density (xArray)
+            airmass (xArray)
         """
         species_name = get_species_name(species_name)
 

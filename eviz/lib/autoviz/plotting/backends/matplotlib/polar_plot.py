@@ -174,7 +174,7 @@ class MatplotlibPolarPlotter(MatplotlibBasePlotter):
             ax.set_title(config.spec_data[field_name]['name'], y=1.03, fontsize=14,
                         weight='bold')
         else:
-            ax.set_title(self.source_name, y=1.03, fontsize=14, weight='bold')   # TODO: check source_name
+            ax.set_title(self.source_name, y=1.03, fontsize=14, weight='bold')
     
     def _convert_to_polar(self, x, y):
         """Convert Cartesian coordinates to polar coordinates."""

@@ -7,12 +7,11 @@ from eviz.lib.autoviz.plotting.base import ScatterPlotter
 
 class HvplotScatterPlotter(ScatterPlotter):
     """HvPlot implementation of scatter plotting."""
-    
+
     def __init__(self):
         super().__init__()
         self.plot_object = None
         self.logger = logging.getLogger(self.__class__.__name__)
-        # Set up HoloViews extension and default renderer
         try:
             hv.extension('bokeh')
         except Exception as e:
@@ -32,14 +31,8 @@ class HvplotScatterPlotter(ScatterPlotter):
         x_data, y_data, z_data, field_name, plot_type, findex, _ = data_to_plot
         
         if x_data is None or y_data is None:
-            self.logger.warning("No data to plot")
             return None
-        
-        self.logger.debug(f"X data shape: {x_data.shape if hasattr(x_data, 'shape') else 'scalar'}")
-        self.logger.debug(f"Y data shape: {y_data.shape if hasattr(y_data, 'shape') else 'scalar'}")
-        if z_data is not None:
-            self.logger.debug(f"Z data shape: {z_data.shape if hasattr(z_data, 'shape') else 'scalar'}")
-        
+
         ax_opts = config.ax_opts
         
         title = field_name

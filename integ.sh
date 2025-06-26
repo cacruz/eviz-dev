@@ -179,7 +179,12 @@ if prompt "Source: 'wrf', line-plot (compare)"; then
    python autoviz.py -s wrf -v 0 -f $EVIZ_CONFIG_PATH/wrf/wrf_xt_compare.yaml
    echo
 fi
-   
+
+if prompt "Source: 'wrf', line-plot (compare)"; then
+   python autoviz.py -s wrf -v 0 -f $EVIZ_CONFIG_PATH/wrf/wrf_box_compare.yaml
+   echo
+fi
+
 if prompt "Source: lis, with 2 files (compare multiple fields)"; then
    python autoviz.py -s lis -v 0 -f $EVIZ_CONFIG_PATH/lis/lis_compare.yaml
    echo
@@ -192,6 +197,11 @@ fi
 
 if prompt "Source: crest, (zarr data)"; then
    python autoviz.py -s crest -v 0 -f $EVIZ_CONFIG_PATH/crest/crest_zarr.yaml
+   echo
+fi
+
+if prompt "Source: crest, (zarr data)"; then
+   python autoviz.py -s crest -v 0 -f $EVIZ_CONFIG_PATH/crest/crest_zarr_ts.yaml
    echo
 fi
 

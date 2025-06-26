@@ -123,6 +123,7 @@ class GenericSource(BaseSource):
                 self.process_comparison_plots()
             elif self.config_manager.overlay:
                 self.process_side_by_side_plots()
+            # TODO: Should be either single or comparison - not a separate category
             elif self.config_manager.pearsonplot:
                 self.process_pearson_plots()
             else:
@@ -198,8 +199,6 @@ class GenericSource(BaseSource):
         Returns:
             The created plot object
         """
-        # TODO: This gets a backend per plot, but we should probably get it once and pass it around
-        # Does this degrade performance?
         backend = getattr(self.config_manager, 'plot_backend', 'matplotlib')
         
         plot_type = self.get_plot_type(field_name)
@@ -253,6 +252,11 @@ class GenericSource(BaseSource):
                 self._process_pearson_plot(data_array, field_name, file_index, plot_type, figure)
             else:
                 self.logger.warning(f"_process_pearson_plot not implemented for {self.__class__.__name__}")
+        elif plot_type == 'box':
+            if hasattr(self, '_process_box_plot'):
+                self._process_box_plot(data_array, field_name, file_index, plot_type, figure)
+            else:
+                self.logger.warning(f"_process_box_plot not implemented for {self.__class__.__name__}")
         else:
             if hasattr(self, '_process_other_plot'):
                 self._process_other_plot(data_array, field_name, file_index, plot_type, figure)
@@ -345,7 +349,8 @@ class GenericSource(BaseSource):
         elif 'line' in plot_type:  # like xt but use in interactive backends
             data2d = self._extract_line_data(data_array, level=level, time_lev=time_level)
         elif 'box' in plot_type:
-            data2d = self._extract_box_data(data_array, time_lev=time_level)
+            data2d = self._extract_box_data(data_array, time_lev=time_level, 
+                                            exp_id=self.config_manager.get_file_exp_id(file_index))
         elif 'pearson' in plot_type:
             data2d = self._extract_pearson_data(data_array, level=level, time_lev=time_level)
         else:
@@ -512,12 +517,8 @@ class GenericSource(BaseSource):
         if self.config_manager.make_gif:
             pu.create_gif(self.config_manager)
 
-
     def process_comparison_plots(self):
         """Generate comparison plots for paired data sources according to configuration.
-
-        Args:
-            plotter (instance of ComparisonPlotter): The plotter instance to use for generating plots.
         """
         self.logger.info("Generating comparison plots")
         current_field_index = 0
@@ -623,10 +624,6 @@ class GenericSource(BaseSource):
     def process_side_by_side_plots(self):
         """
         Generate side-by-side comparison plots for the given plotter.
-
-        Args:
-            plotter (instance of ComparisonPlotter): The plotter instance to use for generating plots.
-
         """
         self.logger.info("Generating side-by-side comparison plots")
         current_field_index = 0
@@ -714,6 +711,13 @@ class GenericSource(BaseSource):
                                                         sdat2_dataset)
                 elif 'pearson' in plot_type:
                     self._process_pearson_plots(current_field_index,
+                                                        field1, 
+                                                        field2,
+                                                        plot_type,
+                                                        sdat1_dataset, 
+                                                        sdat2_dataset)
+                elif 'box' in plot_type:
+                    self._process_box_plots(current_field_index,
                                                         field1, 
                                                         field2,
                                                         plot_type,
@@ -821,6 +825,125 @@ class GenericSource(BaseSource):
                 if plot_type == 'pearson':
                     self.logger.info(f"Plotting {field_name}, {plot_type} plot")
                     self.process_plot(field_data_array, field_name, idx, plot_type)
+
+    def _process_box_plot(self, data_array, field_name, file_index, plot_type, figure):
+        """Process a box plot for observational data."""
+        self.config_manager.level = None        
+        time_level_config = None
+        
+        if (hasattr(self.config_manager, 'spec_data') and 
+            field_name in self.config_manager.spec_data and 
+            'boxplot' in self.config_manager.spec_data[field_name] and
+            'time_lev' in self.config_manager.spec_data[field_name]['boxplot']):
+            
+            time_level_config = self.config_manager.spec_data[field_name]['boxplot']['time_lev']
+            self.logger.debug(f"Using time level {time_level_config} from field-specific boxplot configuration")
+        
+        # If not found in field-specific config, check ax_opts
+        if time_level_config is None:
+            time_level_config = self.config_manager.ax_opts.get('time_lev', -1)  # Default to last time level
+            self.logger.debug(f"Using time level {time_level_config} from ax_opts")
+        
+        if isinstance(time_level_config, str) and time_level_config.strip('-').isdigit():
+            time_level_config = int(time_level_config)
+            self.logger.debug(f"Converted time level to integer: {time_level_config}")
+        
+        tc_dim = self.config_manager.get_model_dim_name('tc') or 'time'
+        
+        if tc_dim in data_array.dims:
+            num_times = data_array[tc_dim].size
+            self.logger.debug(f"Time dimension '{tc_dim}' has {num_times} levels")
+            if isinstance(time_level_config, int):
+                actual_time_lev = time_level_config if time_level_config >= 0 else num_times + time_level_config
+                self.logger.debug(f"Will use time level {actual_time_lev} (specified as {time_level_config})")
+
+        box_data = self._extract_box_data(data_array, time_lev=time_level_config)
+        
+        if box_data is None:
+            self.logger.error(f"Failed to prepare box plot data for {field_name}")
+            return
+        
+        field_to_plot = (box_data, None, None, field_name, plot_type, file_index, figure)
+        
+        plot_result = self.create_plot(field_name, field_to_plot)
+        
+        if isinstance(plot_result, tuple) and len(plot_result) >= 1:
+            fig = plot_result[0]  # Extract the figure from the tuple
+            pu.print_map(self.config_manager, 
+                        plot_type, 
+                        self.config_manager.findex, 
+                        fig)  # Pass just the figure
+        else:
+            # If it's not a tuple, pass it directly
+            pu.print_map(self.config_manager, 
+                        plot_type, 
+                        self.config_manager.findex, 
+                        plot_result)
+
+    def _process_box_plots(self, current_field_index, field_name1, field_name2, plot_type, sdat1_dataset, sdat2_dataset):
+        """Process side-by-side comparison plots for box plot types."""
+        # Use a consistent time level for both plots
+        if (hasattr(self.config_manager, 'spec_data') and 
+            field_name1 in self.config_manager.spec_data and 
+            'boxplot' in self.config_manager.spec_data[field_name1] and
+            'time_lev' in self.config_manager.spec_data[field_name1]['boxplot']):
+            
+            time_level_config = self.config_manager.spec_data[field_name1]['boxplot']['time_lev']
+            self.logger.debug(f"Using time level {time_level_config} from field-specific boxplot configuration")
+
+        exp_id1 = self.config_manager.get_file_exp_id(self.config_manager.a_list[0])
+        
+        use_all_times = time_level_config == 'all'
+        df1 = self._extract_box_data(sdat1_dataset[field_name1], time_level_config, exp_id1)
+        
+        all_dfs = [df1] if df1 is not None else []
+
+        # Process second dataset(s)
+        for i, file_idx in enumerate(self.config_manager.b_list, start=1):
+            map_params = self.config_manager.map_params.get(file_idx)
+            if not map_params:
+                continue
+                
+            filename = map_params.get('filename')
+            if not filename:
+                continue
+                
+            data_source = self.config_manager.pipeline.get_data_source(filename)
+            if not data_source or not hasattr(data_source, 'dataset') or data_source.dataset is None:
+                continue
+                
+            dataset = data_source.dataset            
+            exp_id2 = self.config_manager.get_file_exp_id(file_idx)
+            df2 = self._extract_box_data(dataset[field_name2], time_level_config, exp_id2)
+            
+            if df2 is not None:
+                all_dfs.append(df2)
+        
+        # Combine all DataFrames
+        if not all_dfs:
+            self.logger.error("No valid data for box plots")
+            return
+            
+        combined_df = pd.concat(all_dfs, ignore_index=True)
+        # Log the combined DataFrame info
+        self.logger.debug(f"Combined DataFrame has {len(combined_df)} rows")
+        self.logger.debug(f"Combined DataFrame has experiment column: {'experiment' in combined_df.columns}")
+                   
+        figure = Figure.create_eviz_figure(self.config_manager, plot_type, nrows=1, ncols=1)
+        figure.set_axes()
+        
+        self.register_plot_type(field_name1, plot_type)
+        
+        self.config_manager.ax_opts = figure.init_ax_opts(field_name1)
+        
+        field_to_plot = (combined_df, None, None, field_name1, plot_type, self.config_manager.a_list[0], figure)
+        
+        self.plot_result = self.create_plot(field_name1, field_to_plot)
+        
+        pu.print_map(self.config_manager, 
+                     plot_type, 
+                     self.config_manager.findex, 
+                     self.plot_result)
 
     # DATA SLICE PROCESSING METHODS
     def _extract_yz_data(self, data_array, time_lev):
@@ -1201,7 +1324,7 @@ class GenericSource(BaseSource):
             
         return apply_conversion(self.config_manager, data2d, data_array.name)
 
-    def _extract_box_data(self, data_array, time_lev=None):
+    def _extract_box_data(self, data_array, time_lev=None, exp_id=None):
         """Extract data for a box plot.
         
         This method prepares data for box plots by extracting values across a dimension
@@ -1210,26 +1333,66 @@ class GenericSource(BaseSource):
         Args:
             data_array: xarray.DataArray to extract data from
             time_lev: Time level to extract (optional)
+            exp_id: Experiment ID for comparison plots (optional)
             
         Returns:
             pandas.DataFrame: DataFrame with columns for categories and values
         """
         self.logger.debug(f"Extracting box plot data from {data_array.name if hasattr(data_array, 'name') else 'unnamed array'}")
-        
         tc_dim = self.config_manager.get_model_dim_name('tc') or 'time'
         d_temp = data_array.copy()
-        
+
         # Handle time dimension selection
         if tc_dim and tc_dim in d_temp.dims:
             num_tc = d_temp[tc_dim].size
+            self.logger.debug(f"Time dimension '{tc_dim}' has {num_tc} levels")
             
-            # If time_lev is None, we'll use the last time step
-            # If time_lev is an integer, select that specific time step
-            if time_lev is None:
-                d_temp = d_temp.isel({tc_dim: -1})
-                self.logger.debug(f"No time level specified, using last time level ({num_tc-1})")
-            elif time_lev == 'all':
-                self.logger.debug("Using all time levels for box plot")
+            if time_lev == 'all' and tc_dim in d_temp.dims:
+                time_values = d_temp[tc_dim].values
+                num_times = len(time_values)
+                all_data = []
+                valid_time_count = 0
+
+                for t in range(num_times):
+                    time_slice = d_temp.isel({tc_dim: t})
+                    time_str = str(time_values[t])
+
+                    if hasattr(time_values[t], 'strftime'):
+                        # For full date and hour: '2018-05-23 06'
+                        time_str = time_values[t].strftime('%Y-%m-%d %H')
+                        # For just month-day-hour: '05-23 06'
+                        # time_str = time_values[t].strftime('%m-%d %H')
+                    else:
+                        # fallback for numpy.datetime64
+                        time_str = str(time_values[t])[:13]  # '2018-05-23T06'
+
+                    # if hasattr(time_values[t], 'strftime'):
+                    #     time_str = time_values[t].strftime('%Y-%m-%d %H:%M')
+                    flat_data = time_slice.values.flatten()
+                    # Remove NaNs
+                    valid_data = flat_data[~np.isnan(flat_data)]
+                    if len(valid_data) == 0:
+                        self.logger.debug(f"Skipping time {time_str} - no valid data after removing NaNs")
+                        continue
+                    if np.min(valid_data) == np.max(valid_data):
+                        self.logger.debug(f"Skipping time {time_str} - all values are identical: {np.min(valid_data)}")
+                        continue
+                    valid_time_count += 1
+                    df_time = pd.DataFrame({
+                        'time': time_str,
+                        'time_idx': t,
+                        'value': valid_data,
+                        'experiment': exp_id
+                    })
+                    all_data.append(df_time)
+                if all_data:
+                    df = pd.concat(all_data, ignore_index=True)
+                    self.logger.debug(f"Created DataFrame with {len(df)} rows for {valid_time_count} valid time levels (out of {num_times} total)")
+                    return df
+                else:
+                    self.logger.warning(f"No valid data for box plot of {data_array.name if hasattr(data_array, 'name') else 'unnamed field'}")
+                    return None
+            
             elif isinstance(time_lev, int):
                 actual_time_lev = time_lev if time_lev >= 0 else num_tc + time_lev
                 
@@ -1239,11 +1402,11 @@ class GenericSource(BaseSource):
                 else:
                     self.logger.warning(f"Time level {time_lev} out of range (0-{num_tc-1}), using first time level")
                     d_temp = d_temp.isel({tc_dim: 0})
-            elif time_lev == 'all':
-                self.logger.debug("Using all time levels for box plot")
-            elif time_lev is None:
+            else:
+                # Default to last time level if not specified
                 d_temp = d_temp.isel({tc_dim: -1})
                 self.logger.debug(f"No time level specified, using last time level ({num_tc-1})")
+
         
         if np.isnan(d_temp).all():
             self.logger.warning(f"All values are NaN for {data_array.name if hasattr(data_array, 'name') else 'unnamed field'}")
@@ -1261,8 +1424,9 @@ class GenericSource(BaseSource):
             if len(d_temp.dims) > 1:
                 # If we have a time dimension and we're using all time steps,
                 # we can create a box plot for each time step
+
+                # When creating time-based DataFrames, add a numeric time index
                 if tc_dim in d_temp.dims and (time_lev == 'all' or time_lev is None and len(d_temp[tc_dim]) > 1):
-                    # Create a DataFrame with time as a category
                     time_values = d_temp[tc_dim].values
                     num_times = len(time_values)
                     
@@ -1284,7 +1448,9 @@ class GenericSource(BaseSource):
                         
                         df_time = pd.DataFrame({
                             'time': time_str,
-                            'value': flat_data
+                            'time_idx': t,  # Add numeric time index for sorting
+                            'value': flat_data,
+                            'experiment': exp_id or 'default'
                         })
                         
                         all_data.append(df_time)
@@ -1295,6 +1461,7 @@ class GenericSource(BaseSource):
                     else:
                         self.logger.warning(f"No valid data for box plot of {field_name}")
                         return None
+
                 else:
                     flat_data = d_temp.values.flatten()
                     
@@ -1309,13 +1476,21 @@ class GenericSource(BaseSource):
                     
                     df = pd.DataFrame({
                         'category': category,
-                        'value': flat_data
+                        'value': flat_data,
+                        'experiment': exp_id or 'default'
                     })
             else:
-                # 1D data, use as is
+                # For single time level or no time dimension
+                flat_data = d_temp.values.flatten()
+
+                if np.isnan(flat_data).all():
+                    self.logger.warning(f"All values are NaN for {data_array.name if hasattr(data_array, 'name') else 'unnamed field'}")
+                    return None
+                
                 df = pd.DataFrame({
                     'category': "All Data",
-                    'value': d_temp.values
+                    'value': flat_data,
+                    'experiment': exp_id or 'default'
                 })
             
             if hasattr(self.config_manager, 'spec_data') and field_name in self.config_manager.spec_data:
@@ -1337,6 +1512,7 @@ class GenericSource(BaseSource):
                 df = df.sample(max_points, random_state=42)
             
             self.logger.debug(f"Created DataFrame with {len(df)} rows for box plot")
+
             return df
         
         except Exception as e:

@@ -147,7 +147,9 @@ class GriddedSource(GenericSource):
             dim1_name, dim2_name = None, None  # Graph plots don't have standard dims
         else:
             self.logger.error(
-                f'Plot type [{plot_type}] error: Either specify in SPECS file or create plot type.')
+                f'Plot type [{plot_type}] error: '
+                f'Either specify in SPECS file or create plot type.'
+            )
             return None
 
         if data2d is None:

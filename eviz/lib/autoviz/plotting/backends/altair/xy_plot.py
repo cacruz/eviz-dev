@@ -280,7 +280,6 @@ class AltairXYPlotter(XYPlotter):
             
             return df
 
-            
         except Exception as e:
             self.logger.error(f"Error converting to DataFrame: {e}")
             # Create a minimal DataFrame as fallback
