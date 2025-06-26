@@ -1358,48 +1358,41 @@ class GenericSource(BaseSource):
             if time_lev == 'all' and tc_dim in d_temp.dims:
                 time_values = d_temp[tc_dim].values
                 num_times = len(time_values)
-                
                 all_data = []
                 valid_time_count = 0
-                
+
                 for t in range(num_times):
                     time_slice = d_temp.isel({tc_dim: t})
-                    
-                    # Convert time to string format for better display
                     time_str = str(time_values[t])
+
                     if hasattr(time_values[t], 'strftime'):
-                        time_str = time_values[t].strftime('%Y-%m-%d %H:%M')
-                    
+                        # For full date and hour: '2018-05-23 06'
+                        time_str = time_values[t].strftime('%Y-%m-%d %H')
+                        # For just month-day-hour: '05-23 06'
+                        # time_str = time_values[t].strftime('%m-%d %H')
+                    else:
+                        # fallback for numpy.datetime64
+                        time_str = str(time_values[t])[:13]  # '2018-05-23T06'
+
+                    # if hasattr(time_values[t], 'strftime'):
+                    #     time_str = time_values[t].strftime('%Y-%m-%d %H:%M')
                     flat_data = time_slice.values.flatten()
-                    
-                    # Skip time steps with all NaN values
-                    if np.isnan(flat_data).all():
-                        self.logger.debug(f"Skipping time {time_str} - all values are NaN")
-                        continue
-                        
-                    # Skip time steps with no valid data
+                    # Remove NaNs
                     valid_data = flat_data[~np.isnan(flat_data)]
                     if len(valid_data) == 0:
                         self.logger.debug(f"Skipping time {time_str} - no valid data after removing NaNs")
                         continue
-                        
-                    # Skip time steps with all identical values (no variation)
                     if np.min(valid_data) == np.max(valid_data):
                         self.logger.debug(f"Skipping time {time_str} - all values are identical: {np.min(valid_data)}")
                         continue
-                        
                     valid_time_count += 1
-                    
                     df_time = pd.DataFrame({
                         'time': time_str,
                         'time_idx': t,
-                        'value': flat_data,
-                        'experiment': exp_id or 'default'
+                        'value': valid_data,
+                        'experiment': exp_id
                     })
-                    
                     all_data.append(df_time)
-                
-                # Combine all time steps
                 if all_data:
                     df = pd.concat(all_data, ignore_index=True)
                     self.logger.debug(f"Created DataFrame with {len(df)} rows for {valid_time_count} valid time levels (out of {num_times} total)")

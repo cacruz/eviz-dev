@@ -24,18 +24,17 @@ class MatplotlibBoxPlotter(MatplotlibBasePlotter):
             The created Matplotlib figure and axes
         """
         data, _, _, field_name, plot_type, findex, fig = data_to_plot
-        if data is None:
+        if data is None or not isinstance(data, pd.DataFrame) or data.empty:
+            self.logger.warning("No data to plot or DataFrame is empty")
+            return fig
+        required_cols = {'value', 'experiment'}
+        if not required_cols.issubset(data.columns):
+            self.logger.warning(f"DataFrame missing required columns: {required_cols - set(data.columns)}")
             return fig
         
         self.fig = fig
         ax_opts = config.ax_opts
-         
-        if isinstance(data, pd.DataFrame):
-            df = data
-            self.logger.debug(f"Using provided DataFrame with {len(df)} rows")
-        else:
-            self.logger.warning("Expected DataFrame for box plot, got something else")
-            return None
+        df = data
 
         if not config.compare and not config.compare_diff and not config.overlay:
             fig.set_axes()
@@ -191,13 +190,18 @@ class MatplotlibBoxPlotter(MatplotlibBasePlotter):
                 category_centers = [i + 1 for i in range(num_categories)]
                 ax.set_xlabel(category_col)
                 ax.set_xticks(category_centers)
-                ax.set_xticklabels(all_categories, rotation=45, ha='right')                
+
+                # formatted_labels = [self.format_time_label(cat) for cat in all_categories]
+                # ax.set_xticklabels(formatted_labels, rotation=45, ha='right', fontsize=10)
+
+                ax.set_xticklabels(all_categories, rotation=45, ha='right', fontsize=8)                
                 ax.set_xlim(0.5, num_categories + 0.5)
                 ax.set_ylabel(f"{title} ({units})")
                 ax.grid(ax_opts['add_grid'], linestyle='--', alpha=0.7)
 
                 legend_handles = [plt.Rectangle((0, 0), 1, 1, color=box_colors[i % len(box_colors)], alpha=0.7) 
                                 for i in range(num_experiments)]
+                # ax.legend(legend_handles, experiments, loc='upper left', bbox_to_anchor=(0, 1.1))
                 ax.legend(legend_handles, experiments, loc='best')
 
             else:
@@ -255,14 +259,26 @@ class MatplotlibBoxPlotter(MatplotlibBasePlotter):
 
                 ax.set_xlabel(category_col)
                 ax.set_ylabel(f"{title} ({units})")
-                ax.set_xticklabels(formatted_labels, rotation=45, ha='right')
+                ax.set_xticklabels(formatted_labels, rotation=45, ha='right', fontsize=10)
                 ax.grid(ax_opts['add_grid'], linestyle='--', alpha=0.7)
 
         except Exception as e:
             self.logger.error(f"Error creating matplotlib box plot: {e}")
             import traceback
             self.logger.error(traceback.format_exc())
-    
+
+    @staticmethod
+    def format_time_label(label):
+        try:
+            # Try parsing as datetime
+            dt = pd.to_datetime(label)
+            # Option 1: '2018-05-23 06'
+            return dt.strftime('%Y-%m-%d %H')
+            # Option 2: '05-23 06'
+            # return dt.strftime('%m-%d %H')
+        except Exception:
+            return label[:13]  # fallback
+
     def save(self, filename, **kwargs):
         """Save the plot to a file."""
         pass
