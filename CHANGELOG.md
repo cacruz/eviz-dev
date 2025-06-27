@@ -5,7 +5,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.9.0] - 2025-6-19
+## [0.9.0] - 2025-6-30
 
 This is a significant rewrite of v0.6.3. Though eViz's general idea and all 
 the previous functionality is the same, the code structure is different.
@@ -13,7 +13,7 @@ The API remains the same and the units tests are more numerous.
 
 A significant change is the omission if iViz, which was a separate application
 using the same library code. Now, the interactivity is optional and when chosen
-eviz can produce interactive plots.
+eviz can produce interactive plots using different backends.
 
 ### Added
 - Many new modules and a slightly different directory structure.
@@ -22,22 +22,27 @@ eviz can produce interactive plots.
      workflow.
   - The original config module (config.py) was broken down into more
     manageable pieces including a configuration adapter to bridge the 
-    configuration with the pipeline.
-- Many unit tests (code coverage increased from ~25% to ~45%)
-- Minimum workable Grib class (and its corresponding grib data source option)
-  and meta coordinates.
-- Matplotlib rcParams options in specs file
-- Automatic OpenDAP support (when input is a URL)
-- Improved documentation
+    configuration with the pipeline.i
+  - A "backends" option (via plot_backend in YAML file). The supported 
+    backends are matplotlib (default), hvplot, and altair.
+  - CREST support and with it new plotting modules to generate some AI-friendly
+    plots such as box plots and Pearson correlation maps. Note that CREST is
+    is an AI framework for building and running Earth System Models.
+  - Minimum workable GRIB class (and its corresponding grib data source option)
+    and meta coordinates.
+- Many unit tests (code coverage increased from ~25% to ~45%).
+- Matplotlib rcParams options in specs file.
+- Automatic OpenDAP support (when input is a URL).
+- Improved documentation.
 
 ### Deprecated
 
 ### Fixed
 - The above additions fixed many bugs.
-- Improved metadump.py with tests
+- Improved metadump.py with tests.
 - Edited sviz/autoviz.py
-- Issues with regrid() were fixed
-- Coordinates standardization
+- Issues with regrid() were fixed.
+- Coordinates standardization.
 
 ### Removed
 - iViz code
@@ -51,6 +56,7 @@ eviz can produce interactive plots.
   through specs.
 - The units module needs more testing and some unit conversions may not
   work as expected.
+- The hvplot and altair backsends are not fully supported for all plot types.
   
 ## [0.6.3] - 2024-12-23
 

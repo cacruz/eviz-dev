@@ -1,6 +1,14 @@
 eviz.lib.autoviz package
 ========================
 
+Subpackages
+-----------
+
+.. toctree::
+   :maxdepth: 5
+
+   eviz.lib.autoviz.plotting
+
 Submodules
 ----------
 

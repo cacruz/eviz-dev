@@ -30,10 +30,3 @@ eviz.lib.utils module
    :undoc-members:
    :show-inheritance:
 
-Module contents
----------------
-
-.. automodule:: eviz.lib
-   :members:
-   :undoc-members:
-   :show-inheritance:
