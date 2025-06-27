@@ -112,15 +112,15 @@ Here's how these pieces fit together conceptually:
 
 ```{mermaid}
 graph TD
-    UserCmd[User Command (-c my_config.yaml)] --> Autoviz[Autoviz Application (Director)]
-    Autoviz --> ConfigMgr[ConfigManager (Control Center)]
-    ConfigMgr --> Config[Config (Settings Container)]
-    Config --> InputConfig[InputConfig (Data Files, Readers)]
-    Config --> OutputConfig[OutputConfig (Saving Plots)]
-    Config --> SystemConfig[SystemConfig (MP, Archive)]
-    Config --> HistoryConfig[HistoryConfig (History Tracking)]
-    Config --> YAMLParser[YAMLParser (Raw File Reader)]
-    YAMLParser --> YAMLFiles[YAML Config Files]
+    UserCmd("User Command (-c my_config.yaml)") --> Autoviz("Autoviz Application (Director)")
+    Autoviz --> ConfigMgr("ConfigManager (Control Center)")
+    ConfigMgr --> Config("Config (Settings Container)")
+    Config --> InputConfig("InputConfig (Data Files, Readers)")
+    Config --> OutputConfig("OutputConfig (Saving Plots)")
+    Config --> SystemConfig("SystemConfig (MP, Archive)")
+    Config --> HistoryConfig("HistoryConfig (History Tracking)")
+    Config --> YAMLParser("YAMLParser (Raw File Reader)")
+    YAMLParser --> YAMLFiles("YAML Config Files")
 ```
 
 Let's look at some simplified code snippets to see this in action.
