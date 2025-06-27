@@ -102,7 +102,7 @@ fieldname:
         projection: # (default: Plate Carree) [lambert, albers, ortho, stereo, polar]
 
 
-# You can also customize each plot by adding custom valic rcParams. For example, for field PM25
+# You can also customize each plot by adding custom (valid) rcParams. For example, for field PM25
 # specify a custom titlesize, font size, etc to be used in the scatter plot (scplot):
 PM25:
     unitconversion: 1
@@ -113,7 +113,13 @@ PM25:
         extent: conus
         projection: lambert
         # rc_params are optional and matplotlib-specific. They can be used to customize the plot further.
+        # These parameters will override the default matplotlib rcParams for this plot type.
+        # Note: rcParams are a way to customize the appearance of matplotlib plots globally or locally
+        # by setting various properties such as font size, line width, marker size, etc.
+        # For valid entries, see reference_rcParams.txt in this directory.
+        # For more information on rcParams, refer to the matplotlib documentation:
         # see https://matplotlib.org/stable/users/explain/customizing.html
+        # Example rc_params for PM25 scatter plot
         rc_params:
             font.size: 12
             axes.titlesize: 16
