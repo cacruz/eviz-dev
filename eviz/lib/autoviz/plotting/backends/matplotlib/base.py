@@ -13,14 +13,14 @@ from eviz.lib.autoviz.utils import bar_font_size, contour_tick_font_size
 
 class MatplotlibBasePlotter(BasePlotter):
     """Base class for all Matplotlib plotters with common functionality."""
-    def plot(self, config, data_to_plot):
-        pass
-
     def __init__(self):
         super().__init__()
         self.fig = None
         self.ax = None
         self.logger = logging.getLogger(self.__class__.__name__)
+
+    def plot(self, config, data_to_plot):
+        pass
 
     def filled_contours(self, config, field_name, ax, x, y, data2d, 
                         transform=None, vmin=None, vmax=None):

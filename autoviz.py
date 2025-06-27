@@ -55,9 +55,9 @@ def parse_command_line() -> argparse.Namespace:
                         help='Enter the directory wherein YAML specifications can be found, default=None')
     parser.add_argument('--format', type=str, default=None,
                         help='Override format for all files (netcdf, csv, grib, etc.)')
-    parser.add_argument('--verbose', '-v', nargs='+', required=False, default=1,
+    parser.add_argument('--verbose', '-v', type=int, required=False, default=1,
                         help='Set logging verbosity to DEBUG (2) or ERROR(0), default=1 (INFO)')
-    parser.add_argument('--log', '-l', nargs='+', required=False, default=1,
+    parser.add_argument('--log', '-l', type=int, required=False, default=1,
                         help='Create LOG file (Eviz.LOG)')
     parser.add_argument('--integrate', action='store_true',
                         help='Integrate data from multiple files')
@@ -110,8 +110,8 @@ def main():
                             'metadump.py', args.file[0]])
             sys.exit()
 
-    verbose = int(args.verbose[0] if isinstance(args.verbose, list) else '1')
-    log = int(args.log[0] if isinstance(args.log, list) else '1')
+    verbose = int(args.verbose)
+    log = int(args.log)
     logger_setup('autoviz', log=log, verbose=verbose)
 
     # Parse comma-separated sources into a list

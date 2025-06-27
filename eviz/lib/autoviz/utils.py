@@ -9,8 +9,10 @@ import subprocess
 import multiprocessing
 import logging
 import time
-
+from typing import Optional, Union
+from typing import Tuple, Any
 import matplotlib
+from matplotlib.figure import Figure
 import matplotlib.pyplot as plt
 import numpy as np
 import holoviews as hv
@@ -45,7 +47,7 @@ UNIT_DICT = {
 }
 
 
-def subproc(cmd):
+def subproc(cmd: str):
     name = multiprocessing.current_process().name
     logger.debug(f'Starting {name} ')
     cmds = shlex.split(cmd)
@@ -60,14 +62,14 @@ def subproc(cmd):
     return out
 
 
-def plot_process(filename):
+def plot_process(filename: str):
     name = multiprocessing.current_process().name
     logger.info(f'Starting {name} ')
     plt.tight_layout()
     plt.savefig(filename, bbox_inches='tight')
 
 
-def run_plot_commands(filenames):
+def run_plot_commands(filenames: list[str]):
     njobs = len(filenames)
     logger.info(f"Processing {njobs} jobs - please wait ...")
     procs = list()
@@ -79,7 +81,7 @@ def run_plot_commands(filenames):
         p.join()
 
 
-def create_pdf(config):
+def create_pdf(config: "ConfigManager") -> None:
     from PIL import Image
     import glob
     irgb0 = None
@@ -106,12 +108,12 @@ def create_pdf(config):
                    save_all=True, append_images=ilist)
 
 
-def natural_key(filename):
+def natural_key(filename: str):
     return [int(text) if text.isdigit() else text for text in
             re.split(r'(\d+)', filename)]
 
 
-def create_gif(config):
+def create_gif(config: "ConfigManager") -> None:
     archive_web_results = getattr(config, 'archive_web_results', False)
     if archive_web_results:
         img_path = os.path.join(config.app_data.outputs['output_dir'], config.archive_path)
@@ -200,7 +202,11 @@ def create_gif(config):
             logger.warning(f"Warning: Could not remove {my_file}: {e}")
 
 
-def print_map(config, plot_type: str, findex: int, fig, level: int = None) -> None:
+def print_map(config: "ConfigManager", 
+              plot_type: str, 
+              findex: int, 
+              fig: Figure, 
+              level: Optional[int] = None) -> None:
     """Save or display a plot, handling output directory, file naming, and optional archiving.
 
     Args:
@@ -211,7 +217,7 @@ def print_map(config, plot_type: str, findex: int, fig, level: int = None) -> No
         level (int, optional): Vertical level for the plot, if applicable.
     """
 
-    def resolve_output_dir(config) -> str:
+    def resolve_output_dir(config: "ConfigManager") -> str:
         """Determine and create the output directory if needed."""
         map_params = config.map_params
         output_dir = u.get_nested_key_value(map_params[config.pindex],
@@ -224,7 +230,7 @@ def print_map(config, plot_type: str, findex: int, fig, level: int = None) -> No
             logger.debug(f"Created output directory: {output_dir}")
         return output_dir
 
-    def build_filename(config, plot_type: str, findex: int, level: int = None) -> str:
+    def build_filename(config: "ConfigManager", plot_type: str, findex: int, level: Optional[int] = None) -> str:
         """Construct the output filename based on config and plot type."""
         map_params = config.map_params
         field_name = config.current_field_name or map_params[findex]['field']
@@ -321,8 +327,7 @@ def print_map(config, plot_type: str, findex: int, fig, level: int = None) -> No
                 logger.warning(f"Don't know how to save plot of type "
                                f"{type(fig)} with backend {backend}")
 
-        # Changed from debug to info for better visibility
-        logger.info(f"Figure saved to {filename}")
+        logger.debug(f"Figure saved to {filename}")
 
         if getattr(config, "archive_web_results", False):
             # Remove file extension from fname for JSON
@@ -361,7 +366,7 @@ def print_map(config, plot_type: str, findex: int, fig, level: int = None) -> No
                                f"{type(fig)} with backend {backend}")
 
 
-def legend_font_size(subplots):
+def legend_font_size(subplots: Tuple[Any, Any]) -> int:
     """Determine appropriate font size for legends based on subplot layout."""
     if subplots == (1, 1):
         return 10
@@ -371,7 +376,7 @@ def legend_font_size(subplots):
         return 6
     
 
-def formatted_contours(clevs):
+def formatted_contours(clevs: list[Union[int, float]]) -> list[Union[int, float]]:
     new_clevs = []
     for lev in clevs:
         str_lev = str(lev)
@@ -388,144 +393,150 @@ def formatted_contours(clevs):
     return new_clevs
 
 
-def axis_tick_font_size(panels=None):
-    if panels == (1, 1):  # single image on a page
+def axis_tick_font_size(panels: Optional[Union[int, None]] = None) -> int:
+    """Determine appropriate font size for axis ticks based on subplot layout."""
+    if isinstance(panels, tuple) and panels == (1, 1):  # single image on a page
         font_size = 12
-    elif panels == (3, 1):
+    elif isinstance(panels, tuple) and panels == (3, 1):
         font_size = 12
-    elif panels == (2, 2):
+    elif isinstance(panels, tuple) and panels == (2, 2):
         font_size = 12
     else:
         font_size = 8
     return font_size
 
 
-def bar_font_size(panels=None):
-    if panels == (1, 1):  # single image on a page
+def bar_font_size(panels: Optional[Union[int, None]] = None) -> int:
+    """Determine appropriate font size for bar plots based on subplot layout."""
+    if isinstance(panels, tuple) and panels == (1, 1):  # single image on a page
         font_size = 10
-    elif panels == (3, 1):
+    elif isinstance(panels, tuple) and panels == (3, 1):
         font_size = 10
-    elif panels == (2, 2):
+    elif isinstance(panels, tuple) and panels == (2, 2):
         font_size = 10
     else:
         font_size = 8
     return font_size
 
 
-def cbar_shrink(panels=None):
-    if panels == (1, 1):  # single image on a page
+def cbar_shrink(panels: Optional[Union[int, None]] = None) -> float:
+    if isinstance(panels, tuple) and panels == (1, 1):  # single image on a page
         frac = 1.0
-    elif panels == (3, 1):
+    elif isinstance(panels, tuple) and panels == (3, 1):
         frac = 0.75
-    elif panels == (2, 2):
+    elif isinstance(panels, tuple) and panels == (2, 2):
         frac = 0.75
     else:
         frac = 0.5
     return frac
 
 
-def contour_tick_font_size(panels):
-    if panels == (1, 1):  # single image on a page
+def contour_tick_font_size(panels: Optional[Union[int, None]] = None) -> int:
+    """Determine appropriate font size for contour tick labels based on subplot layout."""
+    if isinstance(panels, tuple) and panels == (1, 1):  # single image on a page
         font_size = 10
-    elif panels == (3, 1):
+    elif isinstance(panels, tuple) and panels == (3, 1):
         font_size = 8
-    elif panels == (2, 2):
+    elif isinstance(panels, tuple) and panels == (2, 2):
         font_size = 8
     else:
         font_size = 8
     return font_size
 
 
-def axes_label_font_size(panels=None):
-    if panels == (1, 1):  # single image on a page
+def axes_label_font_size(panels: Optional[Union[int, None]] = None) -> int:
+    """Determine appropriate font size for axes labels based on subplot layout."""
+    if isinstance(panels, tuple) and panels == (1, 1):  # single image on a page
         font_size = 12
-    elif panels == (3, 1):
+    elif isinstance(panels, tuple) and panels == (3, 1):
         font_size = 10
-    elif panels == (2, 2):
+    elif isinstance(panels, tuple) and panels == (2, 2):
         font_size = 10
     else:
         font_size = 8
     return font_size
 
 
-def cbar_pad(panels=None):
-    """
-    Fraction of original axes between colorbar and new image axes
-    """
-    if panels == (1, 1):  # single image on a page
+def cbar_pad(panels: Optional[Union[int, None]] = None) -> float:
+    """ Padding between colorbar and image """
+    if isinstance(panels, tuple) and panels == (1, 1):  # single image on a page
         pad = 0.1
-    elif panels == (3, 1):
+    elif isinstance(panels, tuple) and panels == (3, 1):
         pad = 0.03
-    elif panels == (2, 2):
+    elif isinstance(panels, tuple) and panels == (2, 2):
         pad = 0.05
     else:
         pad = 0.05
     return pad
 
 
-def cbar_fraction(panels=None):
+def cbar_fraction(panels: Optional[Union[int, None]] = None) -> float:
     """ Fraction of original axes to use for colorbar """
-    if panels == (1, 1):  # single image on a page
+    if isinstance(panels, tuple) and panels == (1, 1):  # single image on a page
         fraction = 0.05
-    elif panels == (3, 1):
+    elif isinstance(panels, tuple) and panels == (3, 1):
         fraction = 0.1
-    elif panels == (2, 2):
+    elif isinstance(panels, tuple) and panels == (2, 2):
         fraction = 0.05
     else:
         fraction = 0.05
     return fraction
 
 
-def image_font_size(panels=None):
-    if panels == (1, 1):  # single image on a page
+def image_font_size(panels: Optional[Union[int, None]] = None) -> int:
+    """Determine appropriate font size for image titles based on subplot layout."""
+    if isinstance(panels, tuple) and panels == (1, 1):  # single image on a page
         font_size = 16
-    elif panels == (3, 1):
+    elif isinstance(panels, tuple) and panels == (3, 1):
         font_size = 14
-    elif panels == (2, 2):
+    elif isinstance(panels, tuple) and panels == (2, 2):
         font_size = 14
     else:
         font_size = 14
     return font_size
 
 
-def subplot_title_font_size(panels=None):
-    if panels == (1, 1):  # single image on a page
+def subplot_title_font_size(panels: Optional[Union[int, None]] = None) -> int:
+    """Determine appropriate font size for subplot titles based on subplot layout."""
+    if isinstance(panels, tuple) and panels == (1, 1):  # single image on a page
         font_size = 14
-    elif panels == (3, 1):
+    elif isinstance(panels, tuple) and panels == (3, 1):
         font_size = 12
-    elif panels == (2, 2):
+    elif isinstance(panels, tuple) and panels == (2, 2):
         font_size = 12
     else:
         font_size = 10
     return font_size
 
 
-def title_font_size(panels=None):
-    if panels == (1, 1):  # single image on a page
+def title_font_size(panels: Optional[Union[int, None]] = None) -> int:
+    """Determine appropriate font size for subplot titles based on subplot layout."""
+    if isinstance(panels, tuple) and panels == (1, 1):  # single image on a page
         font_size = 14
-    elif panels == (3, 1):
+    elif isinstance(panels, tuple) and panels == (3, 1):
         font_size = 12
-    elif panels == (2, 2):
+    elif isinstance(panels, tuple) and panels == (2, 2):
         font_size = 12
     else:
         font_size = 12
     return font_size
 
 
-def contour_label_size(panels=None):
-    if panels == (1, 1):  # single image on a page
+def contour_label_size(panels: Optional[Union[int, None]] = None) -> int:
+    """Determine appropriate font size for contour labels based on subplot layout."""
+    if isinstance(panels, tuple) and panels == (1, 1):  # single image on a page
         label_size = 8
-    elif panels == (3, 1):
+    elif isinstance(panels, tuple) and panels == (3, 1):
         label_size = 8
-    elif panels == (2, 2):
+    elif isinstance(panels, tuple) and panels == (2, 2):
         label_size = 8
     else:
         label_size = 8
     return label_size
 
 
-def contour_levels_plot(clevs):
-    new_clevs = []
+def contour_levels_plot(clevs: list[Union[int, float]]) -> list[Union[int, float]]:
+    new_clevs: list[Union[int, float]] = []
     for lev in clevs:
         clevs_string = str(lev)
         if "e" in clevs_string:
@@ -536,9 +547,8 @@ def contour_levels_plot(clevs):
                 new_clevs.append(int(lev))
             else:
                 digits = clevs_string.split('.')[1]  # just get RHS of number
-
                 if int(digits) == 0:
-                    #            print ("The level: ", lev, " has no RHS!", int(lev))
+                    #  print ("The level: ", lev, " has no RHS!", int(lev))
                     new_clevs.append(int(lev))
                 else:
                     new_clevs.append(lev)
@@ -686,7 +696,7 @@ def colorbar(mappable):
     return cbar
 
 
-def add_logo(fig) -> None:
+def add_logo(fig: Figure) -> None:
     """
     Adds image logo to figure, positioned at the top left
     
@@ -744,7 +754,7 @@ def add_logo(fig) -> None:
         logger.error(f"Error adding logo: {e}")
 
 
-def add_logo_ax(fig, desired_width_ratio=0.10) -> None:
+def add_logo_ax(fig: Figure, desired_width_ratio: float=0.10) -> None:
     """
     Adds image logo to figure using axes coordinates with proper scaling
     
@@ -791,7 +801,7 @@ def add_logo_ax(fig, desired_width_ratio=0.10) -> None:
         logger.error(f"Error adding logo: {e}")
 
 
-def output_basic(config, name):
+def output_basic(config: "ConfigManager", name: str):
     if config.print_to_file:
         output_fname = name + "." + config.print_format
         output_dir = u.get_nested_key_value(config.map_params[config.pindex],
@@ -814,7 +824,7 @@ def get_subplot_geometry(axes):
         ss.is_last_row()), int(ss.is_last_col())
 
 
-def get_subplot_shape(n):
+def get_subplot_shape(n: int):
     if n <= 3:
         return n, 1
 
@@ -828,7 +838,13 @@ def get_subplot_shape(n):
     return 1, n
 
 
-def dump_json_file(fname, config, plot_type, findex, map_filename, fig, output_dir):
+def dump_json_file(fname: str, 
+                   config: "ConfigManager", 
+                   plot_type: str, 
+                   findex: int, 
+                   map_filename: str, 
+                   fig: Figure, 
+                   output_dir: str) -> None:
     vis_summary = {}
     source_name = config.source_names[config.ds_index]
     # event_stamp = source_name + '_web'
@@ -892,7 +908,7 @@ def load_log():
     return lines
 
 
-def archive(config, output_dir, event_stamp):
+def archive(config: "ConfigManager", output_dir: str, event_stamp: str) -> None:
     """ Archive data for web results
 
     Parameters:
