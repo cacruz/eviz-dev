@@ -339,20 +339,22 @@ class GenericSource(BaseSource):
         data2d = None
 
         if 'xy' in plot_type or 'polar' in plot_type:
-            data2d = self._extract_xy_data(data_array, level=level, time_lev=time_level)
+            data2d = self._extract_xy_data(data_array, time_level, level=level)
         elif 'yz' in plot_type:
-            data2d = self._extract_yz_data(data_array, time_lev=time_level)
+            data2d = self._extract_yz_data(data_array, time_level)
         elif 'xt' in plot_type:
-            data2d = self._extract_xt_data(data_array, time_lev=time_level)
+            data2d = self._extract_xt_data(data_array, time_level)
         elif 'tx' in plot_type:
-            data2d = self._extract_tx_data(data_array, level=level, time_lev=time_level)
+            data2d = self._extract_tx_data(data_array, time_level, level=level)
+        elif 'sc' in plot_type:
+            data2d = self._extract_scatter_data(data_array, time_level)
         elif 'line' in plot_type:  # like xt but use in interactive backends
-            data2d = self._extract_line_data(data_array, level=level, time_lev=time_level)
+            data2d = self._extract_line_data(data_array, time_level, level=level)
         elif 'box' in plot_type:
-            data2d = self._extract_box_data(data_array, time_lev=time_level, 
+            data2d = self._extract_box_data(data_array, time_level, 
                                             exp_id=self.config_manager.get_file_exp_id(file_index))
         elif 'pearson' in plot_type:
-            data2d = self._extract_pearson_data(data_array, level=level, time_lev=time_level)
+            data2d = self._extract_pearson_data(data_array, time_level, level=level)
         else:
             self.logger.warning(
                 f"Unsupported plot type: {plot_type}")
@@ -366,6 +368,8 @@ class GenericSource(BaseSource):
         # For these plot types, return without coordinates
         if plot_type in ['line', 'box', 'xt', 'tx']:
             return data2d, None, None, field_name, plot_type, file_index, figure
+        elif plot_type in ['sc']:
+            return data2d[0], data2d[1], data2d[2], field_name, plot_type, file_index, figure
 
         # Process coordinates based on domain type
         try:
@@ -826,6 +830,96 @@ class GenericSource(BaseSource):
                     self.logger.info(f"Plotting {field_name}, {plot_type} plot")
                     self.process_plot(field_data_array, field_name, idx, plot_type)
 
+    def _process_scatter_plot(self, 
+                            data_array, 
+                            field_name: str,
+                            file_index: int, 
+                            plot_type: str, 
+                            figure):
+        """Process a scatter plot."""
+        # Get x and y data for scatter plot
+        self.config_manager.level = None
+        time_level_config = self.config_manager.ax_opts.get('time_lev', 0)
+        tc_dim = self.config_manager.get_model_dim_name('tc') or 'time'
+
+        if tc_dim in data_array.dims:
+            num_times = data_array[tc_dim].size
+            time_levels = range(num_times) if time_level_config == 'all' else [
+                time_level_config]
+        else:
+            time_levels = [0]
+
+        field_to_plot = self._prepare_field_to_plot(data_array, 
+                                                    field_name, 
+                                                    file_index,
+                                                    plot_type, 
+                                                    figure,
+                                                    time_level=time_level_config)
+        if field_to_plot:
+            plot_result = self.create_plot(field_name, field_to_plot)
+            pu.print_map(self.config_manager, 
+                         plot_type, 
+                         self.config_manager.findex, 
+                         plot_result)
+
+    
+    def _extract_scatter_data(self, data_array, time_level=None):
+        """
+        Extract data for scatter plot.
+
+        Returns:
+            tuple: (values, x, y)
+        """
+        xc_dim = self.config_manager.get_model_dim_name('xc') or 'lon'
+        yc_dim = self.config_manager.get_model_dim_name('yc') or 'lat'
+        tc_dim = self.config_manager.get_model_dim_name('tc') or 'time'
+
+        d_temp = data_array.copy()
+
+        if tc_dim in d_temp.dims:
+            num_tc = d_temp[tc_dim].size
+            if time_level is None:
+                time_level = 0
+            if isinstance(time_level, int):
+                actual_time_lev = time_level if time_level >= 0 else num_tc + time_level
+                if 0 <= actual_time_lev < num_tc:
+                    d_temp = d_temp.isel({tc_dim: actual_time_lev})
+                else:
+                    d_temp = d_temp.isel({tc_dim: 0})
+            # else: could add support for 'all' if needed
+
+        # Squeeze to 2D
+        d2d = d_temp.squeeze()
+        # Try to get x/y coordinates
+        if xc_dim in d2d.coords and yc_dim in d2d.coords:
+            x = d2d[xc_dim].values
+            y = d2d[yc_dim].values
+            # If x/y are 2D (swath), flatten both
+            if x.ndim == 2 and y.ndim == 2:
+                x_flat = x.flatten()
+                y_flat = y.flatten()
+                values = d2d.values.flatten()
+            else:
+                # Assume regular grid, meshgrid
+                xx, yy = np.meshgrid(x, y)
+                x_flat = xx.flatten()
+                y_flat = yy.flatten()
+                values = d2d.values.flatten()
+        else:
+            # Fallback: use indices
+            values = d2d.values.flatten()
+            shape = d2d.shape
+            y_flat, x_flat = np.indices(shape)
+            x_flat = x_flat.flatten()
+            y_flat = y_flat.flatten()
+
+        mask = ~np.isnan(values)
+        x_flat = x_flat[mask]
+        y_flat = y_flat[mask]
+        values = values[mask]
+        return values, x_flat, y_flat
+        
+
     def _process_box_plot(self, data_array, field_name, file_index, plot_type, figure):
         """Process a box plot for observational data."""
         self.config_manager.level = None        
@@ -990,7 +1084,7 @@ class GenericSource(BaseSource):
 
         return apply_conversion(self.config_manager, zonal_mean, data_array.name)
 
-    def _extract_xy_data(self, data_array, level, time_lev):
+    def _extract_xy_data(self, data_array, time_level, level=None):
         """ Extract XY slice (latlon) from a DataArray
 
         Note:
@@ -1706,7 +1800,7 @@ class GenericSource(BaseSource):
             self.logger.error(traceback.format_exc())
             return None
 
-    def _extract_tx_data(self, data_array, level=None, time_lev=0):
+    def _extract_tx_data(self, data_array, time_lev=0, level=None):
         """ Extract a time-series map from a DataArray
 
         Note:

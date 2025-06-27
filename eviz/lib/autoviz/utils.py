@@ -434,13 +434,13 @@ def cbar_shrink(panels: Optional[Union[int, None]] = None) -> float:
 def contour_tick_font_size(panels: Optional[Union[int, None]] = None) -> int:
     """Determine appropriate font size for contour tick labels based on subplot layout."""
     if isinstance(panels, tuple) and panels == (1, 1):  # single image on a page
-        font_size = 10
+        font_size = 8
     elif isinstance(panels, tuple) and panels == (3, 1):
         font_size = 8
     elif isinstance(panels, tuple) and panels == (2, 2):
         font_size = 8
     else:
-        font_size = 8
+        font_size = 10
     return font_size
 
 

@@ -5,10 +5,16 @@ import matplotlib.pyplot as plt
 from matplotlib import colors
 import logging
 from matplotlib.ticker import FixedLocator
+from matplotlib.ticker import FuncFormatter, FormatStrFormatter
 from eviz.lib.autoviz.utils import FlexibleOOMFormatter, OOMFormatter
 from eviz.lib.autoviz.plotting.base import BasePlotter
 import eviz.lib.autoviz.utils as pu
 from eviz.lib.autoviz.utils import bar_font_size, contour_tick_font_size
+
+
+DEFAULT_CONTOUR_LABELSIZE = 12
+DEFAULT_COLORBAR_LABELSIZE = 10
+DEFAULT_COLORBAR_TICKFORMAT = "%.1f"
 
 
 class MatplotlibBasePlotter(BasePlotter):
@@ -142,8 +148,11 @@ class MatplotlibBasePlotter(BasePlotter):
         # Calculate appropriate precision
         range_val = abs(dmax - dmin)
         precision = max(0, int(np.ceil(-np.log10(range_val)))) if range_val != 0 else 6
-        if range_val <= 9.0:
+        if 1.0 <= range_val <= 9.0:
             precision = 1
+        elif 0.1 <= range_val < 1.0:
+            precision = 2
+
         ax_opts['clevs_prec'] = precision
         self.logger.debug(f"range_val: {range_val}, precision: {precision}")
         
@@ -203,19 +212,11 @@ class MatplotlibBasePlotter(BasePlotter):
                     alpha=0.5,
                     transform=transform,
                 )
-
                 if len(clines.allsegs) == 0 or all(
                     len(seg) == 0 for seg in clines.allsegs
                 ):
                     return
-
-                ax.clabel(
-                    clines,
-                    inline=1,
-                    fontsize=pu.contour_label_size(fig.subplots),
-                    colors="black",
-                    fmt=contour_format,
-                )
+                self.clabel_with_default_fontsize(ax, clines, fmt=contour_format, fontsize=8)
             except Exception as e:
                 self.logger.error(f"Error adding contour lines: {e}")
 
@@ -269,17 +270,21 @@ class MatplotlibBasePlotter(BasePlotter):
                 )
 
             units = self.get_units(config, field_name, data2d, source_name, findex)
-
             if ax_opts["clabel"] is None:
                 cbar_label = units
             else:
                 cbar_label = ax_opts["clabel"]
-            cbar.set_label(cbar_label, size=bar_font_size(fig.subplots))
+            self.style_colorbar(cbar, fmt=fmt, fontsize=8, label=cbar_label)
 
             for t in cbar.ax.get_xticklabels():
                 t.set_fontsize(pu.contour_tick_font_size(fig.subplots))
             for t in cbar.ax.get_yticklabels():
                 t.set_fontsize(pu.contour_tick_font_size(fig.subplots))
+
+            # TODO: Add as ax_opts
+            # if cbar.orientation== 'horizontal':
+            #     for label in cbar.ax.get_xticklabels():
+            #         label.set_rotation(45)
 
             return cbar
 
@@ -548,3 +553,49 @@ class MatplotlibBasePlotter(BasePlotter):
     def _add_logo_ax(fig, desired_width_ratio=0.05):
         """Add a logo to the figure."""
         return pu.add_logo_ax(fig, desired_width_ratio)
+
+    @staticmethod
+    def clabel_with_default_fontsize_mpl(contour, **kwargs):
+        """Label contours with a default font size if not specified (QuadContourSet)."""
+        if 'fontsize' not in kwargs:
+            kwargs['fontsize'] = 12
+        return contour.ax.clabel(contour, **kwargs)
+
+    @staticmethod
+    def clabel_with_default_fontsize(ax, contour, **kwargs):
+        """Label contours with a default font size if not specified (GeoContourSet)."""
+        kwargs.setdefault('fontsize', DEFAULT_CONTOUR_LABELSIZE)
+        return ax.clabel(contour, **kwargs)
+
+    @staticmethod
+    def style_colorbar(cbar, fmt="%.1f", fontsize=8, label=None):
+        # Set tick label font size
+        cbar.ax.tick_params(labelsize=fontsize)
+
+        # Set the formatter properly
+        if isinstance(fmt, str):
+            formatter = FormatStrFormatter(fmt)
+        else:
+            formatter = FuncFormatter(fmt)
+
+        cbar.ax.xaxis.set_major_formatter(formatter)
+        cbar.ax.yaxis.set_major_formatter(formatter)
+        cbar.update_ticks()
+
+        # Set label if provided
+        if label:
+            cbar.set_label(label, fontsize=fontsize)
+
+    @staticmethod
+    def choose_colorbar_orientation(data, clevs, config):
+        if config.compare or config.compare_diff:
+            return "vertical"
+        
+        vmin = np.nanmin(data)
+        vmax = np.nanmax(data)
+        max_val = max(abs(vmin), abs(vmax))
+        if max_val >= 1e5 or (clevs and len(clevs) > 8):
+            return "horizontal"
+        return "vertical"
+
+

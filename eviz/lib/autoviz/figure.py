@@ -241,17 +241,16 @@ class Figure(mfigure.Figure):
         Returns:
             Figure: An instance of the eViz Figure class
         """
-        # Get rc_params if available
         if field_name is None:
             field_name = config_manager.current_field_name
         
+        # Get rc_params if available
         rc_params = {}
         if (config_manager.spec_data and 
             field_name in config_manager.spec_data and 
             plot_type + 'plot' in config_manager.spec_data[field_name]):
             rc_params = config_manager.spec_data[field_name][plot_type + 'plot'].get('rc_params', {})
-        
-        # Check if we should use overlay mode for comparison
+
         use_overlay = False
         if config_manager.compare and field_name:
             use_overlay = config_manager.should_overlay_plots(field_name, plot_type[:2])

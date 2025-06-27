@@ -97,5 +97,3 @@ class MatplotlibScatterPlotter(MatplotlibBasePlotter):
             else:
                 self._set_cartopy_ticks_alt(ax, ax_opts['extent'])
                 self.set_colorbar(config, scat, fig, ax, ax_opts, findex, field_name, data2d)
-
-            ax.set_title(f'{field_name}')   

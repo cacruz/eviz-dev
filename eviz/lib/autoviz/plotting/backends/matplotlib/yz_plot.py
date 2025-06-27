@@ -198,7 +198,6 @@ class MatplotlibYZPlotter(MatplotlibBasePlotter):
                             size=pu.axes_label_font_size(fig.subplots))
 
         else:
-            # Regular contour plot code...
             cfilled = self.filled_contours(config, field_name, ax, x, y, data2d)
 
             ylabels = ax.get_yticklabels()
@@ -211,7 +210,8 @@ class MatplotlibYZPlotter(MatplotlibBasePlotter):
 
             self._set_ax_ranges(config, field_name, fig, ax, ax_opts, y, vertical_units)
 
-            self.line_contours(fig, ax, ax_opts, x, y, data2d)
+            if ax_opts.get('line_contours', False):
+                self.line_contours(fig, ax, ax_opts, x, y, data2d)
 
             self.set_colorbar(config, cfilled, fig, ax, ax_opts, findex, field_name, data2d)
 
