@@ -320,10 +320,10 @@ def test_axis_tick_font_size(panels, expected):
 
 
 @pytest.mark.parametrize("panels,expected", [
-    ((1, 1), 10),
+    ((1, 1), 8),
     ((3, 1), 8),
     ((2, 2), 8),
-    (None, 8),
+    (None, 10),
 ])
 def test_contour_tick_font_size(panels, expected):
     assert p.contour_tick_font_size(panels) == expected
