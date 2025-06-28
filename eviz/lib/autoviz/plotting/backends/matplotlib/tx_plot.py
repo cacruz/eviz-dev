@@ -516,19 +516,3 @@ class MatplotlibTXPlotter(MatplotlibBasePlotter):
                 ax.set_xticks([0, 90, 180, 270, 360])
         
         ax.set_xticklabels(x_tick_labels, fontsize=10)
-    
-    def save(self, filename, **kwargs):
-        """Save the plot to a file."""
-        if self.fig is not None:
-            self.fig.savefig(filename, **kwargs)
-            self.logger.info(f"Saved plot to {filename}")
-        else:
-            self.logger.warning("No figure to save")
-    
-    def show(self):
-        """Display the plot."""
-        if self.fig is not None:
-            plt.figure(self.fig.number)
-            plt.show()
-        else:
-            self.logger.warning("No figure to show")

@@ -220,31 +220,3 @@ class MatplotlibMetricPlotter(MatplotlibBasePlotter):
         else:
             self.logger.error(f"Unsupported data dimensions: {dims1}")
             return None
-
-    def save(self, filename, **kwargs):
-        """Save the plot to a file."""
-        if self.plot_object is not None:
-            try:
-                fig, ax = self.plot_object
-                
-                # Get DPI from kwargs or use default
-                dpi = kwargs.get('dpi', 300)
-                
-                # Save figure
-                fig.savefig(filename, dpi=dpi, bbox_inches='tight')
-                self.logger.info(f"Saved correlation map to {filename}")
-            except Exception as e:
-                self.logger.error(f"Error saving plot: {e}")
-        else:
-            self.logger.warning("No plot to save")
-
-    def show(self):
-        """Display the plot."""
-        if self.plot_object is not None:
-            try:
-                fig, ax = self.plot_object
-                plt.show()
-            except Exception as e:
-                self.logger.error(f"Error showing plot: {e}")
-        else:
-            self.logger.warning("No plot to show")

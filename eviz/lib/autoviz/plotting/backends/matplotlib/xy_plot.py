@@ -167,18 +167,3 @@ class MatplotlibXYPlotter(MatplotlibBasePlotter):
         if not hasattr(config, '_filled_contours'):
             config._filled_contours = []
         config._filled_contours.append(cfilled)
-
-    def show(self):
-        """Display the plot."""
-        if self.fig is not None:
-            try:
-                # Use the custom show_eviz method if available
-                if hasattr(self.fig, 'show_eviz'):
-                    self.fig.show_eviz()
-                else:
-                    # Fall back to regular plt.show()
-                    plt.show()
-            except Exception as e:
-                self.logger.error(f"Error showing figure: {e}")
-        else:
-            self.logger.warning("No figure to show")

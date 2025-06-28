@@ -197,33 +197,10 @@ class AltairScatterPlotter(ScatterPlotter):
                     'y': [0, 1, 2]
                 })
     
-    def save(self, filename, **kwargs):
-        """Save the plot to an HTML file."""
-        if self.plot_object is not None:
-            if not filename.endswith('.html'):
-                filename += '.html'
-            
-            self.plot_object.save(filename)
-            self.logger.info(f"Saved interactive plot to {filename}")
-        else:
-            self.logger.warning("No plot to save")
-    
     def show(self):
         """Display the plot."""
-        if self.plot_object is not None:
-            # Display the chart
-            try:
-                from IPython.display import display
-                display(self.plot_object)
-            except ImportError:
-                # If not in a notebook, save to a temporary file and open in browser
-                import tempfile
-                import webbrowser
-                import os
-                
-                temp_file = os.path.join(tempfile.gettempdir(), 'eviz_altair_scatter.html')
-                self.plot_object.save(temp_file)
-                webbrowser.open('file://' + temp_file)
-                self.logger.info(f"Opening plot in browser: {temp_file}")
-        else:
-            self.logger.warning("No plot to show")
+        pass
+
+    def save(self, filename, **kwargs):
+        """Save the plot to a file."""
+        pass
