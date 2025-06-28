@@ -2007,7 +2007,7 @@ class GenericSource(BaseSource):
         else:
             return data2d
 
-    def _extract_pearson_data(self, data_array, level=None, time_lev=None):
+    def _extract_pearson_data(self, data_array, time_lev=None, level=None):
         """ Extract data for a Pearson correlation plot
         
         This method prepares data for Pearson correlation analysis by extracting
