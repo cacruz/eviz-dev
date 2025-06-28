@@ -283,18 +283,3 @@ class MatplotlibBoxPlotter(MatplotlibBasePlotter):
             # return dt.strftime('%m-%d %H')
         except Exception:
             return label[:13]  # fallback
-
-    def save(self, filename, **kwargs):
-        """Save the plot to a file."""
-        pass
-
-    def show(self):
-        """Display the plot."""
-        if self.plot_object is not None:
-            try:
-                fig, ax = self.plot_object
-                plt.show()
-            except Exception as e:
-                self.logger.error(f"Error showing plot: {e}")
-        else:
-            self.logger.warning("No plot to show")

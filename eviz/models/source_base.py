@@ -751,7 +751,6 @@ class GenericSource(BaseSource):
         pearson_settings = {}
         if hasattr(self.config_manager, 'input_config') and hasattr(self.config_manager.input_config, '_pearsonplot'):
             pearson_settings = self.config_manager.input_config._pearsonplot
-            self.logger.debug(f"Found pearsonplot settings: {pearson_settings}")
         else:
             self.logger.debug("No pearsonplot settings found in input_config")
         
@@ -774,7 +773,6 @@ class GenericSource(BaseSource):
                 
             # Skip fields not in our correlation pair
             if field_name not in corr_fields:
-                self.logger.debug(f"Skipping field {field_name} as it's not in the correlation fields: {corr_fields}")
                 continue
             
             # Find the reference field (the other field in the correlation pair)
@@ -789,7 +787,6 @@ class GenericSource(BaseSource):
             
             # Skip if we've already processed this pair
             if pair_id in processed_pairs:
-                self.logger.debug(f"Skipping duplicate correlation for pair: {pair_id}")
                 continue
             
             # Mark this pair as processed
@@ -1012,16 +1009,13 @@ class GenericSource(BaseSource):
             'time_lev' in self.config_manager.spec_data[field_name]['boxplot']):
             
             time_level_config = self.config_manager.spec_data[field_name]['boxplot']['time_lev']
-            self.logger.debug(f"Using time level {time_level_config} from field-specific boxplot configuration")
         
         # If not found in field-specific config, check ax_opts
         if time_level_config is None:
             time_level_config = self.config_manager.ax_opts.get('time_lev', -1)  # Default to last time level
-            self.logger.debug(f"Using time level {time_level_config} from ax_opts")
         
         if isinstance(time_level_config, str) and time_level_config.strip('-').isdigit():
             time_level_config = int(time_level_config)
-            self.logger.debug(f"Converted time level to integer: {time_level_config}")
         
         tc_dim = self.config_manager.get_model_dim_name('tc') or 'time'
         
@@ -1030,7 +1024,6 @@ class GenericSource(BaseSource):
             self.logger.debug(f"Time dimension '{tc_dim}' has {num_times} levels")
             if isinstance(time_level_config, int):
                 actual_time_lev = time_level_config if time_level_config >= 0 else num_times + time_level_config
-                self.logger.debug(f"Will use time level {actual_time_lev} (specified as {time_level_config})")
 
         box_data = self._extract_box_data(data_array, time_lev=time_level_config)
         
@@ -1064,7 +1057,6 @@ class GenericSource(BaseSource):
             'time_lev' in self.config_manager.spec_data[field_name1]['boxplot']):
             
             time_level_config = self.config_manager.spec_data[field_name1]['boxplot']['time_lev']
-            self.logger.debug(f"Using time level {time_level_config} from field-specific boxplot configuration")
 
         exp_id1 = self.config_manager.get_file_exp_id(self.config_manager.a_list[0])
         
@@ -1495,7 +1487,6 @@ class GenericSource(BaseSource):
         Returns:
             pandas.DataFrame: DataFrame with columns for categories and values
         """
-        self.logger.debug(f"Extracting box plot data from {data_array.name if hasattr(data_array, 'name') else 'unnamed array'}")
         tc_dim = self.config_manager.get_model_dim_name('tc') or 'time'
         d_temp = data_array.copy()
 
@@ -1529,10 +1520,8 @@ class GenericSource(BaseSource):
                     # Remove NaNs
                     valid_data = flat_data[~np.isnan(flat_data)]
                     if len(valid_data) == 0:
-                        self.logger.debug(f"Skipping time {time_str} - no valid data after removing NaNs")
                         continue
                     if np.min(valid_data) == np.max(valid_data):
-                        self.logger.debug(f"Skipping time {time_str} - all values are identical: {np.min(valid_data)}")
                         continue
                     valid_time_count += 1
                     df_time = pd.DataFrame({
@@ -1544,10 +1533,10 @@ class GenericSource(BaseSource):
                     all_data.append(df_time)
                 if all_data:
                     df = pd.concat(all_data, ignore_index=True)
-                    self.logger.debug(f"Created DataFrame with {len(df)} rows for {valid_time_count} valid time levels (out of {num_times} total)")
+                    self.logger.debug(f"Created DataFrame with {len(df)} rows") 
+                    self.logger.debug(f"for {valid_time_count} valid time levels (out of {num_times} total)")
                     return df
                 else:
-                    self.logger.warning(f"No valid data for box plot of {data_array.name if hasattr(data_array, 'name') else 'unnamed field'}")
                     return None
             
             elif isinstance(time_lev, int):
@@ -1555,18 +1544,14 @@ class GenericSource(BaseSource):
                 
                 if 0 <= actual_time_lev < num_tc:
                     d_temp = d_temp.isel({tc_dim: actual_time_lev})
-                    self.logger.debug(f"Selected time level {actual_time_lev} (specified as {time_lev})")
                 else:
-                    self.logger.warning(f"Time level {time_lev} out of range (0-{num_tc-1}), using first time level")
                     d_temp = d_temp.isel({tc_dim: 0})
             else:
                 # Default to last time level if not specified
                 d_temp = d_temp.isel({tc_dim: -1})
-                self.logger.debug(f"No time level specified, using last time level ({num_tc-1})")
 
         
         if np.isnan(d_temp).all():
-            self.logger.warning(f"All values are NaN for {data_array.name if hasattr(data_array, 'name') else 'unnamed field'}")
             return None
         
         if np.isnan(d_temp.values).any():
@@ -1697,9 +1682,7 @@ class GenericSource(BaseSource):
                 field_name: Name of the field being plotted
                 plot_type: Type of plot ('line')
                 file_index: Index of the file being plotted
-        """
-        self.logger.debug(f"Extracting line plot data from {data_array.name if hasattr(data_array, 'name') else 'unnamed array'}")
-        
+        """        
         tc_dim = self.config_manager.get_model_dim_name('tc') or 'time'
         zc_dim = self.config_manager.get_model_dim_name('zc') or 'lev'
         xc_dim = self.config_manager.get_model_dim_name('xc') or 'lon'

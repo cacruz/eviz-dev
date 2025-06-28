@@ -82,7 +82,6 @@ class ObsSource(GenericSource):
                 if hasattr(data_array, attr_name):
                     bounds = getattr(data_array, attr_name)
                     if isinstance(bounds, list) and len(bounds) == 4:
-                        self.logger.debug(f"Using bounds from {attr_name} attribute: {bounds}")
                         return bounds
             
             lon_min = getattr(data_array, 'geospatial_lon_min', None)
@@ -92,7 +91,6 @@ class ObsSource(GenericSource):
             
             if all(x is not None for x in [lon_min, lon_max, lat_min, lat_max]):
                 extent = [lon_min, lon_max, lat_min, lat_max]
-                self.logger.debug(f"Using extent from geospatial attributes: {extent}")
                 return extent
             
             # For 2D coordinate arrays (common in swath data)
@@ -114,7 +112,6 @@ class ObsSource(GenericSource):
                     lat_min - lat_buffer,
                     lat_max + lat_buffer
                 ]
-                self.logger.debug(f"Using extent from 2D coordinates: {extent}")
                 return extent
                 
         except Exception as e:
@@ -466,7 +463,6 @@ class ObsSource(GenericSource):
         pearson_settings = {}
         if hasattr(self.config_manager, 'input_config') and hasattr(self.config_manager.input_config, '_pearsonplot'):
             pearson_settings = self.config_manager.input_config._pearsonplot
-            self.logger.debug(f"Found pearsonplot settings: {pearson_settings}")
         else:
             self.logger.debug("No pearsonplot settings found in input_config")
         
@@ -476,7 +472,6 @@ class ObsSource(GenericSource):
         
         if do_time_corr:
             time_level_config = 'all'
-            self.logger.debug("Using all time points for time correlation")
         
         # Get the fields to correlate
         fields_str = pearson_settings.get('fields', '')
@@ -497,7 +492,6 @@ class ObsSource(GenericSource):
             reference_field = self.config_manager.ax_opts.get('reference_field')
 
         if not reference_field:
-            self.logger.error("No reference field specified for Pearson correlation plot")
             return
         
         reference_data = None
@@ -512,7 +506,7 @@ class ObsSource(GenericSource):
                 try:
                     reference_data = self.config_manager.pipeline.get_variable(reference_field)
                 except (AttributeError, KeyError) as e:
-                    self.logger.debug(f"Could not get reference field using get_variable: {e}")
+                    self.logger.warning(f"Could not get reference field using get_variable: {e}")
                     
             if reference_data is None:
                 try:
@@ -520,7 +514,7 @@ class ObsSource(GenericSource):
                     if reference_field in all_vars:
                         reference_data = all_vars[reference_field]
                 except (AttributeError, KeyError) as e:
-                    self.logger.debug(f"Could not get reference field from all variables: {e}")
+                    self.logger.warning(f"Could not get reference field from all variables: {e}")
         
         if reference_data is None:
             self.logger.error(f"Reference field '{reference_field}' not found in any data source")
