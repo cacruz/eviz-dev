@@ -192,19 +192,19 @@ class NuWrf(GriddedSource):
         
         return None
 
-    def _extract_xy_data(self, d, level, time_lev):
+    def _extract_xy_data(self, d, time_level, level):
         """ Extract XY slice from N-dim data field"""
         if d is None:
             return
         if level:
             level = int(level)
 
-        self.logger.debug(f"Selecting time level: {time_lev}")
+        self.logger.debug(f"Selecting time level: {time_level}")
         tc_dim = self.get_model_dim_name('tc') or 'Time'
         zc_dim = self.get_model_dim_name('zc') 
 
         if tc_dim in d.dims:
-            data2d = d.isel({tc_dim: time_lev})
+            data2d = d.isel({tc_dim: time_level})
         else:
             data2d = d
         data2d = data2d.squeeze()

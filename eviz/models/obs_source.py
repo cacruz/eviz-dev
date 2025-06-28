@@ -145,92 +145,6 @@ class ObsSource(GenericSource):
                 
         return extent
     
-    def _process_xy_plot(self, 
-                         data_array: xr.DataArray, 
-                         field_name: str, 
-                         file_index: int, 
-                         plot_type: str, 
-                         figure: Figure):
-        """Process an XY plot."""
-        levels = self.config_manager.get_levels(field_name, plot_type + 'plot')
-        do_zsum = self.config_manager.ax_opts.get('zsum', False)
-
-        time_level_config = self.config_manager.ax_opts.get('time_lev', 0)
-        tc_dim = self.config_manager.get_model_dim_name('tc') or 'time'
-        num_times = data_array[tc_dim].size if tc_dim in data_array.dims else 1
-        time_levels = range(num_times) if time_level_config == 'all' else [time_level_config]
-
-        if not levels and not do_zsum:
-            return
-
-        self._process_level_plot(data_array, 
-                                 field_name, 
-                                 file_index, 
-                                 plot_type, 
-                                 figure, 
-                                 time_levels, 
-                                 levels)
-
-    def _process_level_plot(self, 
-                            data_array, 
-                            field_name, 
-                            file_index, 
-                            plot_type, 
-                            figure, 
-                            time_levels, 
-                            levels):
-        """Process plots for specific vertical levels."""
-        self.logger.debug("Processing XY level plots")
-        zc_dim = self.config_manager.get_model_dim_name('zc') or 'lev'
-        tc_dim = self.config_manager.get_model_dim_name('tc') or 'time'
-
-        has_vertical_dim = zc_dim and zc_dim in data_array.dims
-
-        for level_val in levels.keys():
-            self.config_manager.level = level_val
-            for t in time_levels:
-                if tc_dim in data_array.dims:
-                    data_at_time = data_array.isel({tc_dim: t})
-                else:
-                    data_at_time = data_array.squeeze()  # Assume single time if no time dim
-                
-                if np.isnan(data_at_time).all():
-                    self.logger.warning(f"Skipping time level {t} for {field_name} - all values are NaN")
-                    continue
-                    
-                self._set_time_config(t, data_at_time)
-                # Create a new figure for each level to avoid reusing axes
-                figure = Figure.create_eviz_figure(self.config_manager, plot_type)
-                self.config_manager.ax_opts = figure.init_ax_opts(field_name)
-
-                # If the data doesn't have a vertical dimension, we can't select a level
-                # In this case, we'll just use the data as is
-                if not has_vertical_dim:
-                    field_to_plot = self._prepare_field_to_plot(data_at_time, 
-                                                                field_name, 
-                                                                file_index, 
-                                                                plot_type, 
-                                                                figure, 
-                                                                t)
-                else:
-                    field_to_plot = self._prepare_field_to_plot(data_at_time, 
-                                                                field_name, 
-                                                                file_index, 
-                                                                plot_type, 
-                                                                figure, 
-                                                                t, 
-                                                                level=level_val)
-
-                if field_to_plot and not np.isnan(field_to_plot[0]).all():
-                    plot_result = self.create_plot(field_name, field_to_plot)                    
-                    pu.print_map(self.config_manager, 
-                                 plot_type, 
-                                 self.config_manager.findex, 
-                                 plot_result, 
-                                 level=level_val)
-                else:
-                    self.logger.warning(f"Skipping plot for time level {t} - no valid data after processing")
-
     def _process_xt_plot(self,
                          data_array: xr.DataArray, 
                          field_name: str, 
@@ -288,7 +202,7 @@ class ObsSource(GenericSource):
                          self.config_manager.findex, 
                          plot_result)
 
-    def _extract_xy_data(self, data_array, level=None, time_lev=None):
+    def _extract_xy_data(self, data_array, time_level=None, level=None):
         """
         Extract XY slice from a DataArray and apply extent information.
         
@@ -298,7 +212,7 @@ class ObsSource(GenericSource):
         Args:
             data_array: The data array to process
             level: Vertical level to extract
-            time_lev: Time level to extract
+            time_level: Time level to extract
             
         Returns:
             xr.DataArray: The processed 2D data array
@@ -306,7 +220,7 @@ class ObsSource(GenericSource):
         if np.isnan(data_array).all():
             return None
             
-        data2d = super()._extract_xy_data(data_array, level, time_lev)
+        data2d = super()._extract_xy_data(data_array, time_level, level)
         
         if data2d is not None:
             if np.isnan(data2d).all():
@@ -318,11 +232,11 @@ class ObsSource(GenericSource):
         
         return data2d
 
-    def _extract_xt_data(self, data_array, time_lev=None):
+    def _extract_xt_data(self, data_array, time_level=None):
         """
         Extract XT data.
         """
-        data2d = super()._extract_xt_data(data_array, time_lev)
+        data2d = super()._extract_xt_data(data_array, time_level)
                 
         return data2d
 

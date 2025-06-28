@@ -202,89 +202,6 @@ class GriddedSource(GenericSource):
             data2d = data2d.mean(dim=xc_dim)
         return data2d
 
-    def _process_xy_plot(self, data_array, field_name, file_index, plot_type, figure):
-        """Process an XY plot."""
-        levels = self.config_manager.get_levels(field_name, plot_type + 'plot')
-        do_zsum = self.config_manager.ax_opts.get('zsum', False)
-
-        time_level_config = self.config_manager.ax_opts.get('time_lev', 0)
-        tc_dim = self.config_manager.get_model_dim_name('tc') or 'time'
-        num_times = data_array[tc_dim].size if tc_dim in data_array.dims else 1
-        time_levels = range(num_times) if time_level_config == 'all' else [time_level_config]
-
-        if not levels and not do_zsum:
-            return
-
-        if levels:
-            self._process_level_plots(data_array, 
-                                      field_name, 
-                                      file_index, 
-                                      plot_type, 
-                                      figure, 
-                                      time_levels, 
-                                      levels)
-        else:
-            self._process_zsum_plots(data_array, 
-                                     field_name, 
-                                     file_index, 
-                                     plot_type, 
-                                     figure, 
-                                     time_levels)
-
-    def _process_level_plots(self, 
-                             data_array, 
-                             field_name, 
-                             file_index, 
-                             plot_type, 
-                             figure, 
-                             time_levels, 
-                             levels):
-        """Process plots for specific vertical levels."""
-        self.logger.debug("Processing XY level plots")
-        zc_dim = self.config_manager.get_model_dim_name('zc') or 'lev'
-        tc_dim = self.config_manager.get_model_dim_name('tc') or 'time'
-
-        has_vertical_dim = zc_dim and zc_dim in data_array.dims
-
-        for level_val in levels.keys():
-            self.config_manager.level = level_val
-            for t in time_levels:
-                if tc_dim in data_array.dims:
-                    data_at_time = data_array.isel({tc_dim: t})
-                else:
-                    data_at_time = data_array.squeeze()  # Assume single time if no time dim
-
-                self._set_time_config(t, data_at_time)
-                # Create a new figure for each level to avoid reusing axes
-                figure = Figure.create_eviz_figure(self.config_manager, plot_type)
-                self.config_manager.ax_opts = figure.init_ax_opts(field_name)
-
-                # If the data doesn't have a vertical dimension, we can't select a level
-                # In this case, we'll just use the data as is
-                if not has_vertical_dim:
-                    field_to_plot = self._prepare_field_to_plot(data_at_time, 
-                                                                field_name, 
-                                                                file_index, 
-                                                                plot_type, 
-                                                                figure, 
-                                                                time_level=t)
-                else:
-                    field_to_plot = self._prepare_field_to_plot(data_at_time, 
-                                                                field_name, 
-                                                                file_index, 
-                                                                plot_type, 
-                                                                figure, 
-                                                                time_level=t, 
-                                                                level=level_val)
-
-                if field_to_plot:
-                    plot_result = self.create_plot(field_name, field_to_plot)                    
-                    pu.print_map(self.config_manager, 
-                                 plot_type, 
-                                 self.config_manager.findex, 
-                                 plot_result, 
-                                 level=level_val)
-
     def _process_polar_plot(self, data_array, field_name, file_index, plot_type, figure):
         """Process plots for specific vertical levels."""
         levels = self.config_manager.get_levels(field_name, plot_type + 'plot')
@@ -427,7 +344,7 @@ class GriddedSource(GenericSource):
                          self.config_manager.findex, 
                          plot_result)
  
-    def _process_zsum_plots(self, 
+    def _process_zsum_plot(self, 
                             data_array: xr.DataArray, 
                             field_name: str,
                             file_index: int, 
@@ -507,7 +424,7 @@ class GriddedSource(GenericSource):
                                                  sdat2_dataset,
                                                  level_val)
 
-            self.config_manager.findex = file_index1
+            # self.config_manager.findex = file_index1
             pu.print_map(self.config_manager, 
                          plot_type, 
                          self.config_manager.findex, 
@@ -549,7 +466,7 @@ class GriddedSource(GenericSource):
                                              sdat1_dataset, 
                                              sdat2_dataset)
 
-        self.config_manager.findex = file_index1
+        # self.config_manager.findex = file_index1
         pu.print_map(self.config_manager, 
                      plot_type, 
                      self.config_manager.findex, 
@@ -679,7 +596,6 @@ class GriddedSource(GenericSource):
         self.config_manager.axindex = ax_index
         self.config_manager.ax_opts = figure.init_ax_opts(field_name)
         time_level_config = self.config_manager.ax_opts.get('time_lev', 0)
-
         # TODO: This is a hack to get the plot type to work with the
         #       side-by-side comparison plots.
         #       Need to fix this in the future.

@@ -84,7 +84,7 @@ class MatplotlibXYPlotter(MatplotlibBasePlotter):
         data_transform = ccrs.PlateCarree()
 
         vmin, vmax = None, None
-        if config.compare or config.compare_diff:
+        if config.compare or not config.compare_diff:
             # Check if we've stored limits for this field in the config
             if not hasattr(config, '_comparison_cbar_limits'):
                 config._comparison_cbar_limits = {}
@@ -110,7 +110,7 @@ class MatplotlibXYPlotter(MatplotlibBasePlotter):
             self.set_const_colorbar(cfilled, fig, ax)
         else:
             # Store colorbar limits for the first plot in a comparison
-            if (config.compare or config.compare_diff) and config.axindex == 0:
+            if (config.compare or not config.compare_diff) and config.axindex == 0:
                 # Get the limits used in the plot
                 vmin, vmax = cfilled.get_clim()
                 config._comparison_cbar_limits[field_name] = (vmin, vmax)

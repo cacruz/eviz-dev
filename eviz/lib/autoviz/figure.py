@@ -694,9 +694,6 @@ class Figure(mfigure.Figure):
         title_fontsize = title_size or fontsize
         loc = kwargs.get('location', 'left')
 
-        self.logger.debug(f"Setting title for {field_name} with size {title_fontsize}")
-        self.logger.debug(f"Current title size: {ax.title.get_size()}")
-
         findex = self.config_manager.findex
         sname = self.config_manager.config.map_params[findex]['source_name']
         geom = pu.get_subplot_geometry(ax) if self.config_manager.compare or self.config_manager.compare_diff else None

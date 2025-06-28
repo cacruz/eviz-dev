@@ -142,7 +142,6 @@ class MatplotlibYZPlotter(MatplotlibBasePlotter):
                 line_color = colors[dataset_index]
                 # line_style = styles[(dataset_index // len(colors)) % len(styles)]
                 line_style = styles[dataset_index]
-                self.logger.info(f"line_color: {line_color}, line_style: {line_style}")
 
                 label = None
                 if hasattr(config, 'a_list') and hasattr(config, 'b_list'):

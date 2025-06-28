@@ -552,11 +552,6 @@ class GenericSource(BaseSource):
         num_pairs = min(len(fields_file1), len(fields_file2))
         field_pairs = list(zip(fields_file1[:num_pairs], fields_file2[:num_pairs]))
 
-        self.logger.debug(f"Comparing files {idx1} and {idx2}")
-        self.logger.debug(f"Fields in file 1: {fields_file1}")
-        self.logger.debug(f"Fields in file 2: {fields_file2}")
-        self.logger.debug(f"Field pairs to compare: {field_pairs}")
-
         for field1, field2 in field_pairs:
             # Find map_params for this field in both files
             idx1_field = next((i for i, params in self.config_manager.map_params.items()
@@ -598,7 +593,7 @@ class GenericSource(BaseSource):
                 self._init_lis_domain(sdat1_dataset)
                 self._init_lis_domain(sdat2_dataset)
 
-            file_indices = (idx1_field, idx2_field)
+            file_indices = (map1_params['file_index'], map2_params['file_index'])
 
             self.field_names = (field1, field2)
 
@@ -695,7 +690,7 @@ class GenericSource(BaseSource):
                 self._init_lis_domain(sdat1_dataset)
                 self._init_lis_domain(sdat2_dataset)
 
-            self.file_indices = (idx1_field, idx2_field)
+            self.file_indices = (map1_params['file_index'], map2_params['file_index'])
 
             self.field_names = (field1, field2)
 
@@ -829,6 +824,92 @@ class GenericSource(BaseSource):
                 if plot_type == 'pearson':
                     self.logger.info(f"Plotting {field_name}, {plot_type} plot")
                     self.process_plot(field_data_array, field_name, idx, plot_type)
+
+    def _process_xy_plot(self, 
+                         data_array: xr.DataArray, 
+                         field_name: str, 
+                         file_index: int, 
+                         plot_type: str, 
+                         figure: Figure):
+        """Process an XY plot."""
+        levels = self.config_manager.get_levels(field_name, plot_type + 'plot')
+        do_zsum = self.config_manager.ax_opts.get('zsum', False)
+
+        time_level_config = self.config_manager.ax_opts.get('time_lev', 0)
+        tc_dim = self.config_manager.get_model_dim_name('tc') or 'time'
+        num_times = data_array[tc_dim].size if tc_dim in data_array.dims else 1
+        time_levels = range(num_times) if time_level_config == 'all' else [time_level_config]
+
+        if not levels and not do_zsum:
+            return
+
+        self._process_level_plot(data_array, 
+                                 field_name, 
+                                 file_index, 
+                                 plot_type, 
+                                 figure, 
+                                 time_levels, 
+                                 levels)
+
+    def _process_level_plot(self, 
+                            data_array, 
+                            field_name, 
+                            file_index, 
+                            plot_type, 
+                            figure, 
+                            time_levels, 
+                            levels):
+        """Process plots for specific vertical levels."""
+        self.logger.debug("Processing XY level plots")
+        zc_dim = self.config_manager.get_model_dim_name('zc') or 'lev'
+        tc_dim = self.config_manager.get_model_dim_name('tc') or 'time'
+
+        has_vertical_dim = zc_dim and zc_dim in data_array.dims
+
+        for level_val in levels.keys():
+            self.config_manager.level = level_val
+            for t in time_levels:
+                if tc_dim in data_array.dims:
+                    data_at_time = data_array.isel({tc_dim: t})
+                else:
+                    data_at_time = data_array.squeeze()  # Assume single time if no time dim
+                
+                if np.isnan(data_at_time).all():
+                    self.logger.warning(f"Skipping time level {t} for {field_name} - all values are NaN")
+                    continue
+                    
+                self._set_time_config(t, data_at_time)
+                # Create a new figure for each level to avoid reusing axes
+                figure = Figure.create_eviz_figure(self.config_manager, plot_type)
+                self.config_manager.ax_opts = figure.init_ax_opts(field_name)
+
+                # If the data doesn't have a vertical dimension, we can't select a level
+                # In this case, we'll just use the data as is
+                if not has_vertical_dim:
+                    field_to_plot = self._prepare_field_to_plot(data_at_time, 
+                                                                field_name, 
+                                                                file_index, 
+                                                                plot_type, 
+                                                                figure, 
+                                                                time_level=t)
+                else:
+                    field_to_plot = self._prepare_field_to_plot(data_at_time, 
+                                                                field_name, 
+                                                                file_index, 
+                                                                plot_type, 
+                                                                figure, 
+                                                                time_level=t, 
+                                                                level=level_val)
+
+                if field_to_plot and not np.isnan(field_to_plot[0]).all():
+                    plot_result = self.create_plot(field_name, field_to_plot)                    
+                    pu.print_map(self.config_manager, 
+                                 plot_type, 
+                                 self.config_manager.findex, 
+                                 plot_result, 
+                                 level=level_val)
+                else:
+                    self.logger.warning(f"Skipping plot for time level {t} - no valid data after processing")
 
     def _process_scatter_plot(self, 
                             data_array, 
@@ -1101,16 +1182,14 @@ class GenericSource(BaseSource):
         if tc_dim and tc_dim in d_temp.dims:
             num_tc = d_temp[tc_dim].size
             # Handle negative indices (e.g., -1 for the last time level)
-            if isinstance(time_lev, int):
+            if isinstance(time_level, int):
                 # Convert negative index to positive if needed
-                actual_time_lev = time_lev if time_lev >= 0 else num_tc + time_lev
+                actual_time_lev = time_level if time_level >= 0 else num_tc + time_level
                 
                 # Check if the index is valid
                 if 0 <= actual_time_lev < num_tc:
                     d_temp = d_temp.isel({tc_dim: actual_time_lev})
-                    self.logger.debug(f"Selected time level {actual_time_lev} (specified as {time_lev})")
                 else:
-                    self.logger.warning(f"Time level {time_lev} out of range (0-{num_tc-1}), using first time level")
                     d_temp = d_temp.isel({tc_dim: 0})
             else:
                 self.logger.warning(f"No time dimension found matching {tc_dim}")
@@ -1125,13 +1204,9 @@ class GenericSource(BaseSource):
                     if level in d_temp[zc_dim].values:
                         lev_idx = np.where(d_temp[zc_dim].values == level)[0][0]
                         d_temp = d_temp.isel({zc_dim: lev_idx})
-                        self.logger.debug(
-                            f"Selected exact level {level} at index {lev_idx}")
                     else:
                         # Try nearest neighbor
                         lev_idx = np.abs(d_temp[zc_dim].values - level).argmin()
-                        self.logger.debug(
-                            f"Level {level} not found exactly, using nearest level {d_temp[zc_dim].values[lev_idx]}")
                         d_temp = d_temp.isel({zc_dim: lev_idx})
                 except Exception as e:
                     self.logger.error(f"Error selecting level {level}: {e}")
@@ -1141,7 +1216,6 @@ class GenericSource(BaseSource):
                 # No level specified, use the first level
                 if d_temp[zc_dim].size > 0:
                     d_temp = d_temp.isel({zc_dim: 0})
-                    self.logger.debug("No level specified, using first level")
         elif level is not None:
             self.logger.debug(
                 f"Level {level} specified but no vertical dimension found in data. Using data as is.")
@@ -1164,11 +1238,7 @@ class GenericSource(BaseSource):
             data2d = data2d.squeeze()
 
             if len(data2d.dims) > 2:
-                self.logger.debug(
-                    f"Data still has {len(data2d.dims)} dimensions. Reshaping to 2D.")
                 dims = list(data2d.dims)
-                dim1, dim2 = dims[0], dims[1]
-
                 for dim in dims[2:]:
                     data2d = data2d.mean(dim=dim)
 
@@ -1190,8 +1260,6 @@ class GenericSource(BaseSource):
         if self.config_manager.ax_opts.get('zsum', False):
             self.logger.debug("Summing over vertical levels.")
             data2d_zsum = apply_zsum(data2d)
-            self.logger.debug(
-                "Min: {data2d_zsum.min().values}, Max: {data2d_zsum.max().values}")
             data2d.attrs = data_array.attrs.copy()
             return apply_conversion(self.config_manager, data2d_zsum, data_array.name)
 
@@ -1356,8 +1424,6 @@ class GenericSource(BaseSource):
                         else:
                             # Try nearest neighbor
                             lev_idx = np.abs(data2d[zc_dim].values - level).argmin()
-                            self.logger.debug(
-                                f"Level {level} not found exactly, using nearest level {data2d[zc_dim].values[lev_idx]}")
                             data2d = data2d.isel({zc_dim: lev_idx}).squeeze()
                     except (AttributeError, KeyError, IndexError) as e:
                         self.logger.error(f"Error selecting level {level}: {e}")
@@ -1375,8 +1441,6 @@ class GenericSource(BaseSource):
                                 else:
                                     lev_idx = np.abs(
                                         data2d[lev_name].values - level).argmin()
-                                    self.logger.debug(
-                                        f"Level {level} not found exactly, using nearest level {data2d[lev_name].values[lev_idx]}")
                                     data2d = data2d.isel({lev_name: lev_idx}).squeeze()
                                     break
                             except (AttributeError, KeyError, IndexError) as e:
@@ -1399,9 +1463,8 @@ class GenericSource(BaseSource):
 
             if time_dim:
                 non_time_dims = [dim for dim in dims if dim != time_dim]
+                # If there are non-time dimensions, average over them
                 if non_time_dims:
-                    self.logger.debug(
-                        f"Averaging over non-time dimensions: {non_time_dims}")
                     data2d = data2d.mean(dim=non_time_dims)
             else:
                 # Could not identify time dimension. Using first dimension
@@ -1507,7 +1570,7 @@ class GenericSource(BaseSource):
             return None
         
         if np.isnan(d_temp.values).any():
-            self.logger.info(f"Output contains NaN values: {np.sum(np.isnan(d_temp.values))} NaNs")
+            self.logger.debug(f"Output contains NaN values: {np.sum(np.isnan(d_temp.values))} NaNs")
         
         field_name = data_array.name if hasattr(data_array, 'name') else 'unnamed'
         
@@ -1982,10 +2045,8 @@ class GenericSource(BaseSource):
                     if level in d_temp[zc_dim].values:
                         lev_idx = np.where(d_temp[zc_dim].values == level)[0][0]
                         d_temp = d_temp.isel({zc_dim: lev_idx})
-                        self.logger.debug(f"Selected exact level {level} at index {lev_idx}")
                     else:
                         lev_idx = np.abs(d_temp[zc_dim].values - level).argmin()
-                        self.logger.debug(f"Level {level} not found exactly, using nearest level {d_temp[zc_dim].values[lev_idx]}")
                         d_temp = d_temp.isel({zc_dim: lev_idx})
                 except Exception as e:
                     self.logger.error(f"Error selecting level {level}: {e}")
@@ -1995,7 +2056,6 @@ class GenericSource(BaseSource):
                 # No level specified, use the first level
                 if d_temp[zc_dim].size > 0:
                     d_temp = d_temp.isel({zc_dim: 0})
-                    self.logger.debug("No level specified, using first level")
         
         # For time correlation, we want to keep the time dimension
         # For spatial correlation, we select a specific time point
@@ -2010,9 +2070,7 @@ class GenericSource(BaseSource):
                 
                 if 0 <= actual_time_lev < num_tc:
                     d_temp = d_temp.isel({tc_dim: actual_time_lev})
-                    self.logger.debug(f"Selected time level {actual_time_lev} (specified as {time_lev}) for spatial correlation")
                 else:
-                    self.logger.warning(f"Time level {time_lev} out of range (0-{num_tc-1}), using first time level")
                     d_temp = d_temp.isel({tc_dim: 0})
         
         data2d = apply_conversion(self.config_manager, d_temp, data_array.name)
