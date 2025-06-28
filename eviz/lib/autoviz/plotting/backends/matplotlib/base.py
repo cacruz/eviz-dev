@@ -257,34 +257,18 @@ class MatplotlibBasePlotter(BasePlotter):
                     shrink=pu.cbar_shrink(fig.subplots),
                 )
 
-            # Add scientific notation if requested
-            if ax_opts["cbar_sci_notation"]:
-                cbar.ax.text(
-                    1.05,
-                    -0.5,
-                    r"$\times 10^{%d}$" % fmt.oom,
-                    transform=cbar.ax.transAxes,
-                    va="center",
-                    ha="left",
-                    fontsize=12,
-                )
-
             units = self.get_units(config, field_name, data2d, source_name, findex)
             if ax_opts["clabel"] is None:
                 cbar_label = units
             else:
                 cbar_label = ax_opts["clabel"]
-            self.style_colorbar(cbar, fmt=fmt, fontsize=8, label=cbar_label)
+            self.style_colorbar(cbar, ax_opts, data2d,
+                                fmt=fmt, fontsize=8, label=cbar_label)
 
             for t in cbar.ax.get_xticklabels():
                 t.set_fontsize(pu.contour_tick_font_size(fig.subplots))
             for t in cbar.ax.get_yticklabels():
                 t.set_fontsize(pu.contour_tick_font_size(fig.subplots))
-
-            # TODO: Add as ax_opts
-            # if cbar.orientation== 'horizontal':
-            #     for label in cbar.ax.get_xticklabels():
-            #         label.set_rotation(45)
 
             return cbar
 
@@ -568,7 +552,9 @@ class MatplotlibBasePlotter(BasePlotter):
         return ax.clabel(contour, **kwargs)
 
     @staticmethod
-    def style_colorbar(cbar, fmt="%.1f", fontsize=8, label=None):
+    def style_colorbar(cbar, ax_opts, data, 
+                       fmt="%.1f", fontsize=8, label=None):
+        """Style the colorbar with a given format and font size."""
         # Set tick label font size
         cbar.ax.tick_params(labelsize=fontsize)
 
@@ -586,16 +572,32 @@ class MatplotlibBasePlotter(BasePlotter):
         if label:
             cbar.set_label(label, fontsize=fontsize)
 
-    @staticmethod
-    def choose_colorbar_orientation(data, clevs, config):
-        if config.compare or config.compare_diff:
-            return "vertical"
-        
         vmin = np.nanmin(data)
         vmax = np.nanmax(data)
         max_val = max(abs(vmin), abs(vmax))
-        if max_val >= 1e5 or (clevs and len(clevs) > 8):
-            return "horizontal"
-        return "vertical"
+
+        clevs = ax_opts.get('clevs', None)
+        num_clevs = len(clevs) if clevs is not None else 0
+
+        really_small_vals = max_val < 1e-3 or num_clevs > 10
+        really_large_vals = max_val >= 1e3 or num_clevs > 10
+
+        # Rotate labels for horizontal colorbars with really small/large values
+        if really_small_vals or really_large_vals:
+            if cbar.orientation == "horizontal":
+                for label in cbar.ax.get_xticklabels():
+                    label.set_rotation(45)
+
+        # Add scientific notation if requested
+        if ax_opts["cbar_sci_notation"]:
+            cbar.ax.text(
+                1.05,
+                -0.5,
+                r"$\times 10^{%d}$" % fmt.oom,
+                transform=cbar.ax.transAxes,
+                va="center",
+                ha="left",
+                fontsize=8,
+            )
 
 
