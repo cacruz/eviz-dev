@@ -72,110 +72,111 @@ class MatplotlibPolarPlotter(MatplotlibBasePlotter):
     
     def _plot_polar_data(self, config, ax, data2d, x, y, field_name, ax_opts, findex):
         """Helper function to plot polar data."""
-        if ax_opts['use_pole'] == 'south':
-            projection = ccrs.SouthPolarStereo()
-            extent_lat = -60  # Southern limit for South Polar plot
-        else:
-            projection = ccrs.NorthPolarStereo()
-            extent_lat = 60  # Northern limit for North Polar plot
+        with mpl.rc_context(rc=ax_opts.get('rc_params', {})):
+            if ax_opts['use_pole'] == 'south':
+                projection = ccrs.SouthPolarStereo()
+                extent_lat = -60  # Southern limit for South Polar plot
+            else:
+                projection = ccrs.NorthPolarStereo()
+                extent_lat = 60  # Northern limit for North Polar plot
 
-        ax = self.fig.add_subplot(1, 1, 1, projection=projection)
+            ax = self.fig.add_subplot(1, 1, 1, projection=projection)
 
-        ax.set_extent([-180, 180, extent_lat, 90 if ax_opts['use_pole'] == 'north' else -90],
-                    ccrs.PlateCarree())
-        if ax_opts['boundary']:
-            theta = np.linspace(0, 2 * np.pi, 100)
-            center = [0.5, 0.5]
-            radius = 0.5
-            verts = np.vstack([np.sin(theta), np.cos(theta)]).T
-            circle = mpath.Path(verts * radius + center)
-            ax.set_boundary(circle, transform=ax.transAxes)
+            ax.set_extent([-180, 180, extent_lat, 90 if ax_opts['use_pole'] == 'north' else -90],
+                        ccrs.PlateCarree())
+            if ax_opts['boundary']:
+                theta = np.linspace(0, 2 * np.pi, 100)
+                center = [0.5, 0.5]
+                radius = 0.5
+                verts = np.vstack([np.sin(theta), np.cos(theta)]).T
+                circle = mpath.Path(verts * radius + center)
+                ax.set_boundary(circle, transform=ax.transAxes)
 
-        self._create_clevs(field_name, ax_opts, data2d)
-        clevs = pu.formatted_contours(ax_opts['clevs'])
+            self._create_clevs(field_name, ax_opts, data2d)
+            clevs = pu.formatted_contours(ax_opts['clevs'])
 
-        extend_value = "both"
-        if ax_opts['clevs'][0] == 0:
-            extend_value = "max"
-        norm = colors.BoundaryNorm(ax_opts['clevs'], ncolors=256, clip=False)
+            extend_value = "both"
+            if ax_opts['clevs'][0] == 0:
+                extend_value = "max"
+            norm = colors.BoundaryNorm(ax_opts['clevs'], ncolors=256, clip=False)
 
-        trans = ccrs.PlateCarree()
+            trans = ccrs.PlateCarree()
 
-        try:
-            # contourf
-            pcm = ax.contourf(x, y, data2d,
-                            cmap=ax_opts['use_cmap'],
-                            levels=clevs,
-                            transform=trans,
-                            extend=extend_value,
-                            norm=norm)
-
-            plot_success = True
-        except Exception as e:
-            self.logger.warning(f"contourf failed: {e}")
             try:
-                pcm = ax.imshow(
-                    data2d,
-                    extent=[-180, 180, -90 if ax_opts['use_pole'] == 'south' else 0,
-                            0 if ax_opts['use_pole'] == 'south' else 90],
-                    transform=ccrs.PlateCarree(),
-                    cmap=ax_opts['use_cmap'],
-                    aspect='auto'
-                )
+                # contourf
+                pcm = ax.contourf(x, y, data2d,
+                                cmap=ax_opts['use_cmap'],
+                                levels=clevs,
+                                transform=trans,
+                                extend=extend_value,
+                                norm=norm)
+
                 plot_success = True
-            except Exception as e2:
-                self.logger.error(f"All plotting methods failed: {e2}")
-                plot_success = False
-
-        if not plot_success:
-            self.logger.error("Failed to create polar plot")
-            return
-
-        if ax_opts['line_contours']:
-            clines = ax.contour(x, y, data2d,
-                                levels=ax_opts['clevs'], colors="black",
-                                linewidths=0.5, alpha=0.5, linestyles='solid',
-                                transform=trans)
-            ax.clabel(clines, inline=1, fontsize=8,
-                    inline_spacing=10, colors="black",
-                    rightside_up=True,  # fmt=contour_format,
-                    use_clabeltext=True)
-        else:
-            _ = ax.contour(x, y, data2d, linewidths=0.0)
-
-        ax.add_feature(cfeature.BORDERS, zorder=10, linewidth=0.5, edgecolor='grey')
-        ax.add_feature(cfeature.LAKES, alpha=0.9)
-        ax.add_feature(cfeature.LAND, color='silver', zorder=1, facecolor=0.9)
-        ax.add_feature(cfeature.COASTLINE, zorder=10, linewidth=0.5)
-        ax.add_feature(cfeature.OCEAN, color='lightblue', zorder=0)
-
-        cbar = plt.colorbar(pcm, ax=ax, shrink=0.5, pad=0.05)
-        if 'units' in config.spec_data[field_name]:
-            units = config.spec_data[field_name]['units']
-        else:
-            try:
-                units = data2d.units
             except Exception as e:
-                self.logger.error(f"{e}: Please specify {field_name} units in specs file")
-                units = "n.a."
-        if units == '1':
-            units = '%'
-        if ax_opts['clabel'] is None:
-            cbar_label = units
-        else:
-            cbar_label = ax_opts['clabel']
-        cbar.set_label(label=cbar_label, size=12, weight='bold')
+                self.logger.warning(f"contourf failed: {e}")
+                try:
+                    pcm = ax.imshow(
+                        data2d,
+                        extent=[-180, 180, -90 if ax_opts['use_pole'] == 'south' else 0,
+                                0 if ax_opts['use_pole'] == 'south' else 90],
+                        transform=ccrs.PlateCarree(),
+                        cmap=ax_opts['use_cmap'],
+                        aspect='auto'
+                    )
+                    plot_success = True
+                except Exception as e2:
+                    self.logger.error(f"All plotting methods failed: {e2}")
+                    plot_success = False
 
-        if ax_opts['add_grid']:
-            _ = ax.gridlines(draw_labels=False, linewidth=0.5, color='gray', alpha=0.75,
-                            linestyle='--')
+            if not plot_success:
+                self.logger.error("Failed to create polar plot")
+                return
 
-        if 'name' in config.spec_data[field_name]:
-            ax.set_title(config.spec_data[field_name]['name'], y=1.03, fontsize=14,
-                        weight='bold')
-        else:
-            ax.set_title(self.source_name, y=1.03, fontsize=14, weight='bold')
-    
+            if ax_opts['line_contours']:
+                clines = ax.contour(x, y, data2d,
+                                    levels=ax_opts['clevs'], colors="black",
+                                    linewidths=0.5, alpha=0.5, linestyles='solid',
+                                    transform=trans)
+                ax.clabel(clines, inline=1, fontsize=8,
+                        inline_spacing=10, colors="black",
+                        rightside_up=True,  # fmt=contour_format,
+                        use_clabeltext=True)
+            else:
+                _ = ax.contour(x, y, data2d, linewidths=0.0)
+
+            ax.add_feature(cfeature.BORDERS, zorder=10, linewidth=0.5, edgecolor='grey')
+            ax.add_feature(cfeature.LAKES, alpha=0.9)
+            ax.add_feature(cfeature.LAND, color='silver', zorder=1, facecolor=0.9)
+            ax.add_feature(cfeature.COASTLINE, zorder=10, linewidth=0.5)
+            ax.add_feature(cfeature.OCEAN, color='lightblue', zorder=0)
+
+            cbar = plt.colorbar(pcm, ax=ax, shrink=0.5, pad=0.05)
+            if 'units' in config.spec_data[field_name]:
+                units = config.spec_data[field_name]['units']
+            else:
+                try:
+                    units = data2d.units
+                except Exception as e:
+                    self.logger.error(f"{e}: Please specify {field_name} units in specs file")
+                    units = "n.a."
+            if units == '1':
+                units = '%'
+            if ax_opts['clabel'] is None:
+                cbar_label = units
+            else:
+                cbar_label = ax_opts['clabel']
+            cbar.set_label(label=cbar_label, size=12, weight='bold')
+
+            if ax_opts['add_grid']:
+                _ = ax.gridlines(draw_labels=False, linewidth=0.5, color='gray', alpha=0.75,
+                                linestyle='--')
+
+            if 'name' in config.spec_data[field_name]:
+                ax.set_title(config.spec_data[field_name]['name'], y=1.03, fontsize=14,
+                            weight='bold')
+            else:
+                ax.set_title(self.source_name, y=1.03, fontsize=14, weight='bold')
+        
     def _convert_to_polar(self, x, y):
         """Convert Cartesian coordinates to polar coordinates."""
         try:

@@ -1,4 +1,4 @@
-import matplotlib.pyplot as plt
+import matplotlib as mpl
 import numpy as np
 from matplotlib.ticker import FormatStrFormatter
 import cartopy.crs as ccrs
@@ -83,106 +83,104 @@ class MatplotlibScatterPlotter(MatplotlibBasePlotter):
             field_name (str): The field being plotted.
             findex (int): Index of this field in the comparison sequence.
         """
-        # Handle fill values as NaNs
-        if 'fill_value' in config.spec_data[field_name].get('xyplot', {}):
-            fill_value = config.spec_data[field_name]['xyplot']['fill_value']
-            data2d = data2d.where(data2d != fill_value, np.nan)
+        with mpl.rc_context(rc=ax_opts.get('rc_params', {})):
+            if 'fill_value' in config.spec_data[field_name].get('xyplot', {}):
+                fill_value = config.spec_data[field_name]['xyplot']['fill_value']
+                data2d = data2d.where(data2d != fill_value, np.nan)
 
-        # Mask invalid values
-        masked_data = np.ma.masked_invalid(data2d)
+            masked_data = np.ma.masked_invalid(data2d)
 
-        # Check if we're using Cartopy
-        is_cartopy_axis = False
-        try:
-            from cartopy.mpl.geoaxes import GeoAxes
-            is_cartopy_axis = isinstance(ax, GeoAxes)
-        except ImportError:
-            pass
+            is_cartopy_axis = False
+            try:
+                from cartopy.mpl.geoaxes import GeoAxes
+                is_cartopy_axis = isinstance(ax, GeoAxes)
+            except ImportError:
+                pass
 
-        data_transform = ccrs.PlateCarree() if is_cartopy_axis else None
+            data_transform = ccrs.PlateCarree() if is_cartopy_axis else None
 
-        # Use shared vmin/vmax if available for consistent colorbar across plots
-        vmin, vmax = None, None
-        if config.compare or not config.compare_diff:
-            if not hasattr(config, '_comparison_cbar_limits'):
-                config._comparison_cbar_limits = {}
+            # Use shared vmin/vmax if available for consistent colorbar across plots
+            vmin, vmax = None, None
+            if config.compare or not config.compare_diff:
+                if not hasattr(config, '_comparison_cbar_limits'):
+                    config._comparison_cbar_limits = {}
 
-            if field_name in config._comparison_cbar_limits:
-                vmin, vmax = config._comparison_cbar_limits[field_name]
+                if field_name in config._comparison_cbar_limits:
+                    vmin, vmax = config._comparison_cbar_limits[field_name]
 
-        # Adaptive point size
-        npts = len(x)
-        if npts > 1e5:
-            point_size = 1
-        elif npts > 1e4:
-            point_size = 2
-        else:
-            point_size = 5
-
-        scatter_kwargs = dict(
-            x=x,
-            y=y,
-            c=masked_data,
-            cmap=ax_opts['use_cmap'],
-            s=point_size,
-            vmin=vmin,
-            vmax=vmax,
-            edgecolors='grey',
-            linewidths=0.2,
-            alpha=0.7,
-            transform=data_transform
-        )
-
-        scat = ax.scatter(**scatter_kwargs)
-
-        # Set Cartopy-specific settings
-        if is_cartopy_axis and self.fig.use_cartopy:
-            # ax.stock_img()
-            if 'extent' in ax_opts:
-                self._set_cartopy_ticks_alt(ax, ax_opts['extent'])
+            # Adaptive point size
+            npts = len(x)
+            if npts > 1e5:
+                point_size = 1
+            elif npts > 1e4:
+                point_size = 2
             else:
-                self.set_cartopy_ticks(ax, [-180, 180, -90, 90])
+                point_size = 5
 
-        # Store vmin/vmax for future shared use
-        if (config.compare or not config.compare_diff) and config.axindex == 0:
-            config._comparison_cbar_limits[field_name] = scat.get_clim()
-
-        # Suppress individual colorbars if shared_bar is enabled
-        if config.shared_cbar:
-            ax_opts['suppress_colorbar'] = True
-
-        # Add colorbar or dummy handler
-        if scat is None:
-            self.set_const_colorbar(scat, fig, ax)
-        else:
-            self.set_colorbar(config, scat, fig, ax, ax_opts, findex, field_name, data2d)
-
-        ax.xaxis.set_major_formatter(FormatStrFormatter('%.1f'))
-        ax.yaxis.set_major_formatter(FormatStrFormatter('%.1f'))
-
-        # Title and logo
-        title_text = config.spec_data[field_name].get('name', field_name)
-        if config.compare_diff:
-            fig.suptitle_eviz(
-                title_text,
-                fontweight='bold',
-                fontstyle='italic',
-                fontsize=self._image_font_size(fig.subplots)
+            scatter_kwargs = dict(
+                x=x,
+                y=y,
+                c=masked_data,
+                cmap=ax_opts['use_cmap'],
+                s=point_size,
+                vmin=vmin,
+                vmax=vmax,
+                edgecolors='k',
+                linewidths=0.2,
+                alpha=0.7,
+                transform=data_transform
             )
-        elif config.compare:
-            fig.suptitle_eviz(
-                title_text,
-                fontweight='bold',
-                fontstyle='italic',
-                fontsize=self._image_font_size(fig.subplots)
-            )
-            if config.add_logo:
-                self._add_logo_ax(fig, desired_width_ratio=0.05)
 
-        # Collect color-filled objects for shared colorbar handling
-        if not hasattr(config, '_filled_contours'):
-            config._filled_contours = []
-        config._filled_contours.append(scat)
+            scat = ax.scatter(**scatter_kwargs)
+
+            # Set Cartopy-specific settings
+            if is_cartopy_axis and self.fig.use_cartopy:
+                # ax.stock_img()
+                if 'extent' in ax_opts:
+                    self._set_cartopy_ticks_alt(ax, ax_opts['extent'])
+                else:
+                    self.set_cartopy_ticks(ax, [-180, 180, -90, 90])
+
+            # Store vmin/vmax for future shared use
+            if (config.compare or not config.compare_diff) and config.axindex == 0:
+                config._comparison_cbar_limits[field_name] = scat.get_clim()
+
+            # Suppress individual colorbars if shared_bar is enabled
+            if config.shared_cbar:
+                ax_opts['suppress_colorbar'] = True
+
+            # Add colorbar or dummy handler
+            if scat is None:
+                self.set_const_colorbar(scat, fig, ax)
+            else:
+                self.set_colorbar(config, scat, fig, ax, ax_opts, findex, field_name, data2d)
+
+            ax.xaxis.set_major_formatter(FormatStrFormatter('%.1f'))
+            ax.yaxis.set_major_formatter(FormatStrFormatter('%.1f'))
+
+            # Title and logo
+            title_text = config.spec_data[field_name].get('name', field_name)
+            if config.compare_diff:
+                fig.suptitle_eviz(
+                    title_text,
+                    fontweight='bold',
+                    fontstyle='italic',
+                    fontsize=self._image_font_size(fig.subplots)
+                )
+            elif config.compare:
+                fig.suptitle_eviz(
+                    title_text,
+                    fontweight='bold',
+                    fontstyle='italic',
+                    fontsize=self._image_font_size(fig.subplots)
+                )
+                if config.add_logo:
+                    self._add_logo_ax(fig, desired_width_ratio=0.05)
+
+            # Collect color-filled objects for shared colorbar handling
+            if not hasattr(config, '_filled_contours'):
+                config._filled_contours = []
+            config._filled_contours.append(scat)
 
     def _plot_scatter_data_alt(self, config, ax, fig, ax_opts, x, y, data2d, field_name, findex):
         """ Create a single scatter using SPECS data

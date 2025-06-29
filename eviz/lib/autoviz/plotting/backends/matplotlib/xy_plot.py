@@ -1,4 +1,3 @@
-import matplotlib.pyplot as plt
 import matplotlib as mpl
 import numpy as np
 import cartopy.crs as ccrs
@@ -70,100 +69,101 @@ class MatplotlibXYPlotter(MatplotlibBasePlotter):
 
     def _plot_xy_data(self, config, ax, data2d, x, y, field_name, fig, ax_opts, level, plot_type, findex):
         """Helper function to plot XY data on a single axes."""
-        if 'fill_value' in config.spec_data[field_name]['xyplot']:
-            fill_value = config.spec_data[field_name]['xyplot']['fill_value']
-            data2d = data2d.where(data2d != fill_value, np.nan)
+        with mpl.rc_context(rc=ax_opts.get('rc_params', {})):
+            if 'fill_value' in config.spec_data[field_name]['xyplot']:
+                fill_value = config.spec_data[field_name]['xyplot']['fill_value']
+                data2d = data2d.where(data2d != fill_value, np.nan)
 
-        # Check if we're using Cartopy and if the axis is a GeoAxes
-        is_cartopy_axis = False
-        try:
-            is_cartopy_axis = isinstance(ax, GeoAxes)
-        except ImportError:
-            pass
+            # Check if we're using Cartopy and if the axis is a GeoAxes
+            is_cartopy_axis = False
+            try:
+                is_cartopy_axis = isinstance(ax, GeoAxes)
+            except ImportError:
+                pass
 
-        data_transform = ccrs.PlateCarree()
+            data_transform = ccrs.PlateCarree()
 
-        vmin, vmax = None, None
-        if config.compare or not config.compare_diff:
-            # Check if we've stored limits for this field in the config
-            if not hasattr(config, '_comparison_cbar_limits'):
-                config._comparison_cbar_limits = {}
-                
-            if field_name in config._comparison_cbar_limits:
-                vmin, vmax = config._comparison_cbar_limits[field_name]
+            vmin, vmax = None, None
+            if config.compare or not config.compare_diff:
+                # Check if we've stored limits for this field in the config
+                if not hasattr(config, '_comparison_cbar_limits'):
+                    config._comparison_cbar_limits = {}
+                    
+                if field_name in config._comparison_cbar_limits:
+                    vmin, vmax = config._comparison_cbar_limits[field_name]
 
-        # Ensure contour levels are created based on vmin and vmax
-        self._create_clevs(field_name, ax_opts, data2d, vmin, vmax)
+            # Ensure contour levels are created based on vmin and vmax
+            self._create_clevs(field_name, ax_opts, data2d, vmin, vmax)
 
-        if fig.use_cartopy and is_cartopy_axis:
-            cfilled = self.filled_contours(config, field_name, ax, x, y, data2d, 
-                                        vmin=vmin, vmax=vmax, transform=data_transform)
-            if 'extent' in ax_opts:
-                self.set_cartopy_ticks(ax, ax_opts['extent'])
-            else:
-                self.set_cartopy_ticks(ax, [-180, 180, -90, 90])
-        else:
-            cfilled = self.filled_contours(config, field_name, ax, x, y, data2d,
-                                        vmin=vmin, vmax=vmax)
-
-        if cfilled is None:
-            self.set_const_colorbar(cfilled, fig, ax)
-        else:
-            # Store colorbar limits for the first plot in a comparison
-            if (config.compare or not config.compare_diff) and config.axindex == 0:
-                # Get the limits used in the plot
-                vmin, vmax = cfilled.get_clim()
-                config._comparison_cbar_limits[field_name] = (vmin, vmax)
-
-            # Suppress individual colorbars if shared_bar is enabled
-            if config.shared_cbar:
-                ax_opts['suppress_colorbar'] = True
-
-            self.set_colorbar(config, cfilled, fig, ax, ax_opts, findex, field_name, data2d)
-            if ax_opts.get('line_contours', False):
-                if fig.use_cartopy and is_cartopy_axis:
-                    self.line_contours(fig, ax, ax_opts, x, y, data2d, transform=data_transform)
+            if fig.use_cartopy and is_cartopy_axis:
+                cfilled = self.filled_contours(config, field_name, ax, x, y, data2d, 
+                                            vmin=vmin, vmax=vmax, transform=data_transform)
+                if 'extent' in ax_opts:
+                    self.set_cartopy_ticks(ax, ax_opts['extent'])
                 else:
-                    self.line_contours(fig, ax, ax_opts, x, y, data2d)
-
-        if config.compare_diff:
-            name = field_name
-            if 'name' in config.spec_data[field_name]:
-                name = config.spec_data[field_name]['name']
-
-            level_text = None
-            if config.ax_opts.get('zave', False):
-                level_text = ' (Column Mean)'
-            elif config.ax_opts.get('zsum', False):
-                level_text = ' (Total Column)'
+                    self.set_cartopy_ticks(ax, [-180, 180, -90, 90])
             else:
-                if str(level) == '0':
-                    level_text = ''
+                cfilled = self.filled_contours(config, field_name, ax, x, y, data2d,
+                                            vmin=vmin, vmax=vmax)
+
+            if cfilled is None:
+                self.set_const_colorbar(cfilled, fig, ax)
+            else:
+                # Store colorbar limits for the first plot in a comparison
+                if (config.compare or not config.compare_diff) and config.axindex == 0:
+                    # Get the limits used in the plot
+                    vmin, vmax = cfilled.get_clim()
+                    config._comparison_cbar_limits[field_name] = (vmin, vmax)
+
+                # Suppress individual colorbars if shared_bar is enabled
+                if config.shared_cbar:
+                    ax_opts['suppress_colorbar'] = True
+
+                self.set_colorbar(config, cfilled, fig, ax, ax_opts, findex, field_name, data2d)
+                if ax_opts.get('line_contours', False):
+                    if fig.use_cartopy and is_cartopy_axis:
+                        self.line_contours(fig, ax, ax_opts, x, y, data2d, transform=data_transform)
+                    else:
+                        self.line_contours(fig, ax, ax_opts, x, y, data2d)
+
+            if config.compare_diff:
+                name = field_name
+                if 'name' in config.spec_data[field_name]:
+                    name = config.spec_data[field_name]['name']
+
+                level_text = None
+                if config.ax_opts.get('zave', False):
+                    level_text = ' (Column Mean)'
+                elif config.ax_opts.get('zsum', False):
+                    level_text = ' (Total Column)'
                 else:
-                    if level is not None:
-                        if level > 10000:
-                            level_text = '@ ' + str(level) + ' Pa'
-                        else:
-                            level_text = '@ ' + str(level) + ' mb'
+                    if str(level) == '0':
+                        level_text = ''
+                    else:
+                        if level is not None:
+                            if level > 10000:
+                                level_text = '@ ' + str(level) + ' Pa'
+                            else:
+                                level_text = '@ ' + str(level) + ' mb'
 
-            if level_text:
-                name = name + level_text
+                if level_text:
+                    name = name + level_text
 
-            fig.suptitle_eviz(name, 
-                            fontweight='bold',
-                            fontstyle='italic',
-                            fontsize=self._image_font_size(fig.subplots))
-        
-        elif config.compare:
-            fig.suptitle_eviz(text=field_name, 
-                            fontweight='bold',
-                            fontstyle='italic',
-                            fontsize=self._image_font_size(fig.subplots))
+                fig.suptitle_eviz(name, 
+                                fontweight='bold',
+                                fontstyle='italic',
+                                fontsize=self._image_font_size(fig.subplots))
+            
+            elif config.compare:
+                fig.suptitle_eviz(text=field_name, 
+                                fontweight='bold',
+                                fontstyle='italic',
+                                fontsize=self._image_font_size(fig.subplots))
 
-            if config.add_logo:
-                self._add_logo_ax(fig, desired_width_ratio=0.05)
+                if config.add_logo:
+                    self._add_logo_ax(fig, desired_width_ratio=0.05)
 
-        # Collect filled contour objects for shared colorbar
-        if not hasattr(config, '_filled_contours'):
-            config._filled_contours = []
-        config._filled_contours.append(cfilled)
+            # Collect filled contour objects for shared colorbar
+            if not hasattr(config, '_filled_contours'):
+                config._filled_contours = []
+            config._filled_contours.append(cfilled)

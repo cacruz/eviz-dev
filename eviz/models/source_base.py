@@ -914,7 +914,169 @@ class GenericSource(BaseSource):
                 else:
                     self.logger.warning(f"Skipping plot for time level {t} - no valid data after processing")
 
-    def _process_scatter_plot(self, 
+    def _process_scatter_plot(self, data_array, field_name, file_index, plot_type, figure):
+        """Process a scatter plot."""
+        self.logger.debug("Starting scatter plot processing")
+        self.config_manager.level = None
+        time_level_config = self.config_manager.ax_opts.get('time_lev', 0)
+        tc_dim = self.config_manager.get_model_dim_name('tc') or 'time'
+
+        # Debug info about input data
+        self.logger.debug(f"Input data shape: {data_array.shape}")
+        self.logger.debug(f"Input data dims: {data_array.dims}")
+        self.logger.debug(f"Time level config: {time_level_config}")
+
+        if tc_dim in data_array.dims:
+            num_times = data_array[tc_dim].size
+            self.logger.debug(f"Time dimension '{tc_dim}' has {num_times} levels")
+            time_levels = range(num_times) if time_level_config == 'all' else [time_level_config]
+            self.logger.debug(f"Will process time levels: {list(time_levels)}")
+        else:
+            self.logger.debug("No time dimension found, using single time level")
+            time_levels = [0]
+
+        for t in time_levels:
+            self.logger.debug(f"Processing time level {t} for field {field_name}")
+            if tc_dim in data_array.dims:
+                data_at_time = data_array.isel({tc_dim: t})
+                self.logger.debug(f"Extracted time slice shape: {data_at_time.shape}")
+            else:
+                data_at_time = data_array.squeeze()
+                self.logger.debug(f"Squeezed data shape: {data_at_time.shape}")
+            
+            # Check for all NaN values
+            nan_count = np.isnan(data_at_time.values).sum()
+            total_count = data_at_time.size
+            self.logger.debug(f"NaN count: {nan_count} out of {total_count} values")
+            
+            if np.isnan(data_at_time).all():
+                self.logger.warning(f"Skipping time level {t} for {field_name} - all values are NaN")
+                continue
+                
+            self._set_time_config(t, data_at_time)
+            
+            # Create a new figure for each level
+            figure = Figure.create_eviz_figure(self.config_manager, plot_type)
+            self.config_manager.ax_opts = figure.init_ax_opts(field_name)
+
+            self.logger.debug(f"Preparing field to plot for time level {t}")
+            field_to_plot = self._prepare_field_to_plot(data_at_time, 
+                                                    field_name, 
+                                                    file_index,
+                                                    plot_type, 
+                                                    figure,
+                                                    time_level=t)
+            
+            if field_to_plot:
+                self.logger.debug("Successfully prepared field, creating plot")
+                plot_result = self.create_plot(field_name, field_to_plot)
+                pu.print_map(self.config_manager, 
+                            plot_type, 
+                            self.config_manager.findex, 
+                            plot_result)
+            else:
+                self.logger.warning(f"No valid field_to_plot returned for time level {t}")
+
+    def _extract_scatter_data(self, data_array, time_level=None):
+        """
+        Extract data for scatter plot.
+
+        Returns:
+            tuple: (values, x, y)
+        """
+        self.logger.debug(f"Starting scatter data extraction for time_level: {time_level}")
+        
+        xc_dim = self.config_manager.get_model_dim_name('xc') or 'lon'
+        yc_dim = self.config_manager.get_model_dim_name('yc') or 'lat'
+        tc_dim = self.config_manager.get_model_dim_name('tc') or 'time'
+
+        self.logger.debug(f"Using dimensions: xc={xc_dim}, yc={yc_dim}, tc={tc_dim}")
+        self.logger.debug(f"Input data shape: {data_array.shape}")
+        self.logger.debug(f"Input data dims: {data_array.dims}")
+
+        d_temp = data_array.copy()
+
+        # Handle time dimension
+        if tc_dim in d_temp.dims:
+            num_tc = d_temp[tc_dim].size
+            self.logger.debug(f"Time dimension has {num_tc} levels")
+            
+            if time_level == 'all':
+                self.logger.debug("'all' time levels requested, processing one at a time")
+                time_level = 0
+                
+            if isinstance(time_level, int):
+                actual_time_lev = time_level if time_level >= 0 else num_tc + time_level
+                if 0 <= actual_time_lev < num_tc:
+                    d_temp = d_temp.isel({tc_dim: actual_time_lev})
+                    self.logger.debug(f"Selected time level {actual_time_lev}")
+                else:
+                    d_temp = d_temp.isel({tc_dim: 0})
+                    self.logger.debug("Invalid time level, using first time step")
+
+        # Squeeze to 2D
+        d2d = d_temp.squeeze()
+        self.logger.debug(f"After squeeze shape: {d2d.shape}")
+        
+        try:
+            # Try to get x/y coordinates
+            if xc_dim in d2d.coords and yc_dim in d2d.coords:
+                self.logger.debug("Found coordinate dimensions")
+                x = d2d[xc_dim].values
+                y = d2d[yc_dim].values
+                
+                self.logger.debug(f"Coordinate shapes - x: {x.shape}, y: {y.shape}")
+                
+                # If x/y are 2D (swath), flatten both
+                if x.ndim == 2 and y.ndim == 2:
+                    self.logger.debug("Processing 2D coordinates (swath)")
+                    x_flat = x.flatten()
+                    y_flat = y.flatten()
+                    values = d2d.values.flatten()
+                else:
+                    self.logger.debug("Processing 1D coordinates (regular grid)")
+                    xx, yy = np.meshgrid(x, y)
+                    x_flat = xx.flatten()
+                    y_flat = yy.flatten()
+                    values = d2d.values.flatten()
+            else:
+                self.logger.debug("No coordinate dimensions found, using indices")
+                values = d2d.values.flatten()
+                shape = d2d.shape
+                y_grid, x_grid = np.indices(shape)
+                x_flat = x_grid.flatten()
+                y_flat = y_grid.flatten()
+
+            # Log array lengths before masking
+            self.logger.debug(f"Array lengths before masking - x: {len(x_flat)}, y: {len(y_flat)}, values: {len(values)}")
+
+            # Verify all arrays have the same length before masking
+            if not (len(x_flat) == len(y_flat) == len(values)):
+                self.logger.error(f"Dimension mismatch: x({len(x_flat)}), y({len(y_flat)}), values({len(values)})")
+                return None, None, None
+
+            # Remove NaNs
+            mask = ~np.isnan(values)
+            x_flat = x_flat[mask]
+            y_flat = y_flat[mask]
+            values = values[mask]
+
+            self.logger.debug(f"After masking - valid points: {len(values)}")
+
+            if len(values) == 0:
+                self.logger.warning(f"No valid data points after removing NaNs")
+                return None, None, None
+
+            return values, x_flat, y_flat
+
+        except Exception as e:
+            self.logger.error(f"Error in _extract_scatter_data: {e}")
+            import traceback
+            self.logger.error(traceback.format_exc())
+            return None, None, None
+
+
+    def _process_scatter_plot2(self, 
                             data_array, 
                             field_name: str,
                             file_index: int, 
@@ -963,7 +1125,7 @@ class GenericSource(BaseSource):
                             self.config_manager.findex, 
                             plot_result)
 
-    def _extract_scatter_data(self, data_array, time_level=None):
+    def _extract_scatter_data2(self, data_array, time_level=None):
         """
         Extract data for scatter plot.
 
