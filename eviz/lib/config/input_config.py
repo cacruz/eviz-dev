@@ -204,7 +204,7 @@ class InputConfig:
                         f"Failed to initialize {reader_type} reader for {file_path}: {str(e)}")
 
         for source_name, readers in self.readers.items():
-            self.logger.info(
+            self.logger.debug(
                 f"Initialized readers for source {source_name}: {list(readers.keys())}")
 
     def _get_reader_type_from_format(self, format_str: str) -> str:

@@ -36,7 +36,7 @@ class GenericSource(BaseSource):
         return logging.getLogger(__name__)
 
     def __post_init__(self):
-        self.logger.info("Start init")
+        self.logger.debug("Start init")
         self.config = self.config_manager.config
         self.app = self.config_manager.app_data
         self.specs = self.config_manager.spec_data
@@ -369,6 +369,11 @@ class GenericSource(BaseSource):
         if plot_type in ['line', 'box', 'xt', 'tx']:
             return data2d, None, None, field_name, plot_type, file_index, figure
         elif plot_type in ['sc']:
+            # TODO: temporary:
+            extent = self.get_data_extent(data_array)
+            self.config_manager.ax_opts['extent'] = extent
+            self.config_manager.ax_opts['central_lon'] = (extent[0] + extent[1]) / 2
+            self.config_manager.ax_opts['central_lat'] = (extent[2] + extent[3]) / 2
             return data2d[0], data2d[1], data2d[2], field_name, plot_type, file_index, figure
 
         # Process coordinates based on domain type
@@ -392,7 +397,7 @@ class GenericSource(BaseSource):
                     self.config_manager.ax_opts['extent'] = [lonW, lonE, latS, latN]
                     self.config_manager.ax_opts['central_lon'] = np.mean([lonW, lonE])
                     self.config_manager.ax_opts['central_lat'] = np.mean([latS, latN])
-
+                    print(f"Extent: {self.config_manager.ax_opts['extent']} ")
                     return data2d, xs, ys, field_name, plot_type, file_index, figure
             else:
                 x = data2d[dim1_name].values if dim1_name in data2d.coords else None
@@ -866,6 +871,7 @@ class GenericSource(BaseSource):
         for level_val in levels.keys():
             self.config_manager.level = level_val
             for t in time_levels:
+                self.logger.debug(f"Processing time level {t} for field {field_name}, level {level_val}")
                 if tc_dim in data_array.dims:
                     data_at_time = data_array.isel({tc_dim: t})
                 else:
@@ -916,6 +922,7 @@ class GenericSource(BaseSource):
                             figure):
         """Process a scatter plot."""
         # Get x and y data for scatter plot
+        self.logger.debug("Processing scatter level plots")
         self.config_manager.level = None
         time_level_config = self.config_manager.ax_opts.get('time_lev', 0)
         tc_dim = self.config_manager.get_model_dim_name('tc') or 'time'
@@ -927,20 +934,35 @@ class GenericSource(BaseSource):
         else:
             time_levels = [0]
 
-        field_to_plot = self._prepare_field_to_plot(data_array, 
-                                                    field_name, 
-                                                    file_index,
-                                                    plot_type, 
-                                                    figure,
-                                                    time_level=time_level_config)
-        if field_to_plot:
-            plot_result = self.create_plot(field_name, field_to_plot)
-            pu.print_map(self.config_manager, 
-                         plot_type, 
-                         self.config_manager.findex, 
-                         plot_result)
+        for t in time_levels:
+            self.logger.debug(f"Processing time level {t} for field {field_name}")
+            if tc_dim in data_array.dims:
+                data_at_time = data_array.isel({tc_dim: t})
+            else:
+                data_at_time = data_array.squeeze()  # Assume single time if no time dim
+            
+            if np.isnan(data_at_time).all():
+                self.logger.warning(f"Skipping time level {t} for {field_name} - all values are NaN")
+                continue
+                
+            self._set_time_config(t, data_at_time)
+            # Create a new figure for each level to avoid reusing axes
+            figure = Figure.create_eviz_figure(self.config_manager, plot_type)
+            self.config_manager.ax_opts = figure.init_ax_opts(field_name)
 
-    
+            field_to_plot = self._prepare_field_to_plot(data_array, 
+                                                        field_name, 
+                                                        file_index,
+                                                        plot_type, 
+                                                        figure,
+                                                        time_level=time_level_config)
+            if field_to_plot:
+                plot_result = self.create_plot(field_name, field_to_plot)
+                pu.print_map(self.config_manager, 
+                            plot_type, 
+                            self.config_manager.findex, 
+                            plot_result)
+
     def _extract_scatter_data(self, data_array, time_level=None):
         """
         Extract data for scatter plot.
@@ -1172,12 +1194,12 @@ class GenericSource(BaseSource):
 
         d_temp = data_array.copy()
         if tc_dim and tc_dim in d_temp.dims:
+            self.logger.debug(f"Selecting time level: {time_level}")                
             num_tc = d_temp[tc_dim].size
             # Handle negative indices (e.g., -1 for the last time level)
             if isinstance(time_level, int):
                 # Convert negative index to positive if needed
                 actual_time_lev = time_level if time_level >= 0 else num_tc + time_level
-                
                 # Check if the index is valid
                 if 0 <= actual_time_lev < num_tc:
                     d_temp = d_temp.isel({tc_dim: actual_time_lev})
@@ -1185,8 +1207,6 @@ class GenericSource(BaseSource):
                     d_temp = d_temp.isel({tc_dim: 0})
             else:
                 self.logger.warning(f"No time dimension found matching {tc_dim}")
-
-
 
         has_vertical_dim = zc_dim and zc_dim in d_temp.dims
         if has_vertical_dim:

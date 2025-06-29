@@ -29,7 +29,7 @@ class ConfigurationAdapter:
         Args:
             config_manager: The configuration manager
         """
-        self.logger.info("Start init")
+        self.logger.info("Initialize data pipeline")
         self.config_manager = config_manager
         self.data_sources = {}
         self.config_manager._pipeline = DataPipeline(self.config_manager)

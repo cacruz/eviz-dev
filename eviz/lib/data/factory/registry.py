@@ -18,7 +18,7 @@ class DataSourceRegistry:
 
     def __post_init__(self):
         """Post-initialization setup."""
-        self.logger.info("Start init")
+        self.logger.debug("Start init")
 
     def register(self, extensions: List[str], data_source_class: Type[DataSource]) -> None:
         """Register a data source class for the specified file extensions.

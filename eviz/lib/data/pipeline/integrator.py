@@ -18,7 +18,7 @@ class DataIntegrator:
 
     def __post_init__(self):
         """Post-initialization setup."""
-        self.logger.info("Start init")
+        self.logger.debug("Start init")
     
     def integrate_data_sources(self, data_sources: List[DataSource], **kwargs) -> xr.Dataset:
         """Integrate multiple data sources into a single dataset.

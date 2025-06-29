@@ -204,7 +204,7 @@ class Autoviz:
         Raises:
             ValueError: If no factories are found for the specified sources.
         """
-        self.logger.info("Start init")
+        self.logger.info("Autoviz initialization")
         # Add this workaround to simplify working within a Jupyter notebook, that is, to avoid
         # having to pass a Namespace() object, we create args with the appropriate defaults
         if not self.args:

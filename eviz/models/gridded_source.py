@@ -48,7 +48,7 @@ class GriddedSource(GenericSource):
         return logging.getLogger(__name__)
 
     def __post_init__(self):
-        self.logger.info("Start init")
+        self.logger.debug("Start init")
         super().__post_init__()
         self.processor = DataProcessor(self.config_manager)
 

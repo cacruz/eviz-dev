@@ -16,7 +16,7 @@ class DataTransformer:
 
     def __post_init__(self):
         """Post-initialization setup."""
-        self.logger.info("Start init")
+        self.logger.debug("Start init")
     
     def transform_data_source(self, data_source: DataSource, **kwargs) -> DataSource:
         """Transform a data source.

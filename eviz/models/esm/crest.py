@@ -58,6 +58,11 @@ class Crest(GenericSource):
                 handler._process_xy_plot(data_array, field_name, file_index, plot_type, figure)
             else:
                 self.logger.warning(f"_process_xy_plot not implemented for {handler.__class__.__name__}")
+        if plot_type == 'sc':
+            if hasattr(handler, '_process_scatter_plot'):
+                handler._process_scatter_plot(data_array, field_name, file_index, plot_type, figure)
+            else:
+                self.logger.warning(f"_process_scatter_plot not implemented for {handler.__class__.__name__}")
         elif plot_type == 'polar':
             if hasattr(handler, '_process_polar_plot'):
                 handler._process_polar_plot(data_array, field_name, file_index, plot_type, figure)

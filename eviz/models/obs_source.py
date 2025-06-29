@@ -26,7 +26,7 @@ class ObsSource(GenericSource):
         return logging.getLogger(__name__)
 
     def __post_init__(self):
-        self.logger.info("Start init")
+        self.logger.debug("Start init")
         super().__post_init__()
 
     def get_data_extent(self, data_array: xr.DataArray) -> list:
