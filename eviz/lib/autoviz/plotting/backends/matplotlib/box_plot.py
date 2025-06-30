@@ -186,28 +186,39 @@ class MatplotlibBoxPlotter(MatplotlibBasePlotter):
                                 box_colors.append(color_settings[0])
                             else:
                                 box_colors.append(color_settings[j % len(color_settings)])
-                    
-                box_plot = ax.boxplot(box_data, positions=positions, patch_artist=True, widths=box_width * 0.9)
+
+                exp_ids = df['experiment'].unique().tolist()
+                box_data = [df[df['experiment'] == eid]['value'] for eid in exp_ids]
+
+                box_plot = ax.boxplot(box_data, 
+                            positions=positions, 
+                            patch_artist=True, 
+                            labels=None,  # Don't set labels here
+                            widths=box_width * 0.9)
                 
                 for i, box in enumerate(box_plot['boxes']):
                     box.set(facecolor=box_colors[i % len(box_colors)], alpha=0.7)
-                
-                category_centers = [i + 1 for i in range(num_categories)]
-                ax.set_xlabel(category_col)
-                ax.set_xticks(category_centers)
 
-                # formatted_labels = [self.format_time_label(cat) for cat in all_categories]
-                # ax.set_xticklabels(formatted_labels, rotation=45, ha='right', fontsize=10)
-
-                ax.set_xticklabels(all_categories, rotation=45, ha='right', fontsize=8)                
+                if not config.add_legend:
+                    if len(all_categories) == 1:
+                        # Only one category: label by experiment
+                        ax.set_xticks(positions)
+                        ax.set_xticklabels(experiments)
+                    else:
+                        # Multiple categories: label by category
+                        category_centers = [i + 1 for i in range(num_categories)]
+                        ax.set_xticks(category_centers)
+                        ax.set_xticklabels(all_categories, rotation=45, ha='right', fontsize=8)
+                else:
+                    legend_handles = [plt.Rectangle((0, 0), 1, 1, color=box_colors[i % len(box_colors)], alpha=0.7) 
+                                    for i in range(num_experiments)]
+                    ax.legend(legend_handles, experiments, loc='best')
+                    
+                if config.add_legend:
+                    ax.set_xlabel(category_col)
                 ax.set_xlim(0.5, num_categories + 0.5)
                 ax.set_ylabel(f"{title} ({units})")
                 ax.grid(ax_opts['add_grid'], linestyle='--', alpha=0.7)
-
-                legend_handles = [plt.Rectangle((0, 0), 1, 1, color=box_colors[i % len(box_colors)], alpha=0.7) 
-                                for i in range(num_experiments)]
-                # ax.legend(legend_handles, experiments, loc='upper left', bbox_to_anchor=(0, 1.1))
-                ax.legend(legend_handles, experiments, loc='best')
 
             else:
                 # Standard box plot (single experiment or not overlaid)
@@ -243,28 +254,32 @@ class MatplotlibBoxPlotter(MatplotlibBasePlotter):
                             categories = sorted_categories
                 else:
                     values = [grouped_data[cat] for cat in categories]
-                
-                box_plot = ax.boxplot(values, patch_artist=True, labels=categories)
-                # mean_values = [np.mean(data) if len(data) > 0 else np.nan for data in values]
-                # ax.plot(range(len(mean_values)), mean_values, 'r-', linewidth=2)          
 
-                for i, box in enumerate(box_plot['boxes']):
-                    if len(color_settings) == 1:
-                        box.set(facecolor=color_settings[0], alpha=0.7)
-                    else:
-                        box.set(facecolor=color_settings[i % len(color_settings)], alpha=0.7)
-
+                # Format labels
                 formatted_labels = []
                 for cat in categories:
                     try:
                         dt = pd.to_datetime(cat)
                         formatted_labels.append(dt.strftime('%H:%M'))  # Just show hour:minute
                     except:
-                        formatted_labels.append(cat)        
+                        formatted_labels.append(cat)
+
+                exp_id = df['experiment'].iloc[0] if 'experiment' in df.columns else ''
+                # If only one experiment, use exp_id as label
+                if 'experiment' in df.columns and df['experiment'].nunique() == 1:
+                    exp_id = df['experiment'].iloc[0]
+                    box_plot = ax.boxplot(values, 
+                                patch_artist=True, 
+                                labels=[exp_id]*len(values))
+                    ax.set_xticklabels([exp_id]*len(values), fontsize=10)
+                else:
+                    box_plot = ax.boxplot(values, 
+                                patch_artist=True, 
+                                labels=categories)
+                    ax.set_xticklabels(formatted_labels, rotation=45, ha='right', fontsize=10)
 
                 ax.set_xlabel(category_col)
                 ax.set_ylabel(f"{title} ({units})")
-                ax.set_xticklabels(formatted_labels, rotation=45, ha='right', fontsize=10)
                 ax.grid(ax_opts['add_grid'], linestyle='--', alpha=0.7)
 
         except Exception as e:

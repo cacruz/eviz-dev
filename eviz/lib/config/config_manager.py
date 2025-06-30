@@ -610,6 +610,11 @@ class ConfigManager:
         return self.input_config._pearsonplot
 
     @property
+    def add_legend(self):
+        """Add legend to the box plots"""
+        return self.input_config._add_legend
+
+    @property
     def box_colors(self):
         """List of colors used in box plots"""
         return self.input_config._box_colors

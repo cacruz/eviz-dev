@@ -45,6 +45,7 @@ class InputConfig:
     _plot_backend: str = field(default="matplotlib", init=False)
     _pearsonplot: Dict[str, str] = field(default_factory=dict)
     _box_colors: List[str] = field(default_factory=list, init=False)
+    _add_legend: bool = field(default=False, init=False)
     
     # @log_method
     def initialize(self):
@@ -420,6 +421,7 @@ class InputConfig:
         self._subplot_specs = for_inputs.get('subplot_specs', (1, 1))
         self._plot_backend = for_inputs.get('plot_backend', 'matplotlib')
         self._box_colors = for_inputs.get('box_colors', False)
+        self._add_legend = for_inputs.get('add_legend', False)
         self._pearsonplot = for_inputs.get('pearsonplot', {})
         self._shared_cbar = for_inputs.get('shared_cbar', False)
 
@@ -461,6 +463,7 @@ class InputConfig:
             self._set_trop_height_file_list()  # Custom method for trop_height logic
 
         self.logger.debug(f"Initialized for_inputs with: "
+                          f"add_legend={self._add_legend}, "
                           f"box_colors={self._box_colors}, "
                           f"pearsonplot={self._pearsonplot}, "
                           f"backend={self._plot_backend}, "
@@ -544,6 +547,9 @@ class InputConfig:
 
             if 'box_colors' in overlay_config:
                 self._box_colors = overlay_config['box_colors'].split(',')
+
+            if 'add_legend' in overlay_config:
+                self._add_legend = overlay_config['add_legend']
 
         if 'compare' in for_inputs:
             self._compare = True
