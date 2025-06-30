@@ -1,5 +1,6 @@
 from matplotlib import colors
 import numpy as np
+import matplotlib as mpl
 import matplotlib.pyplot as plt
 import matplotlib.path as mpath
 import cartopy.crs as ccrs
