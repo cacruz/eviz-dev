@@ -121,7 +121,8 @@ def create_gif(config: "ConfigManager") -> None:
         img_path = config.app_data.outputs['output_dir']
 
     print_format = getattr(config, 'print_format', 'png')
-    all_files = glob.glob(img_path + "/*." + print_format)
+    field_name = config.map_params[config.findex]['field']
+    all_files = glob.glob(img_path + "/" + field_name + "*." + print_format)
     files = sorted(all_files, key=natural_key)
     if len(files) == 1:
         return
