@@ -921,11 +921,6 @@ class GenericSource(BaseSource):
         time_level_config = self.config_manager.ax_opts.get('time_lev', 0)
         tc_dim = self.config_manager.get_model_dim_name('tc') or 'time'
 
-        # Debug info about input data
-        self.logger.debug(f"Input data shape: {data_array.shape}")
-        self.logger.debug(f"Input data dims: {data_array.dims}")
-        self.logger.debug(f"Time level config: {time_level_config}")
-
         if tc_dim in data_array.dims:
             num_times = data_array[tc_dim].size
             self.logger.debug(f"Time dimension '{tc_dim}' has {num_times} levels")
@@ -989,10 +984,6 @@ class GenericSource(BaseSource):
         xc_dim = self.config_manager.get_model_dim_name('xc') or 'lon'
         yc_dim = self.config_manager.get_model_dim_name('yc') or 'lat'
         tc_dim = self.config_manager.get_model_dim_name('tc') or 'time'
-
-        self.logger.debug(f"Using dimensions: xc={xc_dim}, yc={yc_dim}, tc={tc_dim}")
-        self.logger.debug(f"Input data shape: {data_array.shape}")
-        self.logger.debug(f"Input data dims: {data_array.dims}")
 
         d_temp = data_array.copy()
 
@@ -1209,7 +1200,8 @@ class GenericSource(BaseSource):
             if isinstance(time_level_config, int):
                 actual_time_lev = time_level_config if time_level_config >= 0 else num_times + time_level_config
 
-        box_data = self._extract_box_data(data_array, time_lev=time_level_config)
+        exp_id = self.config_manager.get_file_exp_id(self.config_manager.findex)
+        box_data = self._extract_box_data(data_array, time_lev=time_level_config, exp_id=exp_id)
         
         if box_data is None:
             self.logger.error(f"Failed to prepare box plot data for {field_name}")
