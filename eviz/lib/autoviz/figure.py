@@ -757,7 +757,7 @@ class Figure(mfigure.Figure):
                     fontsize=14,
                     transform=ax.transAxes)
 
-        elif 'xy' in pid:
+        elif 'xy' in pid or 'sc' in pid:
             if self.config_manager.print_basic_stats:
                 fmt = self._basic_stats(data)
                 ax.text(right, top, fmt, transform=ax.transAxes,

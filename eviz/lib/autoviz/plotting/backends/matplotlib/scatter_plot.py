@@ -213,7 +213,6 @@ class MatplotlibScatterPlotter(MatplotlibBasePlotter):
             if field_name in config._comparison_cbar_limits:
                 vmin, vmax = config._comparison_cbar_limits[field_name]
 
-
         if self.fig.use_cartopy and is_cartopy_axis:
             ax.stock_img()
             scat = ax.scatter(x, y, c=data2d, cmap=ax_opts['use_cmap'], s=5,
