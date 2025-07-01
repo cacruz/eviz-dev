@@ -454,27 +454,28 @@ class ObsSource(GenericSource):
         if field_to_plot:
             self.plot_result = self.create_plot(field_name, field_to_plot)
 
-    def _process_pearson_plot(self, data_array, field_name, file_index, plot_type, figure):
+    def _process_corr_plot(self, data_array, field_name, file_index, plot_type, figure):
         """Process a Pearson correlation plot for observational data."""
         self.config_manager.level = None
         time_level_config = self.config_manager.ax_opts.get('time_lev', 0)
         tc_dim = self.config_manager.get_model_dim_name('tc') or 'time'
 
-        pearson_settings = {}
-        if hasattr(self.config_manager, 'input_config') and hasattr(self.config_manager.input_config, '_pearsonplot'):
-            pearson_settings = self.config_manager.input_config._pearsonplot
+        # Get corr plot settings from for_inputs
+        corr_settings = {}
+        if self.config_manager.correlation:
+            corr_settings = self.config_manager.app_data.for_inputs['correlation']
         else:
-            self.logger.debug("No pearsonplot settings found in input_config")
+            return
         
         # Determine correlation type (time or space)
-        do_time_corr = pearson_settings.get('time_corr', True)
-        do_space_corr = pearson_settings.get('space_corr', False)
+        do_time_corr = corr_settings.get('time_corr', True)
+        do_space_corr = corr_settings.get('space_corr', False)
         
         if do_time_corr:
             time_level_config = 'all'
         
         # Get the fields to correlate
-        fields_str = pearson_settings.get('fields', '')
+        fields_str = corr_settings.get('fields', '')
         corr_fields = [f.strip() for f in fields_str.split(',') if f.strip()]
         self.logger.debug(f"Correlation fields from config: {corr_fields}")
         

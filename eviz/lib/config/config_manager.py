@@ -580,6 +580,11 @@ class ConfigManager:
         return self.config.map_params
 
     @property
+    def correlation(self):
+        """Flag indicating if correlation plots are to be created."""
+        return self.input_config._correlation
+
+    @property
     def overlay(self):
         """Flag indicating if overlay mode is active."""
         return self.input_config._overlay
@@ -605,9 +610,9 @@ class ConfigManager:
         return self.input_config._shared_cbar
 
     @property
-    def pearsonplot(self):
-        """The pearsonplot options to use."""
-        return self.input_config._pearsonplot
+    def corrplot(self):
+        """The correlation plot options to use."""
+        return self.input_config._corrplot
 
     @property
     def add_legend(self):
@@ -738,6 +743,11 @@ class ConfigManager:
     def to_plot(self):
         """The fields to plot."""
         return self.input_config._to_plot
+
+    @property
+    def correlation_method(self):
+        """The correlation method to use."""
+        return self.input_config._method
 
     @property
     def overlay_exp_ids(self):

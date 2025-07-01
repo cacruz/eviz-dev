@@ -43,20 +43,20 @@ class PlotterFactory:
             ("yz", "matplotlib"): MatplotlibYZPlotter,
             ("tx", "matplotlib"): MatplotlibTXPlotter,
             ("polar", "matplotlib"): MatplotlibPolarPlotter,
-            ("pearson", "matplotlib"): MatplotlibMetricPlotter,
+            ("corr", "matplotlib"): MatplotlibMetricPlotter,
             ("box", "matplotlib"): MatplotlibBoxPlotter,
 
             ("xy", "hvplot"): HvplotXYPlotter,
             ("xt", "hvplot"): HvplotXTPlotter,
             ("sc", "hvplot"): HvplotScatterPlotter,
-            ("pearson", "hvplot"): HvplotMetricPlotter,
+            ("corr", "hvplot"): HvplotMetricPlotter,
             ("box", "hvplot"): HvplotBoxPlotter,
             ("line", "hvplot"): HvplotLinePlotter,
 
             ("xy", "altair"): AltairXYPlotter,
             ("xt", "altair"): AltairXTPlotter,
             ("sc", "altair"): AltairScatterPlotter,
-            ("pearson", "altair"): AltairMetricPlotter,
+            ("corr", "altair"): AltairMetricPlotter,
 
             # Add other combinations as they are implemented
         }

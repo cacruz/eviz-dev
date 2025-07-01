@@ -88,7 +88,7 @@ class Lis(NuWrf):
 
     def _get_data(self, field_name, ax_opts, pid):
         d = self.config_manager.readers[0].get_field(field_name, self.config_manager.findex)
-        return self._extract_xy_data(d, level=0, time_lev=ax_opts['time_lev'])
+        return self._extract_xy_data(d, time_level=ax_opts['time_lev'], level=0)
 
     @staticmethod
     def __get_xy(d, name):

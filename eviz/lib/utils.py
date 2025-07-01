@@ -239,7 +239,6 @@ def log_method(func):
 
     @wraps(func)
     def wrapper(*args, **kwargs):
-        logger = logging.getLogger(func.__module__)
         # Extract the file name from the module path
         module_parts = func.__module__.split('.')
         file_name = module_parts[-1] + '.py'

@@ -28,7 +28,7 @@ SUPPORTED_MODELS = [
     'fluxnet', 'airnow', 'test', 'omi', 'landsat', 'mopitt'
 ]
 
-PLOT_TYPES = ['xy', 'yz', 'xt', 'tx', 'polar', 'sc', 'box', 'pearson']
+PLOT_TYPES = ['xy', 'yz', 'xt', 'tx', 'polar', 'sc', 'box', 'corr']
 
 FORMAT_PNG = 'png'
 META_ATTRS_NAME = 'meta_attributes.yaml'
@@ -52,4 +52,4 @@ TX_PLOT = 'tx'
 POLAR_PLOT = 'polar'
 SC_PLOT = 'sc'
 BOX_PLOT = 'box'
-PEARSON_PLOT = 'pearson'
+CORR_PLOT = 'corr'

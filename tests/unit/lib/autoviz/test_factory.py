@@ -29,7 +29,7 @@ class TestPlotterFactory(unittest.TestCase):
 
     def test_create_plotter_hvplot_metric(self):
         """Test creating an hvplot metric plotter."""
-        plotter = PlotterFactory.create_plotter('pearson', 'hvplot')
+        plotter = PlotterFactory.create_plotter('corr', 'hvplot')
         self.assertIsInstance(plotter, HvplotMetricPlotter)
 
     def test_create_plotter_hvplot_box(self):

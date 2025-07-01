@@ -1,13 +1,9 @@
 import logging
-import os
 import warnings
 from dataclasses import dataclass
 import numpy as np
 import pandas as pd
-from matplotlib import pyplot as plt
 from eviz.models.gridded_source import GriddedSource
-from eviz.lib.autoviz.figure import Figure
-from eviz.lib.autoviz.utils import create_gif
 from eviz.lib.data.utils import apply_conversion
 
 warnings.filterwarnings("ignore")

@@ -124,20 +124,19 @@ class GenericSource(BaseSource):
             elif self.config_manager.overlay:
                 self.process_side_by_side_plots()
             # TODO: Should be either single or comparison - not a separate category
-            elif self.config_manager.pearsonplot:
-                self.process_pearson_plots()
+            elif self.config_manager.corrplot:
+                self.process_corr_plots()
             else:
-                has_pearson = False
+                has_corr = False
                 for idx, params in self.config_manager.map_params.items():
                     plot_types = params.get('to_plot', ['xy'])
                     if isinstance(plot_types, str):
                         plot_types = [pt.strip() for pt in plot_types.split(',')]
-                    if 'pearson' in plot_types:
-                        has_pearson = True
+                    if 'corr' in plot_types:
+                        has_corr = True
                         break
-                
-                if has_pearson:
-                    self.process_pearson_plots()
+                if has_corr:
+                    self.process_corr_plots()
                 else:
                     self.process_single_plots()
 
@@ -202,7 +201,6 @@ class GenericSource(BaseSource):
         backend = getattr(self.config_manager, 'plot_backend', 'matplotlib')
         
         plot_type = self.get_plot_type(field_name)
-
         plotter = self.create_plotter(field_name, plot_type, backend)
         if plotter is None:
             return None
@@ -247,11 +245,11 @@ class GenericSource(BaseSource):
                 self._process_scatter_plot(data_array, field_name, file_index, plot_type, figure)
             else:
                 self.logger.warning(f"_process_scatter_plot not implemented for {self.__class__.__name__}")
-        elif plot_type == 'pearson':
-            if hasattr(self, '_process_pearson_plot'):
-                self._process_pearson_plot(data_array, field_name, file_index, plot_type, figure)
+        elif plot_type == 'corr':
+            if hasattr(self, '_process_corr_plot'):
+                self._process_corr_plot(data_array, field_name, file_index, plot_type, figure)
             else:
-                self.logger.warning(f"_process_pearson_plot not implemented for {self.__class__.__name__}")
+                self.logger.warning(f"_process_corr_plot not implemented for {self.__class__.__name__}")
         elif plot_type == 'box':
             if hasattr(self, '_process_box_plot'):
                 self._process_box_plot(data_array, field_name, file_index, plot_type, figure)
@@ -353,8 +351,8 @@ class GenericSource(BaseSource):
         elif 'box' in plot_type:
             data2d = self._extract_box_data(data_array, time_level, 
                                             exp_id=self.config_manager.get_file_exp_id(file_index))
-        elif 'pearson' in plot_type:
-            data2d = self._extract_pearson_data(data_array, time_level, level=level)
+        elif 'corr' in plot_type:
+            data2d = self._extract_corr_data(data_array, time_level, level=level)
         else:
             self.logger.warning(
                 f"Unsupported plot type: {plot_type}")
@@ -713,8 +711,8 @@ class GenericSource(BaseSource):
                                                         plot_type,
                                                         sdat1_dataset, 
                                                         sdat2_dataset)
-                elif 'pearson' in plot_type:
-                    self._process_pearson_plots(current_field_index,
+                elif 'corr' in plot_type:
+                    self._process_corr_plots(current_field_index,
                                                         field1, 
                                                         field2,
                                                         plot_type,
@@ -737,9 +735,9 @@ class GenericSource(BaseSource):
                 self.data2d_list = []
             current_field_index += 1
 
-    def process_pearson_plots(self):
-        """Generate Pearson correlation plots."""
-        self.logger.info("Generating pearson correlation plots")
+    def process_corr_plots(self):
+        """Generate correlation plots."""
+        self.logger.info("Generating correlation plots")
 
         if not self.config_manager.map_params:
             self.logger.error(
@@ -752,15 +750,15 @@ class GenericSource(BaseSource):
                 "No data sources available. Check your YAML configuration and ensure data files exist.")
             return
 
-        # Get pearson plot settings from for_inputs
-        pearson_settings = {}
-        if hasattr(self.config_manager, 'input_config') and hasattr(self.config_manager.input_config, '_pearsonplot'):
-            pearson_settings = self.config_manager.input_config._pearsonplot
+        # Get corr plot settings from for_inputs
+        corr_settings = {}
+        if self.config_manager.correlation:
+            corr_settings = self.config_manager.app_data.for_inputs['correlation']
         else:
-            self.logger.debug("No pearsonplot settings found in input_config")
-        
+            return
+
         # Get the fields to correlate
-        fields_str = pearson_settings.get('fields', '')
+        fields_str = corr_settings.get('fields', '')
         corr_fields = [f.strip() for f in fields_str.split(',') if f.strip()]
         
         if len(corr_fields) != 2:
@@ -817,13 +815,13 @@ class GenericSource(BaseSource):
                 continue
                 
             field_data_array = data_source.dataset[field_name]
-            plot_types = params.get('to_plot', ['pearson'])
+            plot_types = params.get('to_plot', ['corr'])
             
             if isinstance(plot_types, str):
                 plot_types = [pt.strip() for pt in plot_types.split(',')]
                 
             for plot_type in plot_types:
-                if plot_type == 'pearson':
+                if plot_type == 'corr':
                     self.logger.info(f"Plotting {field_name}, {plot_type} plot")
                     self.process_plot(field_data_array, field_name, idx, plot_type)
 
@@ -1906,7 +1904,7 @@ class GenericSource(BaseSource):
             df = df.sort_values(by=x_col)
             
             self.logger.debug(f"Created DataFrame with {len(df)} rows for line plot")
-            return (df, x_col, y_col, field_name, 'line', self.config_manager.findex)
+            return df, x_col, y_col, field_name, 'line', self.config_manager.findex
         
         except Exception as e:
             self.logger.error(f"Error creating line plot data: {e}")
@@ -2058,7 +2056,7 @@ class GenericSource(BaseSource):
         else:
             return data2d
 
-    def _extract_pearson_data(self, data_array, time_lev=None, level=None):
+    def _extract_corr_data(self, data_array, time_lev=None, level=None):
         """ Extract data for a Pearson correlation plot
         
         This method prepares data for Pearson correlation analysis by extracting
@@ -2075,12 +2073,12 @@ class GenericSource(BaseSource):
         if data_array is None:
             return None
 
-        pearson_settings = {}
-        if hasattr(self.config_manager, 'input_config') and hasattr(self.config_manager.input_config, '_pearsonplot'):
-            pearson_settings = self.config_manager.input_config._pearsonplot
+        corr_settings = {}
+        if hasattr(self.config_manager, 'input_config') and hasattr(self.config_manager.input_config, '_corrplot'):
+            corr_settings = self.config_manager.input_config._corrplot
         
         # Determine correlation type (time or space)
-        do_time_corr = pearson_settings.get('time_corr', True)
+        do_time_corr = corr_settings.get('time_corr', True)
         
         # For correlation analysis, we typically want to preserve the time dimension
         # if it exists, as we'll correlate across time at each grid point

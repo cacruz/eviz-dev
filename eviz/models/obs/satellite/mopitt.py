@@ -4,7 +4,6 @@ import sys
 import warnings
 from typing import Any
 
-import numpy as np
 import xarray as xr
 
 from dataclasses import dataclass, field

@@ -112,6 +112,7 @@ def natural_key(filename: str):
     return [int(text) if text.isdigit() else text for text in
             re.split(r'(\d+)', filename)]
 
+
 def create_gif(config: "ConfigManager") -> None:
     archive_web_results = getattr(config, 'archive_web_results', False)
     if archive_web_results:
@@ -179,8 +180,8 @@ def create_gif(config: "ConfigManager") -> None:
             try:
                 image = Image.open(my_file)
                 image_array.append(np.array(image))
-            except Exception as e:
-                logger.warning(f"Error processing image {my_file}: {e}")
+            except Exception as ex:
+                logger.warning(f"Error processing image {my_file}: {ex}")
             
         if not image_array:
             logger.warning(f"No valid images to create GIF for {field_name}")
@@ -218,11 +219,11 @@ def create_gif(config: "ConfigManager") -> None:
                 try:
                     os.remove(my_file)
                     logger.debug(f"Removed: {os.path.basename(my_file)}")
-                except OSError as e:
-                    logger.warning(f"Warning: Could not remove {my_file}: {e}")
+                except OSError as ex:
+                    logger.warning(f"Warning: Could not remove {my_file}: {ex}")
                     
-        except Exception as e:
-            logger.error(f"Error creating GIF for {field_name}: {e}")
+        except Exception as ex:
+            logger.error(f"Error creating GIF for {field_name}: {ex}")
             
         # Close the figure to avoid memory leaks
         plt.close(fig)
@@ -234,6 +235,7 @@ def create_gif(config: "ConfigManager") -> None:
             json_path = os.path.join(img_path, json_filename)
             with open(json_path, 'w') as fp:
                 json.dump(config.vis_summary, fp)
+
 
 def print_map(config: "ConfigManager", 
               plot_type: str, 
@@ -263,7 +265,8 @@ def print_map(config: "ConfigManager",
             logger.debug(f"Created output directory: {output_dir}")
         return output_dir
 
-    def build_filename(config: "ConfigManager", plot_type: str, findex: int, level: Optional[int] = None) -> str:
+    def build_filename(config: "ConfigManager", plot_type: str, findex: int,
+                       level: Optional[int] = None) -> str:
         """Construct the output filename based on config and plot type."""
         map_params = config.map_params
         field_name = config.current_field_name or map_params[findex]['field']
@@ -341,8 +344,8 @@ def print_map(config: "ConfigManager",
             try:
                 hv.save(fig, filename)
                 logger.debug(f"Saved HvPlot using holoviews.save to {filename}")
-            except (ImportError, AttributeError) as e:
-                logger.warning(f"Cannot save HvPlot using holoviews: {e}")
+            except (ImportError, AttributeError) as ex:
+                logger.warning(f"Cannot save HvPlot using holoviews: {ex}")
                 # Try direct save if available
                 if hasattr(fig, 'save'):
                     fig.save(filename)
@@ -766,9 +769,6 @@ def add_logo(fig: Figure) -> None:
         
         if scale_factor != 1.0:
             try:
-                from PIL import Image
-                import numpy as np
-                
                 pil_img = Image.fromarray((logo * 255).astype(np.uint8))
                 pil_img = pil_img.resize((new_width, new_height), Image.LANCZOS)
                 logo = np.array(pil_img) / 255.0
@@ -781,10 +781,11 @@ def add_logo(fig: Figure) -> None:
         y_pos = fig_height*2.6
         
         fig.figimage(logo, x_pos, y_pos, zorder=3, alpha=0.7)
-        logger.debug(f"Added logo at position ({x_pos}, {y_pos}) with dimensions {new_width}x{new_height}")
+        logger.debug(f"Added logo at position ({x_pos}, {y_pos}) "
+                     f"with dimensions {new_width}x{new_height}")
         
-    except Exception as e:
-        logger.error(f"Error adding logo: {e}")
+    except Exception as ex:
+        logger.error(f"Error adding logo: {ex}")
 
 
 def add_logo_ax(fig: Figure, desired_width_ratio: float=0.10) -> None:
@@ -825,13 +826,14 @@ def add_logo_ax(fig: Figure, desired_width_ratio: float=0.10) -> None:
         top = 0.98   # 2% from top edge
         bottom = top - height_in_fig_coords
         
-        logo_ax = fig.add_axes([left, bottom, width_in_fig_coords, height_in_fig_coords], zorder=10)
+        logo_ax = fig.add_axes((left, bottom, width_in_fig_coords, height_in_fig_coords),
+                               zorder=10)
         logo_ax.imshow(logo)
         logo_ax.axis('off')  # Hide axes        
         logo_ax.patch.set_alpha(0.0)
         
-    except Exception as e:
-        logger.error(f"Error adding logo: {e}")
+    except Exception as ex:
+        logger.error(f"Error adding logo: {ex}")
 
 
 def output_basic(config: "ConfigManager", name: str):

@@ -351,7 +351,7 @@ class MatplotlibYZPlotter(MatplotlibBasePlotter):
                 y_ranges = np.append(y_ranges, y.min())
         
         # Get vertical range from config or use default
-        lo_z, hi_z = y_ranges.max(), y_ranges.min()
+        lo_z, hi_z = np.max(y_ranges), np.min(y_ranges)
         if 'zrange' in config.spec_data[field_name]['yzplot']:
             if config.spec_data[field_name]['yzplot']['zrange']:
                 lo_z = config.spec_data[field_name]['yzplot']['zrange'][0]

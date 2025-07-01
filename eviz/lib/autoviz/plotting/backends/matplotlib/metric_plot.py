@@ -2,7 +2,8 @@ import numpy as np
 import logging
 import xarray as xr
 import cartopy.crs as ccrs
-from scipy.stats import pearsonr
+from scipy.stats import pearsonr, spearmanr
+from scipy.signal import correlate
 import matplotlib.pyplot as plt
 from cartopy.mpl.geoaxes import GeoAxes
 from .base import MatplotlibBasePlotter
@@ -27,28 +28,46 @@ class MatplotlibMetricPlotter(MatplotlibBasePlotter):
         Returns:
             The created Matplotlib figure and axes
         """
+        field_name = data_to_plot[3]
         if isinstance(data_to_plot[0], tuple) and len(data_to_plot[0]) == 2:
             # We have two datasets to correlate
             data1, data2 = data_to_plot[0]
-            self.logger.debug("Computing correlation between two datasets")
-            data2d = self.compute_correlation_map(data1, data2)
+            # Get corr plot settings from for_inputs
+            corr_settings = config.app_data.for_inputs['correlation']
+            corr_method = corr_settings['method']
+            data2d = self._compute_correlation_map(corr_method, data1, data2)
             if data2d is None:
                 self.logger.error("Failed to compute correlation map")
                 return None
+
+            method_name = {
+                'pearson': 'Pearson',
+                'spearman': 'Spearman',
+                'cross': 'Cross'
+            }.get(corr_method, 'Correlation')
                 
             # Reconstruct data_to_plot with the correlation map
             x, y = data_to_plot[1], data_to_plot[2]
-            field_name = data_to_plot[3] + "_correlation"
+            if 'name' in config.spec_data[data_to_plot[3]]:
+                field_name = config.spec_data[data_to_plot[3]]['name'] + " " + method_name.capitalize() + " correlation"
             plot_type, findex, fig = data_to_plot[4], data_to_plot[5], data_to_plot[6]
             data_to_plot = (data2d, x, y, field_name, plot_type, findex, fig)
         else:
             # Assume data2d is already a correlation map
             data2d = data_to_plot[0]
+            
+            # Try to determine correlation method from attributes
+            method_name = 'Correlation'
+            if hasattr(data2d, 'attrs') and 'correlation_method' in data2d.attrs:
+                corr_method = data2d.attrs['correlation_method']
+                method_name = {
+                    'pearson': 'Pearson',
+                    'spearman': 'Spearman',
+                    'cross': 'Cross'
+                }.get(corr_method, 'Correlation')
 
         self.fig = fig
         ax_opts = config.ax_opts
-        field_name = data_to_plot[3]
-
         if not config.compare and not config.compare_diff:
             fig.set_axes()
         
@@ -75,16 +94,17 @@ class MatplotlibMetricPlotter(MatplotlibBasePlotter):
         else:
             self.ax = ax_temp[0]
 
-        ax_opts = fig.update_ax_opts(field_name, self.ax, 'pearson', level=0)
-        fig.plot_text(field_name, self.ax, 'pearson', level=0, data=data2d)
-        self._plot_pearson_data(config, self.ax, data2d, x, y, field_name,
-                                fig, ax_opts, findex)
+        ax_opts = fig.update_ax_opts(field_name, self.ax, 'corr', level=0)
+        fig.plot_text(field_name, self.ax, 'corr', level=0, data=data2d)
+        
+        self._plot_correlation_data(config, self.ax, data2d, x, y, field_name,
+                                fig, ax_opts, findex, method_name)
 
         return fig
 
-    def _plot_pearson_data(self, config, ax, data2d, x, y, field_name,
-                           fig, ax_opts, findex):
-        # Set default colormap if not specified
+    def _plot_correlation_data(self, config, ax, data2d, x, y, field_name,
+                        fig, ax_opts, findex, method_name='Pearson'):
+        # Set RdBu_r colormap if not specified
         cmap_name = ax_opts.get('use_cmap', 'RdBu_r')
         # Check if we're using Cartopy and if the axis is a GeoAxes
         is_cartopy_axis = False
@@ -99,11 +119,18 @@ class MatplotlibMetricPlotter(MatplotlibBasePlotter):
         # Ensure contour levels are created based on vmin and vmax
         self._create_clevs(field_name, ax_opts, data2d, vmin, vmax)
 
+        # For cross-correlation, the range might be different
+        if method_name.lower() == 'cross':
+            vmin_default, vmax_default = 0, 1  # Cross-correlation is typically 0 to 1
+        else:
+            vmin_default, vmax_default = -1, 1  # Pearson and Spearman are -1 to 1
+
         if len(x.shape) == 1 and len(y.shape) == 1:
             X, Y = np.meshgrid(x, y)
             cfilled = ax.pcolormesh(X, Y, data2d.values, 
                                 cmap=cmap_name, 
-                                vmin=-1, vmax=1,
+                                vmin=ax_opts.get('vmin', vmin_default), 
+                                vmax=ax_opts.get('vmax', vmax_default),
                                 shading='auto')
         else:
             if fig.use_cartopy and is_cartopy_axis:
@@ -120,10 +147,13 @@ class MatplotlibMetricPlotter(MatplotlibBasePlotter):
         if cfilled is None:
             self.set_const_colorbar(cfilled, fig, ax)
         else:
+            # Update colorbar label to include correlation method
+            if 'colorbar_label' not in ax_opts:
+                ax_opts['colorbar_label'] = f'{method_name} Correlation'
             self.set_colorbar(config, cfilled, fig, ax, ax_opts, findex, field_name, data2d)
 
-    def compute_correlation_map(self, data1, data2):
-        """Compute pixel-wise Pearson correlation coefficient between two datasets."""
+    def _compute_correlation_map(self, corr_method, data1, data2):
+        """Compute pixel-wise correlation coefficient between two datasets."""
         self.logger.debug("Computing correlation map")
         
         if not isinstance(data1, xr.DataArray) or not isinstance(data2, xr.DataArray):
@@ -153,8 +183,8 @@ class MatplotlibMetricPlotter(MatplotlibBasePlotter):
             time_len = data1.shape[0]
             y_len, x_len = data1.shape[1], data1.shape[2]
             
-            self.logger.debug(f"Computing correlation across {time_len} time points "
-                              f"for a {y_len}x{x_len} grid")
+            self.logger.info(f"Computing {corr_method} correlation across {time_len} time points "
+                            f"for a {y_len}x{x_len} grid")
             
             # Compute correlation coefficient for each grid point
             for i in range(y_len):
@@ -172,16 +202,38 @@ class MatplotlibMetricPlotter(MatplotlibBasePlotter):
                         continue
                         
                     try:
-                        r, _ = pearsonr(ts1[mask], ts2[mask])
-                        corr_data[i, j] = r
+                        if corr_method == 'pearson':
+                            r, _ = pearsonr(ts1[mask], ts2[mask])
+                            corr_data[i, j] = r
+                        elif corr_method == 'spearman':
+                            r, _ = spearmanr(ts1[mask], ts2[mask])
+                            corr_data[i, j] = r
+                        elif corr_method == 'cross':
+                            # Normalize the data
+                            ts1_norm = (ts1[mask] - np.mean(ts1[mask])) / (np.std(ts1[mask]) or 1)
+                            ts2_norm = (ts2[mask] - np.mean(ts2[mask])) / (np.std(ts2[mask]) or 1)
+                            
+                            # Calculate cross-correlation
+                            cross_corr = correlate(ts1_norm, ts2_norm, mode='valid') / len(ts1_norm)
+                            
+                            # Use the maximum absolute correlation value
+                            corr_data[i, j] = np.max(np.abs(cross_corr))
                     except Exception as e:
-                        self.logger.debug(f"Error computing correlation at point "
-                                          f"({i},{j}): {e}")
+                        self.logger.debug(f"Error computing {corr_method} correlation at point "
+                                        f"({i},{j}): {e}")
                         corr_data[i, j] = np.nan
             
-            corr_data.attrs['long_name'] = 'Pearson Correlation Coefficient'
+            # Set appropriate attributes based on correlation method
+            method_name = {
+                'pearson': 'Pearson',
+                'spearman': 'Spearman',
+                'cross': 'Cross'
+            }.get(corr_method, 'Correlation')
+            
+            corr_data.attrs['long_name'] = f'{method_name} Correlation Coefficient'
             corr_data.attrs['units'] = 'dimensionless'
-            corr_data.attrs['description'] = f'Correlation between {data1.name} and {data2.name} across time'
+            corr_data.attrs['description'] = f'{method_name} correlation between {data1.name} and {data2.name} across time'
+            corr_data.attrs['correlation_method'] = corr_method
             
             return corr_data
             
@@ -193,8 +245,8 @@ class MatplotlibMetricPlotter(MatplotlibBasePlotter):
             
             # For 2D data, we can't compute pixel-wise correlation across time
             # Instead, compute spatial correlation or return a warning
-            self.logger.warning("Input data is 2D, computing spatial correlation instead "
-                                "of pixel-wise temporal correlation")
+            self.logger.warning(f"Input data is 2D, computing spatial {corr_method} correlation instead "
+                                f"of pixel-wise temporal correlation")
             
             flat1 = data1.values.flatten()
             flat2 = data2.values.flatten()
@@ -205,17 +257,39 @@ class MatplotlibMetricPlotter(MatplotlibBasePlotter):
                 return None
                 
             try:
-                r, _ = pearsonr(flat1[mask], flat2[mask])
+                if corr_method == 'pearson':
+                    r, _ = pearsonr(flat1[mask], flat2[mask])
+                elif corr_method == 'spearman':
+                    r, _ = spearmanr(flat1[mask], flat2[mask])
+                elif corr_method == 'cross':
+                    # Normalize the data
+                    flat1_norm = (flat1[mask] - np.mean(flat1[mask])) / (np.std(flat1[mask]) or 1)
+                    flat2_norm = (flat2[mask] - np.mean(flat2[mask])) / (np.std(flat2[mask]) or 1)
+                    
+                    # Calculate cross-correlation
+                    cross_corr = correlate(flat1_norm, flat2_norm, mode='valid') / len(flat1_norm)
+                    
+                    # Use the maximum absolute correlation value
+                    r = np.max(np.abs(cross_corr))
+                
                 # Fill the entire map with this value
                 corr_data.values.fill(r)
                 
-                corr_data.attrs['long_name'] = 'Pearson Correlation Coefficient (Spatial)'
+                # Set appropriate attributes based on correlation method
+                method_name = {
+                    'pearson': 'Pearson',
+                    'spearman': 'Spearman',
+                    'cross': 'Cross'
+                }.get(corr_method, 'Correlation')
+                
+                corr_data.attrs['long_name'] = f'{method_name} Correlation Coefficient (Spatial)'
                 corr_data.attrs['units'] = 'dimensionless'
-                corr_data.attrs['description'] = f'Spatial correlation between {data1.name} and {data2.name}'
+                corr_data.attrs['description'] = f'Spatial {method_name} correlation between {data1.name} and {data2.name}'
+                corr_data.attrs['correlation_method'] = corr_method
                 
                 return corr_data
             except Exception as e:
-                self.logger.error(f"Error computing spatial correlation: {e}")
+                self.logger.error(f"Error computing spatial {corr_method} correlation: {e}")
                 return None
         else:
             self.logger.error(f"Unsupported data dimensions: {dims1}")

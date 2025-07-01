@@ -77,9 +77,9 @@ class YAMLParser:
         """Organize data for plotting routines."""
         _maps = {}
 
-        def process_input_dict(input_dict: Dict[str, Any]):
-            current_inputs = input_dict.get('inputs', [])
-            current_outputs = input_dict.get('outputs', {})
+        def process_input_dict(in_dict: Dict[str, Any]):
+            current_inputs = in_dict.get('inputs', [])
+            current_outputs = in_dict.get('outputs', {})
             
             compare_ids = get_nested_key(self.app_data, ['for_inputs', 'compare', 'ids'],
                                          default='')
@@ -101,10 +101,10 @@ class YAMLParser:
                 filename = os.path.join(input_entry.get('location', ''), input_entry.get('name', ''))
                 exp_id = input_entry.get('exp_id', '')
                 exp_name = input_entry.get('exp_name', exp_id)
-                source_name = input_dict.get('source', '')
+                source_name = in_dict.get('source', '')
                 source_reader = self.app_data.get(source_name, None)
-                description = input_entry.get('description', input_dict.get('description', ''))
-                to_ignore = input_entry.get('ignore', input_dict.get('ignore', ''))
+                description = input_entry.get('description', in_dict.get('description', ''))
+                to_ignore = input_entry.get('ignore', in_dict.get('ignore', ''))
 
                 # Handle fields to plot - check both to_plot and variables sections
                 current_to_plot = input_entry.get('to_plot', {})

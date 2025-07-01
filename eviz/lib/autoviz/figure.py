@@ -700,6 +700,7 @@ class Figure(mfigure.Figure):
 
         # Handle plot titles for comparison cases
         if self.config_manager.compare or self.config_manager.compare_diff:
+            title_string = 'Placeholder'
             if geom and geom[0] == (3, 1):  # (3,1) subplot structure
                 if geom[1:] == (0, 1, 1, 1):  # Bottom plot
                     title_string = "Difference (top - middle)"
@@ -722,8 +723,6 @@ class Figure(mfigure.Figure):
                     title_string = self._set_axes_title(findex)
             elif geom and (geom[0] == (1, 2) or geom[0] == (1, 3)):
                 title_string = self._set_axes_title(findex)
-            else:  # Default title for comparison
-                title_string = 'Placeholder'
             ax.set_title(title_string, loc=loc, fontsize=title_fontsize)
             return
 
@@ -757,7 +756,7 @@ class Figure(mfigure.Figure):
                     fontsize=14,
                     transform=ax.transAxes)
 
-        elif 'xy' in pid or 'sc' in pid:
+        elif 'xy' in pid or 'sc' in pid or 'corr' in pid:
             if self.config_manager.print_basic_stats:
                 fmt = self._basic_stats(data)
                 ax.text(right, top, fmt, transform=ax.transAxes,
@@ -831,8 +830,6 @@ class Figure(mfigure.Figure):
             return self.config_manager.get_file_exp_name(findex)
         elif self.config_manager.get_file_exp_id(findex):
             return self.config_manager.get_file_exp_id(findex)
-        # elif self.config_manager.map_params[findex].get('filename', None):
-        #     return self.config_manager.map_params[findex]['filename']        
         elif self.config_manager.map_params[findex].get('field', None):
             return self.config_manager.map_params[findex]['field']
         else:

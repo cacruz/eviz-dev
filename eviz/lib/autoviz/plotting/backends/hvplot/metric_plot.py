@@ -1,11 +1,9 @@
 import numpy as np
-import pandas as pd
 import logging
 import holoviews as hv
 import hvplot.xarray  # register the hvplot method with xarray objects
 import hvplot.pandas
 import xarray as xr
-from scipy.stats import pearsonr
 from eviz.lib.autoviz.plotting.base import XYPlotter
 
 
@@ -103,7 +101,8 @@ class HvplotMetricPlotter(XYPlotter):
             return plot
 
         except ImportError as e:
-            self.logger.warning(f"Datashader not available: {e}. Using HoloViews without datashader.")
+            self.logger.warning(f"Datashader not available: {e}. "
+                                f"Using HoloViews without datashader.")
 
         except Exception as e:
             self.logger.error(f"Error creating correlation map: {e}")
@@ -150,7 +149,6 @@ class HvplotMetricPlotter(XYPlotter):
     def _apply_numpy_compatibility_patch(self):
         """Apply compatibility patch for NumPy 1.20+ with older HoloViews/hvplot."""
         try:
-            import numpy as np
             if not hasattr(np, 'bool'):
                 self.logger.debug("Applying NumPy compatibility patch for bool")
                 np.bool = bool

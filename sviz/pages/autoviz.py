@@ -142,20 +142,6 @@ def get_time_stamped_output(subdir) -> str:
         return "error_finding_output"
 
 
-def get_time_stamped_output2(subdir) -> str:
-    """ Find and return the most recent time-stamped output
-
-    Returns:
-        date_dir string
-    """
-    dates = os.listdir(subdir)
-    dates = {datetime.strptime(date, '%Y%m%d-%H%M%S'): date for date in dates}
-    most_recent_date = max(dates.keys())
-    date_dir = dates[most_recent_date]
-
-    return date_dir
-
-
 def demo_options_map(yaml_file) -> tuple:
     """ A demo-specific function to read/load YAML file settings
 

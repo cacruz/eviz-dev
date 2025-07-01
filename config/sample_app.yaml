@@ -34,21 +34,6 @@ inputs:
 
 # Entries here are applied to the inputs above
 for_inputs:
-    overlay:   # to overlay line plots (only works with xt and yc profiles) or box plots
-      ids: BenchmarkFc180,RefD1  # IDs associated with input exp_id values in inputs section.
-      # If we are using box plots, we can specify colors for each box. 
-      # If nothin specified, cycle through MPL color table
-      box_colors: blue,green
-      # Use x-label for  each experiment in box-plots unless add_legend is set here:
-      add_legend: yes
-
-    # This option is here because we need to specify the fields to be used in the correlation plots
-    # Note: this is to be moved to SPECS file in a future release
-    pearsonplot:
-        space_corr: no
-        time_corr: yes
-        fields: sm_obs,soil_moisture
-
     # If compare is specified then side-by-side comparison plots will be created between files
     # identified in ids
     compare:
@@ -68,7 +53,21 @@ for_inputs:
       # Use different colormap for comparison plots
       # These are matplotlib colormaps: https://matplotlib.org/stable/users/explain/colors/colormaps.html
       cmap: coolwarm
+    overlay:   # to overlay line plots (only works with xt and yc profiles) or box plots
+      ids: BenchmarkFc180,RefD1  # IDs associated with input exp_id values in inputs section.
+      # If we are using box plots, we can specify colors for each box. 
+      # If nothin specified, cycle through MPL color table
+      box_colors: blue,green
+      # Use x-label for  each experiment in box-plots unless add_legend is set here:
+      add_legend: yes
 
+    # This option is here because we need to specify the fields to be used in the correlation plots
+    # Note: this is to be moved to SPECS file in a future release
+    pearsonplot:
+        space_corr: no
+        time_corr: yes
+        fields: sm_obs,soil_moisture
+        
     # The following options, trop_height and sphum_field, are GEOS-specific, i.e. "--source geos" or
     # "-s geos" or its sub-classes (currently only ccm, cf). Therefore, options will be ignored if
      # used with other "sources"

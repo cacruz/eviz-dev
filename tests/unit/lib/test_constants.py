@@ -32,7 +32,7 @@ def test_supported_models():
     ]
 
 def test_supported_plot_types():
-    assert constants.PLOT_TYPES == ['xy', 'yz', 'xt', 'tx', 'polar', 'sc', 'box', 'pearson']
+    assert constants.PLOT_TYPES == ['xy', 'yz', 'xt', 'tx', 'polar', 'sc', 'box', 'corr']
 
 def test_format_png():
     assert constants.FORMAT_PNG == 'png'

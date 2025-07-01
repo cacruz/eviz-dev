@@ -287,16 +287,16 @@ class Grib(GriddedSource):
         """
         Process coordinates for GRIB plots, handling NaN values in coordinates.
         """
-        xr = np.array(self.lon[0, :])
-        yr = np.array(self.lat[:, 0])        
-        latN = max(yr[:])
-        latS = min(yr[:])
-        lonW = min(xr[:])
-        lonE = max(xr[:])
+        x_coords = np.array(self.lon[0, :])
+        y_coords = np.array(self.lat[:, 0])
+        latN = max(y_coords[:])
+        latS = min(y_coords[:])
+        lonW = min(x_coords[:])
+        lonE = max(x_coords[:])
         self.config_manager.ax_opts['extent'] = [lonW, lonE, latS, latN]
         self.config_manager.ax_opts['central_lon'] = np.mean([lonW, lonE])
         self.config_manager.ax_opts['central_lat'] = np.mean([latS, latN])
-        return data2d, xr, yr, field_name, plot_type, file_index, figure, ax
+        return data2d, x_coords, y_coords, field_name, plot_type, file_index, figure, ax
 
     def _apply_vertical_level_selection(self, data2d, field_name, level):
         """

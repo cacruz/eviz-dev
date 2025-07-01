@@ -43,7 +43,7 @@ class InputConfig:
     _subplot_specs: tuple = field(default=(1, 1), init=False)
     _use_cartopy: bool = field(default=False, init=False)
     _plot_backend: str = field(default="matplotlib", init=False)
-    _pearsonplot: Dict[str, str] = field(default_factory=dict)
+    _corrplot: Dict[str, str] = field(default_factory=dict)
     _box_colors: List[str] = field(default_factory=list, init=False)
     _add_legend: bool = field(default=False, init=False)
     
@@ -422,7 +422,7 @@ class InputConfig:
         self._plot_backend = for_inputs.get('plot_backend', 'matplotlib')
         self._box_colors = for_inputs.get('box_colors', False)
         self._add_legend = for_inputs.get('add_legend', False)
-        self._pearsonplot = for_inputs.get('pearsonplot', {})
+        self._correlation = for_inputs.get('correlation', {})
         self._shared_cbar = for_inputs.get('shared_cbar', False)
 
         # Parse for_inputs to set _compare and _compare_diff
@@ -465,9 +465,9 @@ class InputConfig:
         self.logger.debug(f"Initialized for_inputs with: "
                           f"add_legend={self._add_legend}, "
                           f"box_colors={self._box_colors}, "
-                          f"pearsonplot={self._pearsonplot}, "
                           f"backend={self._plot_backend}, "
                           f"shared_cbar={self._shared_cbar}, "
+                          f"correlation={self._correlation}, "
                           f"overlay={self._overlay}, "
                           f"compare={self._compare}, "
                           f"compare_diff={self._compare_diff}, "
@@ -531,11 +531,31 @@ class InputConfig:
         if not for_inputs:
             return
 
+        self._correlation = False
         self._overlay = False
         self._compare = False
         self._compare_diff = False
         self._compare_exp_ids = []
         self._overlay_exp_ids = []
+
+        if 'correlation' in for_inputs:
+            self._correlation = True
+            correlation_config = for_inputs['correlation']
+
+            if 'fields' in correlation_config:
+                self._correlation_fields = correlation_config['fields'].split(',')
+
+            self._correlation_method = 'pearson'
+            if 'method' in correlation_config:
+                self._correlation_method = correlation_config['method']
+
+            self._space_corr = False
+            if 'space_corr' in correlation_config:
+                self._space_corr = correlation_config['space_corr']
+
+            self._time_corr = False
+            if 'time_corr' in correlation_config:
+                self._time_corr = correlation_config['time_corr']
 
         if 'overlay' in for_inputs:
             self._overlay = True

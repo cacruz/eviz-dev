@@ -191,7 +191,7 @@ class DataIntegrator:
                 self.logger.warning(f"Time dimension '{time_dim}' not found in dataset {i}")
                 return datasets[0]  # Return the first dataset as a fallback
         
-        sorted_datasets = sorted(datasets, key=lambda ds: ds[time_dim].values[0])
+        sorted_datasets = sorted(datasets, key=lambda d: d[time_dim].values[0])
         
         try:
             result = xr.concat(sorted_datasets, dim=time_dim)
