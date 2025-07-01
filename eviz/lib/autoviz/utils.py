@@ -112,7 +112,6 @@ def natural_key(filename: str):
     return [int(text) if text.isdigit() else text for text in
             re.split(r'(\d+)', filename)]
 
-
 def create_gif(config: "ConfigManager") -> None:
     archive_web_results = getattr(config, 'archive_web_results', False)
     if archive_web_results:
@@ -121,87 +120,116 @@ def create_gif(config: "ConfigManager") -> None:
         img_path = config.app_data.outputs['output_dir']
 
     print_format = getattr(config, 'print_format', 'png')
-    field_name = config.map_params[config.findex]['field']
-    all_files = glob.glob(img_path + "/" + field_name + "*." + print_format)
-    files = sorted(all_files, key=natural_key)
-    if len(files) == 1:
-        return
-    prefix = list(config.app_data.inputs[0]['to_plot'])[0]
-
-    # remove IC (NUWRF only)
-    if not archive_web_results:
-        if {'lis', 'wrf'} & set(config.source_names):
-            # Find the file that ends with "_0_0.png" instead of assuming exact name
-            ic_file_pattern = f"*{prefix}*_0_0.{print_format}"
-            ic_files = glob.glob(os.path.join(img_path, ic_file_pattern))
-
-            if ic_files:
-                ic_file_to_remove = ic_files[0]
-                logger.debug(f"Removing IC file: {ic_file_to_remove}")
-                os.remove(ic_file_to_remove)
-
-                if ic_file_to_remove in files:
-                    files.remove(ic_file_to_remove)
-                else:
-                    ic_basename = os.path.basename(ic_file_to_remove)
-                    files = [f for f in files if os.path.basename(f) != ic_basename]
-            else:
-                logger.warning(
-                    f"Warning: No IC file found matching pattern {ic_file_pattern}")
-
-    if not files:
-        logger.error("No files remaining to create GIF")
-        return
-
-    image_array = []
-    for my_file in files:
-        image = Image.open(my_file)
-        image_array.append(np.array(image))
-
-    if not image_array:
-        logger.error("No images to create GIF")
-        return
-
-    height, width, _ = image_array[0].shape
-    fig, ax = plt.subplots(figsize=(width / 100, height / 100),
-                           dpi=300)  # dpi here must be the same as in print_map()
     
-    ax.set_axis_off()
-    fig.subplots_adjust(left=0, right=1, top=1, bottom=0)  # Remove padding
+    # Get all unique field names from the files
+    all_files = glob.glob(img_path + "/*." + print_format)
+    field_names = set()
+    
+    # Extract field names from filenames
+    for file in all_files:
+        # Extract field name from filename (adjust pattern as needed)
+        match = re.search(r'([^/]+)_xy', os.path.basename(file))
+        if match:
+            field_names.add(match.group(1))
+    
+    logger.info(f"Found {len(field_names)} fields to process for GIFs: {field_names}")
+    
+    # Process each field separately
+    for field_name in field_names:
+        field_files = glob.glob(img_path + "/" + field_name + "*." + print_format)
+        files = sorted(field_files, key=natural_key)
+        
+        if len(files) <= 1:
+            logger.debug(f"Skipping GIF for {field_name}: not enough files ({len(files)})")
+            continue
+            
+        logger.info(f"Creating GIF for field: {field_name} with {len(files)} frames")
+        
+        # remove IC (NUWRF only) - if needed
+        if not archive_web_results:
+            if {'lis', 'wrf'} & set(config.source_names):
+                # Find the file that ends with "_0_0.png" instead of assuming exact name
+                ic_file_pattern = f"*{field_name}*_0_0.{print_format}"
+                ic_files = glob.glob(os.path.join(img_path, ic_file_pattern))
 
-    fps = getattr(config, 'gif_fps', 5) 
-    duration_ms = int(1000 / fps)
-    image_sequence = [Image.fromarray(img) for img in image_array]
+                if ic_files:
+                    ic_file_to_remove = ic_files[0]
+                    logger.debug(f"Removing IC file: {ic_file_to_remove}")
+                    os.remove(ic_file_to_remove)
 
-    # Create GIF filename - use just the field name for cleaner naming
-    gif_filename = f"{prefix}.gif"
-    gif_path = os.path.join(img_path, gif_filename)
+                    if ic_file_to_remove in files:
+                        files.remove(ic_file_to_remove)
+                    else:
+                        ic_basename = os.path.basename(ic_file_to_remove)
+                        files = [f for f in files if os.path.basename(f) != ic_basename]
+                else:
+                    logger.debug(f"No IC file found matching pattern {ic_file_pattern}")
 
-    image_sequence[0].save(
-        gif_path,
-        save_all=True,
-        append_images=image_sequence[1:],
-        duration=duration_ms,
-        loop=0
-    )
+        if not files:
+            logger.warning(f"No files remaining to create GIF for {field_name}")
+            continue
 
-    logger.info(f"Created GIF: {gif_path}")
+        # Create GIF for this field
+        image_array = []
+        for my_file in files:
+            try:
+                image = Image.open(my_file)
+                image_array.append(np.array(image))
+            except Exception as e:
+                logger.warning(f"Error processing image {my_file}: {e}")
+            
+        if not image_array:
+            logger.warning(f"No valid images to create GIF for {field_name}")
+            continue
+            
+        # Create GIF
+        height, width, _ = image_array[0].shape
+        fig, ax = plt.subplots(figsize=(width / 100, height / 100),
+                               dpi=300)  # dpi here must be the same as in print_map()
+        
+        ax.set_axis_off()
+        fig.subplots_adjust(left=0, right=1, top=1, bottom=0)  # Remove padding
 
-    if archive_web_results:
-        json_filename = f"{prefix}.json"
-        json_path = os.path.join(img_path, json_filename)
-        with open(json_path, 'w') as fp:
-            json.dump(config.vis_summary, fp)
-            fp.close()
-
-    # Clean up
-    for my_file in files:
+        fps = getattr(config, 'gif_fps', 5) 
+        duration_ms = int(1000 / fps)
+        image_sequence = [Image.fromarray(img) for img in image_array]
+        
+        # Create GIF filename - use the field name for cleaner naming
+        gif_filename = f"{field_name}.gif"
+        gif_path = os.path.join(img_path, gif_filename)
+        
         try:
-            os.remove(my_file)
-            logger.debug(f"Removed: {os.path.basename(my_file)}")
-        except OSError as e:
-            logger.warning(f"Warning: Could not remove {my_file}: {e}")
+            image_sequence[0].save(
+                gif_path,
+                save_all=True,
+                append_images=image_sequence[1:],
+                duration=duration_ms,
+                loop=0
+            )
+            
+            logger.info(f"Created GIF: {gif_path}")
+            
+            # Clean up PNG files for this field
+            for my_file in files:
+                try:
+                    os.remove(my_file)
+                    logger.debug(f"Removed: {os.path.basename(my_file)}")
+                except OSError as e:
+                    logger.warning(f"Warning: Could not remove {my_file}: {e}")
+                    
+        except Exception as e:
+            logger.error(f"Error creating GIF for {field_name}: {e}")
+            
+        # Close the figure to avoid memory leaks
+        plt.close(fig)
 
+    # Handle web results if needed
+    if archive_web_results:
+        for field_name in field_names:
+            json_filename = f"{field_name}.json"
+            json_path = os.path.join(img_path, json_filename)
+            with open(json_path, 'w') as fp:
+                json.dump(config.vis_summary, fp)
 
 def print_map(config: "ConfigManager", 
               plot_type: str, 
