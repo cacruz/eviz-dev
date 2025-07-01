@@ -282,6 +282,15 @@ class MatplotlibBoxPlotter(MatplotlibBasePlotter):
                 ax.set_ylabel(f"{title} ({units})")
                 ax.grid(ax_opts['add_grid'], linestyle='--', alpha=0.7)
 
+            if config.compare:
+                fig.suptitle_eviz(text=field_name, 
+                                fontweight='bold',
+                                fontstyle='italic',
+                                fontsize=self._image_font_size(fig.subplots))
+
+                if config.add_logo:
+                    self._add_logo_ax(fig, desired_width_ratio=0.05)
+
         except Exception as e:
             self.logger.error(f"Error creating matplotlib box plot: {e}")
             import traceback
