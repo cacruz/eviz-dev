@@ -124,26 +124,30 @@ def create_gif(config: "ConfigManager") -> None:
     # Get all unique field names from the files
     all_files = glob.glob(img_path + "/*." + print_format)
     field_names = set()
+    field_plot_types = set()
     
     # Extract field names from filenames
     for file in all_files:
-        # Extract field name from filename (adjust pattern as needed)
-        match = re.search(r'([^/]+)_xy', os.path.basename(file))
+        # Extract field name from filename with multiple possible plot types
+        match = re.search(r'([^/]+)_(xy|yz|xt|tx|sc)', os.path.basename(file))
         if match:
-            field_names.add(match.group(1))
+            field_name = match.group(1)
+            plot_type = match.group(2)
+            field_plot_types.add((field_name, plot_type))
     
-    logger.info(f"Found {len(field_names)} fields to process for GIFs: {field_names}")
+    logger.info(f"Found {len(field_plot_types)} fields to process for GIFs")
     
-    # Process each field separately
-    for field_name in field_names:
-        field_files = glob.glob(img_path + "/" + field_name + "*." + print_format)
+    # Process each field and plot type combination separately
+    for field_name, plot_type in field_plot_types:
+        # Use both field name and plot type in the file pattern
+        field_files = glob.glob(img_path + f"/{field_name}_{plot_type}*." + print_format)
         files = sorted(field_files, key=natural_key)
         
         if len(files) <= 1:
-            logger.debug(f"Skipping GIF for {field_name}: not enough files ({len(files)})")
+            logger.debug(f"Skipping GIF for {field_name}_{plot_type}: not enough files ({len(files)})")
             continue
             
-        logger.info(f"Creating GIF for field: {field_name} with {len(files)} frames")
+        logger.info(f"Creating GIF for field: {field_name}_{plot_type} with {len(files)} frames")
         
         # remove IC (NUWRF only) - if needed
         if not archive_web_results:
@@ -195,8 +199,8 @@ def create_gif(config: "ConfigManager") -> None:
         image_sequence = [Image.fromarray(img) for img in image_array]
         
         # Create GIF filename - use the field name for cleaner naming
-        gif_filename = f"{field_name}.gif"
-        gif_path = os.path.join(img_path, gif_filename)
+        gif_filename = f"{field_name}_{plot_type}.gif"
+        gif_path = os.path.join(img_path, gif_filename)        
         
         try:
             image_sequence[0].save(
