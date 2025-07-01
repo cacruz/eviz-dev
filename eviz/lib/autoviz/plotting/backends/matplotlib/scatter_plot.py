@@ -125,8 +125,8 @@ class MatplotlibScatterPlotter(MatplotlibBasePlotter):
                 s=point_size,
                 vmin=vmin,
                 vmax=vmax,
-                edgecolors='k',
-                linewidths=0.2,
+                # edgecolors='k',
+                # linewidths=0.2,
                 alpha=0.7,
                 transform=data_transform
             )
@@ -141,7 +141,6 @@ class MatplotlibScatterPlotter(MatplotlibBasePlotter):
                 else:
                     self.set_cartopy_ticks(ax, [-180, 180, -90, 90])
 
-            # Store vmin/vmax for future shared use
             if (config.compare or not config.compare_diff) and config.axindex == 0:
                 config._comparison_cbar_limits[field_name] = scat.get_clim()
 
