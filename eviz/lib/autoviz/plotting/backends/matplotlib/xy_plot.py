@@ -111,15 +111,17 @@ class MatplotlibXYPlotter(MatplotlibBasePlotter):
             else:
                 # Store colorbar limits for the first plot in a comparison
                 if (config.compare or not config.compare_diff) and config.axindex == 0:
-                    # Get the limits used in the plot
                     vmin, vmax = cfilled.get_clim()
                     config._comparison_cbar_limits[field_name] = (vmin, vmax)
-
-                # Suppress individual colorbars if shared_bar is enabled
+                    self.logger.debug(f"Setting comparison colorbar limits for {field_name}: {vmin} to {vmax}")
+                
+                # IMPORTANT: Suppress individual colorbars if shared_bar is enabled
                 if config.shared_cbar:
                     ax_opts['suppress_colorbar'] = True
+                    self.logger.debug(f"Suppressing individual colorbar for {field_name} (axindex={config.axindex})")
+                else:
+                    self.cbar = self.set_colorbar(config, cfilled, fig, ax, ax_opts, findex, field_name, data2d)
 
-                self.set_colorbar(config, cfilled, fig, ax, ax_opts, findex, field_name, data2d)
                 if ax_opts.get('line_contours', False):
                     if fig.use_cartopy and is_cartopy_axis:
                         self.line_contours(fig, ax, ax_opts, x, y, data2d, transform=data_transform)

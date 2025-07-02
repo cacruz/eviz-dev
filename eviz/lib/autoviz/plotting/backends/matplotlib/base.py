@@ -226,7 +226,6 @@ class MatplotlibBasePlotter(BasePlotter):
         try:
             # Skip colorbar creation if suppressed (for shared colorbar)
             if ax_opts.get("suppress_colorbar", False):
-                self.logger.debug("Suppressing individual colorbar")
                 return None
 
             source_name = config.source_names[config.ds_index]
@@ -270,6 +269,11 @@ class MatplotlibBasePlotter(BasePlotter):
             for t in cbar.ax.get_yticklabels():
                 t.set_fontsize(pu.contour_tick_font_size(fig.subplots))
 
+            # Use consistent number of ticks
+            from matplotlib.ticker import MaxNLocator
+            cbar.locator = MaxNLocator(nbins=10)
+            cbar.update_ticks()
+
             return cbar
 
         except Exception as e:
@@ -288,57 +292,58 @@ class MatplotlibBasePlotter(BasePlotter):
         Returns:
             The created colorbar object
         """
-        self.logger.debug(f"Create shared colorbar for {field_name}")
-        if not cfilled_objects:
+        self.logger.debug(f"Adding shared colorbar for {field_name}")
+        
+        # First, check if we already have a shared colorbar and remove it
+        if hasattr(fig, '_shared_colorbar_ax') and fig._shared_colorbar_ax in fig.axes:
+            self.logger.debug("Removing existing shared colorbar")
+            fig._shared_colorbar_ax.remove()
+        
+        # Filter out None values
+        valid_contours = [c for c in cfilled_objects if c is not None]
+        
+        if not valid_contours:
+            self.logger.warning("No valid contours for shared colorbar")
             return None
         
-        # Get the first cfilled object to use as reference
-        cfilled = cfilled_objects[0]
+        # Log the number of valid contours and their limits
+        self.logger.debug(f"Found {len(valid_contours)} valid contours for shared colorbar")
+        for i, contour in enumerate(valid_contours):
+            self.logger.debug(f"Contour {i} clim: {contour.get_clim()}")
         
-        # Get colorbar parameters
-        source_name = config.source_names[config.ds_index]
-        ax_opts = config.ax_opts
+        # Get the min and max values across all contours for THIS field only
+        vmin = min(c.get_clim()[0] for c in valid_contours)
+        vmax = max(c.get_clim()[1] for c in valid_contours)
         
-        # Create formatter for colorbar ticks
-        if ax_opts['cbar_sci_notation']:
-            fmt = FlexibleOOMFormatter(min_val=cfilled.norm.vmin,
-                                    max_val=cfilled.norm.vmax,
-                                    math_text=True)
-        else:
-            fmt = OOMFormatter(prec=ax_opts['clevs_prec'], math_text=True)
+        self.logger.debug(f"Shared colorbar range for {field_name}: {vmin} to {vmax}")
         
-        # Adjust figure layout to allocate space for the colorbar
-        fig.subplots_adjust(right=0.85)
+        # Create a new axes for the colorbar
+        colorbar_width = getattr(config, 'colorbar_width', 0.02)
+        cbar_ax = fig.add_axes([0.92, 0.15, colorbar_width, 0.7])
         
-        # Create a new axis for the colorbar
-        cbar_ax = fig.add_axes([0.86, 0.15, 0.02, 0.7])  # [left, bottom, width, height]
-        cbar = fig.colorbar(cfilled, cax=cbar_ax,
-                            orientation='vertical',
-                            pad=pu.cbar_pad(fig.subplots),
-                            fraction=pu.cbar_fraction(fig.subplots),
-                            ticks=ax_opts.get('clevs', None),
-                            format=fmt,
-                            shrink=pu.cbar_shrink(fig.subplots))
+        # Store reference to the colorbar axes
+        fig._shared_colorbar_ax = cbar_ax
         
-        # Add scientific notation if requested
-        if ax_opts['cbar_sci_notation']:
-            cbar.ax.text(1.05, -0.05, r'$\times 10^{%d}$' % fmt.oom,
-                        transform=cbar.ax.transAxes, va='center', ha='left',
-                        fontsize=bar_font_size(fig.subplots))
+        # Create the colorbar using the first valid contour
+        cbar = fig.colorbar(valid_contours[0], cax=cbar_ax)
         
-        # Set colorbar label
-        units = self.get_units(config, field_name, None, source_name, config.findex)
+        # IMPORTANT: Update the colorbar limits to encompass all data for this field
+        cbar.mappable.set_clim(vmin, vmax)
         
-        if ax_opts['clabel'] is None:
-            cbar_label = units
-        else:
-            cbar_label = ax_opts['clabel']
+        # Improve tick label formatting
+        from matplotlib.ticker import MaxNLocator
+        cbar.locator = MaxNLocator(nbins=6)
+        cbar.update_ticks()
         
-        cbar.set_label(cbar_label, size=bar_font_size(fig.subplots))
+        # Set consistent tick font size
+        tick_font_size = 8  # Fixed size for shared colorbar
+        cbar.ax.tick_params(labelsize=tick_font_size)
         
-        # Set tick font size
-        for t in cbar.ax.get_yticklabels():
-            t.set_fontsize(contour_tick_font_size(fig.subplots))
+        # Add units if available
+        if hasattr(config, 'spec_data') and field_name in config.spec_data:
+            if 'units' in config.spec_data[field_name]:
+                units = config.spec_data[field_name]['units']
+                cbar.set_label(units, size=10)
         
         return cbar
 

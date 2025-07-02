@@ -2128,3 +2128,111 @@ class GenericSource(BaseSource):
             self.logger.warning(f"All values are NaN for {data_array.name if hasattr(data_array, 'name') else 'unnamed field'}")
         
         return data2d
+
+    def _process_xy_side_by_side_plots(self, current_field_index, field_name1, field_name2, plot_type, sdat1_dataset, sdat2_dataset):
+        """Process side-by-side comparison plots for xy or polar plot types."""
+        self.logger.info(f"Processing side-by-side comparison of {field_name1} vs {field_name2} as observational data")
+        
+        num_plots = len(self.config_manager.compare_exp_ids)
+        nrows = 1
+        ncols = num_plots
+
+        levels = self.config_manager.get_levels(field_name1, plot_type + 'plot')
+        if not levels:
+            return
+
+        # Hack: Reset comparison colorbar limits for each new field
+        if hasattr(self.config_manager, '_comparison_cbar_limits'):
+            self.logger.debug(f"Resetting comparison colorbar limits for {field_name1}")
+            self.config_manager._comparison_cbar_limits = {}
+
+        for level_val in levels:
+            # Set a consistent colorbar width before creating the figure
+            if not hasattr(self.config_manager, 'colorbar_width'):
+                self.config_manager.colorbar_width = 0.02  # Consistent width for all colorbars
+            
+            figure = Figure.create_eviz_figure(self.config_manager, plot_type,
+                                            nrows=nrows, ncols=ncols)
+        
+            # Set up axes with proper spacing
+            figure.set_axes()
+            self.config_manager.level = level_val
+
+            # Store domain information for regional plots if available
+            self.config_manager.is_regional = hasattr(self, 'source_name') and self.source_name in ['lis', 'wrf']
+            if self.config_manager.is_regional:
+                if hasattr(sdat1_dataset, 'lon') and hasattr(sdat1_dataset, 'lat'):
+                    self.lon = sdat1_dataset.lon
+                    self.lat = sdat1_dataset.lat
+
+            # Create the side-by-side plots
+            self._create_xy_side_by_side_plot(current_field_index,
+                                            field_name1, 
+                                            field_name2, 
+                                            figure,
+                                            plot_type, 
+                                            sdat1_dataset, 
+                                            sdat2_dataset,
+                                            level_val)
+
+            # Print the map
+            pu.print_map(self.config_manager, 
+                        plot_type, 
+                        self.config_manager.findex, 
+                        self.plot_result,
+                        level=level_val)
+        
+            # Hack: Clear filled contours list after processing each field
+            if hasattr(self.config_manager, '_filled_contours'):
+                self.logger.debug(f"Clearing filled contours list after processing {field_name1}")
+                self.config_manager._filled_contours = []
+
+        self.data2d_list = []
+
+    def _create_xy_side_by_side_plot(self, 
+                                     current_field_index,
+                                     field_name1, 
+                                     field_name2, 
+                                     figure,
+                                     plot_type, 
+                                     sdat1_dataset, 
+                                     sdat2_dataset, 
+                                     level=None):
+        """
+        Create a side-by-side comparison plot for the given data.
+        
+        The layout is:
+        - Left subplot: First dataset
+        - Middle subplot: Second dataset
+        - Right subplot: Third dataset (if present)
+        """
+        num_plots = len(self.config_manager.compare_exp_ids)
+        self.comparison_plot = False
+
+        # Plot first dataset (from a_list)
+        if self.config_manager.a_list:
+            self._process_single_side_by_side_plot(self.config_manager.a_list[0],
+                                            current_field_index,
+                                            field_name1, 
+                                            figure, 
+                                            0,
+                                            sdat1_dataset[field_name1], 
+                                            plot_type,
+                                            level=level)
+
+        # Plot remaining datasets (from b_list)
+        for i, file_idx in enumerate(self.config_manager.b_list, start=1):
+            if i < num_plots:  # Only plot if we have a corresponding axis
+                map_params = self.config_manager.map_params.get(file_idx)
+                filename = map_params.get('filename')
+                data_source = self.config_manager.pipeline.get_data_source(filename)
+                dataset = data_source.dataset
+
+                self._process_single_side_by_side_plot(file_idx,
+                                                current_field_index,
+                                                field_name2, 
+                                                figure, 
+                                                i,
+                                                dataset[field_name2], 
+                                                plot_type,
+                                                level=level)
