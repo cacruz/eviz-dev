@@ -66,7 +66,10 @@ class MatplotlibMetricPlotter(MatplotlibBasePlotter):
                     'cross': 'Cross'
                 }.get(corr_method, 'Correlation')
 
+        self.source_name = config.source_names[config.ds_index]
+        self.units = "R value"
         self.fig = fig
+        
         ax_opts = config.ax_opts
         if not config.compare and not config.compare_diff:
             fig.set_axes()

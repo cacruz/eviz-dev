@@ -25,6 +25,15 @@ class MatplotlibYZPlotter(MatplotlibBasePlotter):
             The created figure
         """
         data2d, x, y, field_name, plot_type, findex, fig = data_to_plot
+
+        if data2d is None:
+            return fig
+
+        self.source_name = config.source_names[config.ds_index]
+        self.units = self.get_units(config, 
+                                    field_name, 
+                                    data2d, 
+                                    findex)
         self.fig = fig
 
         ax_opts = config.ax_opts
@@ -57,43 +66,15 @@ class MatplotlibYZPlotter(MatplotlibBasePlotter):
         else:
             ax = ax_temp[0]
 
-        if data2d is None:
-            return
-
         ax_opts = fig.update_ax_opts(field_name, ax, 'yz')
         fig.plot_text(field_name, ax, 'yz', level=None, data=data2d)
 
         # Determine the vertical coordinate and its units
         zc = config.get_model_dim_name('zc')
-        vertical_coord = None
-        vertical_units = 'n.a.'
-
-        if isinstance(zc, dict):
-            for dim_name in data2d.coords:
-                if 'lev' in dim_name or 'z' in dim_name or 'height' in dim_name:
-                    vertical_coord = data2d.coords[dim_name]
-                    break
-        elif isinstance(zc, list):
-            for z in zc:
-                if z in data2d.coords:
-                    vertical_coord = data2d.coords[z]
-                    break
-        else:
-            if zc and zc in data2d.coords:
-                vertical_coord = data2d.coords[zc]
-            else:
-                # Try common vertical dimension names
-                for dim_name in ['lev', 'level', 'z', 'height', 'altitude', 'pressure']:
-                    if dim_name in data2d.coords:
-                        vertical_coord = data2d.coords[dim_name]
-                        break
-
-        if vertical_coord is not None:
-            vertical_units = vertical_coord.attrs.get('units', 'n.a.')
-        else:
-            if len(data2d.shape) >= 2:
-                # Assume first dimension is vertical in a YZ plot
-                vertical_coord = np.arange(data2d.shape[0])
+        try:
+            vertical_units = data2d.coords[zc].attrs['units']
+        except KeyError:
+            vertical_units = 'n.a.'
 
         if isinstance(ax, list):
             for single_ax in ax:
@@ -182,19 +163,8 @@ class MatplotlibYZPlotter(MatplotlibBasePlotter):
                         frame.set_alpha(0.7)
                         frame.set_edgecolor('gray')
 
-                # TODO: Fix units issue (missing sometimes)
-                if 'units' in config.spec_data[field_name]:
-                    units = config.spec_data[field_name]['units']
-                else:
-                    try:
-                        units = data2d.attrs['units']
-                        if units == '':
-                            units = "n.a."
-                    except Exception as e:
-                        self.logger.error(f"{e}: Please specify {field_name} units in specs file")
-                        units = "n.a."
                 if dep_var == 'zc':
-                    ax.set_xlabel(units)
+                    ax.set_xlabel(self.units)
                     ax.set_ylabel("Pressure (" + vertical_units + ")",
                                 size=pu.axes_label_font_size(fig.subplots))
 

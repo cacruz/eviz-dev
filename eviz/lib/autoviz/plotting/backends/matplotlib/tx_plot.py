@@ -29,7 +29,12 @@ class MatplotlibTXPlotter(MatplotlibBasePlotter):
         data2d, _, _, field_name, plot_type, findex, fig = data_to_plot
         if data2d is None:
             return fig
-        
+
+        self.source_name = config.source_names[config.ds_index]
+        self.units = self.get_units(config, 
+                                    field_name, 
+                                    data2d, 
+                                    findex)
         self.fig = fig
         
         ax_opts = config.ax_opts
@@ -106,8 +111,7 @@ class MatplotlibTXPlotter(MatplotlibBasePlotter):
             cbar = fig.colorbar(cfilled, orientation='horizontal', pad=0.1, aspect=70,
                                 extendrect=True)
             
-            units = self._get_units_for_colorbar(data2d)
-            cbar.set_label(units)
+            cbar.set_label(self.units)
             
             self._set_longitude_ticks(ax[1], lons)
             
@@ -265,17 +269,7 @@ class MatplotlibTXPlotter(MatplotlibBasePlotter):
                 lons = np.arange(data2d_reduced.shape[1])
         
         return data2d_reduced
-    
-    @staticmethod
-    def _get_units_for_colorbar(data2d):
-        """Get units for the colorbar."""
-        units = "n.a."
-        if hasattr(data2d, 'attrs') and 'units' in data2d.attrs:
-            units = data2d.attrs['units']
-        elif hasattr(data2d, 'units'):
-            units = data2d.units
-        return units
-    
+        
     @staticmethod
     def _setup_map_panel(ax):
         """Set up the map panel at the top of the Hovmoller plot."""

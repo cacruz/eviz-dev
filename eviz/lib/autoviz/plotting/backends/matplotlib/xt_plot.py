@@ -26,6 +26,14 @@ class MatplotlibXTPlotter(MatplotlibBasePlotter):
         """
         data2d, _, _, field_name, plot_type, findex, fig = data_to_plot
         
+        if data2d is None:
+            return fig
+
+        self.source_name = config.source_names[config.ds_index]
+        self.units = self.get_units(config, 
+                                    field_name, 
+                                    data2d, 
+                                    findex)
         self.fig = fig
         
         ax_opts = config.ax_opts
@@ -234,32 +242,7 @@ class MatplotlibXTPlotter(MatplotlibBasePlotter):
                 self.logger.warning(f"Error setting y limits: {e}")
             
             # Set y-axis label (units)
-            try:
-                source_name = config.source_names[config.ds_index]
-                
-                if 'units' in config.spec_data[field_name]:
-                    units = config.spec_data[field_name]['units']
-                else:
-                    units = getattr(data2d, 'units', None)
-                    
-                    if not units:
-                        reader = config.get_primary_reader(source_name)
-                        if reader and hasattr(reader, 'datasets'):
-                            if findex in reader.datasets and 'vars' in reader.datasets[findex]:
-                                field_var = reader.datasets[findex]['vars'].get(field_name)
-                                if field_var:
-                                    units = getattr(field_var, 'units', 'n.a.')
-                                else:
-                                    units = 'n.a.'
-                            else:
-                                units = 'n.a.'
-                        else:
-                            units = 'n.a.'
-            except Exception as e:
-                self.logger.warning(f"Error getting units for {field_name}: {e}")
-                units = 'n.a.'
-            
-            ax.set_ylabel(units)
+            ax.set_ylabel(self.units)
             
             # Add grid if specified
             if ax_opts['add_grid']:

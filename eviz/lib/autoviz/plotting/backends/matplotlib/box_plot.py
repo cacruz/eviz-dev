@@ -24,14 +24,21 @@ class MatplotlibBoxPlotter(MatplotlibBasePlotter):
             The created Matplotlib figure and axes
         """
         data, _, _, field_name, plot_type, findex, fig = data_to_plot
+
         if data is None or not isinstance(data, pd.DataFrame) or data.empty:
             return fig
+
         required_cols = {'value', 'experiment'}
         if not required_cols.issubset(data.columns):
             self.logger.warning(f"DataFrame missing required columns: "
                                 f"{required_cols - set(data.columns)}")
             return fig
-        
+
+        self.source_name = config.source_names[config.ds_index]
+        self.units = self.get_units(config, 
+                                    field_name, 
+                                    data, 
+                                    findex)
         self.fig = fig
         ax_opts = config.ax_opts
         df = data
@@ -96,12 +103,6 @@ class MatplotlibBoxPlotter(MatplotlibBasePlotter):
                 'name' in config.spec_data[field_name]:
             title = config.spec_data[field_name]['name']
         
-        units = "n.a."
-        if hasattr(config, 'spec_data') and \
-                field_name in config.spec_data and \
-                'units' in config.spec_data[field_name]:
-            units = config.spec_data[field_name]['units']
-
         color_settings = None
         if config.compare or config.compare_diff or config.overlay:
             color_settings = config.box_colors
@@ -217,7 +218,7 @@ class MatplotlibBoxPlotter(MatplotlibBasePlotter):
                 if config.add_legend:
                     ax.set_xlabel(category_col)
                 ax.set_xlim(0.5, num_categories + 0.5)
-                ax.set_ylabel(f"{title} ({units})")
+                ax.set_ylabel(f"{title} ({self.units})")
                 ax.grid(ax_opts['add_grid'], linestyle='--', alpha=0.7)
 
             else:
@@ -279,7 +280,7 @@ class MatplotlibBoxPlotter(MatplotlibBasePlotter):
                     ax.set_xticklabels(formatted_labels, rotation=45, ha='right', fontsize=10)
 
                 ax.set_xlabel(category_col)
-                ax.set_ylabel(f"{title} ({units})")
+                ax.set_ylabel(f"{title} ({self.units})")
                 ax.grid(ax_opts['add_grid'], linestyle='--', alpha=0.7)
 
             if config.compare:

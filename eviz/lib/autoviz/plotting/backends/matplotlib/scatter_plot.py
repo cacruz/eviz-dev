@@ -26,6 +26,14 @@ class MatplotlibScatterPlotter(MatplotlibBasePlotter):
         """
         data2d, x, y, field_name, plot_type, findex, fig = data_to_plot
         
+        if data2d is None:
+            return fig
+
+        self.source_name = config.source_names[config.ds_index]
+        self.units = self.get_units(config, 
+                                    field_name, 
+                                    data2d, 
+                                    findex)
         self.fig = fig
         
         ax_opts = config.ax_opts

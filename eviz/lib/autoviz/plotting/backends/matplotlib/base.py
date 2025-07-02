@@ -121,7 +121,6 @@ class MatplotlibBasePlotter(BasePlotter):
         if 'clevs' in ax_opts and ax_opts['clevs'] is not None and len(ax_opts['clevs']) > 0:
             return
         
-        # Check if data is all NaN
         if np.isnan(data2d).all():
             self.logger.warning("All values are NaN! Cannot create contour levels.")
             # Set default contour levels to avoid errors
@@ -129,7 +128,6 @@ class MatplotlibBasePlotter(BasePlotter):
             ax_opts['clevs_prec'] = 0
             return
         
-        # Use provided vmin and vmax if available
         if vmin is not None and vmax is not None:
             dmin, dmax = vmin, vmax
         else:
@@ -228,8 +226,6 @@ class MatplotlibBasePlotter(BasePlotter):
             if ax_opts.get("suppress_colorbar", False):
                 return None
 
-            source_name = config.source_names[config.ds_index]
-
             # Create formatter for colorbar ticks
             if ax_opts["cbar_sci_notation"]:
                 fmt = pu.FlexibleOOMFormatter(
@@ -256,9 +252,8 @@ class MatplotlibBasePlotter(BasePlotter):
                     shrink=pu.cbar_shrink(fig.subplots),
                 )
 
-            units = self.get_units(config, field_name, data2d, source_name, findex)
             if ax_opts["clabel"] is None:
-                cbar_label = units
+                cbar_label = self.units
             else:
                 cbar_label = ax_opts["clabel"]
             self.style_colorbar(cbar, ax_opts, data2d,
@@ -268,11 +263,6 @@ class MatplotlibBasePlotter(BasePlotter):
                 t.set_fontsize(pu.contour_tick_font_size(fig.subplots))
             for t in cbar.ax.get_yticklabels():
                 t.set_fontsize(pu.contour_tick_font_size(fig.subplots))
-
-            # Use consistent number of ticks
-            from matplotlib.ticker import MaxNLocator
-            cbar.locator = MaxNLocator(nbins=10)
-            cbar.update_ticks()
 
             return cbar
 
@@ -306,7 +296,6 @@ class MatplotlibBasePlotter(BasePlotter):
             self.logger.warning("No valid contours for shared colorbar")
             return None
         
-        # Log the number of valid contours and their limits
         self.logger.debug(f"Found {len(valid_contours)} valid contours for shared colorbar")
         for i, contour in enumerate(valid_contours):
             self.logger.debug(f"Contour {i} clim: {contour.get_clim()}")
@@ -321,29 +310,17 @@ class MatplotlibBasePlotter(BasePlotter):
         colorbar_width = getattr(config, 'colorbar_width', 0.02)
         cbar_ax = fig.add_axes([0.92, 0.15, colorbar_width, 0.7])
         
-        # Store reference to the colorbar axes
         fig._shared_colorbar_ax = cbar_ax
         
         # Create the colorbar using the first valid contour
         cbar = fig.colorbar(valid_contours[0], cax=cbar_ax)
         
-        # IMPORTANT: Update the colorbar limits to encompass all data for this field
+        # Encompass all data for this field
         cbar.mappable.set_clim(vmin, vmax)
         
-        # Improve tick label formatting
-        from matplotlib.ticker import MaxNLocator
-        cbar.locator = MaxNLocator(nbins=6)
-        cbar.update_ticks()
-        
-        # Set consistent tick font size
         tick_font_size = 8  # Fixed size for shared colorbar
         cbar.ax.tick_params(labelsize=tick_font_size)
-        
-        # Add units if available
-        if hasattr(config, 'spec_data') and field_name in config.spec_data:
-            if 'units' in config.spec_data[field_name]:
-                units = config.spec_data[field_name]['units']
-                cbar.set_label(units, size=10)
+        cbar.set_label(self.units, size=10)
         
         return cbar
 
@@ -351,7 +328,7 @@ class MatplotlibBasePlotter(BasePlotter):
     def set_const_colorbar(cfilled, fig, ax):
         _ = fig.colorbar(cfilled, ax=ax, shrink=0.5)
 
-    def get_units(self, config, field_name, data2d, source_name, findex):
+    def get_units(self, config, field_name, data2d, findex):
         """Get units for the field."""
         self.logger.debug(f"Get units for {field_name}")
         try:
@@ -368,15 +345,15 @@ class MatplotlibBasePlotter(BasePlotter):
 
             # Try to get units from the reader
             reader = None
-            if source_name in config.readers:
-                if isinstance(config.readers[source_name], dict):
-                    readers_dict = config.readers[source_name]
+            if self.source_name in config.readers:
+                if isinstance(config.readers[self.source_name], dict):
+                    readers_dict = config.readers[self.source_name]
                     if "NetCDF" in readers_dict:
                         reader = readers_dict["NetCDF"]
                     elif readers_dict:
                         reader = next(iter(readers_dict.values()))
                 else:
-                    reader = config.readers[source_name]
+                    reader = config.readers[self.source_name]
 
             if reader and hasattr(reader, "datasets"):
                 if findex in reader.datasets and "vars" in reader.datasets[findex]:

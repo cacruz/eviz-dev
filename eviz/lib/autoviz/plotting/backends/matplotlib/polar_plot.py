@@ -26,13 +26,17 @@ class MatplotlibPolarPlotter(MatplotlibBasePlotter):
         Returns:
             The created figure
         """
-        data2d, x, y, field_name, plot_type, findex, fig = data_to_plot
-        
-        self.fig = fig
-        
+        data2d, x, y, field_name, plot_type, findex, fig = data_to_plot  
+
         if data2d is None:
-            self.logger.warning("No data to plot")
             return fig
+
+        self.source_name = config.source_names[config.ds_index]
+        self.units = self.get_units(config, 
+                                    field_name, 
+                                    data2d, 
+                                    findex)       
+        self.fig = fig
         
         ax_opts = config.ax_opts
         
@@ -152,18 +156,11 @@ class MatplotlibPolarPlotter(MatplotlibBasePlotter):
             ax.add_feature(cfeature.OCEAN, color='lightblue', zorder=0)
 
             cbar = plt.colorbar(pcm, ax=ax, shrink=0.5, pad=0.05)
-            if 'units' in config.spec_data[field_name]:
-                units = config.spec_data[field_name]['units']
-            else:
-                try:
-                    units = data2d.units
-                except Exception as e:
-                    self.logger.error(f"{e}: Please specify {field_name} units in specs file")
-                    units = "n.a."
-            if units == '1':
-                units = '%'
+            # Rename units
+            if self.units == '1':
+                self.units = '%'
             if ax_opts['clabel'] is None:
-                cbar_label = units
+                cbar_label = self.units
             else:
                 cbar_label = ax_opts['clabel']
             cbar.set_label(label=cbar_label, size=12, weight='bold')
