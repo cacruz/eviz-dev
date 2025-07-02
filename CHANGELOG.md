@@ -17,23 +17,24 @@ eviz can produce interactive plots using different backends.
 
 ### Added
 - Many new modules and a slightly different directory structure.
-  -  Separated 'lib' code into autoviz, config, and data. This latter defines
-     sources, factory (for sources), and a pipeline that defines the eviz 
-     workflow.
+  - Separated 'lib' code into autoviz, config, and data. This latter defines
+    sources, factory (for sources), and a pipeline that defines the eviz 
+    workflow.
   - The original config module (config.py) was broken down into more
     manageable pieces including a configuration adapter to bridge the 
     configuration with the pipeline.i
   - A "backends" option (via plot_backend in YAML file). The supported 
     backends are matplotlib (default), hvplot, and altair.
-  - CREST support and with it new plotting modules to generate some AI-friendly
-    plots such as box plots and Pearson correlation maps. Note that CREST is
+  - CREST support and with it new plotting modules to generate new
+    plots such as box plots and correlation maps. Note that CREST is
     is an AI framework for building and running Earth System Models.
   - Minimum workable GRIB class (and its corresponding grib data source option)
     and meta coordinates.
-- Many unit tests (code coverage increased from ~25% to ~45%).
+- Support for side-by-side comparison plots supporting 2D and line maps.
+- More unit tests (code coverage increased from ~25% to ~37%).
 - Matplotlib rcParams options in specs file.
 - Automatic OpenDAP support (when input is a URL).
-- Improved documentation.
+- Improved documentation and a new "tutorial".
 
 ### Deprecated
 
@@ -52,11 +53,12 @@ eviz can produce interactive plots using different backends.
   as well as paths.
 
 ### Known issues:
+- The hvplot and altair backsends are not fully supported for all plot types.
+- Distorted colorbars for side-by-side plots with individual colorbars.
 - Figure details are not automatically optimal and have to be tweaked
   through specs.
 - The units module needs more testing and some unit conversions may not
   work as expected.
-- The hvplot and altair backsends are not fully supported for all plot types.
   
 ## [0.6.3] - 2024-12-23
 
