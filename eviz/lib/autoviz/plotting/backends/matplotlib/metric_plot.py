@@ -1,3 +1,4 @@
+import matplotlib as mpl
 import numpy as np
 import logging
 import xarray as xr
@@ -15,7 +16,7 @@ class MatplotlibMetricPlotter(MatplotlibBasePlotter):
         super().__init__()
         self.plot_object = None
         self.logger = logging.getLogger(self.__class__.__name__)
-    
+
     def plot(self, config, data_to_plot):
         """Create a correlation map using Matplotlib.
         
@@ -28,10 +29,16 @@ class MatplotlibMetricPlotter(MatplotlibBasePlotter):
         Returns:
             The created Matplotlib figure and axes
         """
-        field_name = data_to_plot[3]
+        self.config = config
+        field_name = data_to_plot[3]        
         if isinstance(data_to_plot[0], tuple) and len(data_to_plot[0]) == 2:
-            # We have two datasets to correlate
+            # Two datasets to correlate
             data1, data2 = data_to_plot[0]
+            
+            # Store original data for R² calculation
+            self._original_data = (data1, data2)
+            
+            self.logger.debug("Computing correlation between two datasets")
             # Get corr plot settings from for_inputs
             corr_settings = config.app_data.for_inputs['correlation']
             corr_method = corr_settings['method']
@@ -56,6 +63,10 @@ class MatplotlibMetricPlotter(MatplotlibBasePlotter):
             # Assume data2d is already a correlation map
             data2d = data_to_plot[0]
             
+            # Clear original data reference since we don't have the original datasets
+            if hasattr(self, '_original_data'):
+                del self._original_data
+                
             # Try to determine correlation method from attributes
             method_name = 'Correlation'
             if hasattr(data2d, 'attrs') and 'correlation_method' in data2d.attrs:
@@ -98,62 +109,83 @@ class MatplotlibMetricPlotter(MatplotlibBasePlotter):
             self.ax = ax_temp[0]
 
         ax_opts = fig.update_ax_opts(field_name, self.ax, 'corr', level=0)
-        fig.plot_text(field_name, self.ax, 'corr', level=0, data=data2d)
+        with mpl.rc_context(rc=ax_opts.get('rc_params', {})):
+            fig.plot_text(field_name, self.ax, 'corr', level=0, data=data2d)
         
         self._plot_correlation_data(config, self.ax, data2d, x, y, field_name,
                                 fig, ax_opts, findex, method_name)
-
         return fig
 
     def _plot_correlation_data(self, config, ax, data2d, x, y, field_name,
                         fig, ax_opts, findex, method_name='Pearson'):
-        # Set RdBu_r colormap if not specified
-        cmap_name = ax_opts.get('use_cmap', 'RdBu_r')
-        # Check if we're using Cartopy and if the axis is a GeoAxes
-        is_cartopy_axis = False
-        try:
-            is_cartopy_axis = isinstance(ax, GeoAxes)
-        except ImportError:
-            pass
+        with mpl.rc_context(rc=ax_opts.get('rc_params', {})):
+            # Use RdBu_r colormap if not specified
+            cmap_name = ax_opts.get('use_cmap', 'RdBu_r')
 
-        data_transform = ccrs.PlateCarree()
+            is_cartopy_axis = False
+            try:
+                is_cartopy_axis = isinstance(ax, GeoAxes)
+            except ImportError:
+                pass
 
-        vmin, vmax = None, None
-        # Ensure contour levels are created based on vmin and vmax
-        self._create_clevs(field_name, ax_opts, data2d, vmin, vmax)
+            data_transform = ccrs.PlateCarree()
 
-        # For cross-correlation, the range might be different
-        if method_name.lower() == 'cross':
-            vmin_default, vmax_default = 0, 1  # Cross-correlation is typically 0 to 1
-        else:
-            vmin_default, vmax_default = -1, 1  # Pearson and Spearman are -1 to 1
+            vmin, vmax = None, None
+            self._create_clevs(field_name, ax_opts, data2d, vmin, vmax)
 
-        if len(x.shape) == 1 and len(y.shape) == 1:
-            X, Y = np.meshgrid(x, y)
-            cfilled = ax.pcolormesh(X, Y, data2d.values, 
-                                cmap=cmap_name, 
-                                vmin=ax_opts.get('vmin', vmin_default), 
-                                vmax=ax_opts.get('vmax', vmax_default),
-                                shading='auto')
-        else:
-            if fig.use_cartopy and is_cartopy_axis:
-                cfilled = self.filled_contours(config, field_name, ax, x, y, data2d, 
-                                            vmin=vmin, vmax=vmax, transform=data_transform)
-                if 'extent' in ax_opts:
-                    self.set_cartopy_ticks(ax, ax_opts['extent'])
-                else:
-                    self.set_cartopy_ticks(ax, [-180, 180, -90, 90])
+            # For cross-correlation, the range might be different
+            if method_name.lower() == 'cross':
+                vmin_default, vmax_default = 0, 1  # Cross-correlation is 0 to 1
             else:
-                cfilled = self.filled_contours(config, field_name, ax, x, y, data2d,
-                                            vmin=vmin, vmax=vmax)
+                vmin_default, vmax_default = -1, 1  # Pearson and Spearman are -1 to 1
 
-        if cfilled is None:
-            self.set_const_colorbar(cfilled, fig, ax)
-        else:
-            # Update colorbar label to include correlation method
-            if 'colorbar_label' not in ax_opts:
-                ax_opts['colorbar_label'] = f'{method_name} Correlation'
-            self.set_colorbar(config, cfilled, fig, ax, ax_opts, findex, field_name, data2d)
+            if len(x.shape) == 1 and len(y.shape) == 1:
+                X, Y = np.meshgrid(x, y)
+                cfilled = ax.pcolormesh(X, Y, data2d.values, 
+                                    cmap=cmap_name, 
+                                    vmin=ax_opts.get('vmin', vmin_default), 
+                                    vmax=ax_opts.get('vmax', vmax_default),
+                                    shading='auto')
+            else:
+                if fig.use_cartopy and is_cartopy_axis:
+                    cfilled = self.filled_contours(config, field_name, ax, x, y, data2d, 
+                                                vmin=vmin, vmax=vmax, transform=data_transform)
+                    if 'extent' in ax_opts:
+                        self.set_cartopy_ticks(ax, ax_opts['extent'])
+                    else:
+                        self.set_cartopy_ticks(ax, [-180, 180, -90, 90])
+                else:
+                    cfilled = self.filled_contours(config, field_name, ax, x, y, data2d,
+                                                vmin=vmin, vmax=vmax)
+
+            if cfilled is None:
+                self.set_const_colorbar(cfilled, fig, ax)
+            else:
+                if 'colorbar_label' not in ax_opts:
+                    ax_opts['colorbar_label'] = f'{method_name} Correlation'
+                self.set_colorbar(config, cfilled, fig, ax, ax_opts, findex, field_name, data2d)
+            
+            # Calculate and display R² value
+            if hasattr(self, '_original_data') and len(self._original_data) == 2:
+                data1, data2 = self._original_data
+                r_squared = self._calculate_r_squared(data1, data2)
+            else:
+                # Estimate R² from correlation values if original data is not available
+                r_squared = self._estimate_r_squared_from_correlation(data2d)
+        
+            if not np.isnan(r_squared):
+                r_squared_text = f'R² = {r_squared:.3f}'
+                
+                # Position the text in the upper right corner
+                x_pos = 0.92
+                y_pos = 1.01
+                
+                ax.text(x_pos, y_pos, r_squared_text, 
+                    transform=ax.transAxes, 
+                    horizontalalignment='center',
+                    verticalalignment='bottom',
+                    bbox=dict(facecolor='white', alpha=0.7, edgecolor='none', pad=3),
+                    fontsize=10)
 
     def _compute_correlation_map(self, corr_method, data1, data2):
         """Compute pixel-wise correlation coefficient between two datasets."""
@@ -297,3 +329,58 @@ class MatplotlibMetricPlotter(MatplotlibBasePlotter):
         else:
             self.logger.error(f"Unsupported data dimensions: {dims1}")
             return None
+
+
+    def _calculate_r_squared(self, data1, data2):
+        """
+        Calculate the coefficient of determination (R²) between two datasets.
+        
+        Args:
+            data1 (xarray.DataArray): First dataset
+            data2 (xarray.DataArray): Second dataset
+            
+        Returns:
+            float: The R² value
+        """
+        # Flatten the arrays and remove NaN values
+        flat1 = data1.values.flatten()
+        flat2 = data2.values.flatten()
+        
+        mask = ~np.isnan(flat1) & ~np.isnan(flat2)
+        if np.sum(mask) < 2:
+            self.logger.error("Not enough valid data points for R² calculation")
+            return np.nan
+        
+        x = flat1[mask]
+        y = flat2[mask]
+        
+        # Calculate R² directly
+        correlation_matrix = np.corrcoef(x, y)
+        if correlation_matrix.size >= 4:  # At least a 2x2 matrix
+            correlation_xy = correlation_matrix[0, 1]
+            r_squared = correlation_xy ** 2
+        else:
+            r_squared = np.nan
+        
+        return r_squared
+
+    def _estimate_r_squared_from_correlation(self, corr_data):
+        """
+        Estimate R² from correlation values.
+        
+        Args:
+            corr_data (xarray.DataArray): Correlation data
+            
+        Returns:
+            float: Estimated R² value
+        """
+        # Flatten the correlation values and remove NaNs
+        corr_values = corr_data.values.flatten()
+        corr_values = corr_values[~np.isnan(corr_values)]
+        
+        if len(corr_values) == 0:
+            return np.nan
+        
+        # For spatial correlation maps, we want the mean R²
+        r_squared_values = corr_values ** 2
+        return np.mean(r_squared_values)
