@@ -1,71 +1,73 @@
 # Tutorial: eviz-dev
 
-eViz Autoviz is a tool designed to **automatically visualize scientific data**
-from various sources like NetCDF, CSV, and more. It uses **configuration files**
-to manage settings, processes data through a flexible **pipeline**, and generates
-**customizable plots** for analysis and comparison, adapting to **source-specific** details.
+eviz-dev is an automatic visualization system for **scientific data**, such as
+climate model outputs and observations. It uses a **central configuration** to
+manage settings and orchestrates a **data pipeline** to read and process data
+from various *file formats*. Specialized **handlers** process different data
+types, which are then passed to **plotter backends** to generate *customizable
+visualizations* on dedicated **figure** containers.
 
 
-**Source Repository:** [None](None)
+**Source Repository:** [EViz](https://github.com/cacruz/eviz.git)
 
 ```{mermaid}
 flowchart TD
-    A0["Configuration Management
+    A0["Config Manager
 "]
-    A1["Data Source Abstraction
+    A1["YAML Parser
 "]
-    A2["Data Source Factory
+    A2["Data Source
 "]
-    A3["Data Processing Pipeline
+    A3["Data Pipeline
 "]
-    A4["Source/Model Specific Logic
+    A4["Model/Source Handler
 "]
-    A5["Plotter Abstraction
+    A5["Figure
 "]
-    A6["Plotter Factory
+    A6["Plotter Backend
 "]
-    A7["Autoviz Application
+    A7["Autoviz (Main Application)
 "]
     A8["Metadata Tool (metadump)
 "]
-    A7 -- "Sets up config" --> A0
-    A7 -- "Drives logic" --> A4
+    A7 -- "Creates" --> A0
+    A1 -- "Populates" --> A0
+    A4 -- "Uses Config" --> A0
+    A3 -- "Uses Config" --> A0
+    A5 -- "Uses Config" --> A0
+    A6 -- "Uses Config" --> A0
+    A3 -- "Reads" --> A2
+    A7 -- "Orchestrates" --> A3
+    A4 -- "Accesses" --> A3
+    A7 -- "Uses Handler" --> A4
+    A4 -- "Creates Figure" --> A5
+    A6 -- "Plots On" --> A5
+    A4 -- "Uses Plotter" --> A6
     A7 -- "Launches metadump" --> A8
-    A0 -- "Configures pipeline" --> A3
-    A0 -- "Configures factory" --> A2
-    A0 -- "Configures logic" --> A4
-    A0 -- "Configures plotters" --> A5
-    A3 -- "Manages data instances" --> A1
-    A3 -- "Gets sources via" --> A2
-    A2 -- "Builds sources" --> A1
-    A4 -- "Accesses pipeline" --> A3
-    A4 -- "Gets plotters via" --> A6
-    A6 -- "Builds plotters" --> A5
     A8 -- "Outputs config" --> A0
-    A1 -- "Supplies data to logic" --> A4
-    A5 -- "Visualizes data" --> A1
 ```
 
 ## Chapters
 
-1. [Autoviz Application
-](01_autoviz_application_.md)
-2. [Configuration Management
-](02_configuration_management_.md)
-3. [Data Source Abstraction
-](03_data_source_abstraction_.md)
-4. [Data Source Factory
-](04_data_source_factory_.md)
-5. [Data Processing Pipeline
-](05_data_processing_pipeline_.md)
-6. [Plotter Abstraction
-](06_plotter_abstraction_.md)
-7. [Plotter Factory
-](07_plotter_factory_.md)
-8. [Source/Model Specific Logic
-](08_source_model_specific_logic_.md)
-9. [Metadata Tool (metadump)
+1. [Data Source
+](01_data_source_.md)
+2. [Config Manager
+](02_config_manager_.md)
+3. [YAML Parser
+](03_yaml_parser_.md)
+4. [Autoviz (Main Application)
+](04_autoviz__main_application__.md)
+5. [Data Pipeline
+](05_data_pipeline_.md)
+6. [Model/Source Handler
+](06_model_source_handler_.md)
+7. [Figure
+](07_figure_.md)
+8. [Plotter Backend
+](08_plotter_backend_.md)
+9. [Metadump
 ](09_metadata_tool__metadump__.md)
+
 
 
 ---

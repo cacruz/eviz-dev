@@ -1,14 +1,7 @@
 # Chapter 9: Metadata Tool (metadump)
 
-Welcome back! In our eViz journey so far, we've explored many components:
-*   The [Autoviz Application](01_autoviz_application_.md) as the main director.
-*   [Configuration Management](02_configuration_management_.md) providing the detailed plan in YAML.
-*   [Data Source Abstraction](03_data_source_abstraction_.md) and the [Data Source Factory](04_data_source_factory_.md) for reading various data files into a standard format.
-*   The [Data Processing Pipeline](05_data_processing_pipeline_.md) for cleaning and preparing data.
-*   [Plotter Abstraction](06_plotter_abstraction_.md) and the [Plotter Factory](07_plotter_factory_.md) for creating plots using different backends.
-*   [Source/Model Specific Logic](08_source_model_specific_logic_.md) providing the expert knowledge for handling specific data types before plotting.
-
-All these components work together beautifully *if* eViz knows exactly what variables exist in your file, what their dimensions are, what units they use, and so on. But how do you, the user, figure out this information in the first place, especially if you're dealing with a new or unfamiliar data file? How do you know what variable names like `T2`, `PSFC`, or `h500` actually mean, or whether `pressure` is in Pascals or hectopascals?
+Welcome back! In our eViz journey so far, we've explored many components
+which all work together beautifully *if* eViz knows exactly what variables exist in your file, what their dimensions are, what units they use, and so on. But how do you, the user, figure out this information in the first place, especially if you're dealing with a new or unfamiliar data file? How do you know what variable names like `T2`, `PSFC`, or `h500` actually mean, or whether `pressure` is in Pascals or hectopascals?
 
 Sure, you could open the file with specialized software or write a quick Python script using `xarray` or `netcdf4`, but wouldn't it be helpful to have a simple, dedicated tool for this specific task?
 
@@ -24,9 +17,9 @@ It can tell you:
 *   What the data type is (e.g., `float32`, `int64`).
 *   Important attributes associated with variables or the whole dataset (like `units`, `long_name`, `valid_range`).
 
-Beyond simply listing this information, `metadump.py` can also **generate snippets of YAML configuration** based on its findings. This is incredibly helpful because it gives you a starting point for creating the detailed configuration files needed by the main [Autoviz Application](01_autoviz_application_.md).
+Beyond simply listing this information, `metadump.py` can also **generate snippets of YAML configuration** based on its findings. This is incredibly helpful because it gives you a starting point for creating the detailed configuration files needed by the main [Autoviz Application](04_autoviz__main_application__.md).
 
-It helps bridge the gap between having a raw data file and writing the configuration plan ([Chapter 2: Configuration Management](02_configuration_management_.md)) that tells eViz how to visualize it.
+It helps bridge the gap between having a raw data file and writing the configuration plan ([Chapter 2: Config Manager](02_config_manager_.md)) that tells eViz how to visualize it.
 
 ## Our Use Case: Inspecting a Data File
 
@@ -44,7 +37,7 @@ When you run this command, `metadump.py` will open the file, analyze its content
 INFO :: (main:122) : Plottable variables: ['temperature', 'pressure', 'humidity']
 ```
 
-This simple output already gives you the variable names you can use in your configuration's `to_plot` section ([Chapter 2: Configuration Management](02_configuration_management_.md)).
+This simple output already gives you the variable names you can use in your configuration's `to_plot` section ([Chapter 2: Config Manager](02_config_manager_.md)).
 
 ### Getting More Detail: JSON Output
 
@@ -92,11 +85,11 @@ The `metadata.json` file will contain a comprehensive description like this (sim
     }
 }
 ```
-This JSON output is incredibly valuable because it shows you dimension names (`time`, `level`, `lat`, `lon`) and variable attributes (`units`, `long_name`) which are essential for correctly configuring eViz and potentially useful if you need to implement [Source/Model Specific Logic](08_source_model_specific_logic_.md).
+This JSON output is incredibly valuable because it shows you dimension names (`time`, `level`, `lat`, `lon`) and variable attributes (`units`, `long_name`) which are essential for correctly configuring eViz and potentially useful if you need to implement source model specific logic.
 
 ### Generating Configuration Snippets: YAML Output
 
-Perhaps the most powerful feature for beginners is `metadump.py`'s ability to generate YAML snippets that you can use as a starting point for your configuration file ([Chapter 2: Configuration Management](02_configuration_management_.md)). You can ask for two types of YAML output:
+Perhaps the most powerful feature for beginners is `metadump.py`'s ability to generate YAML snippets that you can use as a starting point for your configuration file ([Chapter 2: Config Manager](02_config_manager_.md)). You can ask for two types of YAML output:
 
 *   `--app`: Generates the main application configuration structure (`inputs`, `outputs`, `system_opts`).
 *   `--specs`: Generates the detailed variable specifications (like contour levels, plot types per variable).
@@ -179,7 +172,7 @@ These generated files provide a solid starting point for your visualization task
 python metadump.py file_A.nc file_B.nc --app compare_config.yaml --specs compare_specs.yaml
 ```
 
-This will generate similar `_specs.yaml` content based on `file_A.nc` (assuming variables match) and an `_app.yaml` that includes both files in the `inputs` list and adds the `for_inputs` section to enable comparison mode ([Chapter 2: Configuration Management](02_configuration_management_.md)), automatically assigning experiment IDs.
+This will generate similar `_specs.yaml` content based on `file_A.nc` (assuming variables match) and an `_app.yaml` that includes both files in the `inputs` list and adds the `for_inputs` section to enable comparison mode ([Chapter 2: Config Manager](02_config_manager_.md)), automatically assigning experiment IDs.
 
 `compare_config.yaml` (simplified snippet):
 
@@ -550,7 +543,7 @@ The `_generate_app_dict` method builds the main application configuration dictio
         }
 ```
 
-The `_generate_app_dict` starts with a basic structure for the `inputs`, `outputs`, and `system_opts` sections. It calls `_get_plot_types` (which uses logic similar to `_process_variable`) to populate the `to_plot` list for the first input file. If a second file was provided, `_add_comparison_config` is called to add that file to the `inputs` list and include the `for_inputs` section needed for comparison plots ([Chapter 2: Configuration Management](02_configuration_management_.md)).
+The `_generate_app_dict` starts with a basic structure for the `inputs`, `outputs`, and `system_opts` sections. It calls `_get_plot_types` (which uses logic similar to `_process_variable`) to populate the `to_plot` list for the first input file. If a second file was provided, `_add_comparison_config` is called to add that file to the `inputs` list and include the `for_inputs` section needed for comparison plots ([Chapter 2: Config Manager](02_config_manager_.md)).
 
 Finally, the `_write_specs_yaml` and `_write_app_yaml` methods simply use the `yaml.dump` function from the PyYAML library to convert the generated Python dictionaries into YAML format and write them to the specified output files.
 
@@ -560,7 +553,7 @@ Finally, the `_write_specs_yaml` and `_write_app_yaml` methods simply use the `y
 *   **Identify Plottable Variables:** Get a quick list of variables eViz is likely able to plot based on dimension analysis.
 *   **Understand Metadata:** View dimension names, units, long names, etc., which are crucial for configuration and understanding the data.
 *   **Generate Boilerplate Config:** Get a head start on writing your eViz configuration files, reducing manual effort and potential errors. This is especially useful for comparison plots where the `inputs` and `for_inputs` sections need careful setup.
-*   **Support for New Data:** If you're adding support for a new data format or model (requiring new [Data Source Abstraction](03_data_source_abstraction_.md) or [Source/Model Specific Logic](08_source_model_specific_logic_.md)), `metadump.py --json` is invaluable for understanding the raw structure of the files you need to read.
+*   **Support for New Data:** If you're adding support for a new data format or model, `metadump.py --json` is invaluable for understanding the raw structure of the files you need to read.
 
 In essence, `metadump.py` is a developer and user-friendly utility that complements the core eViz visualization engine by making it easier to understand the input data and generate the necessary configuration.
 

@@ -12,8 +12,8 @@ Note that ``eViz`` has been tested with Python version >= 3.8
 
 .. code-block::
    
-   git clone https://git.smce.nasa.gov/astg/visualization/eviz.git
-   git clone git@git.smce.nasa.gov:astg/visualization/eviz.git
+   git clone https://github.com/cacruz/eviz.git
+   git clone git@github.com:cacruz/eviz.git
 
 3. cd into the code repo: 
 
