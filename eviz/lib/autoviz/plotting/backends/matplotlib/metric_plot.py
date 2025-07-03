@@ -5,7 +5,6 @@ import xarray as xr
 import cartopy.crs as ccrs
 from scipy.stats import pearsonr, spearmanr
 from scipy.signal import correlate
-import matplotlib.pyplot as plt
 from cartopy.mpl.geoaxes import GeoAxes
 from .base import MatplotlibBasePlotter
 

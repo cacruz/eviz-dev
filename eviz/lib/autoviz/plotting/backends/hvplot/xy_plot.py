@@ -1,9 +1,8 @@
 import numpy as np
-import pandas as pd
 import logging
 import holoviews as hv
 import hvplot.xarray  # register the hvplot method with xarray objects
-import hvplot.pandas
+import hvplot.pandas  # noqa
 from eviz.lib.autoviz.plotting.base import XYPlotter
 
 
@@ -56,10 +55,6 @@ class HvplotXYPlotter(XYPlotter):
         if data2d is None:
             self.logger.warning("No data to plot")
             return None
-        
-        self.logger.debug(f"Data shape: {data2d.shape}")
-        self.logger.debug(f"X coords shape: {x.shape if hasattr(x, 'shape') else 'scalar'}")
-        self.logger.debug(f"Y coords shape: {y.shape if hasattr(y, 'shape') else 'scalar'}")
         
         ax_opts = config.ax_opts
         

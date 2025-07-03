@@ -34,11 +34,6 @@ class AltairScatterPlotter(ScatterPlotter):
             self.logger.warning("No data to plot")
             return None
         
-        self.logger.debug(f"X data shape: {x_data.shape if hasattr(x_data, 'shape') else 'scalar'}")
-        self.logger.debug(f"Y data shape: {y_data.shape if hasattr(y_data, 'shape') else 'scalar'}")
-        if z_data is not None:
-            self.logger.debug(f"Z data shape: {z_data.shape if hasattr(z_data, 'shape') else 'scalar'}")
-        
         ax_opts = config.ax_opts
         
         title = field_name
@@ -55,9 +50,6 @@ class AltairScatterPlotter(ScatterPlotter):
                 units = z_data.units
         
         df = self._convert_to_dataframe(x_data, y_data, z_data)
-        
-        self.logger.debug(f"DataFrame shape: {df.shape}")
-        self.logger.debug(f"DataFrame columns: {df.columns}")
         
         try:
             x_label = ax_opts.get('xlabel', x_data.name if hasattr(x_data, 'name') else 'X')
