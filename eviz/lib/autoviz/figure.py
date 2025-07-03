@@ -277,7 +277,7 @@ class Figure(mfigure.Figure):
         if not hasattr(fig, '_ax_opts'):
             fig._ax_opts = {}
         fig._ax_opts['rc_params'] = rc_params
-        
+
         return fig
 
     def set_us_map_layout(self):
@@ -468,8 +468,13 @@ class Figure(mfigure.Figure):
         """Initialize map options for a given field."""
         plot_type = "polar" if self.plot_type.startswith("po") else self.plot_type[:2]
         spec = self.config_manager.spec_data.get(field_name, {}).get(f"{plot_type}plot", {})
+
+        existing_rc_params = {}
+        if hasattr(self, '_ax_opts') and 'rc_params' in self._ax_opts:
+            existing_rc_params = self._ax_opts.get('rc_params', {}).copy()  # Make a copy
+
         defaults = {
-            'rc_params': None,
+            'rc_params': existing_rc_params,
             'boundary': None,
             'use_pole': 'north',
             'profile_dim': None,
@@ -524,45 +529,29 @@ class Figure(mfigure.Figure):
                 'subplot_title.fontsize': 12
             }
         }
-        self._ax_opts = {key: spec.get(key, defaults[key]) for key in defaults}
+        # self._ax_opts = {key: spec.get(key, defaults[key]) for key in defaults}
+
+        # Create new ax_opts dictionary
+        new_ax_opts = {}
+        for key in defaults:
+            if key == 'rc_params':
+                # Special handling for rc_params to preserve existing values
+                new_ax_opts[key] = defaults[key].copy()
+            else:
+                new_ax_opts[key] = spec.get(key, defaults[key])
         
-        # Get rc_params from YAML if present
+        # Update with any new rc_params from YAML
         rc_params_from_yaml = spec.get('rc_params', {})
+
         rc_keys = set(mpl.rcParams.keys())
         # Filter for valid rcParams
         filtered_rc_params = {k: v for k, v in rc_params_from_yaml.items() if k in rc_keys}
-        # Merge with any rcParams already in _ax_opts
-        if self._ax_opts.get('rc_params'):
-            self._ax_opts['rc_params'].update(filtered_rc_params)
-        else:
-            self._ax_opts['rc_params'] = filtered_rc_params        
-        # Store the font size for later use
-        font_size = self._ax_opts['rc_params'].get('font.size', None)
-        title_size = self._ax_opts['rc_params'].get('axes.titlesize', None)
 
-        # Apply axes-specific rc_params directly to axes
-        if self._ax_opts['rc_params']:
-            for ax in self.axes:
-                # Apply font size to tick labels if specified
-                if font_size is not None:
-                    ax.tick_params(axis='both', labelsize=font_size)
-                
-                # Apply title size and location if specified
-                if ax.get_title() and title_size is not None:
-                    ax.title.set_size(title_size)
-                
-                if 'axes.titlelocation' in self._ax_opts['rc_params']:
-                    title_loc = self._ax_opts['rc_params']['axes.titlelocation']
-                    if ax.get_title():
-                        ax.set_title(ax.get_title(), loc=title_loc)
-                
-                # Apply other axes parameters
-                for param, value in self._ax_opts['rc_params'].items():
-                    if param == 'axes.grid':
-                        ax.grid(value)
-                    elif param == 'axes.labelsize':
-                        ax.xaxis.label.set_size(value)
-                        ax.yaxis.label.set_size(value)
+        if filtered_rc_params:
+            new_ax_opts['rc_params'].update(filtered_rc_params)
+        
+        # Set the new ax_opts
+        self._ax_opts = new_ax_opts   
 
         return self._ax_opts
 
@@ -685,11 +674,14 @@ class Figure(mfigure.Figure):
         """Add text to a single axes."""
         font_size = None
         title_size = None
-        if hasattr(self, '_ax_opts') and 'rc_params' in self._ax_opts:
-            font_size = self._ax_opts['rc_params'].get('font.size', None)
-            title_size = self._ax_opts['rc_params'].get('axes.titlesize', None)
         
-        # Use provided font size or fall back to rc_params or default
+        # Extract properties from rc_params
+        if 'rc_params' in self.ax_opts:
+            font_size = self.ax_opts['rc_params'].get('font.size', None)
+            title_size = self.ax_opts['rc_params'].get('axes.titlesize', None)
+        else:
+            self.ax_opts['rc_params'] = {}
+        
         fontsize = kwargs.get('fontsize', font_size or pu.subplot_title_font_size(self._subplots))
         title_fontsize = title_size or fontsize
         loc = kwargs.get('location', 'left')
@@ -980,5 +972,12 @@ class Figure(mfigure.Figure):
 
     @property
     def ax_opts(self):
+        """Access to the axis options."""
+        if not hasattr(self, '_ax_opts'):
+            self._ax_opts = {}
         return self._ax_opts
 
+    @ax_opts.setter
+    def ax_opts(self, value):
+        """Set the axis options."""
+        self._ax_opts = value
