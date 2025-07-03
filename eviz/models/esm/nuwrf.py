@@ -1,10 +1,9 @@
 import logging
 import warnings
 from dataclasses import dataclass
-
+import numpy as np
 import pandas as pd
-
-from eviz.models.esm.gridded import Gridded
+from eviz.models.gridded_source import GriddedSource
 from eviz.lib.data.utils import apply_conversion
 
 warnings.filterwarnings("ignore")
@@ -12,8 +11,30 @@ warnings.filterwarnings("ignore")
 logger = logging.getLogger(__name__)
 
 
+_COORD_PAIR_MAP = {"XLAT": ("XLAT", "XLONG"),
+                   "XLONG": ("XLAT", "XLONG"),
+                   "XLAT_M": ("XLAT_M", "XLONG_M"),
+                   "XLONG_M": ("XLAT_M", "XLONG_M"),
+                   "XLAT_U": ("XLAT_U", "XLONG_U"),
+                   "XLONG_U": ("XLAT_U", "XLONG_U"),
+                   "XLAT_V": ("XLAT_V", "XLONG_V"),
+                   "XLONG_V": ("XLAT_V", "XLONG_V"),
+                   "CLAT": ("CLAT", "CLONG"),
+                   "CLONG": ("CLAT", "CLONG")}
+
+
+_COORD_VARS = ("XLAT", "XLONG", "XLAT_M", "XLONG_M", "XLAT_U", "XLONG_U",
+               "XLAT_V", "XLONG_V", "CLAT", "CLONG")
+
+_LAT_COORDS = ("XLAT", "XLAT_M", "XLAT_U", "XLAT_V", "CLAT")
+
+_LON_COORDS = ("XLONG", "XLONG_M", "XLONG_U", "XLONG_V", "CLONG")
+
+_TIME_COORD_VARS = ("XTIME",)
+
+
 @dataclass
-class NuWrf(Gridded):
+class NuWrf(GriddedSource):
     """ Define NUWRF specific model data and functions."""
 
     @property
@@ -27,25 +48,49 @@ class NuWrf(Gridded):
 
     def _get_reader(self, source_name):
         """Get the appropriate reader for the source."""
-        if source_name in self.config_manager.readers:
-            if isinstance(self.config_manager.readers[source_name], dict):
-                # New structure - get the primary reader
-                readers_dict = self.config_manager.readers[source_name]
-                if 'NetCDF' in readers_dict:
-                    return readers_dict['NetCDF']
-                elif readers_dict:
-                    return next(iter(readers_dict.values()))
-            else:
-                # Old structure - direct access
-                return self.config_manager.readers[source_name]
-        
-        self.logger.error(f"Source {source_name} not found in readers")
-        return None
+        if not hasattr(self.config_manager, '_pipeline'):
+            self.logger.error("No pipeline available in config_manager")
+            return None
+            
+        class ReaderWrapper:
+            def __init__(self, pipeline):
+                self.pipeline = pipeline
+                
+            def read_data(self, file_path):
+                data_source = self.pipeline.get_data_source(file_path)
+                if data_source is None:
+                    return None
+                    
+                if not hasattr(data_source, 'dataset') or data_source.dataset is None:
+                    return None
+                    
+                return {
+                    'vars': data_source.dataset.data_vars,
+                    'attrs': data_source.dataset.attrs
+                }
+                
+        return ReaderWrapper(self.config_manager._pipeline)
 
-    def _simple_plots(self, plotter):
+    def _load_source_data(self, source_name, filename):
+        """Common method to load source data."""
+        reader = self._get_reader(source_name)
+        if not reader:
+            self.logger.error(f"No reader found for source {source_name}")
+            return None
+            
+        source_data = reader.read_data(filename)
+        if not source_data:
+            self.logger.error(f"Failed to read data from {filename}")
+            return None
+            
+        return source_data
+
+    def process_simple_plots(self, plotter):
+        """Common implementation for simple plots."""
         map_params = self.config_manager.map_params
         field_num = 0
         self.config_manager.findex = 0
+        
         for i in map_params.keys():
             field_name = map_params[i]['field']
             source_name = map_params[i]['source_name']
@@ -53,15 +98,8 @@ class NuWrf(Gridded):
             filename = map_params[i]['filename']
             file_index = self.config_manager.get_file_index(filename)
             
-            # Get the appropriate reader
-            reader = self._get_reader(source_name)
-            if not reader:
-                self.logger.error(f"No reader found for source {source_name}")
-                continue
-                
-            self.source_data = reader.read_data(filename)
+            self.source_data = self._load_source_data(source_name, filename)
             if not self.source_data:
-                self.logger.error(f"Failed to read data from {filename}")
                 continue
                 
             self._global_attrs = self.set_global_attrs(source_name, self.source_data['attrs'])
@@ -72,203 +110,116 @@ class NuWrf(Gridded):
             self.config_manager.findex = file_index
             self.config_manager.pindex = field_num
             self.config_manager.axindex = 0
+            
             for pt in map_params[i]['to_plot']:
                 self.logger.info(f"Plotting {field_name}, {pt} plot")
                 field_to_plot = self._get_field_for_simple_plot(field_name, pt)
                 plotter.simple_plot(self.config_manager, field_to_plot)
             field_num += 1
 
-    def _get_time_value(self, data_array, time_index, time_dim=None):
-        """
-        Get the time value for the given index.
-        
-        Args:
-            data_array: The data array containing time values
-            time_index: The index to extract
-            time_dim: The name of the time dimension
-            
-        Returns:
-            The time value or a default timestamp if unavailable
-        """
-        # If no time dimension provided, try to find one
-        if time_dim is None:
-            for dim_name in ['time', 'Time', 't', 'T']:
-                if dim_name in data_array.dims:
-                    time_dim = dim_name
-                    break
-        
-        # If still no time dimension, return a default timestamp
-        if time_dim is None:
-            return pd.Timestamp('2000-01-01')
-        
-        # Try different approaches to get the time value
-        try:
-            # First try: Check if there's a time coordinate with the time_dim
-            if time_dim in data_array.coords:
-                return data_array.coords[time_dim].values[time_index]
-            
-            # Second try: Check for a time variable attribute
-            if hasattr(data_array, 'time') and hasattr(data_array.time, 'isel'):
-                return data_array.time.isel({time_dim: time_index}).values
-            
-            # Third try: Check for WRF-specific time variables
-            if hasattr(data_array, 'XTIME'):
-                if time_dim in data_array.XTIME.dims:
-                    return data_array.XTIME.isel({time_dim: time_index}).values
-            
-            # Fourth try: Check for time-related variables in source_data
-            for var_name in ['time', 'Time', 'times', 'Times']:
-                if var_name in self.source_data['vars']:
-                    time_var = self.source_data['vars'][var_name]
-                    if time_dim in time_var.dims:
-                        return time_var.isel({time_dim: time_index}).values
-            
-            # Last resort: create a dummy timestamp
-            return pd.Timestamp('2000-01-01') + pd.Timedelta(days=time_index)
-        
-        except Exception as e:
-            self.logger.warning(f"Error getting time value: {e}")
-            return pd.Timestamp('2000-01-01') + pd.Timedelta(days=time_index)
-
-
     def _init_model_specific_data(self):
         """Hook for model-specific initialization. Override in subclasses."""
         pass
 
-    def _get_field_to_plot(self, field_name, file_index, plot_type, figure, time_level, level=None):
-        """Template method for getting field to plot."""
-        ax = figure.get_axes()
-        
-        # Get dimension names (model-specific)
-        dim1, dim2 = self.coord_names(self.source_name, self.source_data, field_name, plot_type)
-        
-        # Get data based on plot type
-        data2d = self._get_data_for_plot_type(field_name, plot_type, time_level, level)
-        
-        # Process coordinates (model-specific)
-        return self._process_coordinates(data2d, dim1, dim2, field_name, plot_type, file_index, figure, ax)
+    def _get_field_for_simple_plot(self, field_name, plot_type):
+        """Hook for model-specific simple plot field processing. Override in subclasses."""
+        raise NotImplementedError("Subclasses must implement _get_field_for_simple_plot")
 
-    def _process_coordinates(self, data2d, dim1, dim2, field_name, plot_type, file_index, figure, ax):
-        """
-        Process coordinates for the plot.
+    # Common utility methods
+    def _get_time_levels(self, data_array):
+        """Get the list of time levels to process based on configuration."""
+        time_dim = self._get_time_dimension_name(data_array)
+        time_level_config = self.config_manager.ax_opts.get('time_lev', 0)
         
-        Args:
-            data2d: The 2D data array to plot
-            dim1, dim2: Dimension names for the plot
-            field_name: Name of the field being plotted
-            plot_type: Type of plot (xy, yz, etc.)
-            file_index: Index of the file being processed
-            figure: The figure object
-            ax: The axes object
-            
-        Returns:
-            Tuple containing processed data and metadata for plotting
-        """
-        # For time series plots, no coordinate processing needed
-        if 'xt' in plot_type or 'tx' in plot_type:
-            return data2d, None, None, field_name, plot_type, file_index, figure, ax
-        
-        # For other plot types, extract coordinates but don't process them
-        # (Subclasses will override this with specific processing)
+        if time_level_config == 'all':
+            if time_dim and time_dim in data_array.dims:
+                num_times = data_array.sizes[time_dim]
+                return list(range(num_times))
+            else:
+                return [0]
+        else:
+            return [time_level_config]
+
+    def _get_time_string(self, data_array, time_index):
+        """Get a readable time string for the given time index."""
         try:
-            # Try to get coordinates from data2d
-            if hasattr(data2d, 'coords') and dim1 in data2d.coords and dim2 in data2d.coords:
-                xs = data2d.coords[dim1].values
-                ys = data2d.coords[dim2].values
-                return data2d, xs, ys, field_name, plot_type, file_index, figure, ax
+            time_dim = self._get_time_dimension_name(data_array)
+            time_value = None
+            
+            if hasattr(data_array, 'XTIME') and time_dim in data_array.XTIME.dims:
+                time_value = data_array.XTIME.isel({time_dim: time_index}).values
+            elif time_dim and time_dim in data_array.coords:
+                time_value = data_array.coords[time_dim].values[time_index]
+            elif hasattr(self, 'source_data') and self.source_data:
+                for var_name in ['Times', 'time', 'Time', 'XTIME']:
+                    if var_name in self.source_data['vars']:
+                        time_var = self.source_data['vars'][var_name]
+                        if time_dim and time_dim in time_var.dims:
+                            time_value = time_var.isel({time_dim: time_index}).values
+                            break
+            
+            # Convert to readable format
+            if time_value is not None:
+                if isinstance(time_value, (pd.Timestamp, np.datetime64)):
+                    return pd.to_datetime(time_value).strftime('%Y-%m-%d %H:%M')
+                elif isinstance(time_value, str):
+                    try:
+                        return pd.to_datetime(time_value).strftime('%Y-%m-%d %H:%M')
+                    except:
+                        return time_value
+                else:
+                    return pd.to_datetime(time_value).strftime('%Y-%m-%d %H:%M')
+            
+            base_time = pd.Timestamp('2000-01-01')
+            synthetic_time = base_time + pd.Timedelta(days=time_index)
+            return synthetic_time.strftime('%Y-%m-%d %H:%M')
+            
         except Exception as e:
-            self.logger.error(f"Error processing coordinates: {e}")
-        
-        # Default fallback
-        return data2d, None, None, field_name, plot_type, file_index, figure, ax
+            self.logger.warning(f"Error getting time string: {e}")
+            return f"Time step {time_index}"
 
-
-    def _apply_vertical_level_selection(self, data2d, field_name, level):
-        """
-        Apply vertical level selection to the data.
+    def _get_time_dimension_name(self, data_array):
+        """Get the name of the time dimension from the data array."""
+        time_dim_names = ['Time', 'time', 't', 'T', 'times', 'Times']
         
-        Args:
-            data2d: The data array after time selection
-            field_name: Name of the field being processed
-            level: The vertical level to select
-            
-        Returns:
-            Data array with vertical level selection applied
-        """
-        # Get the vertical dimension name
-        zc_dim = self.get_field_dim_name(self.source_name, self.source_data, 'zc', field_name)
-        
-        # If no vertical dimension or no level specified, return as is
-        if not zc_dim or level is None:
-            return data2d
-        
-        # If the vertical dimension exists in the data, select the level
-        if zc_dim in data2d.dims:
-            try:
-                # Basic implementation - subclasses will override with model-specific logic
-                return data2d.isel({zc_dim: level})
-            except Exception as e:
-                self.logger.warning(f"Error selecting vertical level: {e}")
-        
-        return data2d
-
-    def _get_xy(self, d, field_name, level, time_lev):
-        """
-        Extract XY slice from N-dim data field with common logic.
-        
-        This is a template method that defines the skeleton of the algorithm,
-        delegating model-specific steps to hook methods that subclasses can override.
-        """
-        if d is None:
-            return None
-            
-        # Convert level to int if provided
-        if level:
-            level = int(level)
-        
-        # 1. Pre-process data (squeeze dimensions, etc.)
-        data2d = self._preprocess_data(d)
-        
-        # 2. Get time dimension name (model-specific)
-        time_dim = self._get_time_dimension_name(d)
-        
-        # 3. Apply time selection or averaging (model-specific)
-        data2d = self._apply_time_selection(d, data2d, time_dim, time_lev, field_name, level)
-        
-        # 4. Apply vertical level selection (model-specific)
-        data2d = self._apply_vertical_level_selection(data2d, field_name, level)
-        
-        # 5. Apply conversion and return
-        return apply_conversion(self.config_manager, data2d, field_name)
-
-    # Hook methods that can be overridden by subclasses
-    @staticmethod
-    def _preprocess_data(d):
-        """Pre-process the data array. Default implementation just squeezes dimensions."""
-        return d.squeeze()
-
-    def _get_time_dimension_name(self, d):
-        """
-        Get the name of the time dimension.
-        Default implementation tries common time dimension names.
-        """
-        for dim_name in ['Time', 'time', 't', 'T']:
-            if dim_name in d.dims:
+        for dim_name in time_dim_names:
+            if dim_name in data_array.dims:
                 return dim_name
+        
         return None
 
-    def _apply_time_selection(self, original_data, data2d, time_dim, time_lev, field_name, level):
-        """
-        Apply time selection or averaging to the data.
-        Default implementation just selects the time level if a time dimension exists.
-        """
-        if time_dim and time_dim in original_data.dims:
-            try:
-                return original_data.isel({time_dim: time_lev}).squeeze()
-            except Exception as e:
-                self.logger.warning(f"Error selecting time level: {e}")
-        return data2d
+    def _extract_xy_data(self, d, time_level, level):
+        """ Extract XY slice from N-dim data field"""
+        if d is None:
+            return
+        if level:
+            level = int(level)
 
+        self.logger.debug(f"Selecting time level: {time_level}")
+        tc_dim = self.get_model_dim_name('tc') or 'Time'
+        zc_dim = self.get_model_dim_name('zc') 
+
+        if tc_dim in d.dims:
+            data2d = d.isel({tc_dim: time_level})
+        else:
+            data2d = d
+        data2d = data2d.squeeze()
+
+        zname = self.find_matching_dimension(d.dims, 'zc')
+        if zname in data2d.dims:
+            if 'soil' in zname:
+                data2d = data2d.isel({zname: 0})
+            else:
+                if self.source_name == 'lis':
+                    lev_to_plot = level
+                    data2d = data2d.isel({zname: 0})
+                else:
+                    difference_array = np.absolute(self.levs - level)
+                    index = difference_array.argmin()
+                    lev_to_plot = self.levs[index]  # should I use this instead of index?
+                    data2d = data2d.isel({zname: index})
+
+        return apply_conversion(self.config_manager, data2d, d.name)
 
     @staticmethod
     def set_global_attrs(source_name, ds_attrs):
@@ -285,19 +236,17 @@ class NuWrf(Gridded):
                 tmp[attr] = None
         return tmp
 
-    def coord_names(self, source_name, source_data, field_name, pid):
+    def coord_names(self, source_name, source_data, pid):
         """ Get WRF or LIS coord names based on field and plot type
 
         Parameters:
             source_name (str) : source name
             source_data (dict) : source data
-            field_name(str) : Field name associated with this plot
             pid (str) : plot type
         """
         coords = []
-        d = source_data['vars'][field_name]
-        if self.source_name == 'wrf':
-            stag = d.stagger
+        if source_name == 'wrf':
+            stag = source_data.attrs.get('stagger', None)
             xsuf, ysuf, zsuf = "", "", ""
             if stag == "X":
                 xsuf = "_stag"
@@ -307,36 +256,42 @@ class NuWrf(Gridded):
                 zsuf = "_stag"
 
             for name in self.get_model_coord_name(source_name, 'xc').split(","):
-                if name in d.coords.keys():
-                    coords.append((name, self.get_model_dim_name(source_name, 'xc')+xsuf))
+                if name in source_data.coords.keys():
+                    if xsuf:
+                        coords.append((name, self.get_model_dim_name('xc')+xsuf))
+                    else:
+                        coords.append((name, self.get_model_dim_name('xc')))
                     break
 
             for name in self.get_model_coord_name(source_name, 'yc').split(","):
-                if name in d.coords.keys():
-                    coords.append((name, self.get_model_dim_name(source_name, 'yc')+ysuf))
+                if name in source_data.coords.keys():
+                    if ysuf:
+                        coords.append((name, self.get_model_dim_name('yc')+xsuf))
+                    else:
+                        coords.append((name, self.get_model_dim_name('yc')))
                     break
-        else:  # 'lis'
-            xc = self.get_model_dim_name(source_name, 'xc')
+        else:
+            xc = self.get_model_dim_name('xc')
             if xc:
                 coords.append(xc)
-            yc = self.get_model_dim_name(source_name, 'yc')
+            yc = self.get_model_dim_name('yc')
             if yc:
                 coords.append(yc)
 
         if source_name == 'wrf':
-            zc = self.get_field_dim_name(source_name, source_data, 'zc', field_name)
+            zc = self.get_model_dim_name('zc')   # field_dim_name(source_data, 'zc')?
             if zc:
                 coords.append(zc)
         else:
-            for name in self.get_model_dim_name(source_name, 'zc').split(","):
-                if name in d.coords.keys():
+            for name in self.get_model_dim_name('zc').split(","):
+                if hasattr(source_data, "coords") and name in source_data.coords.keys():
                     coords.append(name)
                     break
 
         if source_name == 'wrf':
-            tc = self.get_field_dim_name(source_name, source_data, 'tc', field_name)
+            tc = self.get_model_dim_name('tc')   # field_dim_name(source_data, 'tc')?
         else:
-            tc = self.get_field_dim_name(source_data, 'tc', field_name)
+            tc = self.get_model_dim_name('tc')
 
         if tc:
             coords.append(tc)
@@ -347,7 +302,7 @@ class NuWrf(Gridded):
                 dim1 = coords[1]
                 dim2 = coords[2]
             elif 'xt' in pid:
-                dim1 = 'Time'
+                dim1 = coords[3] if len(coords) > 3 else None
             elif 'tx' in pid:
                 dim1 = coords[0]
                 dim2 = 'Time'
@@ -365,16 +320,18 @@ class NuWrf(Gridded):
                 dim2 = coords[1]
         return dim1, dim2
 
-    def get_field_dim_name(self):
-        """Hook for model-specific field-dim-name. Override in subclasses."""
-        pass
-
-    def get_model_dim_name(self, source_name: str, dim_name: str):
-        try:
-            dim = self.config_manager.meta_coords[dim_name][source_name]['dim']
-            return dim
-        except KeyError:
+    def get_field_dim_name(self, source_data: dict, dim_name: str):
+        field_dims = list(source_data.dims)
+        model_dim = self.get_model_dim_name(dim_name)
+        if not model_dim:
             return None
+        names = model_dim.split(',')
+        common = list(set(names).intersection(field_dims))
+        dim = list(common)[0] if common else None
+        return dim
+
+    def get_model_dim_name(self, dim_name: str):
+        return self.config_manager.get_model_dim_name(dim_name=dim_name)
 
     def get_model_coord_name(self, source_name: str, dim_name: str):
         try:
@@ -386,7 +343,33 @@ class NuWrf(Gridded):
     def get_dd(self, source_name, source_data, dim_name, field_name):
         d = source_data['vars'][field_name]
         field_dims = d.dims
-        names = self.get_model_dim_name(source_name, dim_name)
+        names = self.get_model_dim_name(dim_name)
         for d in field_dims:
             if d in names:
                 return d
+
+    def _get_field(self, name, data):
+        try:
+            return data[name]
+        except Exception as e:
+            self.logger.error('key error: %s, not found' % str(e))
+            return None
+
+    def find_matching_dimension(self, field_dims, dim_name):
+        """
+        Returns the first matching dimension name found in `field_dims` 
+        that is also in the meta_coords dictionary for the given `dim_name`.
+        
+        Parameters:
+        - field_dims: tuple of dimension names (e.g., from xarray.DataArray.dims)
+        - dim_name: str
+        
+        Returns:
+        - matched dimension name (str) or None
+        """
+        for dim in field_dims:
+            if dim in self.config_manager.meta_coords[dim_name][self.source_name]['dim']:
+                return dim
+        return None
+    
+

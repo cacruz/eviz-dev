@@ -2,7 +2,7 @@ from dataclasses import dataclass, field
 from typing import List, Dict, Any
 import os
 import logging
-from eviz.lib.utils import log_method, get_nested_key
+from eviz.lib.utils import get_nested_key
 import eviz.lib.utils as u
 
 
@@ -18,7 +18,6 @@ class YAMLParser:
     _ds_index: int = 0
     _specs_yaml_exists: bool = True
 
-    @log_method
     def parse(self):
         """Parse YAML files and populate app_data and spec_data."""
         concat = self._concatenate_yaml()
@@ -78,12 +77,15 @@ class YAMLParser:
         """Organize data for plotting routines."""
         _maps = {}
 
-        def process_input_dict(input_dict: Dict[str, Any]):
-            current_inputs = input_dict.get('inputs', [])
-            current_outputs = input_dict.get('outputs', {})
+        def process_input_dict(in_dict: Dict[str, Any]):
+            current_inputs = in_dict.get('inputs', [])
+            current_outputs = in_dict.get('outputs', {})
             
-            compare_ids = get_nested_key(self.app_data, ['for_inputs', 'compare', 'ids'], default='')
-            compare_diff_ids = get_nested_key(self.app_data, ['for_inputs', 'compare_diff', 'ids'], default='')
+            compare_ids = get_nested_key(self.app_data, ['for_inputs', 'compare', 'ids'],
+                                         default='')
+            compare_diff_ids = get_nested_key(self.app_data,
+                                              ['for_inputs', 'compare_diff', 'ids'],
+                                              default='')
             
             if isinstance(compare_ids, str) and compare_ids:
                 compare_ids = compare_ids.split(',')
@@ -95,21 +97,14 @@ class YAMLParser:
             elif not isinstance(compare_diff_ids, list):
                 compare_diff_ids = []
 
-            compare_flag = len(compare_ids) > 0
-            compare_diff_flag = len(compare_diff_ids) > 0
-            
-            compare_dir = None
-            if compare_flag or compare_diff_flag:
-                compare_dir = os.path.join(os.path.dirname(current_outputs.get('output_dir', '')), 'comparisons')
-
             for i, input_entry in enumerate(current_inputs):
                 filename = os.path.join(input_entry.get('location', ''), input_entry.get('name', ''))
                 exp_id = input_entry.get('exp_id', '')
-                exp_name = input_entry.get('exp_name', exp_id)  # Use exp_id as fallback for exp_name
-                source_name = input_dict.get('source', '')
+                exp_name = input_entry.get('exp_name', exp_id)
+                source_name = in_dict.get('source', '')
                 source_reader = self.app_data.get(source_name, None)
-                description = input_entry.get('description', input_dict.get('description', ''))
-                to_ignore = input_entry.get('ignore', input_dict.get('ignore', ''))
+                description = input_entry.get('description', in_dict.get('description', ''))
+                to_ignore = input_entry.get('ignore', in_dict.get('ignore', ''))
 
                 # Handle fields to plot - check both to_plot and variables sections
                 current_to_plot = input_entry.get('to_plot', {})
@@ -118,7 +113,8 @@ class YAMLParser:
                 if not current_to_plot and 'variables' in input_entry:
                     current_to_plot = {}
                     for var_name, var_config in input_entry['variables'].items():
-                        plot_type = var_config.get('plot_type', 'xy')  # Default to xy if not specified
+                        # Default to xy if not specified
+                        plot_type = var_config.get('plot_type', 'xy')
                         current_to_plot[var_name] = plot_type
                 
                 if not current_to_plot:
@@ -159,7 +155,7 @@ class YAMLParser:
                         'description': description,
                         'ignore': to_ignore,
                         'exp_id': exp_id,
-                        'exp_name': exp_name,  # Add exp_name field
+                        'exp_name': exp_name,
                         'to_plot': to_plot_values,
                         'compare': is_in_compare,
                         'compare_diff': is_in_compare_diff,
@@ -172,7 +168,6 @@ class YAMLParser:
             process_input_dict(input_dict)
 
         self._map_params = _maps
-
 
     @property
     def map_params(self) -> Dict[int, Dict[str, Any]]:
@@ -189,7 +184,7 @@ class YAMLParser:
         return {
             "config_files": self.config_files,
             "source_names": self.source_names,
-            "app_data": self.app_data,  # Already a dictionary
-            "spec_data": self.spec_data,  # Already a dictionary
-            "map_params": self._map_params,  # Already a dictionary
+            "app_data": self.app_data,
+            "spec_data": self.spec_data, 
+            "map_params": self._map_params,
         }

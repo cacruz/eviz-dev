@@ -33,17 +33,6 @@ class DataSource(ABC):
     Abstract Methods:
         load_data: Load data from a specified file path into an xarray Dataset.
     
-    Methods:
-        validate_data: Validate the loaded data for integrity and completeness.
-        get_field: Get a specific field (variable) from the dataset.
-        get_metadata: Get metadata about the dataset.
-        get_dimensions: Get the dimensions of the dataset.
-        get_variables: Get the variables in the dataset.
-        close: Close the dataset and free resources.
-        _get_model_dim_name: Get model-specific dimension name for a standard dimension.
-        _get_model_dim_name2: Alternative implementation for dimension name mapping.
-        __getattr__: Delegate attribute access to the underlying dataset.
-        __getitem__: Delegate item access to the underlying dataset.
     """
     model_name: Optional[str] = None
     config_manager: Optional[
@@ -74,11 +63,6 @@ class DataSource(ABC):
         The method should handle format-specific details while ensuring the returned
         dataset conforms to the expected structure for the eViz application.
         
-        Raises:
-            NotImplementedError: If the subclass does not implement this method.
-            FileNotFoundError: If the specified file does not exist.
-            ValueError: If the file format is invalid or unsupported.
-            IOError: If there are issues reading the file.
         """
         raise NotImplementedError("Subclasses must implement the load_data method.")
     
@@ -214,14 +198,13 @@ class DataSource(ABC):
             raise TypeError(f"'{self.__class__.__name__}' has no dataset loaded")
         
         return self.dataset[key]
-        
-        
+
     def _get_model_dim_name(self, gridded_dim_name, available_dims=None):
         """
         Get the model-specific dimension name for a gridded dimension.
         
         Args:
-            gridded_dim_name (str): Gridded dimension name (e.g., 'xc', 'yc', 'zc', 'tc')
+            gridded_dim_name (str): GriddedSource dimension name (e.g., 'xc', 'yc', 'zc', 'tc')
             available_dims (list, optional): List of available dimensions in the dataset
             
         Returns:
@@ -253,17 +236,16 @@ class DataSource(ABC):
             return None
             
         model_name = self.model_name
-        
-        self.logger.debug(f"Looking for model '{model_name}' in meta_coords['{gridded_dim_name}']")
-        self.logger.debug(f"Available models for {gridded_dim_name}: {list(meta_coords[gridded_dim_name].keys())}")
-        
+
         if not model_name or model_name not in meta_coords[gridded_dim_name]:
             # Try to use a default model if available
             if 'gridded' in meta_coords[gridded_dim_name]:
-                self.logger.debug(f"Using 'gridded' mapping for model '{model_name}' and dimension '{gridded_dim_name}'")
+                self.logger.debug(f"Using 'gridded' mapping for model '{model_name}' "
+                                  f"and dimension '{gridded_dim_name}'")
                 model_name = 'gridded'
             else:
-                self.logger.warning(f"No mapping found for model '{model_name}' and dimension '{gridded_dim_name}'")
+                self.logger.warning(f"No mapping found for model '{model_name}' and "
+                                    f"dimension '{gridded_dim_name}'")
                 return None
         
         coords = meta_coords[gridded_dim_name][model_name]
@@ -293,7 +275,6 @@ class DataSource(ABC):
             return None
         
         elif isinstance(coords, str):
-            # If coords is a string, handle comma-separated list of possible dimension names
             if ',' in coords:
                 coord_candidates = coords.split(',')
                 if available_dims:

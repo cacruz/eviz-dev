@@ -9,19 +9,23 @@ import subprocess
 import multiprocessing
 import logging
 import time
-
-
+from typing import Optional, Union
+from typing import Tuple, Any
 import matplotlib
+from matplotlib.figure import Figure
 import matplotlib.pyplot as plt
 import numpy as np
+import holoviews as hv
+from IPython.display import display
+import tempfile
+import webbrowser
+
 from matplotlib.ticker import LogFormatter
 import glob
 from PIL import Image
 
 from numpy import e
-from matplotlib.offsetbox import (OffsetImage, TextArea, AnchoredOffsetbox, VPacker)
 import eviz.lib.utils as u
-import eviz.lib.const as constants
 from eviz.lib.utils import timer
 
 logger = logging.getLogger('plot_utils')
@@ -43,7 +47,7 @@ UNIT_DICT = {
 }
 
 
-def subproc(cmd):
+def subproc(cmd: str):
     name = multiprocessing.current_process().name
     logger.debug(f'Starting {name} ')
     cmds = shlex.split(cmd)
@@ -58,14 +62,14 @@ def subproc(cmd):
     return out
 
 
-def plot_process(filename):
+def plot_process(filename: str):
     name = multiprocessing.current_process().name
     logger.info(f'Starting {name} ')
     plt.tight_layout()
     plt.savefig(filename, bbox_inches='tight')
 
 
-def run_plot_commands(filenames):
+def run_plot_commands(filenames: list[str]):
     njobs = len(filenames)
     logger.info(f"Processing {njobs} jobs - please wait ...")
     procs = list()
@@ -77,7 +81,7 @@ def run_plot_commands(filenames):
         p.join()
 
 
-def create_pdf(config):
+def create_pdf(config: "ConfigManager") -> None:
     from PIL import Image
     import glob
     irgb0 = None
@@ -104,123 +108,311 @@ def create_pdf(config):
                    save_all=True, append_images=ilist)
 
 
-def natural_key(filename):
-    return [int(text) if text.isdigit() else text for text in re.split(r'(\d+)', filename)]
+def natural_key(filename: str):
+    return [int(text) if text.isdigit() else text for text in
+            re.split(r'(\d+)', filename)]
 
 
-def update(i, im, image_array):
-    im.set_array(image_array[i])
-    return im,
-
-
-def create_gif(config):
-    if config.archive_web_results:
-        img_path = os.path.join(config.app_data['outputs']['output_dir'],
-                                config.archive_path)
+def create_gif(config: "ConfigManager") -> None:
+    archive_web_results = getattr(config, 'archive_web_results', False)
+    if archive_web_results:
+        img_path = os.path.join(config.app_data.outputs['output_dir'], config.archive_path)
     else:
-        img_path = config.app_data['outputs']['output_dir']
-    all_files = glob.glob(img_path+"/*."+config.print_format)
-    files = sorted(all_files, key=natural_key)
-    if len(files) == 1:
-        return
-    prefix = list(config.app_data['inputs'][0]['to_plot'])[0]
+        img_path = config.app_data.outputs['output_dir']
 
-    # remove IC (NUWRF only)
-    if not config.archive_web_results:
-        if 'lis' in config.source_names or 'wrf' in config.source_names:
-            os.remove(os.path.join(img_path, prefix+"_0_0." + config.print_format))
-            files.pop(0)
-
-    image_array = []
-    for my_file in files:
-        image = Image.open(my_file)
-        image_array.append(np.array(image))
-
-    height, width, _ = image_array[0].shape
-    fig, ax = plt.subplots(figsize=(width / 100, height / 100),
-                           dpi=300)  # dpi here must be the same as in print_map()
-    ax.set_axis_off()
-    fig.subplots_adjust(left=0, right=1, top=1, bottom=0)  # Remove padding
-
-    fps = config.gif_fps
-    duration_ms = int(1000 / fps)
-    image_sequence = [Image.fromarray(img) for img in image_array]
-    image_sequence[0].save(
-        os.path.join(img_path, prefix + ".gif"),
-        save_all=True,
-        append_images=image_sequence[1:],
-        duration=duration_ms,
-        loop=0  # Infinite loop
-    )
-
-    if config.archive_web_results:
-        with open(os.path.join(img_path, prefix + ".json"), 'w') as fp:
-            json.dump(config.vis_summary, fp)
-            fp.close()
-
-    for my_file in files:
-        os.remove(my_file)
-
-
-def print_map(config, plot_type, findex, fig, level=None):
-    map_params = config.map_params
-    exp_id = map_params[config.pindex]['exp_id']
-    field_name = map_params[config.pindex]['field']
-
-    # Get output directory from Config...
-    # Always get the output_dir value, even for compare mode
-    output_dir = u.get_nested_key_value(map_params[config.pindex], ['outputs', 'output_dir'])
+    print_format = getattr(config, 'print_format', 'png')
     
-    # ...or from Eviz default location
-    if not output_dir:
-        output_dir = constants.output_path
-    if not os.path.exists(output_dir):
-        os.makedirs(output_dir)
+    # Get all unique field names from the files
+    all_files = glob.glob(img_path + "/*." + print_format)
+    field_names = set()
+    field_plot_types = set()
+    
+    # Extract field names from filenames
+    for file in all_files:
+        # Extract field name from filename with multiple possible plot types
+        match = re.search(r'([^/]+)_(xy|yz|xt|tx|sc)', os.path.basename(file))
+        if match:
+            field_name = match.group(1)
+            plot_type = match.group(2)
+            field_plot_types.add((field_name, plot_type))
+    
+    logger.info(f"Found {len(field_plot_types)} fields to process for GIFs")
+    
+    # Process each field and plot type combination separately
+    for field_name, plot_type in field_plot_types:
+        # Use both field name and plot type in the file pattern
+        field_files = glob.glob(img_path + f"/{field_name}_{plot_type}*." + print_format)
+        files = sorted(field_files, key=natural_key)
+        
+        if len(files) <= 1:
+            logger.debug(f"Skipping GIF for {field_name}_{plot_type}: not enough files ({len(files)})")
+            continue
+            
+        logger.info(f"Creating GIF for field: {field_name}_{plot_type} with {len(files)} frames")
+        
+        # remove IC (NUWRF only) - if needed
+        if not archive_web_results:
+            if {'lis', 'wrf'} & set(config.source_names):
+                # Find the file that ends with "_0_0.png" instead of assuming exact name
+                ic_file_pattern = f"*{field_name}*_0_0.{print_format}"
+                ic_files = glob.glob(os.path.join(img_path, ic_file_pattern))
 
-    levstr = ''
-    if level:
-        levstr = "_" + str(level)
+                if ic_files:
+                    ic_file_to_remove = ic_files[0]
+                    logger.debug(f"Removing IC file: {ic_file_to_remove}")
+                    os.remove(ic_file_to_remove)
 
-    time_level = ''
-    if hasattr(config, "time_level"):
-        time_level = config.time_level
-    if not config.compare:
-        if exp_id:
-            exp_id_suf = "_" + str(exp_id) + "_" + str(findex) + "_" + str(time_level) + "."
-        else:
-            exp_id_suf = "_" + str(findex) + "_" + str(time_level) + "."
-    else:
+                    if ic_file_to_remove in files:
+                        files.remove(ic_file_to_remove)
+                    else:
+                        ic_basename = os.path.basename(ic_file_to_remove)
+                        files = [f for f in files if os.path.basename(f) != ic_basename]
+                else:
+                    logger.debug(f"No IC file found matching pattern {ic_file_pattern}")
+
+        if not files:
+            logger.warning(f"No files remaining to create GIF for {field_name}")
+            continue
+
+        # Create GIF for this field
+        image_array = []
+        for my_file in files:
+            try:
+                image = Image.open(my_file)
+                image_array.append(np.array(image))
+            except Exception as ex:
+                logger.warning(f"Error processing image {my_file}: {ex}")
+            
+        if not image_array:
+            logger.warning(f"No valid images to create GIF for {field_name}")
+            continue
+            
+        # Create GIF
+        height, width, _ = image_array[0].shape
+        fig, ax = plt.subplots(figsize=(width / 100, height / 100),
+                               dpi=300)  # dpi here must be the same as in print_map()
+        
+        ax.set_axis_off()
+        fig.subplots_adjust(left=0, right=1, top=1, bottom=0)  # Remove padding
+
+        fps = getattr(config, 'gif_fps', 5) 
+        duration_ms = int(1000 / fps)
+        image_sequence = [Image.fromarray(img) for img in image_array]
+        
+        # Create GIF filename - use the field name for cleaner naming
+        gif_filename = f"{field_name}_{plot_type}.gif"
+        gif_path = os.path.join(img_path, gif_filename)        
+        
+        try:
+            image_sequence[0].save(
+                gif_path,
+                save_all=True,
+                append_images=image_sequence[1:],
+                duration=duration_ms,
+                loop=0
+            )
+            
+            logger.info(f"Created GIF: {gif_path}")
+            
+            # Clean up PNG files for this field
+            for my_file in files:
+                try:
+                    os.remove(my_file)
+                    logger.debug(f"Removed: {os.path.basename(my_file)}")
+                except OSError as ex:
+                    logger.warning(f"Warning: Could not remove {my_file}: {ex}")
+                    
+        except Exception as ex:
+            logger.error(f"Error creating GIF for {field_name}: {ex}")
+            
+        # Close the figure to avoid memory leaks
+        plt.close(fig)
+
+    # Handle web results if needed
+    if archive_web_results:
+        for field_name in field_names:
+            json_filename = f"{field_name}.json"
+            json_path = os.path.join(img_path, json_filename)
+            with open(json_path, 'w') as fp:
+                json.dump(config.vis_summary, fp)
+
+
+def print_map(config: "ConfigManager", 
+              plot_type: str, 
+              findex: int, 
+              fig: Figure, 
+              level: Optional[int] = None) -> None:
+    """Save or display a plot, handling output directory, file naming, and optional archiving.
+
+    Args:
+        config: Configuration object with plotting and output options.
+        plot_type (str): Type of plot (e.g., 'xy', 'yz', etc.).
+        findex (int): File index for naming.
+        fig: Figure object to save or show.
+        level (int, optional): Vertical level for the plot, if applicable.
+    """
+
+    def resolve_output_dir(config: "ConfigManager") -> str:
+        """Determine and create the output directory if needed."""
+        map_params = config.map_params
+        output_dir = u.get_nested_key_value(map_params[config.pindex],
+                                            ['outputs', 'output_dir'])
+
+        if not output_dir:
+            output_dir = config.paths.output_path
+        if not os.path.exists(output_dir):
+            os.makedirs(output_dir)
+            logger.debug(f"Created output directory: {output_dir}")
+        return output_dir
+
+    def build_filename(config: "ConfigManager", plot_type: str, findex: int,
+                       level: Optional[int] = None) -> str:
+        """Construct the output filename based on config and plot type."""
+        map_params = config.map_params
+        field_name = config.current_field_name or map_params[findex]['field']
+        exp_id = map_params[findex].get('exp_id', None)
+
+        levstr = f"_{level}" if level is not None else ""
+        time_level = getattr(config, "time_level", "")
         exp_id_suf = "."
 
-    if 'xy' in plot_type:
-        fname = field_name + levstr + exp_id_suf
-    elif 'yz' in plot_type:
-        fname = field_name + "_yz" + exp_id_suf
-    else:
-        fname = field_name + "_" + plot_type + exp_id_suf
+        if not config.compare:
+            if exp_id:
+                exp_id_suf = f"_{exp_id}_{findex}_{time_level}."
+            else:
+                exp_id_suf = f"_{findex}_{time_level}."
+        # else: exp_id_suf remains "."
+
+        # Add plot type to filename to make it unique for each field and plot type
+        if 'xy' in plot_type:
+            fname = f"{field_name}_xy{levstr}{exp_id_suf}"  # Added _xy to ensure uniqueness
+        elif 'yz' in plot_type:
+            fname = f"{field_name}_yz{exp_id_suf}"
+        else:
+            fname = f"{field_name}_{plot_type}{exp_id_suf}"
+
+        return fname
+
+    # Get the backend from config
+    backend = getattr(config, 'plot_backend', 'matplotlib')
+    
+    output_dir = resolve_output_dir(config)
+    fname = build_filename(config, plot_type, findex, level)
+    
+    # Determine file extension based on backend
+    if backend == 'altair':
+        file_ext = 'html'
+    elif backend == 'hvplot':
+        file_ext = 'html'
+    else:  # matplotlib or other image-based backends
+        file_ext = config.print_format
+    
+    map_filename = f"{fname}{file_ext}"
+    filename = os.path.join(output_dir, map_filename)
+    logger.debug(f"Saving plot to: {filename}")
 
     if config.print_to_file:
-        map_filename = fname + config.print_format
-        filename = os.path.join(output_dir, map_filename)
-        fig.tight_layout()
-        # fig.fig.tight_layout()
+        if backend == 'matplotlib':
+            # For matplotlib, use the traditional approach
+            if hasattr(fig, 'tight_layout'):
+                fig.tight_layout()
+            
+            rc_params = {}
+            if hasattr(fig, '_ax_opts') and 'rc_params' in fig._ax_opts:
+                rc_params = fig._ax_opts['rc_params']
+            
+            # Save with facecolor preserved if specified
+            if 'figure.facecolor' in rc_params:
+                fig.savefig(filename, dpi=300, facecolor=fig.get_facecolor())
+            else:
+            # Save with or without bbox_inches depending on extent
+                if config.ax_opts.get('extent'):
+                    fig.savefig(filename, bbox_inches='tight', dpi=300)
+                else:
+                    fig.savefig(filename, bbox_inches='tight', dpi=300)
+            
+            plt.close(fig)
 
-        if config.ax_opts['extent']:
-            fig.savefig(filename, dpi=300)
-            # fig.fig.savefig(filename, dpi=300)
+        elif backend == 'altair':
+            if hasattr(fig, 'save'):
+                fig.save(filename)
+            else:
+                logger.warning(f"Cannot save Altair plot: "
+                               f"{filename}. Object doesn't have save method.")
+        
+        elif backend == 'hvplot':
+            try:
+                hv.save(fig, filename)
+                logger.debug(f"Saved HvPlot using holoviews.save to {filename}")
+            except (ImportError, AttributeError) as ex:
+                logger.warning(f"Cannot save HvPlot using holoviews: {ex}")
+                # Try direct save if available
+                if hasattr(fig, 'save'):
+                    fig.save(filename)
+                else:
+                    logger.warning(f"Cannot save HvPlot: "
+                                   f"{filename}. Object doesn't support saving.")
+        
         else:
-            fig.savefig(filename, bbox_inches='tight', dpi=300)
-            # fig.fig.savefig(filename, bbox_inches='tight', dpi=300)
+            # Generic approach - try common save methods
+            if hasattr(fig, 'savefig'):
+                fig.savefig(filename)
+            elif hasattr(fig, 'save'):
+                fig.save(filename)
+            else:
+                logger.warning(f"Don't know how to save plot of type "
+                               f"{type(fig)} with backend {backend}")
 
-        if config.archive_web_results:
-            dump_json_file((fname.split('.'))[0], config, plot_type, findex,
-                           map_filename, fig, output_dir)
+        logger.debug(f"Figure saved to {filename}")
+
+        if getattr(config, "archive_web_results", False):
+            # Remove file extension from fname for JSON
+            json_fname = fname.split('.')[0]
+            dump_json_file(
+                json_fname, config, plot_type, findex, map_filename, fig, output_dir
+            )
+            logger.debug(f"Archived web results for {json_fname}")
     else:
-        plt.tight_layout()
-        plt.show()
+        if backend == 'matplotlib':
+            plt.tight_layout()
+            plt.show()
+        elif backend == 'altair':
+            try:
+                display(fig)
+            except ImportError:
+                temp_file = os.path.join(tempfile.gettempdir(), f"{fname}.html")
+                if hasattr(fig, 'save'):
+                    fig.save(temp_file)
+                    webbrowser.open(f"file://{temp_file}")
+        elif backend == 'hvplot':
+            # For HvPlot in notebooks, display directly
+            try:
+                display(fig)
+            except ImportError:
+                # If not in a notebook, open in browser
+                temp_file = os.path.join(tempfile.gettempdir(), f"{fname}.html")
+                hv.save(fig, temp_file)
+                webbrowser.open(f"file://{temp_file}")
+        else:
+            # Generic approach - try common show methods
+            if hasattr(fig, 'show'):
+                fig.show()
+            else:
+                logger.warning(f"Don't know how to display plot of type "
+                               f"{type(fig)} with backend {backend}")
 
 
-def formatted_contours(clevs):
+def legend_font_size(subplots: Tuple[Any, Any]) -> int:
+    """Determine appropriate font size for legends based on subplot layout."""
+    if subplots == (1, 1):
+        return 10
+    elif subplots[0] * subplots[1] <= 4:
+        return 8
+    else:
+        return 6
+    
+
+def formatted_contours(clevs: list[Union[int, float]]) -> list[Union[int, float]]:
     new_clevs = []
     for lev in clevs:
         str_lev = str(lev)
@@ -237,146 +429,150 @@ def formatted_contours(clevs):
     return new_clevs
 
 
-def axis_tick_font_size(panels=None):
-    if panels == (1, 1):  # single image on a page
+def axis_tick_font_size(panels: Optional[Union[int, None]] = None) -> int:
+    """Determine appropriate font size for axis ticks based on subplot layout."""
+    if isinstance(panels, tuple) and panels == (1, 1):  # single image on a page
         font_size = 12
-    elif panels == (3, 1):
+    elif isinstance(panels, tuple) and panels == (3, 1):
         font_size = 12
-    elif panels == (2, 2):
+    elif isinstance(panels, tuple) and panels == (2, 2):
         font_size = 12
     else:
         font_size = 8
     return font_size
 
 
-def bar_font_size(panels=None):
-    if panels == (1, 1):  # single image on a page
-        font_size = 12
-    elif panels == (3, 1):
+def bar_font_size(panels: Optional[Union[int, None]] = None) -> int:
+    """Determine appropriate font size for bar plots based on subplot layout."""
+    if isinstance(panels, tuple) and panels == (1, 1):  # single image on a page
         font_size = 10
-    elif panels == (2, 2):
+    elif isinstance(panels, tuple) and panels == (3, 1):
+        font_size = 10
+    elif isinstance(panels, tuple) and panels == (2, 2):
         font_size = 10
     else:
         font_size = 8
     return font_size
 
 
-def cbar_shrink(panels=None):
-    if panels == (1, 1):  # single image on a page
+def cbar_shrink(panels: Optional[Union[int, None]] = None) -> float:
+    if isinstance(panels, tuple) and panels == (1, 1):  # single image on a page
         frac = 1.0
-    elif panels == (3, 1):
+    elif isinstance(panels, tuple) and panels == (3, 1):
         frac = 0.75
-    elif panels == (2, 2):
+    elif isinstance(panels, tuple) and panels == (2, 2):
         frac = 0.75
     else:
         frac = 0.5
     return frac
 
 
-def contour_tick_font_size(panels):
-    if panels == (1, 1):  # single image on a page
-        font_size = 10
-    elif panels == (3, 1):
+def contour_tick_font_size(panels: Optional[Union[int, None]] = None) -> int:
+    """Determine appropriate font size for contour tick labels based on subplot layout."""
+    if isinstance(panels, tuple) and panels == (1, 1):  # single image on a page
         font_size = 8
-    elif panels == (2, 2):
+    elif isinstance(panels, tuple) and panels == (3, 1):
+        font_size = 8
+    elif isinstance(panels, tuple) and panels == (2, 2):
         font_size = 8
     else:
-        font_size = 8
+        font_size = 10
     return font_size
 
 
-def axes_label_font_size(panels=None):
-    if panels == (1, 1):  # single image on a page
+def axes_label_font_size(panels: Optional[Union[int, None]] = None) -> int:
+    """Determine appropriate font size for axes labels based on subplot layout."""
+    if isinstance(panels, tuple) and panels == (1, 1):  # single image on a page
         font_size = 12
-    elif panels == (3, 1):
+    elif isinstance(panels, tuple) and panels == (3, 1):
         font_size = 10
-    elif panels == (2, 2):
+    elif isinstance(panels, tuple) and panels == (2, 2):
         font_size = 10
     else:
         font_size = 8
     return font_size
 
 
-def cbar_pad(panels=None):
-    """
-    0.05 if vertical, 0.15 if horizontal;
-    fraction of original axes between colorbar
-    and new image axes
-    """
-    if panels == (1, 1):  # single image on a page
-        pad = 0.04
-    elif panels == (3, 1):
-        pad = 0.15
-    elif panels == (2, 2):
+def cbar_pad(panels: Optional[Union[int, None]] = None) -> float:
+    """ Padding between colorbar and image """
+    if isinstance(panels, tuple) and panels == (1, 1):  # single image on a page
+        pad = 0.1
+    elif isinstance(panels, tuple) and panels == (3, 1):
+        pad = 0.03
+    elif isinstance(panels, tuple) and panels == (2, 2):
         pad = 0.05
     else:
         pad = 0.05
     return pad
 
 
-def cbar_fraction(panels=None):
-    """ fraction of original axes to use for colorbar """
-    if panels == (1, 1):  # single image on a page
+def cbar_fraction(panels: Optional[Union[int, None]] = None) -> float:
+    """ Fraction of original axes to use for colorbar """
+    if isinstance(panels, tuple) and panels == (1, 1):  # single image on a page
         fraction = 0.05
-    elif panels == (3, 1):
+    elif isinstance(panels, tuple) and panels == (3, 1):
         fraction = 0.1
-    elif panels == (2, 2):
+    elif isinstance(panels, tuple) and panels == (2, 2):
         fraction = 0.05
     else:
         fraction = 0.05
     return fraction
 
 
-def image_font_size(panels=None):
-    if panels == (1, 1):  # single image on a page
+def image_font_size(panels: Optional[Union[int, None]] = None) -> int:
+    """Determine appropriate font size for image titles based on subplot layout."""
+    if isinstance(panels, tuple) and panels == (1, 1):  # single image on a page
         font_size = 16
-    elif panels == (3, 1):
+    elif isinstance(panels, tuple) and panels == (3, 1):
         font_size = 14
-    elif panels == (2, 2):
+    elif isinstance(panels, tuple) and panels == (2, 2):
         font_size = 14
     else:
-        font_size = 'small'
+        font_size = 14
     return font_size
 
 
-def subplot_title_font_size(panels=None):
-    if panels == (1, 1):  # single image on a page
+def subplot_title_font_size(panels: Optional[Union[int, None]] = None) -> int:
+    """Determine appropriate font size for subplot titles based on subplot layout."""
+    if isinstance(panels, tuple) and panels == (1, 1):  # single image on a page
         font_size = 14
-    elif panels == (3, 1):
+    elif isinstance(panels, tuple) and panels == (3, 1):
         font_size = 12
-    elif panels == (2, 2):
+    elif isinstance(panels, tuple) and panels == (2, 2):
         font_size = 12
     else:
         font_size = 10
     return font_size
 
 
-def title_font_size(panels=None):
-    if panels == (1, 1):  # single image on a page
+def title_font_size(panels: Optional[Union[int, None]] = None) -> int:
+    """Determine appropriate font size for subplot titles based on subplot layout."""
+    if isinstance(panels, tuple) and panels == (1, 1):  # single image on a page
         font_size = 14
-    elif panels == (3, 1):
+    elif isinstance(panels, tuple) and panels == (3, 1):
         font_size = 12
-    elif panels == (2, 2):
+    elif isinstance(panels, tuple) and panels == (2, 2):
         font_size = 12
     else:
         font_size = 12
     return font_size
 
 
-def contour_label_size(panels=None):
-    if panels == (1, 1):  # single image on a page
+def contour_label_size(panels: Optional[Union[int, None]] = None) -> int:
+    """Determine appropriate font size for contour labels based on subplot layout."""
+    if isinstance(panels, tuple) and panels == (1, 1):  # single image on a page
         label_size = 8
-    elif panels == (3, 1):
+    elif isinstance(panels, tuple) and panels == (3, 1):
         label_size = 8
-    elif panels == (2, 2):
+    elif isinstance(panels, tuple) and panels == (2, 2):
         label_size = 8
     else:
         label_size = 8
     return label_size
 
 
-def contour_levels_plot(clevs):
-    new_clevs = []
+def contour_levels_plot(clevs: list[Union[int, float]]) -> list[Union[int, float]]:
+    new_clevs: list[Union[int, float]] = []
     for lev in clevs:
         clevs_string = str(lev)
         if "e" in clevs_string:
@@ -387,9 +583,8 @@ def contour_levels_plot(clevs):
                 new_clevs.append(int(lev))
             else:
                 digits = clevs_string.split('.')[1]  # just get RHS of number
-
                 if int(digits) == 0:
-                    #            print ("The level: ", lev, " has no RHS!", int(lev))
+                    #  print ("The level: ", lev, " has no RHS!", int(lev))
                     new_clevs.append(int(lev))
                 else:
                     new_clevs.append(lev)
@@ -397,6 +592,7 @@ def contour_levels_plot(clevs):
 
 
 def contour_format_from_levels(levels, scale=None):
+    """Determine appropriate format for contour labels based on the levels."""
     digits_list = []
     num_sci_format = 0
     for lev in levels:  # check each contour level
@@ -422,7 +618,14 @@ def contour_format_from_levels(levels, scale=None):
             digits_list.append(0)
         else:
             digits_list.append(len(clevs_string.split('.')[1]))  # just get RHS of number
+    
+    # Sort the digits list
     digits_list.sort()
+    
+    # Handle empty digits_list
+    if not digits_list:
+        return "%1.1f"
+    
     num_type = "f"
     if num_sci_format > 1:
         num_type = "e"
@@ -516,7 +719,8 @@ def colorbar(mappable):
     if isinstance(ax, GeoAxes):
         # Create a new axes for the colorbar with the same projection
         divider = make_axes_locatable(ax)
-        cax = divider.append_axes("right", size="5%", pad=0.05, axes_class=type(ax), projection=ax.projection)
+        cax = divider.append_axes("right", size="5%", pad=0.05, axes_class=type(ax),
+                                  projection=ax.projection)
     else:
         # Standard Matplotlib Axes
         divider = make_axes_locatable(ax)
@@ -528,66 +732,117 @@ def colorbar(mappable):
     return cbar
 
 
-def image_scaling(image, num_rows, num_cols):
+def add_logo(fig: Figure) -> None:
     """
-    Scale the image to desired length(num_rows) and width (num_cols)
+    Adds image logo to figure, positioned at the top left
+    
+    Parameters:
+        fig: The eviz Figure object
     """
-    number_rows = len(image)  # source number of rows
-    number_columns = len(image[0])  # source number of columns
-    return [[image[int(number_rows * r / num_rows)][int(number_columns * c / num_cols)]
-             for c in range(num_cols)] for r in range(num_rows)]
+    try:
+        logo_paths = [
+            'docs/static/ASTG_logo_simple.png',
+            'eviz/lib/_static/ASTG_logo.png',
+            './docs/static/ASTG_logo_simple.png'
+        ]
+        
+        logo = None        
+        for path in logo_paths:
+            try:
+                logo = plt.imread(path)
+                break
+            except FileNotFoundError:
+                continue
+        
+        if logo is None:
+            logger.warning("Could not find logo file in any of the expected locations")
+            return
+            
+        fig_width, fig_height = fig.get_size_inches() * fig.dpi
+        
+        # Calculate logo dimensions (make it about 10% of the figure width)
+        # Using smaller size for top left corner placement
+        logo_height, logo_width = logo.shape[:2]
+        scale_factor = (fig_width * 0.10) / logo_width
+        new_width = int(logo_width * scale_factor)
+        new_height = int(logo_height * scale_factor)
+        
+        if scale_factor != 1.0:
+            try:
+                pil_img = Image.fromarray((logo * 255).astype(np.uint8))
+                pil_img = pil_img.resize((new_width, new_height), Image.LANCZOS)
+                logo = np.array(pil_img) / 255.0
+                logger.debug(f"Resized logo to {new_width}x{new_height}")
+            except ImportError:
+                logger.warning("PIL not available for resizing, using original size")
+        
+        # Position in the top left with padding
+        x_pos = 10  # 10 pixels from left edge
+        y_pos = fig_height*2.6
+        
+        fig.figimage(logo, x_pos, y_pos, zorder=3, alpha=0.7)
+        logger.debug(f"Added logo at position ({x_pos}, {y_pos}) "
+                     f"with dimensions {new_width}x{new_height}")
+        
+    except Exception as ex:
+        logger.error(f"Error adding logo: {ex}")
 
 
-def add_logo_xy(logo, ax, x0, y0, scale=50):
+def add_logo_ax(fig: Figure, desired_width_ratio: float=0.10) -> None:
     """
-    adds image logo and positions it on the figure
-    at position x0, y0
+    Adds image logo to figure using axes coordinates with proper scaling
+    
+    Parameters:
+        fig: The eviz Figure object
+        desired_width_ratio: Width of logo as a fraction of figure width (default: 0.10 or 10%)
     """
-    # scale Image
-    logo = image_scaling(logo, scale, scale)
-    ax.figure.figimage(logo, x0, y0, alpha=1.0, zorder=1, origin="upper")
+    try:
+        logo_paths = [
+            'docs/static/ASTG_logo_simple.png',
+            'eviz/lib/_static/ASTG_logo.png',
+            './docs/static/ASTG_logo_simple.png'
+        ]
+        
+        logo = None
+        for path in logo_paths:
+            try:
+                logo = plt.imread(path)
+                break
+            except FileNotFoundError:
+                continue
+                
+        if logo is None:
+            logger.warning("Could not find logo file")
+            return
+        
+        logo_height, logo_width = logo.shape[:2]
+        aspect_ratio = logo_height / logo_width
+        
+        width_in_fig_coords = desired_width_ratio
+        height_in_fig_coords = width_in_fig_coords * aspect_ratio
+        
+        # Position in top left with small margins
+        left = 0.02  # 2% from left edge
+        top = 0.98   # 2% from top edge
+        bottom = top - height_in_fig_coords
+        
+        logo_ax = fig.add_axes((left, bottom, width_in_fig_coords, height_in_fig_coords),
+                               zorder=10)
+        logo_ax.imshow(logo)
+        logo_ax.axis('off')  # Hide axes        
+        logo_ax.patch.set_alpha(0.0)
+        
+    except Exception as ex:
+        logger.error(f"Error adding logo: {ex}")
 
 
-def add_logo_anchor(ax, logo, label=None, logo_loc='upper left', alpha=0.5):
-    """
-    adds image logo and optionally, text
-    """
-    image_box = OffsetImage(logo, alpha=alpha, zoom=0.05)
-    if label:
-        textbox = TextArea(label, textprops=dict(alpha=alpha))
-        packer = VPacker(children=[image_box, textbox], mode='fixed', pad=0, sep=0, align='center')
-        ao = AnchoredOffsetbox(logo_loc, pad=0, borderpad=0, child=packer)
-    else:
-        ao = AnchoredOffsetbox(logo_loc, pad=0.01, borderpad=0, child=image_box)
-        ao.patch.set_alpha(0)
-    ax.add_artist(ao)
-
-
-def add_logo_fig(fig, logo):
-    """
-    adds image logo to a figure
-    """
-    # (x, y, width, height)
-    imax = fig.add_axes([0.9, 0.9, 0.1, 0.1])
-    # remove ticks & the box from imax
-    imax.set_axis_off()
-    # print the logo with aspect="equal" to avoid distorting the logo
-    imax.imshow(logo, aspect="equal", alpha=1)
-
-
-def add_logo(ax, logo):
-    """
-    adds image logo to axes
-    """
-    ax.figure.figimage(logo, 1, 1, zorder=3, alpha=.5)
-
-
-def output_basic(config, name):
+def output_basic(config: "ConfigManager", name: str):
     if config.print_to_file:
         output_fname = name + "." + config.print_format
-        output_dir = u.get_nested_key_value(config.map_params[config.pindex], ['outputs', 'output_dir'])
+        output_dir = u.get_nested_key_value(config.map_params[config.pindex],
+                                            ['outputs', 'output_dir'])
         if not output_dir:
-            output_dir = constants.output_path
+            output_dir = config.paths.output_path
         if not os.path.exists(output_dir):
             os.makedirs(output_dir)
         filename = os.path.join(output_dir, output_fname)
@@ -600,13 +855,14 @@ def output_basic(config, name):
 def get_subplot_geometry(axes):
     ss = axes.get_subplotspec()
     geom = ss.get_geometry()[0:2]
-    return geom, int(ss.is_first_row()), int(ss.is_first_col()), int(ss.is_last_row()), int(ss.is_last_col())
+    return geom, int(ss.is_first_row()), int(ss.is_first_col()), int(
+        ss.is_last_row()), int(ss.is_last_col())
 
 
-def get_subplot_shape(n):
+def get_subplot_shape(n: int):
     if n <= 3:
         return n, 1
-    
+
     # Try to make the layout as square as possible
     for cols in range(1, n + 1):
         rows = math.ceil(n / cols)
@@ -617,8 +873,13 @@ def get_subplot_shape(n):
     return 1, n
 
 
-# def dump_json_file(config, plot_type, findex, map_filename, fig, output_dir):
-def dump_json_file(fname, config, plot_type, findex, map_filename, fig, output_dir):
+def dump_json_file(fname: str, 
+                   config: "ConfigManager", 
+                   plot_type: str, 
+                   findex: int, 
+                   map_filename: str, 
+                   fig: Figure, 
+                   output_dir: str) -> None:
     vis_summary = {}
     source_name = config.source_names[config.ds_index]
     # event_stamp = source_name + '_web'
@@ -646,7 +907,7 @@ def dump_json_file(fname, config, plot_type, findex, map_filename, fig, output_d
     #     vis_summary[findex]['level'] = config.level
 
     if config.make_gif:  # one file per field_name
-        vis_summary[findex]['filename'] = field_name+".gif"
+        vis_summary[findex]['filename'] = field_name + ".gif"
     else:
         vis_summary[findex]['filename'] = map_filename
     vis_summary[findex]['field_name'] = field_name
@@ -682,12 +943,14 @@ def load_log():
     return lines
 
 
-def archive(config, output_dir, event_stamp):
+def archive(config: "ConfigManager", output_dir: str, event_stamp: str) -> None:
     """ Archive data for web results
 
     Parameters:
+        config (Config)
         output_dir (str) : Output directory to store images
         event_stamp (str) : Time stamp for archived web results
+
     """
     fs = [f for f in os.listdir(output_dir) if os.path.isfile(os.path.join(output_dir, f))]
     full_fs = [os.path.join(output_dir, f) for f in fs]
@@ -710,8 +973,9 @@ class OOMFormatter(matplotlib.ticker.ScalarFormatter):
     def __init__(self, order=0, prec=0, offset=True, math_text=True):
         self.prec = prec
         self.oom = order
-        self.fformat = "%1."+str(self.prec)+"f"
-        matplotlib.ticker.ScalarFormatter.__init__(self, useOffset=offset, useMathText=math_text)
+        self.fformat = "%1." + str(self.prec) + "f"
+        matplotlib.ticker.ScalarFormatter.__init__(self, useOffset=offset,
+                                                   useMathText=math_text)
 
     def _set_order_of_magnitude(self):
         self.orderOfMagnitude = self.oom
@@ -719,9 +983,10 @@ class OOMFormatter(matplotlib.ticker.ScalarFormatter):
     def _set_format(self):
         self.format = self.fformat
         if self._useMathText:
-             self.format = r'$\mathdefault{%s}$' % self.format
+            self.format = r'$\mathdefault{%s}$' % self.format
 
-    def _custom_format(self, value, tick_number):
+    @staticmethod
+    def _custom_format(value, tick_number):
         return f'{value:.2f}'
 
 
@@ -730,7 +995,8 @@ class FlexibleOOMFormatter(matplotlib.ticker.ScalarFormatter):
         self.oom = order
         self.min_val = min_val
         self.max_val = max_val
-        matplotlib.ticker.ScalarFormatter.__init__(self, useOffset=offset, useMathText=math_text)
+        matplotlib.ticker.ScalarFormatter.__init__(self, useOffset=offset,
+                                                   useMathText=math_text)
         # set oom explicitly
         self._set_order_of_magnitude()
 
@@ -751,10 +1017,11 @@ class FlexibleOOMFormatter(matplotlib.ticker.ScalarFormatter):
         if self._useMathText:
             self.format = r'$\mathdefault{%s}$' % self.format
 
-    def _custom_format(self, value, tick_number):
+    @staticmethod
+    def _custom_format(value, tick_number):
         if value != 0:
             exp = int(np.floor(np.log10(np.abs(value))))
-            coeff = value / (10**exp)
+            coeff = value / (10 ** exp)
             # return r'$%1.2f \times 10^{%d}$' % (coeff, exp)
             return r'$%1.2f$' % coeff
         else:

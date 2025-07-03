@@ -2,24 +2,51 @@
 EVIZ: An Easy to Use Earth Modeling System Visualization Tool
 =============================================================
 
-`EViz` consists of two Python-based visualization libraries, `autoViz` and `iViz`, that can process a variety
-of model generated output and produce a corresponding variety of diagnostic plots. These libraries are intended 
-to be used, first and foremost, as a validation tool for earth system model data. Though both sets of libraries 
-process the same diagnostic datasets, there are clear distinctions between autoViz and iViz in terms of the
-functionality they provide. autoViz provides static diagnostic images based on the matplotlib python visualization
-library. iViz provides interactive images and panels based on the holoviz python visualization library. 
-We recommend users use one or both of these tools based on their needs. autoViz is great for fast and at-a-glance
-diagnostic, and iViz allows for both fast diagnostics and GUI-based investigation. 
+`EViz` is a comprehensive Python-based visualization library designed specifically for 
+Earth System Modelers. It processes a wide variety of model-generated output formats 
+and produces high-quality diagnostic plots for data analysis and validation. EViz serves 
+as an essential validation tool for earth system model data, offering both command-line and 
+interactive visualization capabilities.
+
+Features
+--------
+* Multi-format Support: Process NetCDF, HDF, Zarr, and other common Earth System Model data formats
+* Flexible Visualization: Generate maps, time series, vertical profiles, box plots, and correlation analyses
+* Customizable: Configure plot appearance through YAML files with extensive customization options
+* Comparison Tools: Compare multiple datasets side-by-side for in-depth analysis
+* Statistical Analysis: Calculate and display metrics like RMSE and R² values directly on plots
+* Interactive Mode: Use the interactive web interface for exploratory data analysis
+* Batch Processing: Generate multiple plots efficiently through command-line batch processing
+
+Installation
+------------
+EViz can be installed using conda:
+
+.. code-block:: bash
+
+    conda env create -f environment.yaml
+    conda activate viz
+    pip install -e .
 
 Documentation
 -------------
-For more information on installing and using eViz please refer to the [documentation](https://astg.pages.smce.nasa.gov/visualization/eviz).
-For questions, comments, bug reports or feature requests please use the [issues section](https://gitlab.smce.nasa.gov/astg/visualization/eviz/-/issues) on Gitlab. 
+For comprehensive documentation, tutorials, and examples, please visit our documentation site:
+https://cacruz.github.io/eviz-dev
+
+For questions, comments, bug reports or feature requests please use the issues section: https://github.com/cacruz/eviz-dev/issues on Github. 
+
+Contributing
+------------
+We welcome contributions! Please see our `Contributing Guide <https://github.com/cacruz/eviz-dev/blob/main/CONTRIBUTING.rst>`_  for details on how to submit pull requests, report issues, or request features.
+
+Support
+-------
+For questions, comments, bug reports, or feature requests, please use the issues section on GitLab.
 
 License
 -------
 Eviz is distributed under the Apache license.  Please read the LICENSE document located in the root folder.
 
-References
-----------
-[![ASTG Logo](docs/static/ASTG_logo.png)](https://astg.pages.smce.nasa.gov/website)
+Acknowledgments
+---------------
+EViz is developed and maintained by the `Advanced Software Technology Group (ASTG) <https://astg.pages.smce.nasa.gov/website/>`_ at NASA.

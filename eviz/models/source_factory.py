@@ -1,18 +1,21 @@
 from dataclasses import dataclass
 from eviz.lib.config.config_manager import ConfigManager
 from eviz.models.esm.crest import Crest
-from eviz.models.esm.gridded import Gridded
+from eviz.models.gridded_source import GriddedSource
+from eviz.models.esm.grib import Grib
 from eviz.models.esm.geos import Geos
 from eviz.models.esm.lis import Lis
 from eviz.models.esm.wrf import Wrf
+from eviz.models.obs_source import ObsSource
 from eviz.models.obs.inventory.airnow import Airnow
+from eviz.models.obs.inventory.ghg import Ghg
 from eviz.models.obs.inventory.fluxnet import Fluxnet
 from eviz.models.obs.satellite.landsat import Landsat
 from eviz.models.obs.satellite.mopitt import Mopitt
 from eviz.models.obs.satellite.omi import Omi
 
 
-class RootFactory:
+class BaseSourceFactory:
     """
     Abstract factory base class for creating data model instances.
     
@@ -31,22 +34,35 @@ class RootFactory:
         Returns:
             A model instance configured for data processing and visualization.
         """
-        raise NotImplementedError("create_root_instance must be implemented in subclasses")
+        raise NotImplementedError(
+            "create_root_instance must be implemented in subclasses")
 
 
 @dataclass
-class GriddedFactory(RootFactory):
+class GriddedSourceFactory(BaseSourceFactory):
     """
-    Factory for creating Gridded model instances that process NetCDF data.
+    Factory for creating GriddedSource model instances that process NetCDF data.
     
     Used for generic gridded data, MERRA data, and special CCM/CF streams.
     """
+
     def create_root_instance(self, config_manager: ConfigManager):
-        return Gridded(config_manager)
+        return GriddedSource(config_manager)
 
 
 @dataclass
-class GeosFactory(RootFactory):
+class GribFactory(BaseSourceFactory):
+    """
+    Factory for creating GriddedSource model instances for GRIB data.
+    
+    Used for GRIB format weather and climate data from sources like ERA5, GFS, etc.
+    """
+    def create_root_instance(self, config_manager: ConfigManager):
+        return Grib(config_manager)
+
+
+@dataclass
+class GeosFactory(BaseSourceFactory):
     """
     Factory for creating Geos model instances for GEOS data processing.
     """
@@ -55,7 +71,7 @@ class GeosFactory(RootFactory):
 
 
 @dataclass
-class WrfFactory(RootFactory):
+class WrfFactory(BaseSourceFactory):
     """
     Factory for creating Wrf model instances for Weather Research and Forecasting data.
     
@@ -66,7 +82,7 @@ class WrfFactory(RootFactory):
 
 
 @dataclass
-class LisFactory(RootFactory):
+class LisFactory(BaseSourceFactory):
     """
     Factory for creating Lis model instances for Land Information System data.
     
@@ -77,7 +93,25 @@ class LisFactory(RootFactory):
 
 
 @dataclass
-class AirnowFactory(RootFactory):
+class GhgFactory(BaseSourceFactory):
+    """
+    Factory for creating Ghg model instances
+    """
+    def create_root_instance(self, config_manager: ConfigManager):
+        return Ghg(config_manager)
+
+
+@dataclass
+class ObsSourceFactory(BaseSourceFactory):
+    """
+    Factory for creating ObsSource model instances
+    """
+    def create_root_instance(self, config_manager: ConfigManager):
+        return ObsSource(config_manager)
+
+
+@dataclass
+class AirnowFactory(BaseSourceFactory):
     """
     Factory for creating Airnow model instances for processing AirNow CSV data.
     """
@@ -86,7 +120,7 @@ class AirnowFactory(RootFactory):
 
 
 @dataclass
-class OmiFactory(RootFactory):
+class OmiFactory(BaseSourceFactory):
     """
     Factory for creating Omi model instances for processing OMI HDF5 satellite data.
     """
@@ -95,27 +129,27 @@ class OmiFactory(RootFactory):
 
 
 @dataclass
-class MopittFactory(RootFactory):
+class CrestFactory(BaseSourceFactory):
     """
-    Factory for creating Mopitt model instances for processing MOPITT HDF5 satellite data.
+    Factory for creating Crest model instances for processing CREST-generated data.
     """
-    def create_root_instance(self, config_manager: ConfigManager):
-        return Mopitt(config_manager)
-
-
-@dataclass
-class LandsatFactory(RootFactory):
-    def create_root_instance(self, config_manager: ConfigManager):
-        return Landsat(config_manager)
-
-
-@dataclass
-class FluxnetFactory(RootFactory):
-    def create_root_instance(self, config_manager: ConfigManager):
-        return Fluxnet(config_manager)
-
-
-@dataclass
-class CrestFactory(RootFactory):
     def create_root_instance(self, config_manager: ConfigManager):
         return Crest(config_manager)
+
+
+class MopittFactory:
+    def create_root_instance(self, config_manager):
+        # This should be abstract and raise TypeError
+        raise TypeError("Cannot instantiate abstract factory")
+
+class LandsatFactory:
+    def create_root_instance(self, config_manager):
+        # This should be abstract and raise TypeError
+        raise TypeError("Cannot instantiate abstract factory")
+
+class FluxnetFactory:
+    def create_root_instance(self, config_manager):
+        # This should be abstract and raise TypeError
+        raise TypeError("Cannot instantiate abstract factory")
+
+

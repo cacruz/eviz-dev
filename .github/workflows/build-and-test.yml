@@ -1,0 +1,83 @@
+name: Build and Test
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    container: continuumio/miniconda3:latest
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Cache conda environment
+      uses: actions/cache@v4
+      with:
+        path: /opt/conda/envs/viz
+        key: ${{ runner.os }}-conda-${{ hashFiles('environment.yaml') }}
+        restore-keys: |
+          ${{ runner.os }}-conda-
+
+    - name: Setup environment
+      run: |
+        conda install -n base conda-libmamba-solver -q
+        conda config --set solver libmamba
+        conda install -n base conda-build
+        if ! conda env list | grep -q "viz"; then
+          conda env create -f environment.yaml
+        fi
+
+    - name: Run tests
+      run: |
+        eval "$(conda shell.bash hook)"
+        conda activate viz
+        pytest --color=yes tests
+
+  build-docs:
+    runs-on: ubuntu-latest
+    container: continuumio/miniconda3:latest
+    needs: test
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop'
+    steps:
+      - uses: actions/checkout@v4
+            
+      - name: Setup environment
+        run: |
+          conda install -n base conda-libmamba-solver -q
+          conda config --set solver libmamba
+          conda install -n base conda-build
+          if ! conda env list | grep -q "viz"; then
+            conda env create -f environment.yaml
+          fi
+          
+      - name: Build documentation
+        run: |
+          eval "$(conda shell.bash hook)"
+          conda activate viz
+          sphinx-build -b html docs public
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v5
+        
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: ./public
+
+  deploy-pages:
+    needs: build-docs
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

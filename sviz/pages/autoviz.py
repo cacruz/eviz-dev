@@ -69,39 +69,43 @@ def metadata_to_df(filepath):
     Returns:
         df: pandas DataFrame, metadata in a DataFrame
     """
-    with open(filepath, 'r') as file:
-        metadata = load(file)
+    try:
+        with open(filepath, 'r') as file:
+            metadata = load(file)
 
-    global_attributes = None
-    variables = pd.DataFrame()
+        global_attributes = None
+        variables = pd.DataFrame()
 
-    # recursively flatten the dictionary
-    for key, value in metadata.items():
-        if key == 'global_attributes':
-            global_attributes = pd.DataFrame(value, index=[0])
-        else:
-            for k, v in value.items():
-                var_tmp = {}
-                var_tmp['Variables'] = k
-                var_tmp['Dimensions'] = make_nice_dimstr(
-                    str(v['dimensions'])) if 'dimensions' in v else ''
-                var_tmp['Long Name'] = v['attributes']['long_name'] if 'long_name' in v[
-                    'attributes'] else ''
-                var_tmp['Units'] = v['attributes']['units'] if 'units' in v[
-                    'attributes'] else ''
-                var_tmp['Missing Value'] = v['attributes'][
-                    'fmissing_value'] if 'fmissing_value' in v['attributes'] else ''
-                var_tmp['Min Value'] = v['attributes']['vmin'] if 'vmin' in v[
-                    'attributes'] else ''
-                var_tmp['Max Value'] = v['attributes']['vmax'] if 'vmax' in v[
-                    'attributes'] else ''
-                # var_tmp.update(v['attributes'])
-                variables = variables._append(var_tmp, ignore_index=True)
+        # recursively flatten the dictionary
+        for key, value in metadata.items():
+            if key == 'global_attributes':
+                global_attributes = pd.DataFrame(value, index=[0])
+            else:
+                for k, v in value.items():
+                    var_tmp = {}
+                    var_tmp['Variables'] = k
+                    var_tmp['Dimensions'] = make_nice_dimstr(
+                        str(v['dimensions'])) if 'dimensions' in v else ''
+                    var_tmp['Long Name'] = v['attributes']['long_name'] if 'long_name' in v[
+                        'attributes'] else ''
+                    var_tmp['Units'] = v['attributes']['units'] if 'units' in v[
+                        'attributes'] else ''
+                    var_tmp['Missing Value'] = v['attributes'][
+                        'fmissing_value'] if 'fmissing_value' in v['attributes'] else ''
+                    var_tmp['Min Value'] = v['attributes']['vmin'] if 'vmin' in v[
+                        'attributes'] else ''
+                    var_tmp['Max Value'] = v['attributes']['vmax'] if 'vmax' in v[
+                        'attributes'] else ''
+                    # var_tmp.update(v['attributes'])
+                    variables = variables._append(var_tmp, ignore_index=True)
 
-    global_attributes.dropna(axis=0, how='all', inplace=True)
-    variables.dropna(axis=0, how='all', inplace=True)
+        global_attributes.dropna(axis=0, how='all', inplace=True)
+        variables.dropna(axis=0, how='all', inplace=True)
 
-    return global_attributes, variables
+        return global_attributes, variables
+    except FileNotFoundError:
+        st.error(f"Metadata file '{filepath}' not found. The metadump process may have failed.")
+        return pd.DataFrame(), pd.DataFrame()
 
 
 def get_time_stamped_output(subdir) -> str:
@@ -110,12 +114,32 @@ def get_time_stamped_output(subdir) -> str:
     Returns:
         date_dir string
     """
-    dates = os.listdir(subdir)
-    dates = {datetime.strptime(date, '%Y%m%d-%H%M%S'): date for date in dates}
-    most_recent_date = max(dates.keys())
-    date_dir = dates[most_recent_date]
-
-    return date_dir
+    try:
+        if not os.path.exists(subdir):
+            st.error(f"Output directory not found: {subdir}")
+            return "output_not_found"
+        dates = os.listdir(subdir)
+        
+        valid_dates = {}
+        for date in dates:
+            try:
+                parsed_date = datetime.strptime(date, '%Y%m%d-%H%M%S')
+                valid_dates[parsed_date] = date
+            except ValueError:
+                # Skip entries that don't match the timestamp format
+                continue
+        
+        if not valid_dates:
+            st.warning(f"No time-stamped output directories found in {subdir}")
+            return "no_output_found"
+            
+        most_recent_date = max(valid_dates.keys())
+        date_dir = valid_dates[most_recent_date]
+        
+        return date_dir
+    except Exception as e:
+        st.error(f"Error finding time-stamped output: {str(e)}")
+        return "error_finding_output"
 
 
 def demo_options_map(yaml_file) -> tuple:
@@ -147,15 +171,37 @@ def run_metadump():
 
         st.write(f'Summary for {file_option}...')
 
-        run(['python', os.path.join(u.get_project_root(), 'metadump.py'),
-            os.path.join(u.get_project_root(),
-                        'demo_data', file_option), '--json', '--ignore', 'Var'])
+        try:
+            file_path = os.path.join(u.get_project_root(), 'demo_data', file_option)
+            if not os.path.exists(file_path):
+                st.error(f"File not found: {file_path}")
+                return
 
-        global_attributes, variables = metadata_to_df('ds_metadata.json')
-
-        st.dataframe(global_attributes, key="global_attributes")
-        st.dataframe(variables, key="variables")
-
+            # Run metadump
+            result = run(
+                ['python', os.path.join(u.get_project_root(), 'metadump.py'),
+                file_path, '--json', '--ignore', 'Var'],
+                capture_output=True,
+                text=True
+            )
+            
+            if result.returncode != 0:
+                st.error(f"Error running metadump: {result.stderr}")
+                return
+                
+            if not os.path.exists('ds_metadata.json'):
+                st.error("Metadata file was not created. Check if metadump.py is working correctly.")
+                return
+                
+            global_attributes, variables = metadata_to_df('ds_metadata.json')
+            
+            if not global_attributes.empty:
+                st.dataframe(global_attributes, key="global_attributes")
+            if not variables.empty:
+                st.dataframe(variables, key="variables")
+                
+        except Exception as e:
+            st.error(f"An error occurred: {str(e)}")
 
 if __name__ == '__main__':
     single, compare = demo_options_map(DEMO_YAML)
@@ -165,7 +211,7 @@ if __name__ == '__main__':
 
     st.selectbox(
         "Select a dataset",
-        (["None Selected"] + list(single.keys()) + list(compare.keys())),
+        ["None Selected"] + list(single.keys()) + list(compare.keys()), 
         key='select_dataset',
         on_change=run_metadump
     )
@@ -188,28 +234,48 @@ if __name__ == '__main__':
                 
                 with st.spinner('Creating dashboard...'):
                     make_gif = False
-                    if 'wrf' in autoviz_config:
-                        run(['python', os.path.join(u.get_project_root(), 'autoviz.py'),
-                            '-s', 'wrf', '-f',
-                            os.path.join(u.get_project_root(), autoviz_config)])
-                        make_gif = True
-                    else:
-                        run(['python', os.path.join(u.get_project_root(), 'autoviz.py'),
-                            '-s', 'gridded', '-f',
-                            os.path.join(u.get_project_root(), autoviz_config)])
-
-                    date_dir = get_time_stamped_output(
-                        os.path.join(u.get_project_root(), 'demo_output', parent_folder))
-
-                    dash_config = {
-                        "parent_folder": parent_folder,
-                        "dash_folder": date_dir,
-                        "make_gif": make_gif,
-                    }
-
-                    created = create_new_page(dashboard_name + '_' + date_dir, dash_config)
+                    output_path = os.path.join(u.get_project_root(), 'demo_output', parent_folder)
                     
-                    if created:
-                        sleep(1)
+                    os.makedirs(output_path, exist_ok=True)
+                    
+                    # Run autoviz
+                    try:
+                        if 'wrf' in autoviz_config:
+                            result = run(['python', os.path.join(u.get_project_root(), 'autoviz.py'),
+                                '-s', 'wrf', '-f',
+                                os.path.join(u.get_project_root(), autoviz_config)],
+                                capture_output=True, text=True)
+                            make_gif = True
+                        else:
+                            result = run(['python', os.path.join(u.get_project_root(), 'autoviz.py'),
+                                '-s', 'gridded', '-f',
+                                os.path.join(u.get_project_root(), autoviz_config)],
+                                capture_output=True, text=True)
+                        
+                        if result.returncode != 0:
+                            st.error(f"Error running autoviz: {result.stderr}")
+                            st.stop()
+                            
+                        date_dir = get_time_stamped_output(
+                            os.path.join(u.get_project_root(), 'demo_output', parent_folder))
+                        
+                        if date_dir in ["output_not_found", "no_output_found", "error_finding_output"]:
+                            st.error("Failed to find output directory.")
+                            st.stop()
 
-                        st.switch_page(f'pages/{dashboard_name}_{date_dir}.py')
+                        dash_config = {
+                            "parent_folder": parent_folder,
+                            "dash_folder": date_dir,
+                            "make_gif": make_gif,
+                        }
+
+                        created = create_new_page(dashboard_name + '_' + date_dir, dash_config)
+                        
+                        if created:
+                            sleep(1)
+                            st.switch_page(f'pages/{dashboard_name}_{date_dir}.py')
+                        else:
+                            st.error("Failed to create dashboard page.")
+                    except Exception as e:
+                        st.error(f"Error creating dashboard: {str(e)}")
+

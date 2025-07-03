@@ -5,41 +5,8 @@ This module provides the command-line interface for the eViz automatic visualiza
 It handles command-line argument parsing, logging setup, and serves as the main entry point
 for the autoviz application.
 
-The module supports various command-line options for configuring the visualization process,
-including:
-- Data source selection
-- Comparison mode
-- File and variable specification
-- Configuration file paths
-- Verbosity control
-- Data integration options
-- Composite field creation
-
-Key components:
-- parse_command_line: Parses command-line arguments and provides help information
-- main: Main driver function that initializes the application and executes the visualization process
-- metadump integration: Support for metadata extraction from files
-
-Typical usage:
-    # Basic usage with a single data source
-    python autoviz.py -s gridded
-    
-    # Using a specific configuration directory
-    python autoviz.py -s gridded -c /path/to/config
-    
-    # Using a specific configuration file
-    python autoviz.py -s gridded -f /path/to/config/my_config.yaml
-    
-    # Extracting metadata from a file
-    python autoviz.py --file data.nc --vars temperature humidity
-
 The module integrates with the metadump.py tool for extracting metadata from files,
 automatically invoking it when the --file option is used.
-
-Dependencies:
-    - eviz.lib.utils: Utility functions for logging and timing
-    - eviz.lib.autoviz.base: Core Autoviz functionality
-    - metadump.py: Tool for extracting metadata from data files
 """
 import sys
 import time
@@ -70,22 +37,12 @@ def parse_command_line() -> argparse.Namespace:
         --verbose, -v: Set logging verbosity (0=ERROR, 1=INFO, 2=DEBUG)
         --log, -l: Enable logging to file (Eviz.LOG)
         --integrate: Enable data integration from multiple files
-        --composite: Create composite fields from multiple variables
-    
-    Example:
-        >>> python autoviz.py -s gridded
-        >>> python autoviz.py -s gridded -c /path/to/config
-        >>> python autoviz.py -s gridded -f /path/to/config/my_config.yaml
-        >>> python autoviz.py -h
-    
-    Note:
-        If neither --file nor --sources is provided, the function will raise an error.
-        When using the first example, the EVIZ_CONFIG_PATH environment variable must be defined.
+        --composite: Create composite fields from multiple variables    
     """
     parser = argparse.ArgumentParser(description='Arguments being passed')
 
     parser.add_argument('-s', '--sources', type=str, nargs='+', required=False,
-                        help='Sources of data input')
+                         help='Source type (gridded, wrf, omi, grib, etc.)')
     parser.add_argument('--compare', '-m', action='store_true',
                         help='Perform comparison for specified exp_name(s)')
     parser.add_argument('--file', nargs='+', required=False, default=None,
@@ -96,9 +53,11 @@ def parse_command_line() -> argparse.Namespace:
                         help='Enter the full config file path, default=None')
     parser.add_argument('--config', '-c', nargs='+', required=False, default=None,
                         help='Enter the directory wherein YAML specifications can be found, default=None')
-    parser.add_argument('--verbose', '-v', nargs='+', required=False, default=1,
+    parser.add_argument('--format', type=str, default=None,
+                        help='Override format for all files (netcdf, csv, grib, etc.)')
+    parser.add_argument('--verbose', '-v', type=int, required=False, default=1,
                         help='Set logging verbosity to DEBUG (2) or ERROR(0), default=1 (INFO)')
-    parser.add_argument('--log', '-l', nargs='+', required=False, default=1,
+    parser.add_argument('--log', '-l', type=int, required=False, default=1,
                         help='Create LOG file (Eviz.LOG)')
     parser.add_argument('--integrate', action='store_true',
                         help='Integrate data from multiple files')
@@ -117,34 +76,25 @@ def main():
     """
     Main driver for the autoviz plotting tool.
     
-    This function:
-    
-    1. Parses command-line arguments
-    2. Handles metadata extraction if --file option is used
-    3. Sets up logging with appropriate verbosity
-    4. Initializes the Autoviz instance with specified sources
-    5. Executes the visualization process
-    6. Reports the total execution time
-    
     The function supports two main execution paths:
     
     - Metadata extraction: When --file is specified, it invokes metadump.py to extract
       metadata from the file, optionally focusing on specific variables if --vars is provided
     - Visualization generation: Otherwise, it creates an Autoviz instance with the
       specified sources and runs the visualization process
-    
-    Execution time is measured and reported at the end of the process.
-    
+        
     Example::
-        
-        # Extract metadata from a file
-        python autoviz.py --file data.nc
-        
-        # Extract metadata for specific variables
-        python autoviz.py --file data.nc --vars temperature humidity
-        
+
         # Generate visualizations for gridded data
-        python autoviz.py -s gridded
+        >>> python autoviz.py -s gridded
+        >>> python autoviz.py -s gridded -c /path/to/config
+        >>> python autoviz.py -s gridded -f /path/to/config/my_config.yaml
+        # Use metadata to extract and generate metadata from a file
+        >>> python autoviz.py --file data.nc
+        # Extract specific variables
+        >>> python autoviz.py --file data.nc --vars temperature humidity
+        # Process multiple sources
+        >>> python autoviz.py -s wrf,lis
     """
     start_time = time.time()
     args = parse_command_line()
@@ -160,14 +110,22 @@ def main():
                             'metadump.py', args.file[0]])
             sys.exit()
 
-    verbose = int(args.verbose[0] if isinstance(args.verbose, list) else '1')
-    log = int(args.log[0] if isinstance(args.log, list) else '1')
+    verbose = int(args.verbose)
+    log = int(args.log)
     logger_setup('autoviz', log=log, verbose=verbose)
 
+    # Parse comma-separated sources into a list
     input_sources = [s.strip() for s in args.sources[0].split(',')]
-
-    autoviz = Autoviz(input_sources, args=args)
-    autoviz.run()
+    
+    # Process each source separately to ensure proper file-to-source mapping
+    for source in input_sources:
+        print(f"Processing source: {source}")
+        source_args = argparse.Namespace(**vars(args))
+        source_args.sources = [source] 
+        
+        autoviz = Autoviz([source], args=source_args)
+        autoviz.run()
+    
     print(f"Time taken = {timer(start_time, time.time())}")
 
 

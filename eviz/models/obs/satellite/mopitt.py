@@ -4,21 +4,20 @@ import sys
 import warnings
 from typing import Any
 
-import numpy as np
 import xarray as xr
 
 from dataclasses import dataclass, field
 
 from eviz.lib.autoviz.figure import Figure
 from eviz.lib.autoviz.utils import print_map
-from eviz.models.root import Root
+from eviz.models.source_base import GenericSource
 from eviz.lib.data.utils import apply_conversion
 
 warnings.filterwarnings("ignore")
 
 
 @dataclass
-class Mopitt(Root):
+class Mopitt(GenericSource):
     """ Define MOPITT satellite data and functions.
     """
     source_data: Any = None
@@ -71,7 +70,7 @@ class Mopitt(Root):
         else:
             return unzipped_data
 
-    def _simple_plots(self, plotter):
+    def process_simple_plots(self, plotter):
         map_params = self.config.map_params
         field_num = 0
         self.config.findex = 0
@@ -92,7 +91,7 @@ class Mopitt(Root):
                 plotter.simple_plot(self.config, field_to_plot)
             field_num += 1
 
-    def _single_plots(self, plotter):
+    def process_single_plots(self, plotter):
         for s in range(len(self.config.source_names)):
             map_params = self.config.map_params
             field_num = 0
@@ -106,8 +105,6 @@ class Mopitt(Root):
                     mopitt_data = self.config.readers[source_name].read_data(filename)
                     # Additional HDF5 processing
                     source_data = self.prepare_data(mopitt_data)
-                    # TODO: Is ds_index really necessary?
-                    self.config.ds_index = s
                     self.config.findex = file_index
                     self.config.pindex = field_num
                     self.config.axindex = 0
@@ -120,8 +117,12 @@ class Mopitt(Root):
                                 self.logger.warning(f' -> No levels specified for {field_name}')
                                 continue
                             for level in levels:
-                                field_to_plot = self._get_field_to_plot(source_data,
-                                                                        field_name, file_index, pt, figure, level=level)
+                                field_to_plot = self._prepare_field_to_plot(source_data,
+                                                                            field_name, 
+                                                                            file_index, 
+                                                                            pt, 
+                                                                            figure, 
+                                                                            level=level)
                                 if self.use_mp_pool:
                                     p = multiprocessing.Process(target=plotter.single_plots,
                                                                 args=(self.config, field_to_plot, level))
@@ -130,10 +131,18 @@ class Mopitt(Root):
                                     p.start()
                                 else:
                                     plotter.single_plots(self.config, field_to_plot=field_to_plot, level=level)
-                                    print_map(self.config, pt, self.config.findex, figure, level=level)
+                                    print_map(self.config, 
+                                              pt, 
+                                              self.config.findex, 
+                                              figure, 
+                                              level=level)
 
                         else:
-                            field_to_plot = self._get_field_to_plot(source_data, field_name, file_index, pt, figure)
+                            field_to_plot = self._prepare_field_to_plot(source_data, 
+                                                                        field_name, 
+                                                                        file_index, 
+                                                                        pt, 
+                                                                        figure)
                             if self.use_mp_pool:
                                 p = multiprocessing.Process(target=plotter.single_plots,
                                                             args=(self.config, field_to_plot))
@@ -143,7 +152,10 @@ class Mopitt(Root):
 
                             else:
                                 plotter.single_plots(self.config, field_to_plot=field_to_plot)
-                                print_map(self.config, pt, self.config.findex, figure)
+                                print_map(self.config, 
+                                          pt, 
+                                          self.config.findex, 
+                                          figure)
 
                     field_num += 1
 
@@ -152,13 +164,19 @@ class Mopitt(Root):
                 self.logger.info(f"process{p.name} is done")
                 p.join()
 
-    def _get_field_to_plot(self, source_data, field_name, file_index, plot_type, figure, level=None):
+    def _prepare_field_to_plot(self,
+                               source_data, 
+                               field_name, 
+                               file_index, 
+                               plot_type, 
+                               figure, 
+                               level=None):
         _, ax = figure.get_fig_ax()
         self.config.ax_opts = figure.init_ax_opts(field_name)
         dim1, dim2 = self.config.get_dim_names(plot_type)
         data2d = None
         if 'xy' in plot_type:
-            data2d = self._get_xy(source_data, field_name, level=level, time_lev=self.config.ax_opts['time_lev'])
+            data2d = self._extract_xy_data(source_data, field_name, level=level, time_lev=self.config.ax_opts['time_lev'])
         else:
             pass
 
@@ -200,7 +218,7 @@ class Mopitt(Root):
                 data2d = data2d.isel(lev=0)
         return data2d
 
-    def _get_xy(self, d, name, level, time_lev):
+    def _extract_xy_data(self, d, name, level, time_lev):
         """ Extract XY slice from N-dim data field"""
         if d is None:
             return

@@ -7,13 +7,13 @@ import pandas as pd
 from eviz.lib.config.config import Config
 from dataclasses import dataclass, field
 
-from eviz.models.root import Root
+from eviz.models.source_base import GenericSource
 
 warnings.filterwarnings("ignore")
 
 
 @dataclass
-class Fluxnet(Root):
+class Fluxnet(GenericSource):
     """ Define Fluxnet inventory data and functions.
 
     Parameters:
@@ -40,8 +40,8 @@ class Fluxnet(Root):
         model_data = self.config.readers[self.source_name].read_data(filename)
         return model_data
 
-    def _single_plots(self, plotter):
+    def process_single_plots(self, plotter):
         pass
 
-    def _get_field_to_plot(self):
+    def _prepare_field_to_plot(self):
         pass

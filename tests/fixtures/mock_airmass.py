@@ -2,7 +2,6 @@ import numpy as np
 import xarray as xr
 
 
-
 def create_mock_airmass_dataset():
     """
     Create a synthetic airmass dataset for testing.
@@ -59,6 +58,7 @@ def create_mock_airmass_dataset():
     }
     
     return ds
+
 
 def create_mock_airmass_dataarray():
     """

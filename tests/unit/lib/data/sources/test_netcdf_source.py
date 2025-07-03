@@ -1,6 +1,6 @@
-import pytest
 import numpy as np
 import xarray as xr
+import pytest
 from unittest.mock import MagicMock, patch
 from eviz.lib.data.sources.netcdf import NetCDFDataSource
 
@@ -104,3 +104,23 @@ class TestNetCDFDataSource:
         self.data_source.dataset.close = MagicMock()
         self.data_source.close()
         self.data_source.dataset.close.assert_called_once()
+
+    @pytest.fixture
+    def netcdf_source(self):
+        """Create a NetCDFDataSource instance for testing."""
+        return NetCDFDataSource()
+
+    @patch('xarray.open_dataset')
+    @patch('eviz.lib.data.url_validator.is_url')
+    def test_load_data_error_handling(self, mock_is_url, mock_open_dataset, netcdf_source):
+        """Test error handling when loading data."""
+        # Setup mocks
+        mock_is_url.return_value = False
+        mock_open_dataset.side_effect = FileNotFoundError("File not found")
+        
+        # Test error handling
+        file_path = "/path/to/nonexistent/file.nc"
+        
+        with pytest.raises(FileNotFoundError):
+            netcdf_source.load_data(file_path)
+

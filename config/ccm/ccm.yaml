@@ -36,20 +36,20 @@ inputs:
          units: ppbv
      ignore: Var_
 
-   - name         : RefD1.tavg24_3d_aer_Np.monthly.clim.M01.nc4
-     location     : /Users/ccruz/data/eviz/ccm
-     exp_name     : RefD2-ANN
-     exp_id       : RefD2-ANN
-     description  : RefD2 Annual
-     variables:
-       co_25:
-         plot_type: xy
-         units: ppbv
-     ignore: Var_
+  #  - name         : RefD1.tavg24_3d_aer_Np.monthly.clim.M01.nc4
+  #    location     : /Users/ccruz/data/eviz/ccm
+  #    exp_name     : RefD2-ANN
+  #    exp_id       : RefD2-ANN
+  #    description  : RefD2 Annual
+  #    variables:
+  #      co_25:
+  #        plot_type: xy
+  #        units: ppbv
+  #    ignore: Var_
 
 for_inputs:
-    compare:
-      ids: RefD2-JJA,RefD2-DJF,RefD2-ANN
+    compare_diff:
+      ids: RefD2-JJA,RefD2-DJF
       cmap: coolwarm
 #      extra_diff: ratio
 #       panels: 1,3

@@ -1,13 +1,14 @@
 """
 Pytest fixtures for the Eviz tests.
 """
+import xarray as xr
+import numpy as np
+import yaml
 import os
 import pytest
-import numpy as np
-import xarray as xr
 import tempfile
-from argparse import Namespace
-import yaml
+import requests
+from eviz.lib import constants as constants
 from eviz.lib.config.config import Config
 from eviz.lib.config.config_manager import ConfigManager
 from eviz.lib.config.input_config import InputConfig
@@ -20,7 +21,6 @@ from eviz.lib.data.pipeline.processor import DataProcessor
 from eviz.lib.data.pipeline.transformer import DataTransformer
 from eviz.lib.data.pipeline.integrator import DataIntegrator
 from eviz.lib.data.sources import DataSource
-import eviz.lib.const as constants
 from tests.fixtures.mock_airmass import create_mock_airmass_dataset
 
 
@@ -32,7 +32,6 @@ def pytest_addoption(parser):
         default=False, 
         help="run tests that require airmass data"
     )
-
 
 
 @pytest.fixture
@@ -54,7 +53,6 @@ def mock_species_db():
             'Unitconversion': 1
         }
     }
-
 
 
 @pytest.fixture
@@ -127,10 +125,6 @@ def check_airmass_availability():
     Returns:
         bool: True if airmass data is available, False otherwise
     """
-    import os
-    import requests
-    from eviz.lib import const as constants
-    
     # First check local file
     local_path = os.path.join(os.getcwd(), 'airmass.nc4')
     if os.path.exists(local_path):

@@ -2,7 +2,6 @@ from dataclasses import dataclass, field
 import os
 import logging
 from typing import Dict, Any
-from eviz.lib.utils import log_method
 
 
 @dataclass
@@ -18,7 +17,6 @@ class OutputConfig:
     make_gif: bool = False
     gif_fps: int = 10
 
-    @log_method
     def initialize(self):
         """Initialize output configuration."""
         outputs = self.app_data.outputs

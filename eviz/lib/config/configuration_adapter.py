@@ -15,14 +15,6 @@ class ConfigurationAdapter:
     pipeline. It interprets configuration settings, loads and processes data according to
     those settings, and provides access to the resulting data sources and datasets.
     
-    The adapter handles:
-    - Loading data from file paths specified in the configuration
-    - Associating metadata with data sources (e.g., experiment names/IDs)
-    - Managing the data pipeline for processing and transforming data
-    - Integrating multiple datasets when specified in the configuration
-    - Creating composite fields by combining variables with operations
-    - Providing access to individual data sources and the integrated dataset
-    
     Attributes:
         config_manager: The configuration manager containing app_data, input_config, etc.
         data_sources: Dictionary mapping file paths to their corresponding DataSource objects
@@ -37,7 +29,7 @@ class ConfigurationAdapter:
         Args:
             config_manager: The configuration manager
         """
-        self.logger.info("Start init")
+        self.logger.info("Initialize data pipeline")
         self.config_manager = config_manager
         self.data_sources = {}
         self.config_manager._pipeline = DataPipeline(self.config_manager)
@@ -51,7 +43,6 @@ class ConfigurationAdapter:
         """Process the configuration and load data."""        
         for i, file_entry in enumerate(self.config_manager.app_data.inputs):
             file_path = self._get_file_path(file_entry)
-            
             try:
                 source_name = self.config_manager.source_names[self.config_manager.ds_index]
             except (IndexError, AttributeError):
@@ -64,14 +55,30 @@ class ConfigurationAdapter:
             if 'exp_id' in file_entry:
                 exp_metadata['exp_id'] = file_entry['exp_id']
             
+            file_format = file_entry.get('format')
+            if file_format:
+                self.logger.debug(f"Using format '{file_format}' for file: {file_path}")
+            
             self.logger.debug(f"Loading data for file {i+1}: {file_path} with source_name: {source_name}")
             
             try:
-                data_source = self.config_manager._pipeline.process_file(
-                    file_path, 
-                    model_name=source_name,
-                    metadata=exp_metadata 
-                )
+                try:
+                    data_source = self.config_manager._pipeline.process_file(
+                        file_path, 
+                        model_name=source_name,
+                        metadata=exp_metadata,
+                        file_format=file_format
+                    )
+                except TypeError as e:
+                    # If process_file doesn't accept file_format, try without it
+                    if "got an unexpected keyword argument 'file_format'" in str(e):
+                        data_source = self.config_manager._pipeline.process_file(
+                            file_path, 
+                            model_name=source_name,
+                            metadata=exp_metadata
+                        )
+                    else:
+                        raise
                 
                 if data_source is None:
                     self.logger.warning(f"Failed to load data from {file_path}")
@@ -81,8 +88,7 @@ class ConfigurationAdapter:
                     
             except Exception as e:
                 self.logger.error(f"Error loading data from {file_path}: {e}")
-        
-        # If integration is enabled, integrate the datasets
+
         if hasattr(self.config_manager.input_config, '_integrate') and self.config_manager.input_config._integrate:
             self.logger.debug("Integrating datasets")
             try:
@@ -94,7 +100,6 @@ class ConfigurationAdapter:
             except Exception as e:
                 self.logger.error(f"Error integrating datasets: {e}")
                 
-        # If composite is enabled, integrate variables
         if hasattr(self.config_manager.input_config, '_composite') and self.config_manager.input_config._composite:
             self.logger.debug("Creating composite field")
             try:

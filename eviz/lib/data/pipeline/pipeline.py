@@ -49,11 +49,11 @@ class DataPipeline:
         Args:
             config_manager: Configuration manager instance
         """
+        self.logger = logging.getLogger(__name__)
         self.reader = DataReader(config_manager)
-        self.processor = DataProcessor()
+        self.processor = DataProcessor(config_manager)
         self.transformer = DataTransformer()
         self.integrator = DataIntegrator()
-        self.logger = logging.getLogger(__name__)
         self.data_sources = {}
         self.dataset = None
         self.config_manager = config_manager
@@ -61,7 +61,8 @@ class DataPipeline:
     def process_file(self, file_path: str, model_name: Optional[str] = None,
                     process: bool = True, transform: bool = False,
                     transform_params: Optional[Dict[str, Any]] = None,
-                    metadata: Optional[Dict[str, Any]] = None) -> DataSource:
+                    metadata: Optional[Dict[str, Any]] = None,
+                    file_format: Optional[str] = None) -> DataSource:
         """Process a single file through the pipeline.
         
         Args:
@@ -71,15 +72,18 @@ class DataPipeline:
             transform: Whether to apply data transformation
             transform_params: Parameters for data transformation
             metadata: Optional metadata to attach to the data source
+            file_format: Optional format of the file
             
         Returns:
             A processed data source
         """
         self.logger.debug(f"Processing file: {file_path}")
         
-        data_source = self.reader.read_file(file_path, model_name)
+        if file_format:
+            data_source = self.reader.read_file(file_path, model_name, file_format=file_format)
+        else:
+            data_source = self.reader.read_file(file_path, model_name)
 
-        # Attach metadata if provided
         if metadata and hasattr(data_source, 'metadata'):
             data_source.metadata.update(metadata)
 
@@ -90,7 +94,8 @@ class DataPipeline:
         self.data_sources[file_path] = data_source
         
         return data_source
-    
+
+
     def process_files(self, file_paths: List[str], model_name: Optional[str] = None,
                      process: bool = True, transform: bool = False,
                      transform_params: Optional[Dict[str, Any]] = None) -> Dict[str, DataSource]:
@@ -123,7 +128,8 @@ class DataPipeline:
         """Integrate data sources into a single dataset.
         
         Args:
-            file_paths: List of paths to data files to integrate. If None, all data sources will be integrated.
+            file_paths: List of paths to data files to integrate. If None, all data sources
+                        will be integrated.
             integration_params: Parameters for data integration
             
         Returns:

@@ -9,6 +9,8 @@ inputs:
      exp_id    : BenchmarkFc180
      # If provided, will be used in the plot title (replaces exp_name)
      description : GMI free-running simulation, with GOCART aerosols and TR passive tracers
+     # Optional: specify data source format. Note this is auto-detected based on file extension
+     format       : netcdf
      # Specify list of fields to plot
      to_plot       :
         # Specify field (as it appears in file metadata) and plot type
@@ -32,9 +34,13 @@ inputs:
 
 # Entries here are applied to the inputs above
 for_inputs:
-    # If compare is specified then comparison plots (simple difference) will be created between files
-    # identified in exp_list
+    # If compare is specified then side-by-side comparison plots will be created between files
+    # identified in ids
     compare:
+      ids: BenchmarkFc180,RefD1  # IDs associated with input exp_id values in inputs section.
+    # If compare_diff is specified then comparison plots (simple difference) will be created between files
+    # identified in ids
+    compare_diff:
       ids: BenchmarkFc180,RefD1  # IDs associated with input exp_id values in inputs section.
       # Note they are comma-separated
       # Some plot have an additional comparison plot, 4 types: ratio, percc, percd, profile
@@ -43,11 +49,25 @@ for_inputs:
       #   ratio = percent difference of 2 fields
       #   profile = profile comparison of 2 or more fields
       #             must be 3D fields, else eviz will skip the comparison
-      extra_diff: ratio
+      extra_diff: ratio  # only works with compare_diff
       # Use different colormap for comparison plots
       # These are matplotlib colormaps: https://matplotlib.org/stable/users/explain/colors/colormaps.html
       cmap: coolwarm
+    overlay:   # to overlay line plots (only works with xt and yc profiles) or box plots
+      ids: BenchmarkFc180,RefD1  # IDs associated with input exp_id values in inputs section.
+      # If we are using box plots, we can specify colors for each box. 
+      # If nothin specified, cycle through MPL color table
+      box_colors: blue,green
+      # Use x-label for  each experiment in box-plots unless add_legend is set here:
+      add_legend: yes
 
+    # This option is here because we need to specify the fields to be used in the correlation plots
+    # Note: this is to be moved to SPECS file in a future release
+    pearsonplot:
+        space_corr: no
+        time_corr: yes
+        fields: sm_obs,soil_moisture
+        
     # The following options, trop_height and sphum_field, are GEOS-specific, i.e. "--source geos" or
     # "-s geos" or its sub-classes (currently only ccm, cf). Therefore, options will be ignored if
      # used with other "sources"

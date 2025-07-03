@@ -11,8 +11,7 @@ from typing import Any, Dict, List
 from yaml import SafeLoader
 from datetime import timedelta
 from matplotlib.transforms import BboxBase as bbase
-
-from . import const as constants
+from eviz.lib.config.paths_config import PathsConfig
 
 logger = logging.getLogger(__name__)
 path_matcher = re.compile(r'\$\{([^}^{]+)\}')
@@ -43,7 +42,8 @@ def logger_setup(logger_name, log=1, verbose=1):
     )
     stdout_log = logging.StreamHandler(sys.stdout)
     stdout_log.setLevel(verbose_level)
-    formatter = logging.Formatter("%(levelname)s :: %(module)s (%(funcName)s:%(lineno)d) : %(message)s")
+    formatter = logging.Formatter(
+        "%(levelname)s :: %(module)s (%(funcName)s:%(lineno)d) : %(message)s")
     stdout_log.setFormatter(formatter)
     root = logging.getLogger()
     root.addHandler(stdout_log)
@@ -121,33 +121,6 @@ def get_project_root(anchor=".git"):
     return None
 
 
-def not_none(*args, default=None, **kwargs):
-    """
-    Return the first non-``None`` value. This is used with keyword arg aliases and
-    for setting default values. Use `kwargs` to issue warnings when multiple passed.
-    """
-    first = default
-    if args and kwargs:
-        raise ValueError("not_none can only be used with args or kwargs.")
-    elif args:
-        for arg in args:
-            if arg is not None:
-                first = arg
-                break
-    elif kwargs:
-        for name, arg in list(kwargs.items()):
-            if arg is not None:
-                first = arg
-                break
-        kwargs = {name: arg for name, arg in kwargs.items() if arg is not None}
-        if len(kwargs) > 1:
-            logger.warning(
-                f"Got conflicting or duplicate keyword arguments: {kwargs}. "
-                "Using the first keyword argument."
-            )
-    return first
-
-
 # ------------------------------
 # YAML Utility Functions
 # ------------------------------
@@ -179,7 +152,20 @@ def load_yaml_simple(file_path: str) -> Dict[str, Any]:
     if not os.path.exists(file_path):
         raise FileNotFoundError(f"YAML file not found: {file_path}")
     with open(file_path, 'r') as file:
-        return yaml.safe_load(file)
+        config = yaml.safe_load(file)
+        config = expand_env_vars(config)
+        return config
+
+
+def expand_env_vars(obj):
+    if isinstance(obj, dict):
+        return {k: expand_env_vars(v) for k, v in obj.items()}
+    elif isinstance(obj, list):
+        return [expand_env_vars(i) for i in obj]
+    elif isinstance(obj, str):
+        return os.path.expandvars(obj)
+    else:
+        return obj
 
 
 def load_yaml(yaml_filename):
@@ -250,57 +236,58 @@ def log_method(func):
     Returns:
         callable: The wrapped method.
     """
+
     @wraps(func)
     def wrapper(*args, **kwargs):
-        logger = logging.getLogger(func.__module__)
-        logger.debug(f"Starting {func.__name__}")
+        # Extract the file name from the module path
+        module_parts = func.__module__.split('.')
+        file_name = module_parts[-1] + '.py'
+        logger.debug(f"Starting {func.__name__} in {file_name}")
         result = func(*args, **kwargs)
-        logger.debug(f"Finished {func.__name__}")
+        logger.debug(f"Finished {func.__name__} in {file_name}")
         return result
+
     return wrapper
 
 
 # ------------------------------
 # Domain-Specific Utilities
 # ------------------------------
-
-def read_species_db() -> dict:
-    """Read species database YAML file and load into data structure."""
-    root_path = os.path.dirname(os.path.abspath('const.py'))
-    db_path = constants.species_db_path
-    if not os.path.exists(db_path):
-        db_path = os.path.join(root_path, constants.species_db_path)
-    return load_yaml(db_path)
-
-def read_meta_coords() -> dict:
+def read_meta_coords(paths=None) -> dict:
     """ Read meta coordinates YAML file and load into data structure"""
+    if paths is None:
+        paths = PathsConfig()
+    coord_file_path = paths.meta_coords_path
     root_path = os.path.dirname(os.path.abspath('const.py'))
-    coord_file_path = constants.meta_coords_path
     if not os.path.exists(coord_file_path):
-        coord_file_path = os.path.join(root_path, constants.meta_coords_path)
+        coord_file_path = os.path.join(root_path, paths.meta_coords_path)
     return load_yaml(coord_file_path)
 
 
-def read_meta_attrs() -> dict:
+def read_meta_attrs(paths=None) -> dict:
     """ Read meta attributes YAML file and load into data structure"""
+    if paths is None:
+        paths = PathsConfig()
     root_path = os.path.dirname(os.path.abspath('const.py'))
-    attr_file_path = constants.meta_attrs_path
+    attr_file_path = paths.meta_attrs_path
     if not os.path.exists(attr_file_path):
-        attr_file_path = os.path.join(root_path, constants.meta_attrs_path)
+        attr_file_path = os.path.join(root_path, paths.meta_attrs_path)
     return load_yaml(attr_file_path)
 
 
-def read_species_db() -> dict:
+def read_species_db(paths=None) -> dict:
     """ Read species database YAML file and load into data structure"""
+    if paths is None:
+        paths = PathsConfig()
     root_path = os.path.dirname(os.path.abspath('const.py'))
-    db_path = constants.species_db_path
+    db_path = paths.species_db_path
     if not os.path.exists(db_path):
-        db_path = os.path.join(root_path, constants.species_db_path)
+        db_path = os.path.join(root_path, paths.species_db_path)
     return load_yaml(db_path)
 
 
 def get_reader_from_name(name):
-    """ Get reader name (as defined in RootFactory) from a given source name """
+    """ Get reader name (as defined in BaseSourceFactory) from a given source name """
     if name in ['gridded', 'geos', 'ccm', 'cf', 'wrf', 'lis']:
         return 'gridded'
     elif name in ['airnow', 'fluxnet']:
@@ -322,7 +309,8 @@ def get_season_from_file(file_name):
         return "MAM"
     else:
         return None
-    
+
+
 def squeeze_fig_aspect(fig, preserve='h'):
     # https://github.com/matplotlib/matplotlib/issues/5463
     preserve = preserve.lower()
@@ -337,4 +325,3 @@ def squeeze_fig_aspect(fig, preserve='h'):
         raise ValueError(
             'preserve must be "h" or "w", not {}'.format(preserve))
     fig.set_size_inches(new_size, forward=True)
-

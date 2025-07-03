@@ -1,5 +1,3 @@
-import logging
-from glob import glob
 import pandas as pd
 import xarray as xr
 from .base import DataSource
@@ -19,31 +17,16 @@ class CSVDataSource(DataSource):
         """
         super().__init__(model_name, config_manager)
     
-    @property
-    def logger(self) -> logging.Logger:
-        """Get the logger for this class."""
-        return logging.getLogger(__name__)
-    
     def load_data(self, file_path: str) -> xr.Dataset:
-        """Load data from a CSV file into an Xarray dataset.
-        
-        Args:
-            file_path: Path to the CSV file or a glob pattern
-            
-        Returns:
-            An Xarray dataset containing the loaded data
-        """
+        """Load data from a CSV file or a list of CSV files into an Xarray dataset."""
         self.logger.debug(f"Loading CSV data from {file_path}")
-        
+
         try:
             combined_data = pd.DataFrame()
-            
-            if "*" in file_path:
-                # Handle multiple files using a glob pattern
-                files = glob(file_path)
-                self.logger.info(f"Found {len(files)} files matching pattern: {file_path}")
-                
-                for f in files:
+
+            if isinstance(file_path, list):
+                # Handle multiple files
+                for f in file_path:
                     self.logger.debug(f"Reading file: {f}")
                     this_data = pd.read_csv(f)
                     combined_data = pd.concat([combined_data, this_data], ignore_index=True)
@@ -51,21 +34,14 @@ class CSVDataSource(DataSource):
                 # Handle a single file
                 self.logger.debug(f"Reading file: {file_path}")
                 combined_data = pd.read_csv(file_path)
-            
-            # Convert the Pandas DataFrame to an Xarray dataset
+
             dataset = combined_data.to_xarray()
-            
-            # Process the dataset
             dataset = self._process_data(dataset)
-            
-            # Store the dataset
             self.dataset = dataset
-            
-            # Store metadata
             self._extract_metadata(dataset)
-            
+
             return dataset
-            
+
         except Exception as exc:
             self.logger.error(f"Error loading CSV file: {file_path}. Exception: {exc}")
             raise

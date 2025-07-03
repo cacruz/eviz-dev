@@ -8,13 +8,13 @@ import xarray as xr
 from eviz.lib.config.config import Config
 from dataclasses import dataclass, field
 
-from eviz.models.root import Root
+from eviz.models.source_base import GenericSource
 
 warnings.filterwarnings("ignore")
 
 
 @dataclass
-class Landsat(Root):
+class Landsat(GenericSource):
     """ Define LandSAT data and functions.
 
     Parameters:

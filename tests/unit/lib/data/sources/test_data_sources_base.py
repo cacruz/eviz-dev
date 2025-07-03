@@ -1,7 +1,7 @@
 import pytest
 import numpy as np
 import xarray as xr
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 from eviz.lib.data.sources.base import DataSource
 
 
@@ -144,19 +144,7 @@ class TestDataSource:
         
         result = self.data_source.dims
         assert result == ('time', 'lat', 'lon')
-    
-    def test_getattr_no_dataset(self):
-        """Test getting an attribute with no dataset."""
-        data_source = ConcreteDataSource('test_model')        
-        with pytest.raises(AttributeError):
-            data_source.dims
-    
-    def test_getattr_not_found(self):
-        """Test getting an attribute that doesn't exist."""
-        # Call the method and verify it raises an exception
-        with pytest.raises(AttributeError):
-            self.data_source.non_existent
-    
+
     def test_getitem(self):
         """Test getting an item from the dataset."""
         result = self.data_source['temperature']

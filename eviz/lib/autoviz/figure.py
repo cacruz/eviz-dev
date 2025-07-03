@@ -1,5 +1,6 @@
 import logging
-from typing import Any, Dict
+from typing import Any, Dict, Optional
+import matplotlib as mpl
 import matplotlib.figure as mfigure
 import matplotlib.pyplot as plt
 from mpl_toolkits.axes_grid1 import make_axes_locatable
@@ -10,127 +11,42 @@ from matplotlib.ticker import MultipleLocator
 
 import numpy as np
 
-import eviz.lib.utils as u
 from eviz.lib.autoviz.utils import get_subplot_geometry
 import eviz.lib.autoviz.utils as pu
-from cartopy.mpl.gridliner import LONGITUDE_FORMATTER, LATITUDE_FORMATTER
 
 
 class Figure(mfigure.Figure):
-    """
-    Enhanced Figure class inheriting from matplotlib's Figure with eViz framework customizations.
+    """ Enhanced Figure class inheriting from Matplotlib's Figure with eViz framework
+        customizations.
 
     Parameters:
-    config_manager (ConfigManager): Representation of the model configuration 
-    plot_type (str): Type of plot to be created
-    
-    Attributes:
-    - _rindex: Row index for multiple subplots
-    - _ax_opts: Dictionary of axis options
-    - _frame_params: Dictionary of frame parameters
-    - _subplots: Tuple defining subplot layout
-    - _use_cartopy: Flag to indicate use of Cartopy projection
-    """
-
-    def __repr__(self):
-        opts = {}
-        for attr in ("refaspect", "refwidth", "refheight", "figwidth", "figheight"):
-            value = getattr(self, "_" + attr)
-            if value is not None:
-                opts[attr] = np.round(value, 2)
-        geom = ""
-        if self.gridspec:
-            nrows, ncols = self.gridspec.get_geometry()
-            geom = f"nrows={nrows}, ncols={ncols}, "
-        opts = ", ".join(f"{key}={value!r}" for key, value in opts.items())
-        return f"Figure({geom}{opts})"
-
-    def __init__(self, config_manager, plot_type, 
-        *,
-        nrows=None,
-        ncols=None,
-        refnum=None,
-        ref=None,
-        refaspect=None,
-        aspect=None,
-        refwidth=None,
-        refheight=None,
-        axwidth=None,
-        axheight=None,
-        figwidth=None,
-        figheight=None,
-        width=None,
-        height=None,
-        journal=None,
-        sharex=None,
-        sharey=None,
-        share=None,  # used for default spaces
-        spanx=None,
-        spany=None,
-        span=None,
-        alignx=None,
-        aligny=None,
-        align=None,
-        left=None,
-        right=None,
-        top=None,
-        bottom=None,
-        wspace=None,
-        hspace=None,
-        space=None,
-        tight=None,
-        outerpad=None,
-        innerpad=None,
-        panelpad=None,
-        wpad=None,
-        hpad=None,
-        pad=None,
-        wequal=None,
-        hequal=None,
-        equal=None,
-        wgroup=None,
-        hgroup=None,
-        group=None,
-        **kwargs,
-    ):
-        """
-        Parameters
-        ----------
-        %(figure.figure)s
-
-        Other parameters
-        ----------------
-        %(figure.format)s
-        **kwargs
-            Passed to `matplotlib.figure.Figure`.
+        config_manager (ConfigManager): Representation of the model configuration
+        plot_type (str): Type of plot to be created
 
         See also
         --------
         matplotlib.figure.Figure
-        """     
-        refnum = u.not_none(refnum=refnum, ref=ref, default=1)  # never None
-        refaspect = u.not_none(refaspect=refaspect, aspect=aspect)
-        refwidth = u.not_none(refwidth=refwidth, axwidth=axwidth)
-        refheight = u.not_none(refheight=refheight, axheight=axheight)
-        figwidth = u.not_none(figwidth=figwidth, width=width)
-        figheight = u.not_none(figheight=figheight, height=height)   
-        if figwidth is not None and refwidth is not None:
-            refwidth = None
-        if figheight is not None and refheight is not None:
-            refheight = None
-        # Initialize the figure
-        # NOTE: Super labels are stored inside {axes: text} dictionaries
+
+    """
+    def __init__(self, config_manager, plot_type, 
+        *,
+        nrows=None,
+        ncols=None,
+        **kwargs,
+    ):
+
         self._gridspec = None
         self._panel_dict = {"left": [], "right": [], "bottom": [], "top": []}
         self._subplot_dict = {}  # subplots indexed by number
         self._subplot_counter = 0  # avoid add_subplot() returning an existing subplot
+        self._projection = None
+        self._subplots = (1, 1)
 
         # Initialize eViz-specific attributes
         self.config_manager = config_manager
         self.plot_type = plot_type
         self._logger = logging.getLogger(__name__)
         
-        # Initialization defaults
         self._rindex = 0
         self._ax_opts = {}
         self._frame_params = {}
@@ -138,8 +54,6 @@ class Figure(mfigure.Figure):
         # If nrows and ncols are provided, use them to set _subplots
         if nrows is not None and ncols is not None:
             self._subplots = (nrows, ncols)
-        else:
-            self._subplots = (1, 1)
             
         self._use_cartopy = False
         self.gs = None
@@ -152,15 +66,13 @@ class Figure(mfigure.Figure):
             del kwargs['ncols']
             
         super().__init__(**kwargs)
-        
-        # Post-initialization setup
-        self._logger.debug("Create figure, axes")
-        
-        if self.config_manager.add_logo:
-            self.EVIZ_LOGO = plt.imread('eviz/lib/_static/ASTG_logo.png')
-        
+
+        # Ensure the figure has a canvas
+        if not hasattr(self, 'canvas') or self.canvas is None:
+            from matplotlib.backends.backend_agg import FigureCanvasAgg
+            self.canvas = FigureCanvasAgg(self)
+                            
         self._init_frame()
-        self._set_axes()
 
     def _init_frame(self):
         """Set shape and size for pre-defined figure frames."""
@@ -172,9 +84,10 @@ class Figure(mfigure.Figure):
         if self.config_manager.compare and not self.config_manager.compare_diff:
             # Side-by-side comparison
             if self._subplots[1] == 3:
-                _frame_params[rindex] = [1, 3, 18, 6]  # [nrows, ncols, width, height] - wider for 3 columns
+                # [nrows, ncols, width, height] - wider for 3 columns
+                _frame_params[rindex] = [1, 3, 24, 6]
             else:
-                _frame_params[rindex] = [1, 2, 12, 6]  # Original 2-column layout
+                _frame_params[rindex] = [1, 2, 18, 6]  # Original 2-column layout
         elif self.config_manager.compare_diff:
             # Comparison with difference
             if self._subplots == (3, 1):
@@ -204,7 +117,7 @@ class Figure(mfigure.Figure):
                 # Get the number of variables to compare from the config
                 if hasattr(self.config_manager, 'compare_exp_ids'):
                     num_vars = len(self.config_manager.compare_exp_ids)
-                    self._subplots = (1, num_vars)  # 1 row, N columns where N is number of variables
+                    self._subplots = (1, num_vars)
                 else:
                     self._subplots = (1, 2)  # Default to side by side layout
                 return
@@ -225,12 +138,12 @@ class Figure(mfigure.Figure):
             self.logger.warning(f"Error setting subplot layout: {str(e)}, using default")
             self._subplots = (1, 1)
 
-    def _set_axes(self):
+    def set_axes(self) -> "Figure":
         """
         Set figure axes objects based on required subplots.
 
         Returns:
-            tuple: (figure, axes) objects for the given plot type
+            self: The Figure object itself.
         """
         if 'tx' in self.plot_type or 'sc' in self.plot_type or 'xy' in self.plot_type:
             self._use_cartopy = True
@@ -241,8 +154,9 @@ class Figure(mfigure.Figure):
         return self
 
     def reset_axes(self, ax):
-        """Remove all plotted data, colorbars, and titles from either a Matplotlib Axes or Cartopy GeoAxes."""
-        
+        """Remove all plotted data, colorbars, and titles from either a Matplotlib Axes
+        or Cartopy GeoAxes.
+        """
         if self is None:
             raise ValueError("Figure is None! It may have been closed or deleted.")
 
@@ -259,17 +173,14 @@ class Figure(mfigure.Figure):
                 self.delaxes(cbar_ax)  
 
         ax.set_title("")
-
-        # apply changes
         self.canvas.draw_idle()
 
-
-    def _get_fig_ax(self):
+    def _get_fig_ax(self) -> "Figure":
         """
         Initialize figure and axes objects for all plots based on plot type.
 
         Returns:
-            tuple: (figure, axes) objects for the given plot type
+            self: The Figure object itself.
         """
         if "po" in self.plot_type:
             return self
@@ -285,12 +196,18 @@ class Figure(mfigure.Figure):
     def get_fig_ax(self):
         return self._get_fig_ax()
 
-    def get_axes(self):
+    def get_axes(self) -> list:
         # Always return a list of axes, even for a single axes
         return self.axes_array
 
-    def create_subplot_grid(self):
+    def create_subplot_grid(self) -> "Figure":
         """Create a grid of subplots based on the figure frame layout."""
+        # TODO: Check this!!!
+        # Hack to distinguish regional plots, which look better in square aspect ratio
+        if ('tx' in self.plot_type or 'sc' in self.plot_type or 'xy' in self.plot_type) and  'extent' in self._ax_opts:
+            if self._ax_opts['extent'] != [-180, 180, -90, 90]:
+                self._frame_params[self._rindex][2] = 8
+                self._frame_params[self._rindex][3] = 8
         if self._frame_params[self._rindex][2] and self._frame_params[self._rindex][3]:
             figsize = (self._frame_params[self._rindex][2], self._frame_params[self._rindex][3])
             self.set_size_inches(figsize)
@@ -307,6 +224,74 @@ class Figure(mfigure.Figure):
             
         return self
 
+    @classmethod
+    def create_eviz_figure(cls, config_manager, 
+                        plot_type, 
+                        field_name=None, nrows=None, ncols=None) -> "Figure":
+        """
+        Factory method to create an eViz Figure instance.
+        
+        Args:
+            config_manager (ConfigManager): Configuration manager
+            plot_type (str): Type of plot
+            field_name (str, optional): Name of the field being plotted
+            nrows (int, optional): Number of rows in the subplot grid
+            ncols (int, optional): Number of columns in the subplot grid
+        
+        Returns:
+            Figure: An instance of the eViz Figure class
+        """
+        if field_name is None:
+            field_name = config_manager.current_field_name
+        
+        # Get rc_params if available
+        rc_params = {}
+        if (config_manager.spec_data and 
+            field_name in config_manager.spec_data and 
+            plot_type + 'plot' in config_manager.spec_data[field_name]):
+            rc_params = config_manager.spec_data[field_name][plot_type + 'plot'].get('rc_params', {})
+
+        use_overlay = False
+        if config_manager.compare and field_name:
+            use_overlay = config_manager.should_overlay_plots(field_name, plot_type[:2])
+        
+        # If using overlay mode, create a single subplot
+        if use_overlay:
+            nrows, ncols = 1, 1
+        # Otherwise, determine layout based on configuration
+        elif nrows is None or ncols is None:
+            if config_manager.compare and not config_manager.compare_diff:
+                # For side-by-side comparison, use 1x2 layout
+                nrows, ncols = 1, 2
+            elif config_manager.compare_diff:
+                # For comparison with difference, use layout from config
+                nrows, ncols = config_manager.input_config._comp_panels
+            else:
+                # For single plots, use 1x1 layout
+                nrows, ncols = 1, 1
+        
+        # Create figure with rc_params applied
+        fig = cls(config_manager, plot_type, nrows=nrows, ncols=ncols)
+
+        # Store rc_params in ax_opts for later use with axes
+        if not hasattr(fig, '_ax_opts'):
+            fig._ax_opts = {}
+        fig._ax_opts['rc_params'] = rc_params
+
+        return fig
+
+    def set_us_map_layout(self):
+        """Adjust figure layout for US maps."""
+        # Set a wider figure size
+        self.set_size_inches(18, 6)
+        
+        # Adjust subplot spacing
+        self.subplots_adjust(wspace=0.1, right=0.85)
+        
+        # Set aspect ratio for all axes
+        for ax in self.axes_array:
+            ax.set_aspect('auto')
+
     def create_subplots(self):
         """
         Create subplots based on the gridspec (subplot grid) and projection requirements.
@@ -320,58 +305,47 @@ class Figure(mfigure.Figure):
                     self.axes_array.append(ax)
             return self
 
-    def _create_subplots_crs(self):
-        # axes = []
-        if 'projection' in self._ax_opts:
+    def _create_subplots_crs(self) -> "Figure":
+        """Create subplots with cartopy projections."""
+        # Determine the projection to use
+        map_projection = None
+        # Check if we have a field_name and can get projection from spec_data
+        if hasattr(self, 'field_name') and self.field_name:
+            if (self.config_manager.spec_data and
+                    self.field_name in self.config_manager.spec_data
+            ):
+                # Check for projection at the top level of the field spec
+                if 'projection' in self.config_manager.spec_data[self.field_name]:
+                    projection_name = self.config_manager.spec_data[self.field_name]['projection']
+                    map_projection = self.get_projection(projection_name)
+                    self._logger.debug(f"Using projection '{projection_name}' for field {self.field_name}")
+                # Also check in the plot-type specific section
+                elif 'projection' in self.config_manager.spec_data[self.field_name].get(f"{self.plot_type[:2]}plot", {}):
+                    projection_name = self.config_manager.spec_data[self.field_name][f"{self.plot_type[:2]}plot"]['projection']
+                    map_projection = self.get_projection(projection_name)
+                    self._logger.debug(f"Using projection '{projection_name}' for field {self.field_name}")
+
+        # If no projection found from field_name, check ax_opts
+        if map_projection is None and 'projection' in self._ax_opts:
             map_projection = self.get_projection(self._ax_opts['projection'])
-        else:
-            map_projection = ccrs.PlateCarree()
+
+        # Default to PlateCarree if no projection specified
+        if map_projection is None:
+            map_projection = self.get_projection()
 
         for i in range(self._subplots[0]):
             for j in range(self._subplots[1]):
                 ax = self.add_subplot(self.gs[i, j], projection=map_projection)
                 self.axes_array.append(ax)
 
-        for i, ax in enumerate(self.axes_array):
-                # Add gridlines
-                gl = ax.gridlines(draw_labels=True, linewidth=1, color='gray', alpha=0.5, linestyle='--')
-                gl.xlabels_top = False
-                gl.ylabels_right = False
-                gl.xformatter = LONGITUDE_FORMATTER
-                gl.yformatter = LATITUDE_FORMATTER
-                ax.coastlines()
-                ax.add_feature(cfeature.BORDERS, linestyle=':')
-                ax.add_feature(cfeature.LAND, edgecolor='black')
-                ax.add_feature(cfeature.LAKES, edgecolor='black')
+        for ax in self.axes_array:
+            ax.coastlines()
+            ax.add_feature(cfeature.BORDERS, linestyle=':')
+            ax.add_feature(cfeature.LAND, edgecolor='black')
+            ax.add_feature(cfeature.LAKES, edgecolor='black', color='white', zorder=0)
+            ax.add_feature(cfeature.OCEAN, color='white', zorder=0)
+            
         return self
-
-    @staticmethod
-    def create_eviz_figure(config_manager, plot_type, nrows=None, ncols=None):
-        """
-        Factory method to create an eViz Figure instance.
-        
-        Args:
-            config_manager (ConfigManager): Configuration manager
-            plot_type (str): Type of plot
-            nrows (int, optional): Number of rows in the subplot grid
-            ncols (int, optional): Number of columns in the subplot grid
-        
-        Returns:
-            Figure: An instance of the eViz Figure class
-        """
-        # If nrows and ncols are not provided, determine them based on the configuration
-        if nrows is None or ncols is None:
-            if config_manager.compare and not config_manager.compare_diff:
-                # For side-by-side comparison, use 1x2 layout
-                nrows, ncols = 1, 2
-            elif config_manager.compare_diff:
-                # For comparison with difference, use layout from config
-                nrows, ncols = config_manager.input_config._comp_panels
-            else:
-                # For single plots, use 1x1 layout
-                nrows, ncols = 1, 1
-        
-        return Figure(config_manager, plot_type, nrows=nrows, ncols=ncols)
 
     def get_gs_geometry(self):
         if self.gs:
@@ -384,97 +358,95 @@ class Figure(mfigure.Figure):
 
     def have_nontrivial_grid(self):
         return self.gs.nrows > 1 or self.gs.ncols > 1
-    
 
     def _set_fig_axes_regional(self, use_cartopy_opt):
         pass
 
     def savefig_eviz(self, *args, **kwargs):
         # Custom savefig behavior
-        result = super().savefig(*args, **kwargs)
+        super().savefig(*args, **kwargs)
         # Do more custom stuff
-        return result
-    
+
     def show_eviz(self, *args, **kwargs):
-        """
-        Display the figure with any custom processing.
-        Change to show() to override overrides matplotlib's plt.show() with 
-        custom behavior if needed.
-        """
-        # Any custom pre-show processing
+        """Display the figure with any custom processing."""
+        # Register with pyplot if needed
+        if not hasattr(self, 'number') or self.number not in plt.get_fignums():
+            num = max(plt.get_fignums() + [0]) + 1
+            self.number = num
+            plt.figure(num).canvas = self.canvas
         
         # Call the parent method or use plt.show() if needed
         plt.figure(self.number)  # Make sure this figure is active
-        result = plt.show(*args, **kwargs)
+        plt.show(*args, **kwargs)
         
-        # Any custom post-show processing
-    
-        return result
-    
-    # @classmethod
-    def get_projection(self, projection=None):
-        """ Get projection parameter"""
-        # TODO: Fix for the case when projection is not None!!!
-        if not projection:
-            return ccrs.PlateCarree()
-        if 'extent' not in self._ax_opts:  # default
-            self._ax_opts['extent'] = [-140, -40, 15, 65]  # conus
-            central_lon, central_lat = -96, 37.5  # conus
-        else:
-            if self._ax_opts['extent'] == 'conus':
-                extent = [-140, -40, 15, 65]  # [-120, -70, 24, 50.5]
-                # Make sure...
-                projection = 'lambert'
+    def get_projection(self, projection=None) -> Optional[ccrs.Projection]:
+        """Get projection parameter."""
+        # Default values for extent and central coordinates
+        extent = [-180, 180, -90, 90]  # global default
+        central_lon = 0.0
+        central_lat = 0.0
+
+        # Try to get extent from config_manager.ax_opts
+        if hasattr(self.config_manager, 'ax_opts') and self.config_manager.ax_opts:
+            if 'extent' in self.config_manager.ax_opts:
+                extent = self.config_manager.ax_opts['extent']
+            if 'central_lon' in self.config_manager.ax_opts:
+                central_lon = self.config_manager.ax_opts['central_lon']
+            if 'central_lat' in self.config_manager.ax_opts:
+                central_lat = self.config_manager.ax_opts['central_lat']
+        # Also check in _ax_opts
+        elif 'extent' in self._ax_opts:
+            if self._ax_opts['extent'.lower()] == 'conus':
+                extent = [-120, -70, 24, 50.5]
             else:
-                extent = [-180, 180, -90, 90]
+                extent = self._ax_opts['extent']
+            # Calculate central coordinates from extent if not provided
             central_lon = np.mean(extent[:2])
             central_lat = np.mean(extent[2:])
-        options = {'lambert': ccrs.LambertConformal(central_latitude=central_lat,
-                                                    central_longitude=central_lon),
-                   'albers': ccrs.AlbersEqualArea(central_latitude=central_lat,
-                                                  central_longitude=central_lon),
-                   'stereo': ccrs.Stereographic(central_latitude=central_lat,
-                                                central_longitude=central_lon),
-                   'ortho': ccrs.Orthographic(central_latitude=central_lat,
-                                              central_longitude=central_lon),
-                   'polar': ccrs.NorthPolarStereo(central_longitude=-100),
-                   'mercator': ccrs.Mercator()}
-        return options[projection]
-    # def get_projection(cls, projection):
-    #     """Retrieve projection object."""
-    #     projections = {
-    #         'lambert': ccrs.LambertConformal(),
-    #         'albers': ccrs.AlbersEqualArea(),
-    #         'stereo': ccrs.Stereographic(),
-    #         'ortho': ccrs.Orthographic(),
-    #         'polar': ccrs.NorthPolarStereo(),
-    #         'mercator': ccrs.Mercator()
-    #     }
-    #     return projections.get(projection, ccrs.PlateCarree())
 
-    def create_subplots_crs(self, gs):
-        axes = []
-        if 'projection' in self._ax_opts:
-            map_projection = self.get_projection(self._ax_opts['projection'])
-        else:
-            map_projection = ccrs.PlateCarree()
+        if projection is None:
+            self._ax_opts['extent'] = extent
+            self._projection = ccrs.PlateCarree()
+            return ccrs.PlateCarree()
+        
+        options = {
+            'mercator': ccrs.Mercator(
+                central_longitude=central_lon,
+            ),
+            'robinson': ccrs.Robinson(
+                central_longitude=central_lon,
+            ),
+            'orthographic': ccrs.Orthographic(
+                central_longitude=central_lon,
+                central_latitude=central_lat,
+            ),
+            'mollweide': ccrs.Mollweide(
+                central_longitude=central_lon,
+            ),
+            'lambert': ccrs.LambertConformal(
+                central_longitude=central_lon,
+                central_latitude=central_lat,
+                standard_parallels=(extent[2], extent[3])
+            ),
+            'albers': ccrs.AlbersEqualArea(
+                central_longitude=central_lon,
+                central_latitude=central_lat,
+                standard_parallels=(extent[2], extent[3])
+            ),
+            'stereo': ccrs.Stereographic(
+                central_latitude=central_lat,
+                central_longitude=central_lon
+            ),
+            'ortho': ccrs.Orthographic(
+                central_latitude=central_lat,
+                central_longitude=central_lon
+            ),
+            'polar': ccrs.NorthPolarStereo(central_longitude=central_lon),
+        }
+        self._ax_opts['extent'] = extent
+        self._projection = options.get(projection)
 
-        for i in range(self._subplots[0]):
-            for j in range(self._subplots[1]):
-                ax = plt.subplot(gs[i, j], projection=map_projection)
-                axes.append(ax)
-                # Add gridlines
-                gl = ax.gridlines(draw_labels=True, linewidth=1, color='gray', alpha=0.5, linestyle='--')
-                gl.xlabels_top = False
-                gl.ylabels_right = False
-                gl.xformatter = LONGITUDE_FORMATTER
-                gl.yformatter = LATITUDE_FORMATTER
-                ax.coastlines()
-                ax.add_feature(cfeature.BORDERS, linestyle=':')
-                ax.add_feature(cfeature.LAND, edgecolor='black')
-                ax.add_feature(cfeature.LAKES, edgecolor='black')
-        return axes
-
+        return self._projection
 
     def set_ax_opts_diff_field(self, ax):
         """ Modify axes internal state based on user-defined options
@@ -492,30 +464,99 @@ class Figure(mfigure.Figure):
                 self._ax_opts['is_diff_field'] = True
                 self._ax_opts['add_extra_field_type'] = True
 
-
-    def init_ax_opts(self, field_name):
+    def init_ax_opts(self, field_name) -> Dict[str, Any]:
         """Initialize map options for a given field."""
         plot_type = "polar" if self.plot_type.startswith("po") else self.plot_type[:2]
         spec = self.config_manager.spec_data.get(field_name, {}).get(f"{plot_type}plot", {})
+
+        existing_rc_params = {}
+        if hasattr(self, '_ax_opts') and 'rc_params' in self._ax_opts:
+            existing_rc_params = self._ax_opts.get('rc_params', {}).copy()  # Make a copy
+
         defaults = {
-            'boundary': None, 'use_pole': 'north', 'profile_dim': None, 'zsum': None, 'zave': None, 'tave': None,
-            'taverange': 'all', 'cmap_set_over': None, 'cmap_set_under': None, 'use_cmap': self.config_manager.input_config._cmap,
-            'use_diff_cmap': self.config_manager.input_config._cmap, 'cscale': None, 'zscale': 'linear', 'cbar_sci_notation': False,
-            'custom_title': False, 'add_grid': False, 'line_contours': True, 'add_tropp_height': False,
-            'torder': None, 'add_trend': False, 'projection': None, 'extent': [-180, 180, -90, 90],
-            'central_lon': 0.0, 'central_lat': 0.0, 'num_clevs': 10, 'time_lev': 0, 'is_diff_field': False,
-            'add_extra_field_type': False, 'clabel': None, 'create_clevs': False, 'clevs_prec': 0,
-            'clevs': None, 'plot_title': None, 'extend_value': 'both', 'norm': 'both',
+            'rc_params': existing_rc_params,
+            'boundary': None,
+            'use_pole': 'north',
+            'profile_dim': None,
+            'zsum': None,
+            'zave': None,
+            'tave': None,
+            'taverange': 'all',
+            'cmap_set_over': None,
+            'cmap_set_under': None,
+            'use_cmap': self.config_manager.input_config._cmap,
+            'use_diff_cmap': self.config_manager.input_config._cmap,
+            'cscale': None,
+            'zscale': 'linear',
+            'cbar_sci_notation': False,
+            'custom_title': False,
+            'add_grid': False,
+            'line_contours': True,
+            'add_tropp_height': False,
+            'torder': None,
+            'add_trend': False,
+            'projection': None,
+            'num_clevs': 10,
+            'time_lev': 0,
+            'is_diff_field': False,
+            'add_extra_field_type': False,
+            'clabel': None,
+            'create_clevs': False,
+            'clevs_prec': 0,
+            'clevs': None,
+            'plot_title': None,
+            'extend_value': 'both',
+            'norm': 'both',
             'overlay': False,
-            'contour_linestyle': {'lines.linewidth': 0.5, 'lines.linestyle': 'solid'},
-            'time_series_plot_linestyle': {'lines.linewidth': 1, 'lines.linestyle': 'solid'},
-            'colorbar_fontsize': {'colorbar.fontsize': 8}, 'axes_fontsize': {'axes.fontsize': 10},
-            'title_fontsize': {'title.fontsize': 10}, 'subplot_title_fontsize': {'subplot_title.fontsize': 12}
+            'contour_linestyle': {
+                'lines.linewidth': 0.5,
+                'lines.linestyle': 'solid'
+            },
+            'time_series_plot_linestyle': {
+                'lines.linewidth': 1,
+                'lines.linestyle': 'solid'
+            },
+            'colorbar_fontsize': {
+                'colorbar.fontsize': 8
+            },
+            'axes_fontsize': {
+                'axes.fontsize': 10
+            },
+            'title_fontsize': {
+                'title.fontsize': 10
+            },
+            'subplot_title_fontsize': {
+                'subplot_title.fontsize': 12
+            }
         }
-        self._ax_opts = {key: spec.get(key, defaults[key]) for key in defaults}
+        # self._ax_opts = {key: spec.get(key, defaults[key]) for key in defaults}
+
+        # Create new ax_opts dictionary
+        new_ax_opts = {}
+        for key in defaults:
+            if key == 'rc_params':
+                # Special handling for rc_params to preserve existing values
+                new_ax_opts[key] = defaults[key].copy()
+            else:
+                new_ax_opts[key] = spec.get(key, defaults[key])
+        
+        # Update with any new rc_params from YAML
+        rc_params_from_yaml = spec.get('rc_params', {})
+
+        rc_keys = set(mpl.rcParams.keys())
+        # Filter for valid rcParams
+        filtered_rc_params = {k: v for k, v in rc_params_from_yaml.items() if k in rc_keys}
+
+        if filtered_rc_params:
+            new_ax_opts['rc_params'].update(filtered_rc_params)
+        
+        # Set the new ax_opts
+        self._ax_opts = new_ax_opts   
+
         return self._ax_opts
 
-    def add_grid(self, ax, lines=True, locations=None):
+    @staticmethod
+    def add_grid(ax, lines=True, locations=None):
         """Add a grid to the plot."""
         if lines:
             ax.grid(lines, alpha=0.5, which="minor", ls=":")
@@ -526,13 +567,6 @@ class Figure(mfigure.Figure):
             ax.xaxis.set_major_locator(MultipleLocator(locations[1]))
             ax.yaxis.set_minor_locator(MultipleLocator(locations[2]))
             ax.yaxis.set_major_locator(MultipleLocator(locations[3]))
-
-    def colorbar_foo(self, mappable):
-        """Attach a colorbar to a plot."""
-        ax = mappable.axes
-        fig = ax.figure
-        cax = fig.add_axes([ax.get_position().x1 + 0.01, ax.get_position().y0, 0.02, ax.get_position().height])
-        return fig.colorbar(mappable, cax=cax)
 
     def colorbar_eviz(self, mappable):
         """
@@ -547,23 +581,7 @@ class Figure(mfigure.Figure):
         plt.sca(last_axes)
         return cbar
 
-    @property
-    def frame_params(self):
-        return self._frame_params
-
-    @property
-    def subplots(self):
-        return self._subplots
-
-    @property
-    def use_cartopy(self):
-        return self._use_cartopy
-
-    @property
-    def ax_opts(self):
-        return self._ax_opts
-
-    def update_ax_opts(self, field_name, ax, pid, level=None):
+    def update_ax_opts(self, field_name, ax, pid, level=None) -> Dict[str, Any]:
         """ Set (or reset) some map options
 
         Parameters:
@@ -575,7 +593,7 @@ class Figure(mfigure.Figure):
         Returns:
             Updated axes internal state
         """
-        if not self.config_manager.input_config.compare:
+        if not self.config_manager.compare or not self.config_manager.compare_diff:
             return self._update_single_plot(field_name, pid, level)
 
         geom = get_subplot_geometry(ax)
@@ -594,8 +612,12 @@ class Figure(mfigure.Figure):
             self._set_clevs(field_name, f"{pid}plot",
                             level if isinstance(level, int) else "contours")
 
-        return self._ax_opts
+        # Optionally, update rc_params if new ones are found in the spec
+        plot_type = "polar" if self.plot_type.startswith("po") else self.plot_type[:2]
+        self.config_manager.spec_data.get(field_name, {}).get(f"{plot_type}plot", {})
 
+        return self._ax_opts
+    
     def _update_single_plot(self, field_name, pid, level):
         """Update axes options for single subplot case."""
         plot_type_map = {
@@ -610,6 +632,10 @@ class Figure(mfigure.Figure):
 
     def _set_clevs(self, field_name, ptype, ctype):
         """ Helper function for update_ax_opts(): sets contour levels """
+        if 'contours' in self.config_manager.spec_data[field_name][ptype]:
+            self._ax_opts['clevs'] = self.config_manager.spec_data[field_name][ptype]['contours']
+            return
+
         if isinstance(ctype, int):
             if ctype in self.config_manager.spec_data[field_name][ptype]['levels']:
                 self._ax_opts['clevs'] = self.config_manager.spec_data[field_name][ptype]['levels'][ctype]
@@ -640,36 +666,41 @@ class Figure(mfigure.Figure):
         """
         if isinstance(ax, list):  # Check if ax is a list
             for single_ax in ax:
-                self._plot_text(field_name, single_ax, pid, level, data, *args, **kwargs)
+                self._plot_text(field_name, single_ax, pid, level, data, **kwargs)
         else:
-            self._plot_text(field_name, ax, pid, level, data, *args, **kwargs)
+            self._plot_text(field_name, ax, pid, level, data, **kwargs)
 
-    def _plot_text(self, field_name, ax, pid, level=None, data=None, *args, **kwargs):
+    def _plot_text(self, field_name, ax, pid, level=None, data=None, **kwargs):
         """Add text to a single axes."""
-        fontsize = kwargs.get('fontsize', pu.subplot_title_font_size(self._subplots))
-        ha = kwargs.get('horizontalalignment', 'center')
-        va = kwargs.get('verticalalignment', 'center')
-        loc = kwargs.get('location', '')
-        transform = kwargs.get('transform', ax.transAxes)
-        x_pos = kwargs.get('x_pos', 0.5)  # Default x position
-        y_pos = kwargs.get('y_pos', 1.1)  # Default y position       
+        font_size = None
+        title_size = None
+        
+        # Extract properties from rc_params
+        if 'rc_params' in self.ax_opts:
+            font_size = self.ax_opts['rc_params'].get('font.size', None)
+            title_size = self.ax_opts['rc_params'].get('axes.titlesize', None)
+        else:
+            self.ax_opts['rc_params'] = {}
+        
+        fontsize = kwargs.get('fontsize', font_size or pu.subplot_title_font_size(self._subplots))
+        title_fontsize = title_size or fontsize
+        loc = kwargs.get('location', 'left')
 
         findex = self.config_manager.findex
         sname = self.config_manager.config.map_params[findex]['source_name']
-        ds_index = self.config_manager.ds_index
-        # ds_index = self.config_manager.config.map_params[findex]['source_index']
-        geom = pu.get_subplot_geometry(ax) if self.config_manager.compare else None
+        geom = pu.get_subplot_geometry(ax) if self.config_manager.compare or self.config_manager.compare_diff else None
 
         # Handle plot titles for comparison cases
-        if self.config_manager.compare:
+        if self.config_manager.compare or self.config_manager.compare_diff:
+            title_string = 'Placeholder'
             if geom and geom[0] == (3, 1):  # (3,1) subplot structure
                 if geom[1:] == (0, 1, 1, 1):  # Bottom plot
-                    self._ax_opts['plot_title'] = "Difference (top - middle)"
+                    title_string = "Difference (top - middle)"
                 elif geom[1:] in [(1, 1, 0, 1), (0, 1, 0, 1)]:  # Top/Middle plots
-                    self._axes_title(ax, findex)
+                    title_string = self._set_axes_title(findex)
             elif self._subplots == (2, 2):  # (2,2) subplot structure
                 if geom[1:] == (0, 1, 1, 0):
-                    self._ax_opts['plot_title'] = "Difference (left - right)"
+                    title_string = "Difference (left - right)"
                 elif geom[1:] == (0, 0, 1, 1):  # Extra diff plot
                     diff_labels = {
                         "percd": ("% Diff", "%"),
@@ -677,29 +708,25 @@ class Figure(mfigure.Figure):
                         "ratio": ("Ratio Diff", "ratio"),
                     }
                     diff_type = self.config_manager.extra_diff_plot
-                    self._ax_opts['plot_title'], self._ax_opts['clabel'] = diff_labels.get(
+                    title_string, self._ax_opts['clabel'] = diff_labels.get(
                         diff_type, ("Difference (left - right)", None))
                     self._ax_opts['line_contours'] = False
                 else:  # Default case
-                    self._axes_title(ax, findex)
-            else:  # Default title for comparison
-                # TODO: need to consider cases where reader is (1) directly accesd or (2) reader is a dict
-                # plot_title = os.path.basename(
-                #     self.config_manager.readers[sname].datasets[ax.get_subplotspec().colspan.start][
-                #         'filename'])
-                plot_title = 'Placeholder'
-                ax.set_title(plot_title, fontsize=fontsize)
-            ax.set_title(self._ax_opts.get('plot_title', ""), fontsize=fontsize)
+                    title_string = self._set_axes_title(findex)
+            elif geom and (geom[0] == (1, 2) or geom[0] == (1, 3)):
+                title_string = self._set_axes_title(findex)
+            ax.set_title(title_string, loc=loc, fontsize=title_fontsize)
             return
 
         # Non-comparison case
         level_text = self._format_level_text(level)
-        name = self._get_field_name(field_name, sname, findex, ds_index)
+        name = self._get_field_name(field_name, sname, findex)
 
         left, width = 0, 1.0
         bottom, height = 0, 1.0
         right = left + width
         top = bottom + height
+        title_string = self._set_axes_title(findex)
 
         if 'yz' in pid:
             if self.config_manager.print_basic_stats:
@@ -711,7 +738,7 @@ class Figure(mfigure.Figure):
             if self.config_manager.use_history:
                 ax.set_title(self.config_manager.history_expid + " (" + self.config_manager.history_expdsc + ")")
             else:
-                self._axes_title(ax, findex, fs=8)
+                ax.set_title(title_string, loc=loc, fontsize=title_fontsize)
 
             ax.text(0.5 * (left + right), bottom + top + 0.1,
                     name, fontweight='bold',
@@ -721,7 +748,7 @@ class Figure(mfigure.Figure):
                     fontsize=14,
                     transform=ax.transAxes)
 
-        elif 'xy' in pid:
+        elif 'xy' in pid or 'sc' in pid or 'corr' in pid:
             if self.config_manager.print_basic_stats:
                 fmt = self._basic_stats(data)
                 ax.text(right, top, fmt, transform=ax.transAxes,
@@ -733,9 +760,12 @@ class Figure(mfigure.Figure):
                         ha='right', va='bottom', fontsize=10,
                         transform=ax.transAxes)
             if self.config_manager.use_history:
-                ax.set_title(self.config_manager.history_expid + " (" + self.config_manager.history_expdsc + ")", fontsize=10)
+                ax.set_title(
+                    self.config_manager.history_expid + " (" + self.config_manager.history_expdsc + ")",
+                    fontsize=title_fontsize
+                )
             else:
-                self._axes_title(ax, findex, fs=8)
+                ax.set_title(title_string, loc=loc, fontsize=title_fontsize)
 
             ax.text(0.5 * (left + right), bottom + top + 0.1,
                     name + level_text, 
@@ -748,9 +778,15 @@ class Figure(mfigure.Figure):
 
         elif 'tx' in pid:
             if self.config_manager.use_history:
-                ax.set_title(self.config_manager.history_expid + " (" + self.config_manager.history_expdsc + ")", fontsize=10)
+                ax.set_title(
+                    self.config_manager.history_expid + " (" + self.config_manager.history_expdsc + ")",
+                    fontsize=10
+                )
             else:
-                self._axes_title(ax, findex, fs=kwargs.get('fontsize', 10), loc=kwargs.get('loc', 'right'))
+                ax.set_title(
+                    title_string, loc=kwargs.get('loc', 'right'),
+                    fontsize=kwargs.get('fontsize', 10)
+                )
 
             ax.text(0.5 * (left + right), bottom + top + 0.5,
                     name,
@@ -766,7 +802,7 @@ class Figure(mfigure.Figure):
             if self.config_manager.use_history:
                 ax.set_title(self.config_manager.history_expid + " (" + self.config_manager.history_expdsc + ")")
             else:
-                self._axes_title(ax, findex)
+                ax.set_title(title_string, loc=loc, fontsize=fontsize)
 
             ax.text(0.5 * (left + right), bottom + top + 0.1,
                     name,
@@ -777,17 +813,22 @@ class Figure(mfigure.Figure):
                     verticalalignment=kwargs.get('va', 'center'),
                     transform=ax.transAxes)
         
-    def _axes_title(self, ax, findex, fs=10, loc='left'):
+    def _set_axes_title(self, findex):
+        if self.config_manager.overlay:
+            return None
         if self.config_manager.get_file_description(findex):
-            title_string = self.config_manager.get_file_description(findex)
+            return self.config_manager.get_file_description(findex)
         elif self.config_manager.get_file_exp_name(findex):
-            title_string = self.config_manager.get_file_exp_name(findex)
+            return self.config_manager.get_file_exp_name(findex)
+        elif self.config_manager.get_file_exp_id(findex):
+            return self.config_manager.get_file_exp_id(findex)
+        elif self.config_manager.map_params[findex].get('field', None):
+            return self.config_manager.map_params[findex]['field']
         else:
-            title_string = ''
             if self.config_manager.ax_opts['custom_title']:
-                title_string = self.config_manager.ax_opts['custom_title']
-        ax.set_title(title_string, loc=loc, fontsize=fs)
-
+                return self.config_manager.ax_opts['custom_title']
+        return None
+        
     @staticmethod
     def _basic_stats(data):
         """ Basic stats for a given field """
@@ -807,7 +848,7 @@ class Figure(mfigure.Figure):
             return ''
         return f"@ {level} {'Pa' if level > 10000 else 'mb'}"
 
-    def _get_field_name(self, field_name, sname, findex, ds_index):
+    def _get_field_name(self, field_name, sname, findex):
         """Get the field name from the reader's dataset."""
         try:
             # First, use the field name from spec_data if available
@@ -844,6 +885,42 @@ class Figure(mfigure.Figure):
             self.logger.warning(f"Error getting field name for {field_name}: {e}")
             return field_name
  
+    def apply_rc_params(self, default_params=None):
+        """
+        Apply matplotlib rcParams from a config dictionary.
+
+        Parameters:
+            default_params (dict, optional): Base set of rcParams to start with.
+        """
+        if default_params is None:
+            default_params = {
+                'image.origin': 'lower',
+                'image.interpolation': 'nearest',
+                'image.cmap': 'gray',
+                'axes.grid': False,
+                'savefig.dpi': 150,
+                'axes.labelsize': 10,
+                'axes.titlesize': 14,
+                'font.size': 10,
+                'legend.fontsize': 6,
+                'xtick.labelsize': 8,
+                'ytick.labelsize': 8,
+                'figure.figsize': [3.39, 2.10],
+                'font.family': 'serif',
+            }
+
+        # Update with user-specific overrides
+        if self.ax_opts['rc_params']:
+            rc_params = self.ax_opts['rc_params']
+        else:
+            rc_params = default_params
+        updated_params = default_params.copy()
+        updated_params.update(rc_params)
+
+        # Apply to matplotlib
+        mpl.rcParams.update(updated_params)
+
+
     @staticmethod
     def get_default_plot_params() -> Dict[str, Any]:
         """
@@ -866,3 +943,41 @@ class Figure(mfigure.Figure):
             'ytick.labelsize': 8,
             'font.family': 'sans-serif',
         }
+    
+    def suptitle_eviz(self, text, **kwargs):
+        """Custom suptitle method that ensures proper placement."""
+        # Make sure top margin is adjusted
+        self.subplots_adjust(top=0.9)
+        return self.suptitle(text, **kwargs)
+
+    @property
+    def logger(self) -> logging.Logger:
+        return logging.getLogger(__name__)
+
+    @property
+    def projection(self) -> ccrs.Projection:
+        return self._projection
+
+    @property
+    def frame_params(self):
+        return self._frame_params
+
+    @property
+    def subplots(self):
+        return self._subplots
+
+    @property
+    def use_cartopy(self):
+        return self._use_cartopy
+
+    @property
+    def ax_opts(self):
+        """Access to the axis options."""
+        if not hasattr(self, '_ax_opts'):
+            self._ax_opts = {}
+        return self._ax_opts
+
+    @ax_opts.setter
+    def ax_opts(self, value):
+        """Set the axis options."""
+        self._ax_opts = value
