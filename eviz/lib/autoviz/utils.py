@@ -318,12 +318,12 @@ def print_map(config: "ConfigManager",
                 fig.tight_layout()
             
             rc_params = {}
-            if hasattr(fig, '_ax_opts') and 'rc_params' in fig._ax_opts:
-                rc_params = fig._ax_opts['rc_params']
+            if hasattr(fig, '_ax_opts') and 'rc_params' in fig.ax_opts:
+                rc_params = fig.ax_opts['rc_params']
             
             # Save with facecolor preserved if specified
             if 'figure.facecolor' in rc_params:
-                fig.savefig(filename, dpi=300, facecolor=fig.get_facecolor())
+                fig.savefig(filename, dpi=300, facecolor=fig.ax_opts['rc_params']['figure.facecolor'])
             else:
             # Save with or without bbox_inches depending on extent
                 if config.ax_opts.get('extent'):
