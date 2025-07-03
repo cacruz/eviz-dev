@@ -148,9 +148,7 @@ class AltairMetricPlotter(XYPlotter):
         if data2d is None:
             self.logger.warning("No data to plot")
             return None
-        
-        self.logger.debug(f"Data shape: {data2d.shape}")
-        
+                
         ax_opts = config.ax_opts
         
         cmap = ax_opts.get('use_cmap', 'RdBu_r')
@@ -233,10 +231,7 @@ class AltairMetricPlotter(XYPlotter):
             
             # Convert to DataFrame for Altair
             df = data2d.to_dataframe(name='correlation').reset_index()
-            
-            self.logger.debug(f"DataFrame columns: {df.columns}")
-            self.logger.debug(f"DataFrame shape: {df.shape}")
-            
+                       
             if x_dim in df.columns:
                 df[x_dim] = df[x_dim].astype(float)
             if y_dim in df.columns:

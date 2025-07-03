@@ -26,19 +26,10 @@ class AltairXYPlotter(XYPlotter):
         data2d, x, y, field_name, plot_type, findex, _ = data_to_plot
         
         if data2d is None:
-            self.logger.warning("No data to plot")
             return None
-        
-        self.logger.debug(f"Data shape: {data2d.shape}")
-        self.logger.debug(f"X coords shape: {x.shape if hasattr(x, 'shape') else 'scalar'}")
-        self.logger.debug(f"Y coords shape: {y.shape if hasattr(y, 'shape') else 'scalar'}")
         
         ax_opts = config.ax_opts
         
-        if 'fill_value' in config.spec_data[field_name]['xyplot']:
-            fill_value = config.spec_data[field_name]['xyplot']['fill_value']
-            data2d = data2d.where(data2d != fill_value, np.nan)
-
         if 'fill_value' in config.spec_data[field_name]['xyplot']:
             fill_value = config.spec_data[field_name]['xyplot']['fill_value']
             data2d = data2d.where(data2d != fill_value, np.nan)
@@ -223,13 +214,10 @@ class AltairXYPlotter(XYPlotter):
             pandas DataFrame with columns 'x', 'y', 'value'
         """
         try:
-            # Get the coordinate values
             x_vals = x.values if hasattr(x, 'values') else x
             y_vals = y.values if hasattr(y, 'values') else y
             
-            # Check if data2d is already a DataFrame
             if isinstance(data2d, pd.DataFrame):
-                # Make sure it has the expected columns
                 if 'x' in data2d.columns and 'y' in data2d.columns:
                     if 'value' not in data2d.columns:
                         # Try to find a value column
@@ -242,15 +230,8 @@ class AltairXYPlotter(XYPlotter):
                             data2d['value'] = 0
                     return data2d
             
-            # Get the data values
             data_values = data2d.values if hasattr(data2d, 'values') else data2d
-            
-            # Print some debug info
-            self.logger.debug(f"X values range: {np.nanmin(x_vals)} to {np.nanmax(x_vals)}")
-            self.logger.debug(f"Y values range: {np.nanmin(y_vals)} to {np.nanmax(y_vals)}")
-            self.logger.debug(f"Data values shape: {data_values.shape}")
-            
-            # Check if all values are NaN
+                       
             if np.isnan(data_values).all():
                 self.logger.warning("All values are NaN, creating empty DataFrame")
                 return pd.DataFrame(columns=['x', 'y', 'value'])
@@ -258,11 +239,9 @@ class AltairXYPlotter(XYPlotter):
             self.logger.debug(f"Data values range: {np.nanmin(data_values)} to {np.nanmax(data_values)}")
             self.logger.debug(f"Data values NaN count: {np.isnan(data_values).sum()}")
             
-            # Create a DataFrame directly from the 2D array
             rows = []
             for j, y_val in enumerate(y_vals):
                 for i, x_val in enumerate(x_vals):
-                    # Check array bounds
                     if j < data_values.shape[0] and i < data_values.shape[1]:
                         value = data_values[j, i]
                         if not np.isnan(value):

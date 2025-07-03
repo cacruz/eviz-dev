@@ -120,7 +120,7 @@ class MatplotlibXYPlotter(MatplotlibBasePlotter):
                     config._comparison_cbar_limits[field_name] = (vmin, vmax)
                     self.logger.debug(f"Setting comparison colorbar limits for {field_name}: {vmin} to {vmax}")
                 
-                # IMPORTANT: Suppress individual colorbars if shared_bar is enabled
+                # Suppress individual colorbars if shared_bar is enabled
                 if config.shared_cbar:
                     ax_opts['suppress_colorbar'] = True
                     self.logger.debug(f"Suppressing individual colorbar for {field_name} (axindex={config.axindex})")
@@ -133,10 +133,10 @@ class MatplotlibXYPlotter(MatplotlibBasePlotter):
                     else:
                         self.line_contours(fig, ax, ax_opts, x, y, data2d)
 
+            title_str = field_name
             if config.compare_diff:
-                name = field_name
                 if 'name' in config.spec_data[field_name]:
-                    name = config.spec_data[field_name]['name']
+                    title_str = config.spec_data[field_name]['name']
 
                 level_text = None
                 if config.ax_opts.get('zave', False):
@@ -154,15 +154,17 @@ class MatplotlibXYPlotter(MatplotlibBasePlotter):
                                 level_text = '@ ' + str(level) + ' mb'
 
                 if level_text:
-                    name = name + level_text
+                    title_str = title_str + level_text
 
-                fig.suptitle_eviz(name, 
+                fig.suptitle_eviz(title_str, 
                                 fontweight='bold',
                                 fontstyle='italic',
                                 fontsize=self._image_font_size(fig.subplots))
             
             elif config.compare:
-                fig.suptitle_eviz(text=field_name, 
+                if 'name' in config.spec_data[field_name]:
+                    title_str = config.spec_data[field_name]['name']
+                fig.suptitle_eviz(text=title_str, 
                                 fontweight='bold',
                                 fontstyle='italic',
                                 fontsize=self._image_font_size(fig.subplots))

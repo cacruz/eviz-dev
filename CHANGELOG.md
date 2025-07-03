@@ -22,7 +22,7 @@ eviz can produce interactive plots using different backends.
     workflow.
   - The original config module (config.py) was broken down into more
     manageable pieces including a configuration adapter to bridge the 
-    configuration with the pipeline.i
+    configuration with the pipeline.
   - A "backends" option (via plot_backend in YAML file). The supported 
     backends are matplotlib (default), hvplot, and altair.
   - CREST support and with it new plotting modules to generate new
@@ -59,6 +59,8 @@ eviz can produce interactive plots using different backends.
   through specs.
 - The units module needs more testing and some unit conversions may not
   work as expected.
+- Tropopause height overlay is not working. A fix is in progress.
+- The GRIB class is not fully tested and may not work as expected.
   
 ## [0.6.3] - 2024-12-23
 
