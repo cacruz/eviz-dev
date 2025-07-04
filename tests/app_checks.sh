@@ -1,4 +1,27 @@
 #!/bin/bash
+#
+# app_checks.sh - EViz Application Test Suite
+#
+# This script runs a comprehensive set of tests for the EViz visualization toolkit.
+# It tests various data sources and plot types to ensure proper functionality.
+#
+# Test Categories:
+# - Single-plot tests: Tests individual plot generation for different data sources
+# - Comparison-plot tests: Tests plot comparison features
+# - Backend tests: Tests different visualization backends (matplotlib, altair, hvplot)
+#
+# Usage: ./app_checks.sh [conda env name] [--no-prompt]
+#   conda env name: The conda environment where EViz is installed
+#   --no-prompt: Optional flag to run all tests without prompting
+#
+# Requirements:
+# - EVIZ_CONFIG_PATH environment variable must be set
+# - Conda environment must be activated before running
+#
+# Example:
+#   ./app_checks.sh viz
+#   ./app_checks.sh viz --no-prompt
+#
 
 function prompt() {
     exp="$1"
@@ -13,7 +36,6 @@ function prompt() {
     fi
     return 0
 }
-
 
 set -e
 
