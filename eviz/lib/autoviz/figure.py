@@ -681,8 +681,7 @@ class Figure(mfigure.Figure):
             title_size = self.ax_opts['rc_params'].get('axes.titlesize', None)
         else:
             self.ax_opts['rc_params'] = {}
-        
-        fontsize = kwargs.get('fontsize', font_size or pu.subplot_title_font_size(self._subplots))
+        fontsize = font_size or pu.subplot_title_font_size(self._subplots)
         title_fontsize = title_size or fontsize
         loc = kwargs.get('location', 'left')
 
@@ -808,7 +807,7 @@ class Figure(mfigure.Figure):
                     name,
                     fontweight=kwargs.get('fontweight', 'bold'),
                     fontstyle=kwargs.get('fontstyle', 'italic'),
-                    fontsize=kwargs.get('fontsize', 14),
+                    fontsize=fontsize,
                     horizontalalignment=kwargs.get('ha', 'center'),
                     verticalalignment=kwargs.get('va', 'center'),
                     transform=ax.transAxes)
