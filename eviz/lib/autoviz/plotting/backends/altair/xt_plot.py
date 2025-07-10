@@ -47,8 +47,6 @@ class AltairXTPlotter(XTPlotter):
         elif hasattr(data2d, 'units'):
             units = data2d.units
         
-        # Create a simple DataFrame directly from the data
-        # This is a more direct approach that might work better
         try:
             # If data2d is an xarray DataArray
             if hasattr(data2d, 'values'):
@@ -69,9 +67,6 @@ class AltairXTPlotter(XTPlotter):
             else:
                 values = np.array(data2d)
                 time_coords = pd.date_range(start='2000-01-01', periods=len(values), freq='D')
-            
-            self.logger.debug(f"Values: {values}")
-            self.logger.debug(f"Time coords: {time_coords}")
             
             df = pd.DataFrame({
                 'time': time_coords,

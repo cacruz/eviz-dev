@@ -1,11 +1,12 @@
 import numpy as np
 import matplotlib as mpl
-import matplotlib.pyplot as plt
 import matplotlib.gridspec as mgridspec
 import cartopy.crs as ccrs
 import cartopy.feature as cfeature
 from matplotlib import colors
-from eviz.lib.data.pipeline.reader import get_data_coords
+import datetime
+from matplotlib.dates import date2num
+
 from .base import MatplotlibBasePlotter
 
 
@@ -68,10 +69,11 @@ class MatplotlibTXPlotter(MatplotlibBasePlotter):
             norm = colors.BoundaryNorm(ax_opts['clevs'], ncolors=256, clip=False)
             
             vtimes = self._get_time_coordinates(data2d)
-            
+            vtimes = self.ensure_mpl_compatible_times(vtimes)
+
             lon_dim = config.get_model_dim_name('xc')
             lons = self._get_longitude_coordinates(data2d, lon_dim)
-            
+
             data2d_reduced = self._process_data_for_hovmoller(data2d, vtimes, lons)
             
             # Set up the map in the top panel
@@ -308,3 +310,17 @@ class MatplotlibTXPlotter(MatplotlibBasePlotter):
                 ax.set_xticks([0, 90, 180, 270, 360])
         
         ax.set_xticklabels(x_tick_labels, fontsize=10)
+
+    @staticmethod
+    def ensure_mpl_compatible_times(vtimes):
+        first_time = vtimes[0]
+        
+        # If it's already a datetime.datetime...
+        if isinstance(first_time, datetime.datetime):
+            return date2num(vtimes)
+
+        # If it's a cftime object, convert to datetime.datetime
+        try:
+            return date2num(vtimes)
+        except Exception as e:
+            raise TypeError(f"Unsupported time format ({type(first_time)}): {e}")

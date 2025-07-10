@@ -85,7 +85,7 @@ class Figure(mfigure.Figure):
             # Side-by-side comparison
             if self._subplots[1] == 3:
                 # [nrows, ncols, width, height] - wider for 3 columns
-                _frame_params[rindex] = [1, 3, 24, 6]
+                _frame_params[rindex] = [1, 3, 32, 6]
             else:
                 _frame_params[rindex] = [1, 2, 18, 6]  # Original 2-column layout
         elif self.config_manager.compare_diff:
@@ -681,8 +681,7 @@ class Figure(mfigure.Figure):
             title_size = self.ax_opts['rc_params'].get('axes.titlesize', None)
         else:
             self.ax_opts['rc_params'] = {}
-        
-        fontsize = kwargs.get('fontsize', font_size or pu.subplot_title_font_size(self._subplots))
+        fontsize = font_size or pu.subplot_title_font_size(self._subplots)
         title_fontsize = title_size or fontsize
         loc = kwargs.get('location', 'left')
 
@@ -748,7 +747,7 @@ class Figure(mfigure.Figure):
                     fontsize=14,
                     transform=ax.transAxes)
 
-        elif 'xy' in pid or 'sc' in pid or 'corr' in pid:
+        elif 'xy' in pid or 'sc' in pid in pid:
             if self.config_manager.print_basic_stats:
                 fmt = self._basic_stats(data)
                 ax.text(right, top, fmt, transform=ax.transAxes,
@@ -798,6 +797,15 @@ class Figure(mfigure.Figure):
                     transform=ax.transAxes)
         elif 'po' in pid:
             pass
+        elif 'corr' in pid:
+            ax.text(0.5 * (left + right), bottom + top + 0.1,
+                    name + level_text, 
+                    fontweight=kwargs.get('fontweight', 'bold'),
+                    fontstyle=kwargs.get('fontstyle', 'italic'),
+                    fontsize=kwargs.get('fontsize', 14),
+                    horizontalalignment=kwargs.get('ha', 'center'),
+                    verticalalignment=kwargs.get('va', 'center'),
+                    transform=ax.transAxes)
         else:  # 'xt' and others
             if self.config_manager.use_history:
                 ax.set_title(self.config_manager.history_expid + " (" + self.config_manager.history_expdsc + ")")
@@ -808,7 +816,7 @@ class Figure(mfigure.Figure):
                     name,
                     fontweight=kwargs.get('fontweight', 'bold'),
                     fontstyle=kwargs.get('fontstyle', 'italic'),
-                    fontsize=kwargs.get('fontsize', 14),
+                    fontsize=fontsize,
                     horizontalalignment=kwargs.get('ha', 'center'),
                     verticalalignment=kwargs.get('va', 'center'),
                     transform=ax.transAxes)

@@ -2,7 +2,7 @@ import numpy as np
 import logging
 import holoviews as hv
 import pandas as pd
-from ....plotting.base import BasePlotter
+from eviz.lib.autoviz.plotting.base import BasePlotter
 
 
 class HvplotLinePlotter(BasePlotter):

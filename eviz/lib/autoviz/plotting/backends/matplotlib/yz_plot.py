@@ -198,6 +198,7 @@ class MatplotlibYZPlotter(MatplotlibBasePlotter):
             #     # The following is temporary, while the TODO above is not done.
             #     config.use_trop_height = None
 
+            # TODO: Simplify title string creation
             if config.compare_diff and config.ax_opts['is_diff_field']:
                 try:
                     if 'name' in config.spec_data[field_name]:
