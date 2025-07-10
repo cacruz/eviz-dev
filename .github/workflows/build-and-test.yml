@@ -41,7 +41,7 @@ jobs:
     runs-on: ubuntu-latest
     container: continuumio/miniconda3:latest
     needs: test
-    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop'
+    if: github.ref == 'refs/heads/main'
     steps:
       - uses: actions/checkout@v4
             
