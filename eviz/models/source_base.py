@@ -757,73 +757,127 @@ class GenericSource(BaseSource):
         else:
             return
 
-        # Get the fields to correlate
-        fields_str = corr_settings.get('fields', '')
-        corr_fields = [f.strip() for f in fields_str.split(',') if f.strip()]
-        
-        if len(corr_fields) != 2:
-            self.logger.error(f"Expected exactly 2 fields for correlation, got {len(corr_fields)}: {corr_fields}")
-            return
-        
-        # Track which field pairs we've already processed
-        processed_pairs = set()
-        
-        # Process each field in the map_params
-        for idx, params in self.config_manager.map_params.items():
-            field_name = params.get('field')
-            if not field_name:
-                continue
+        # We're using experiment IDs for correlation
+        if 'ids' in corr_settings:
+            ids_str = corr_settings.get('ids', '')
+            corr_ids = [id.strip() for id in ids_str.split(',') if id.strip()]
+            
+            if len(corr_ids) != 2:
+                self.logger.error(f"Expected exactly 2 experiment IDs for correlation, got {len(corr_ids)}: {corr_ids}")
+                return
                 
-            # Skip fields not in our correlation pair
-            if field_name not in corr_fields:
-                continue
+            # Find file indices for these experiment IDs
+            file_indices = []
+            for exp_id in corr_ids:
+                file_indices.append(self.config_manager.get_file_index(exp_id))
             
-            # Find the reference field (the other field in the correlation pair)
-            reference_field = None
-            if field_name == corr_fields[0]:
-                reference_field = corr_fields[1]
-            else:
-                reference_field = corr_fields[0]
-            
-            # Create a unique identifier for this field pair (sorted to ensure consistency)
-            pair_id = tuple(sorted([field_name, reference_field]))
-            
-            # Skip if we've already processed this pair
-            if pair_id in processed_pairs:
-                continue
-            
-            # Mark this pair as processed
-            processed_pairs.add(pair_id)
+            if len(file_indices) != 2:
+                self.logger.error(f"Could not find file indices for both experiment IDs: {corr_ids}")
+                return
                 
-            self.config_manager.current_field_name = field_name
+            # Get the fields from each file index
+            field_names = []
+            for idx in file_indices:
+                fields = [params.get('field') for i, params in 
+                        self.config_manager.map_params.items() if 
+                        params.get('file_index') == idx]
+                if fields:
+                    field_names.append(fields[0])  # Use the first field from each experiment
             
-            filename = params.get('filename')
-            self.config_manager.findex = self.config_manager.get_file_index_by_filename(filename)
+            if len(field_names) != 2:
+                self.logger.error("Could not find fields for both experiment IDs")
+                return
+                
+            # Process each field pair
+            for i, file_idx in enumerate(file_indices):
+                field_name = field_names[i]
+                params = next((p for _, p in self.config_manager.map_params.items() 
+                            if p.get('file_index') == file_idx and p.get('field') == field_name), None)
+                
+                if params:
+                    self.config_manager.current_field_name = field_name
+                    filename = params.get('filename')
+                    self.config_manager.findex = file_idx
+                    
+                    data_source = self.config_manager.pipeline.get_data_source(filename)
+                    if data_source and hasattr(data_source, 'dataset') and field_name in data_source.dataset:
+                        field_data_array = data_source.dataset[field_name]
+                        plot_types = params.get('to_plot', ['corr'])
+                        
+                        if isinstance(plot_types, str):
+                            plot_types = [pt.strip() for pt in plot_types.split(',')]
+                            
+                        for plot_type in plot_types:
+                            if plot_type == 'corr':
+                                self.logger.info(f"Plotting {field_name}, {plot_type} plot")
+                                self.process_plot(field_data_array, field_name, file_idx, plot_type)
+                                
+                        # Only need to process one of the fields for correlation
+                        break
+        else:
+            # Get the fields to correlate
+            fields_str = corr_settings.get('fields', '')
+            corr_fields = [f.strip() for f in fields_str.split(',') if f.strip()]
             
-            data_source = self.config_manager.pipeline.get_data_source(filename)
-            if not data_source:
-                self.logger.warning(f"No data source found in pipeline for {filename}")
-                continue
-                
-            if hasattr(data_source, 'dataset') and data_source.dataset is not None:
-                field_data = data_source.dataset.get(field_name)
-            else:
-                field_data = None
-                
-            if field_data is None:
-                self.logger.warning(f"Field {field_name} not found in data source for {filename}")
-                continue
-                
-            field_data_array = data_source.dataset[field_name]
-            plot_types = params.get('to_plot', ['corr'])
+            if len(corr_fields) != 2:
+                self.logger.error(f"Expected exactly 2 fields for correlation, got {len(corr_fields)}: {corr_fields}")
+                return
             
-            if isinstance(plot_types, str):
-                plot_types = [pt.strip() for pt in plot_types.split(',')]
+            processed_pairs = set()
+            
+            # Process each field in the map_params
+            for idx, params in self.config_manager.map_params.items():
+                field_name = params.get('field')
+                if not field_name:
+                    continue
+                    
+                if field_name not in corr_fields:
+                    continue
                 
-            for plot_type in plot_types:
-                if plot_type == 'corr':
-                    self.logger.info(f"Plotting {field_name}, {plot_type} plot")
-                    self.process_plot(field_data_array, field_name, idx, plot_type)
+                # Find the reference field (the other field in the correlation pair)
+                reference_field = None
+                if field_name == corr_fields[0]:
+                    reference_field = corr_fields[1]
+                else:
+                    reference_field = corr_fields[0]
+                
+                # Create a unique id for this field pair (sorted to ensure consistency)
+                pair_id = tuple(sorted([field_name, reference_field]))
+                
+                if pair_id in processed_pairs:
+                    continue
+                
+                processed_pairs.add(pair_id)
+                    
+                self.config_manager.current_field_name = field_name
+                
+                filename = params.get('filename')
+                self.config_manager.findex = self.config_manager.get_file_index_by_filename(filename)
+                
+                data_source = self.config_manager.pipeline.get_data_source(filename)
+                if not data_source:
+                    self.logger.warning(f"No data source found in pipeline for {filename}")
+                    continue
+                    
+                if hasattr(data_source, 'dataset') and data_source.dataset is not None:
+                    field_data = data_source.dataset.get(field_name)
+                else:
+                    field_data = None
+                    
+                if field_data is None:
+                    self.logger.warning(f"Field {field_name} not found in data source for {filename}")
+                    continue
+                    
+                field_data_array = data_source.dataset[field_name]
+                plot_types = params.get('to_plot', ['corr'])
+                
+                if isinstance(plot_types, str):
+                    plot_types = [pt.strip() for pt in plot_types.split(',')]
+                    
+                for plot_type in plot_types:
+                    if plot_type == 'corr':
+                        self.logger.info(f"Plotting {field_name}, {plot_type} plot")
+                        self.process_plot(field_data_array, field_name, idx, plot_type)
 
     def _process_xy_plot(self, 
                          data_array: xr.DataArray, 
@@ -865,7 +919,6 @@ class GenericSource(BaseSource):
         tc_dim = self.config_manager.get_model_dim_name('tc') or 'time'
 
         has_vertical_dim = zc_dim and zc_dim in data_array.dims
-
         for level_val in levels.keys():
             self.config_manager.level = level_val
             for t in time_levels:
@@ -1256,7 +1309,10 @@ class GenericSource(BaseSource):
 
         has_vertical_dim = zc_dim and zc_dim in d_temp.dims
         if has_vertical_dim:
-            if level is not None:
+            # No level specified, use the first level
+            if self.config_manager.ax_opts.get('zsum', False):
+                pass
+            elif level is not None:
                 try:
                     # First try exact matching
                     if level in d_temp[zc_dim].values:
@@ -1271,7 +1327,6 @@ class GenericSource(BaseSource):
                     if d_temp[zc_dim].size > 0:
                         d_temp = d_temp.isel({zc_dim: 0})
             else:
-                # No level specified, use the first level
                 if d_temp[zc_dim].size > 0:
                     d_temp = d_temp.isel({zc_dim: 0})
         elif level is not None:
@@ -1279,26 +1334,6 @@ class GenericSource(BaseSource):
                 f"Level {level} specified but no vertical dimension found in data. Using data as is.")
 
         data2d = d_temp.squeeze()
-
-        if len(data2d.dims) > 2:
-            xc_dim = self.config_manager.get_model_dim_name('xc') or 'lon'
-            yc_dim = self.config_manager.get_model_dim_name('yc') or 'lat'
-
-            if xc_dim in data2d.dims and yc_dim in data2d.dims:
-                for dim in data2d.dims:
-                    if dim != xc_dim and dim != yc_dim:
-                        data2d = data2d.isel({dim: 0})
-            else:
-                dims = list(data2d.dims)
-                for dim in dims[2:]:
-                    data2d = data2d.isel({dim: 0})
-
-            data2d = data2d.squeeze()
-
-            if len(data2d.dims) > 2:
-                dims = list(data2d.dims)
-                for dim in dims[2:]:
-                    data2d = data2d.mean(dim=dim)
 
         if tc_dim and tc_dim in data2d.dims and self.config_manager.ax_opts.get('tave',
                                                                                 False):
@@ -1326,6 +1361,27 @@ class GenericSource(BaseSource):
                 f"Output contains NaN values: {np.sum(np.isnan(data2d.values))} NaNs")
         data2d.attrs = data_array.attrs.copy()
 
+        # after all of the above we still have >=3 dimensions
+        if len(data2d.dims) > 2:
+            xc_dim = self.config_manager.get_model_dim_name('xc') or 'lon'
+            yc_dim = self.config_manager.get_model_dim_name('yc') or 'lat'
+
+            if xc_dim in data2d.dims and yc_dim in data2d.dims:
+                for dim in data2d.dims:
+                    if dim != xc_dim and dim != yc_dim:
+                        data2d = data2d.isel({dim: 0})
+            else:
+                dims = list(data2d.dims)
+                for dim in dims[2:]:
+                    data2d = data2d.isel({dim: 0})
+
+            data2d = data2d.squeeze()
+
+            if len(data2d.dims) > 2:
+                dims = list(data2d.dims)
+                for dim in dims[2:]:
+                    data2d = data2d.mean(dim=dim)
+                    
         return apply_conversion(self.config_manager, data2d, data_array.name)
 
     def _extract_xt_data(self, data_array, time_lev):

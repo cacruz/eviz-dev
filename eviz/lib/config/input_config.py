@@ -542,8 +542,8 @@ class InputConfig:
             self._correlation = True
             correlation_config = for_inputs['correlation']
 
-            if 'fields' in correlation_config:
-                self._correlation_fields = correlation_config['fields'].split(',')
+            if 'ids' in correlation_config:
+                self._compare_exp_ids = correlation_config['ids'].split(',')
 
             self._correlation_method = 'pearson'
             if 'method' in correlation_config:

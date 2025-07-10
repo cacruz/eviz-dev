@@ -372,51 +372,89 @@ class ObsSource(GenericSource):
         if do_time_corr:
             time_level_config = 'all'
         
-        # Get the fields to correlate
-        fields_str = corr_settings.get('fields', '')
-        corr_fields = [f.strip() for f in fields_str.split(',') if f.strip()]
-        self.logger.debug(f"Correlation fields from config: {corr_fields}")
-        
-        # Find the reference field (the other field in the correlation pair)
+        # Check if we're using experiment IDs or field names for correlation
         reference_field = None
-        if len(corr_fields) == 2:
-            if corr_fields[0] == field_name:
-                reference_field = corr_fields[1]
-            elif corr_fields[1] == field_name:
-                reference_field = corr_fields[0]
-            self.logger.debug(f"Selected reference field: {reference_field}")
-        
-        # If no reference field found in global settings, try to get from ax_opts
-        if not reference_field:
-            reference_field = self.config_manager.ax_opts.get('reference_field')
-
-        if not reference_field:
-            return
-        
         reference_data = None
-        if hasattr(self.config_manager, 'pipeline'):
-            all_data_sources = self.config_manager.pipeline.get_all_data_sources()
-            for source_name, data_source in all_data_sources.items():
-                if hasattr(data_source, 'dataset') and reference_field in data_source.dataset:
-                    reference_data = data_source.dataset[reference_field]
-                    break
+        
+        # First try to use experiment IDs if specified
+        if 'ids' in corr_settings:
+            ids_str = corr_settings.get('ids', '')
+            corr_ids = [id.strip() for id in ids_str.split(',') if id.strip()]
             
-            if reference_data is None:
-                try:
-                    reference_data = self.config_manager.pipeline.get_variable(reference_field)
-                except (AttributeError, KeyError) as e:
-                    self.logger.warning(f"Could not get reference field using get_variable: {e}")
-                    
-            if reference_data is None:
-                try:
-                    all_vars = self.config_manager.pipeline.get_all_variables()
-                    if reference_field in all_vars:
-                        reference_data = all_vars[reference_field]
-                except (AttributeError, KeyError) as e:
-                    self.logger.warning(f"Could not get reference field from all variables: {e}")
+            # Get the current experiment ID
+            current_exp_id = self.config_manager.get_file_exp_id(file_index)
+            
+            # Find the reference experiment ID (the other ID in the correlation pair)
+            reference_exp_id = None
+            if len(corr_ids) == 2:
+                if corr_ids[0] == current_exp_id:
+                    reference_exp_id = corr_ids[1]
+                elif corr_ids[1] == current_exp_id:
+                    reference_exp_id = corr_ids[0]
+            # Find the file index for the reference experiment ID
+            if reference_exp_id:
+                reference_file_index = None
+                for idx, exp_id in enumerate(self.config_manager.compare_exp_ids):
+                    if exp_id == reference_exp_id:
+                        reference_file_index = idx
+                        break
+                
+                if reference_file_index is not None:
+                    # Get the data source for the reference file
+                    map_params = self.config_manager.map_params.get(reference_file_index)
+                    if map_params:
+                        filename = map_params.get('filename')
+                        if filename:
+                            data_source = self.config_manager.pipeline.get_data_source(filename)
+                            if data_source and hasattr(data_source, 'dataset') and field_name in data_source.dataset:
+                                reference_data = data_source.dataset[field_name]
+        
+        # If we couldn't find reference data using experiment IDs, fall back to using field names
+        if reference_data is None:
+            # Get the fields to correlate
+            fields_str = corr_settings.get('fields', '')
+            corr_fields = [f.strip() for f in fields_str.split(',') if f.strip()]
+            
+            # Find the reference field (the other field in the correlation pair)
+            if len(corr_fields) == 2:
+                if corr_fields[0] == field_name:
+                    reference_field = corr_fields[1]
+                elif corr_fields[1] == field_name:
+                    reference_field = corr_fields[0]
+            
+            # If no reference field found in global settings, try to get from ax_opts
+            if not reference_field:
+                reference_field = self.config_manager.ax_opts.get('reference_field')
+
+            if not reference_field:
+                return
+            
+            if hasattr(self.config_manager, 'pipeline'):
+                all_data_sources = self.config_manager.pipeline.get_all_data_sources()
+                for source_name, data_source in all_data_sources.items():
+                    if hasattr(data_source, 'dataset') and reference_field in data_source.dataset:
+                        reference_data = data_source.dataset[reference_field]
+                        break
+                
+                if reference_data is None:
+                    try:
+                        reference_data = self.config_manager.pipeline.get_variable(reference_field)
+                    except (AttributeError, KeyError) as e:
+                        self.logger.warning(f"Could not get reference field using get_variable: {e}")
+                        
+                if reference_data is None:
+                    try:
+                        all_vars = self.config_manager.pipeline.get_all_variables()
+                        if reference_field in all_vars:
+                            reference_data = all_vars[reference_field]
+                    except (AttributeError, KeyError) as e:
+                        self.logger.warning(f"Could not get reference field from all variables: {e}")
         
         if reference_data is None:
-            self.logger.error(f"Reference field '{reference_field}' not found in any data source")
+            error_msg = f"Reference data not found"
+            if reference_field:
+                error_msg = f"Reference field '{reference_field}' not found in any data source"
+            self.logger.error(error_msg)
             return
         
         # For observational data, extract and apply extent information
