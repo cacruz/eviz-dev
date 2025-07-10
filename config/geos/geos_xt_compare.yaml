@@ -1,0 +1,32 @@
+inputs:
+   - name : MERRA2_400.inst3_3d_asm_Np.20201101.nc4
+     location: /Users/ccruz/data/eviz/merra2
+     description: MERRA2_400
+     exp_id: M21101
+     to_plot:
+         U: xt
+
+   - name : MERRA2_400.inst3_3d_asm_Np.20201102.nc4
+     location: /Users/ccruz/data/eviz/merra2
+     description: MERRA2_400
+     exp_id: M21102
+     to_plot:
+         U: xt
+
+   - name : MERRA2_400.inst3_3d_asm_Np.20201103.nc4
+     location: /Users/ccruz/data/eviz/merra2
+     description: MERRA2_400
+     exp_id: M21103
+     to_plot:
+         U: xt
+
+outputs:
+    output_dir: /Users/ccruz/scratch/eviz/output/geos
+    print_to_file: yes
+    #make_gif: yes
+    #gif_fps: 2
+
+for_inputs:
+    overlay:
+        ids: M21101,M21102,M21103
+

@@ -1,0 +1,13 @@
+inputs:
+   - name : /Users/ccruz/data/eviz/merra2/MERRA2_400.inst6_3d_ana_Np.20211123.nc4
+     to_plot:
+         SLP: xy
+         H: yz
+ 
+for_inputs:
+    plot_backend: altair
+
+outputs:
+    output_dir: /Users/ccruz/scratch/eviz/output/gridded_altair
+    print_to_file: yes
+

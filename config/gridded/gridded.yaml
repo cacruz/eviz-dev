@@ -1,10 +1,21 @@
 inputs:
-   - name: https://psl.noaa.gov/thredds/dodsC/Datasets/ncep.reanalysis.derived/surface/air.mon.mean.nc
-     description: Data from NCEP initialized reanalysis
+   - name : /Users/ccruz/data/eviz/merra2/MERRA2_400.inst6_3d_ana_Np.20211123.nc4
      to_plot:
-        air: xt,xy,tx
+         SLP: xy
+         H: yz
+         T: yz
+ 
+   - name : d5124_m2_jan10.tavg1_2d_ocn_Nx.diurnal.202111.nc4
+     location: /Users/ccruz/data/eviz/merra2
+     description: Ocean DAS
+     to_plot:
+          FRSEAICE: polar
+          RAINOCN: tx
+          U10M: xy,xt
+          TAUXWTR: xy
+          TAUYWTR: xy
 
 outputs:
+    output_dir: /Users/ccruz/scratch/eviz/output/gridded
     print_to_file: yes
-    print_format: jpg
 

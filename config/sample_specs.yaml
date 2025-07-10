@@ -6,8 +6,12 @@ fieldname:
     diff_percd: [-500., -50., -10., -5., -0.5, 0.5, 5., 10., 50., 500.]   # % diff range
     diff_percc: [-500., -50., -10., -5., -0.5, 0.5, 5., 10., 50., 500.]   # % change range
     diff_ratio: [.5,.6,.7,.8,.9,1.0,1.1,1.2,1.3,1.4,1.5]   # ratio diff range
-    
+   
+    # Display the spatial distribution of a variable over the Earth's surface at a 
+    # given time or time-averaged period.
     xyplot:
+        unit: unavailable_units # add units here if it is known that data does not provide one
+        name: unavailable_name  # add name here if it is known that data does not provide one
         time_lev: 1  # select time level
         line_contours: true  # will apply line contours on top of filled contours
         cmap: jet   # select from matplotlib
@@ -39,14 +43,16 @@ fieldname:
         cbar_sci_notation: True  # use scientific notation for colorbar values (useful for small/large numbers)
         # The following can also be used in all plot types
         custom_title: Custom Title # Additional plot title to replace description (placed on top left)
-
+    
+    # A zonal mean plot is used to show how a variable varies with latitude and another dimension
+    # typically altitude, pressure, or time, after averaging over longitude (i.e., taking the "zonal mean").
     yzplot:
+        unit: unavailable_units # add units here if it is known that data does not provide one
+        name: unavailable_name  # add name here if it is known that data does not provide one
         time_lev: 1  # select time level
         line_contours: True  # will apply line contours on top of filled contours
         tave: yes
-        profile_dim: yc
-        unit: unavailable_units # add units here if it is known that data does not provide one
-        name: unavailable_name  # add name here if it is known that data does not provide one
+        profile_dim: yc  # if specified, if reduces over the specified dimension and produces a line plot
         zrange: [1000, 1]  # must be in hPa
         zscale: log  # vertical axis scale: linear, log (default), custom
         cscale: log # colorbar scale, linear(default), log
@@ -59,7 +65,8 @@ fieldname:
         diffcontours: [-100.0, -80.0, -60.0, -40.0, -20.0, 0.0, 20.0, 40.0, 60.0, 80.0, 100.0]
         # if contours are unspecified (i.e., []) then num_clevs = 10, else specify here
         num_clevs: 20
-
+    # Create a time series plot that shows how a variable changes over time at a specific location 
+    # or averaged over a region.
     xtplot:   # time-series plot (averaged over space dims)
         line_contours: True  # will apply line contours on top of filled contours
         time_lev: all   # number of times to average (default is to use all), or specify range [tmin, tmax]
@@ -75,7 +82,10 @@ fieldname:
         add_trend: yes  # add a trend-line, default is no
         trend_polyfit: 1  # add a trend-line, default is no entry, eviz automatically creates a best fit
 
-    txplot:   # hovmoller plot
+    # A Hovmöller plot is a type of diagram that shows changes of a variable over time along
+    # a specific spatial dimension. It is particularly useful for studying the propagation of
+    # waves, fronts, and other time-varying features in the atmosphere or ocean.
+    txplot: 
         line_contours: True  # will apply line contours on top of filled contours
         time_lev: all  # default time=0, or specify range [tmin, tmax], or all
         grid: yes   # plot grid (default is no)
@@ -100,19 +110,26 @@ fieldname:
             1000: [6.0, 6.5, 6.6, 6.7, 6.8, 6.9, 7.0, 7.5, 8.0, 9.0, 10.0]
         diff_1000: [-10.0, -8.0, -6.0, -4.0, -2.0, 0.0, 2.0, 4.0, 6.0, 8.0, 10.0]
 
-    # scatter plot: use for unstructured data
+    # A scatter plot displays individual data points to explore the relationship between 
+    # two variables, such as model output vs. observations or one climate variable against another 
     scplot:
         grid: yes
         cmap: coolwarm
         extent: [lonW, lonE, latS, latN]  # or conus
         projection: # (default: Plate Carree) [lambert, albers, ortho, stereo, polar]
 
-    # Box plot for summary statistics
+    # A box plot is a statistical visualization used to summarize the distribution of a 
+    # variable across different categories, regions, time periods, or model simulations.
     boxplot:
-        time_lev: -1  # selec last experiment or specify "all" for a box-plot time series
+        time_lev: -1  # select last experiment or specify "all" for a box-plot time series
         box_color: grey  # For single experiment. When there are multiple experiments, 
                          # this is overridden by "box_colors" in APP file
 
+    # Correlation plot that shows the statistical relationship between two or more 
+    # variables, typically by displaying correlation coefficients across space, time, or 
+    # variable pairs. Correlation methods and variable pairs are specified in APP file.
+    corrplot:
+        time_lev: -1  # select last experiment or specify "all" for a time-correlation
 
 
 # You can also customize each plot by adding custom (valid) rcParams. For example, for field PM25
@@ -127,6 +144,7 @@ PM25:
         projection: lambert
         # rc_params are optional and matplotlib-specific. They can be used to customize the plot further.
         # These parameters will override the default matplotlib rcParams for this plot type.
+        # A list of valid rc params are in reference_rcParams.txt in this directory.
         # Note: rcParams are a way to customize the appearance of matplotlib plots globally or locally
         # by setting various properties such as font size, line width, marker size, etc.
         # For valid entries, see reference_rcParams.txt in this directory.

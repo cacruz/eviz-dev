@@ -1,0 +1,22 @@
+inputs:
+- name: /Users/ccruz/data/eviz/crest/vizzy/uncoupled_output.zarr
+  exp_id: uncoupled
+  to_plot:
+      soil_moisture: corr
+
+- name: /Users/ccruz/data/eviz/crest/vizzy/coupled_output.zarr
+  exp_id: coupled
+  to_plot:
+      soil_moisture: corr
+
+for_inputs:
+    correlation:
+      method: pearson
+      ids: uncoupled,coupled
+
+outputs:
+  output_dir: /Users/ccruz/scratch/eviz/output/crest_corr
+  make_pdf: false
+  print_format: png
+  print_to_file: yes
+

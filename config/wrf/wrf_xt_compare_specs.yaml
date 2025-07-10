@@ -1,0 +1,14 @@
+TSK:
+    xtplot:
+        times: all
+        grid: yes
+
+    xyplot:
+        time_lev: 4
+#        projection: albers
+        levels:
+            0:
+#        contours: [280, 282, 284, 286, 288, 290, 292, 294, 296, 298, 300, 302, 304]
+        #contours: [270, 275, 280, 285, 290, 295, 300, 305, 310, 315, 320]
+
+

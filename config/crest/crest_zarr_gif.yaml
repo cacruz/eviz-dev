@@ -1,0 +1,26 @@
+inputs:
+#- name: /Users/ccruz/projects/terrahydro/development/terrahydro/uncoupled.zarr
+#  description: Uncoupled Model
+#  exp_id: uncoupled
+#  to_plot:
+#      soil_moisture: xy
+#      LE: xy
+#      NEE: xy
+#      streamflow: xy
+#      swe: xy
+
+- name: /Users/ccruz/data/eviz/crest/soil_moisture_output.zarr
+  description: Model Prediction
+  exp_id: uncoupled
+  to_plot:
+      soil_moisture: xy
+
+#for_inputs:
+#  plot_backend: hvplot
+
+outputs:
+  output_dir: /Users/ccruz/scratch/eviz/output/crest_zarr_gif
+  print_format: png
+  print_to_file: yes
+#  make_gif: yes
+#  gif_fps: 3

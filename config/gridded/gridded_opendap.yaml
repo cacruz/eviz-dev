@@ -1,0 +1,9 @@
+inputs:
+   - name: https://psl.noaa.gov/thredds/dodsC/Datasets/ncep.reanalysis.derived/surface/air.mon.mean.nc
+     description: Data from NCEP initialized reanalysis
+     to_plot:
+        air: xt,xy,tx
+
+outputs:
+    print_to_file: yes
+    output_dir: /Users/ccruz/scratch/eviz/output/gridded_opendap

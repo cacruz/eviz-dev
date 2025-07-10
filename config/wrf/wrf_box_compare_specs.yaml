@@ -1,0 +1,8 @@
+TSK:
+    boxplot:
+        time_lev: -1
+        grid: yes
+        box_color: "grey"  # For single experiment
+    xyplot:
+        levels:
+            0: []

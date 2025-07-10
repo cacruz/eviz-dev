@@ -1,24 +1,16 @@
 inputs:
-   - name         : GEOS-CF.v01.rpl.chm_tavg_1hr_g1440x721_p40.20171003_1130z.nc4
-     location     : /discover/nobackup/projects/jh_tutorials/eviz/sample_data/cf
+   - name         : GEOS-CF.v01.rpl.chm_tavg_1hr_g1440x721_p40.20171003_*.nc4
+     location     : /Users/ccruz/data/eviz/cf
      exp_name    : GEOS-CF v1 Spinup
      description : test1
      to_plot       :
-        O3: yz
+        SLP: xy
+        O3: yz,xy
+        NO2: yz
+        CO: yz
+        SO2: yz
         PM25_RH35_GCC: yz
      ignore: Var_
-   - name         : GEOS-CF.v01.rpl.chm_tavg_1hr_g1440x721_p40.20171003_1230z.nc4
-     location     : /discover/nobackup/projects/jh_tutorials/eviz/sample_data/cf
-     exp_name    : GEOS-CF v1 Spinup
-     description : test2
-     to_plot       :
-        O3: xy
-     ignore: Var_
-
-#for_inputs:
-#    compare:
-#        exp_list: GEOS-CF.v01.rpl,GEOS-CF.v01.rpl
-#        extra_diff: percc
 
 outputs:
     print_to_file: yes

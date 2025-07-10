@@ -1,118 +1,47 @@
 inputs:
-   - name         : RefD2.tavg24_3d_dat_Np.monthly.clim.DJF.nc4
+   - name         : RefD1.tavg24_3d_dat_Np.monthly.clim.ANN.nc4
      location     : /Users/ccruz/data/eviz/ccm
-     exp_name     : RefD2-DJF
-     exp_id       : RefD2-DJF
-     description  : RefD2 Winter
-    #  format       : netcdf  # Explicitly specify format (optional, can be auto-detected)
-    #  processing:
-    #    standardize_coordinates: true
-    #    handle_missing_values: true
-    #    unit_conversions: true
-    #  transformations:
-    #    regrid:
-    #      enabled: false
-    #      target_grid:
-    #        lat_res: 1.0
-    #        lon_res: 1.0
-    #    subset:
-    #      enabled: false
-    #      lat_range: [-90, 90]
-    #      lon_range: [-180, 180]
-     variables:
-       co_25:
-         plot_type: xy
-         units: ppbv
+     exp_name     : RefD1
+     exp_id       : RefD1
+     description  : RefD1 Annual
+     to_plot:
+       co_25: xy,yz
+       aoa: yz,xy
      ignore: Var_
-
-   - name         : RefD2.tavg24_3d_dat_Np.monthly.clim.JJA.nc4
+     
+   - name         : bench_10-17-6_gmi_free_c180_72lev.tavg24_3d_dat_Np.monthly.clim.ANN.nc4
      location     : /Users/ccruz/data/eviz/ccm
-     exp_name     : RefD2-JJA
-     exp_id       : RefD2-JJA
-     description  : RefD2 Summer
-     variables:
-       co_25:
-         plot_type: xy
-         units: ppbv
+     exp_name     : bench
+     exp_id       : bench
+     description  : bench Annual
+     to_plot:
+       co_25: xy,yz
+       aoa: yz,xy
      ignore: Var_
-
-  #  - name         : RefD1.tavg24_3d_aer_Np.monthly.clim.M01.nc4
-  #    location     : /Users/ccruz/data/eviz/ccm
-  #    exp_name     : RefD2-ANN
-  #    exp_id       : RefD2-ANN
-  #    description  : RefD2 Annual
-  #    variables:
-  #      co_25:
-  #        plot_type: xy
-  #        units: ppbv
-  #    ignore: Var_
-
-for_inputs:
-    compare_diff:
-      ids: RefD2-JJA,RefD2-DJF
-      cmap: coolwarm
-#      extra_diff: ratio
-#       panels: 1,3
-#       # Use different colormap for comparison plots
-#       cmap: coolwarm
-#     # The following options, trop_height and sphum_field, are GEOS-specific
-#     #### Use tropopause height field to display tropopause on zonal-mean plots
-#     trop_height:
-#       - name: bench_10-17-6_gmi_free_c180_72lev.tavg24_2d_dad_Nx.monthly.clim.JJA.nc4
-#         location: /discover/nobackup/projects/jh_tutorials/eviz/sample_data/ccm/Benchmark_F_c180/tavg24_2d_dad_Nx
-#         # Apply to this experiment
-#         exp_name: BenchmarkFc180
-#         ## Possibilities: TROPPV (Pa), TROPPT(Pa), TROPPB(Pa)
-#         trop_field_name: TROPPB
-#     ### Retrieve specific humidity field for kgkg-1 to molmol-1 conversion:
-#     ### This is only needed if fields are radionuclides
-#     sphum_field:
-#       - name: RefD1.tavg24_3d_dad_Np.monthly.clim.JJA.nc4
-#         location: /discover/nobackup/projects/jh_tutorials/eviz/sample_data/ccm/RefD1/tavg24_3d_dad_Np
-#         ## Possibilities: Q, QV
-#         sphum_field_name: Q
-#         # Apply to this experiment
-#         exp_name: RefD1
-#     # New integration options
-#     integration:
-#       enabled: true
-#       method: merge
-#       join: outer
-#       align: time
-#     # New composite field options
-#     composite:
-#       o3_plus_co:
-#         variables: [o3, co]
-#         operation: add
-#         units: ppbv
-#       o3_minus_co:
-#         variables: [o3, co]
-#         operation: subtract
-#         units: ppbv
 
 outputs:
-#    output_dir: /Users/ccruz/scratch/eviz/output/ccm
+    output_dir: /Users/ccruz/scratch/eviz/output/ccm
     print_to_file: yes
     print_format: png
     make_pdf: no
     print_basic_stats: yes
     # New visualization options
-    # visualization:
-    #   backend: matplotlib
-    #   style: default
-    #   dpi: 300
-    #   colormap: viridis
-    #   contour_levels: 20
-    #   add_colorbar: true
-    #   add_title: true
-    #   add_grid: true
+    visualization:
+      backend: matplotlib
+      style: default
+      dpi: 300
+      colormap: viridis
+      contour_levels: 20
+      add_colorbar: true
+      add_title: true
+      add_grid: true
 
 system_opts:
     use_mp_pool: no
     archive_web_results: no
     # New caching options
-    # caching:
-    #   enabled: true
-    #   cache_dir: /tmp/eviz_cache
-    #   max_size_mb: 1000
-    #   ttl_hours: 24
+    caching:
+      enabled: true
+      cache_dir: /tmp/eviz_cache
+      max_size_mb: 1000
+      ttl_hours: 24

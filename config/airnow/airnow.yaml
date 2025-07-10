@@ -1,3 +1,14 @@
 inputs:
-   - name     : /discover/nobackup/projects/jh_tutorials/eviz/sample_data/airnow/
-   - name     : /discover/nobackup/projects/jh_tutorials/eviz/sample_data/cf/GEOS-CF.v01.rpl.chm_tavg_1hr_g1440x721_p40.20171003_1130z.nc4
+   - name     : /Users/ccruz/data/eviz/airnow/HourlyAQObs*
+     description: 25 μm particulate matter
+     reader   : csv
+     to_plot  :
+        PM25: sc
+
+#for_inputs:
+#    plot_backend: hvplot
+
+outputs:
+    output_dir: /Users/ccruz/scratch/eviz/output/airnow
+    print_to_file: yes
+ 

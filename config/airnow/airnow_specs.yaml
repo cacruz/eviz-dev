@@ -1,3 +1,11 @@
-# LIS field-specific configuration
-OZONE:
-    unitconversion: 1.0
+PM25:
+    unitconversion: 1
+    units: ppb
+    scplot:
+        cmap: BuPu
+        extent: conus
+        projection: lambert
+        rc_params:
+            font.size: 12
+            axes.titlesize: 16
+            scatter.marker: "x"

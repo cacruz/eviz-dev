@@ -1,0 +1,16 @@
+t2m:
+    name: 2m temperature British Isles March 2019
+    units: C
+    cmap: coolwarm
+    xyplot:
+        projection: robinson
+        line_contours: false
+        levels:
+            0: []
+
+    xtplot:
+        time_lev: all
+        mean_type: point_sel
+        point_sel: [0, 51.5]   # London
+
+

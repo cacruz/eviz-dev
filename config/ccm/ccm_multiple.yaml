@@ -1,0 +1,41 @@
+inputs:
+#   - name         : RefD2.tavg24_2d_dad_Nx.monthly.clim.JJA.nc4
+#     location     : /Users/ccruz/data/eviz/ccm
+#     exp_name    : RefD2
+#     exp_id    : RefD2
+#     to_plot       :
+#        SLP: xy
+#        PS: xy
+#        EMIS: xy
+#        TROPPB: xy
+#        FRSEAICE: polar
+
+   - name         : RefD1.tavg24_3d_aer_Np.monthly.clim.M01.nc4
+     location     : /Users/ccruz/data/eviz/ccm
+     exp_name    : RefD1
+     exp_id    : RefD1
+     to_plot       :
+        BC: yz
+        NH3: yz
+        SO2: yz
+        SO4: yz
+        PS: xy
+
+for_inputs:
+    # Personal copy
+    airmass_file_name: /Users/ccruz/data/eviz/ccm/RefD2.tavg24_3d_dac_Np.AIRMASS.ANN.nc4
+    #airmass_file_name: https://portal.nccs.nasa.gov/datashare/astg/eviz/airmass/RefD2.tavg24_3d_dac_Np.AIRMASS.ANN.nc4
+    airmass_field_name: AIRMASS
+
+outputs:
+    output_dir: ${HOME}/scratch/eviz/output/ccm_multiple
+    print_to_file: yes
+    print_format: png
+    make_pdf: no
+    print_basic_stats: yes
+
+system_opts:
+    use_mp_pool: no
+    archive_web_results: no
+
+

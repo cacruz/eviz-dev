@@ -1,15 +1,18 @@
 inputs:
-- name: ~/Downloads/crest/examples/lstm_for_two_r2.nc
+- name: /Users/ccruz/data/eviz/crest/lstm_for_two_r2.nc
   to_plot:
-    sm_obs: xt
-    soil_moisture: xt
+    sm_obs: xy
+
 outputs:
-  make_pdf: false
-  output_dir: null
-  print_basic_stats: true
-  print_format: png
-  print_to_file: yes
+    output_dir: /Users/ccruz/scratch/eviz/output/crest
+    make_pdf: false
+    print_format: png
+    print_to_file: yes
+    make_gif: yes
+    gif_fps: 1
+    mpl_style: fivethirtyeight
+
 system_opts:
-  archive_web_results: false
-  use_mp_pool: false
+    archive_web_results: false
+    use_mp_pool: false
 

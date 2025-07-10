@@ -1,0 +1,37 @@
+inputs:
+   - name  : /Users/ccruz/data/eviz/lis/lastday-3yrspinup/LIS_HIST_201507111200.d01.nc
+     exp_id: file1
+     to_plot  :
+        AvgSurfT_tavg: xy
+#        Tempbot_inst: xy
+#        Greenness_inst: xy
+#        CanopInt_inst: xy
+#        Albedo_inst: xy
+#        SoilTemp_inst: xy
+#        RelSMC_inst: xy
+   - name  : /Users/ccruz/data/eviz/lis/lastday-3yrspinup/LIS_HIST_201507111500.d01.nc
+     exp_id: file2
+     to_plot  :
+        AvgSurfT_tavg: xy
+#        Tempbot_inst: xy
+#        Greenness_inst: xy
+#        CanopInt_inst: xy
+#        Albedo_inst: xy
+#        SoilTemp_inst: xy
+#        RelSMC_inst: xy
+   - name  : /Users/ccruz/data/eviz/lis/lastday-3yrspinup/LIS_HIST_201507111800.d01.nc
+     exp_id: file3
+     to_plot  :
+        AvgSurfT_tavg: xy
+
+for_inputs:
+    compare:
+      ids: file1,file2,file3
+    shared_cbar: true
+
+
+outputs:
+    output_dir: /Users/ccruz/scratch/eviz/output/lis_compare
+    print_to_file: yes
+    add_logo: yes
+

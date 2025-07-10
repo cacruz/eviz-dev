@@ -1,0 +1,26 @@
+inputs:
+- name: /Users/ccruz/data/eviz/crest/lstm_for_two_r2.nc
+  description: Uncoupled Model
+  exp_id: uncoupled
+  to_plot:
+     sm_obs: corr
+     soil_moisture: corr
+
+for_inputs:
+    correlation:
+        method: pearson  
+        space_corr: no
+        time_corr: yes
+        fields: sm_obs,soil_moisture
+
+outputs:
+  output_dir: /Users/ccruz/scratch/eviz/output/crest_corr
+  make_pdf: false
+  print_format: png
+  print_to_file: yes
+
+
+system_opts:
+  archive_web_results: false
+  use_mp_pool: false
+

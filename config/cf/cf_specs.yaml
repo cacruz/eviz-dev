@@ -44,19 +44,11 @@ O3:
         #contours: [0.0, 0.1, 1.0, 10.0, 100.0, 1000.0, 2000.0, 3000.0, 4000.0, 5000.0, 6000.0, 7000.0, 8000.0, 9000.0]
         diffcontours: [-1000.0, -800.0, -600.0, -400.0, -200.0, -100.0, -10.0, -1.0, 0.0, 1.0, 10.0, 100.0, 200.0, 400.0, 600.0, 800.0, 1000.0]
     xyplot:
+        #zsum: yes
         cmap: Purples
         levels:
             50: [10000, 15000, 20000, 25000, 30000, 35000, 40000, 45000, 50000, 55000, 60000, 65000, 70000]
         diff_50: [-25,-20,-15,-10,-8,-6,-4,-3,-2,-1,1,2,3,4,6,8,10,15,20,25]
-    xtplot:
-        times: all
-        grid: yes
-    txplot:
-        cmap: coolwarm
-        times: all  # default time=0, or specify range [tmin, tmax], or all
-        grid: yes   # plot grid (default is no)   # plot grid (default is no)
-        contours: [20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36]
-
 
 SLP:
     unitconversion: 0.01
@@ -69,137 +61,6 @@ SLP:
         diff_0: []
 #            0: [950, 960, 970, 980, 1000, 1010, 1020, 1030, 1040]
 #        diff_0: [-30, -25, -20, -15, -10, -5, 0, 5, 10, 15, 20, 25, 30]
-
-PS:
-    long_name: Surface Pressure
-    unitconversion: 1
-    units: Pa
-    xyplot:
-        cmap: rainbow
-        levels:
-            0: [95000, 96000, 97000, 98000, 100000, 101000, 102000, 103000, 104000]
-        diff_0: [-350,-250,-150,-50,-25,25,50,150,250,350]
-
-T:
-    unitconversion: 1
-    <<: *DIFF_PROP
-    xyplot:
-        levels:
-            1000: [210,225,235,245,255,270,280,290,295,300,305,310,315]
-        diff_1000: [-5.0,-2.5,-1.25,-0.75,-0.5,-0.25,-0.1,0.1,0.25,0.5,0.75,1.25,2.5,5.0]
-#    txplot:
-#        times: all  # default time=0, or specify range [tmin, tmax], or all
-#        grid: yes   # plot grid (default is no)   # plot grid (default is no)
-#        mean_type: hour
-#        contours: [265,266,267,268,269,270,271,272,273,274,275,276,277,278,279,280,281,282,283,284,285]
-#        x_axis: lon
-#    xtplot:
-#        times: all
-#        grid: yes   # plot grid (default is no)   # plot grid (default is no)
-#        mean_type: point_sel
-#        clima: year  # year, season, month
-#        point_sel: [-100, 40]   # lon, lat
-#        area_sel: [-10.5, 10.5, 5, 25]  # lon1, lon2, lat1, lat2  # default delta = 0.5
-#    xyaveplot:
-#        times: all
-#        levels:
-#            850: [210,225,235,245,255,270,280,290,295,300,305,310,315]
-#            1000: [ 210,225,235,245,255,270,280,290,295,300,305,310,315 ]
-#        diff_850: [ -5.0,-2.5,-1.25,-0.75,-0.5,-0.25,-0.1,0.1,0.25,0.5,0.75,1.25,2.5,5.0 ]
-#        diff_1000: [-5.0,-2.5,-1.25,-0.75,-0.5,-0.25,-0.1,0.1,0.25,0.5,0.75,1.25,2.5,5.0]
-#    yzaveplot:
-#        zrange: [1000, 10]
-#        cmap: coolwarm
-#        #diffMin: navy
-#        #diffMax: darkred
-#        contours: [180,190,200,210,220,230,240,250,260,270,280,290,300,320,340,360,380,400]
-#        diffcontours: [-10.0,-1.0,-0.1,-0.01,0.01,0.1,1,10]
-    yzplot:
-        zrange: [1000, 10]
-        contours: [180,190,200,210,220,230,240,250,260,270,280,290,300,320,340,360,380,400]
-        diffcontours: [-10.0,-1.0,-0.1,-0.01,0.01,0.1,1,10]
-
-U:
-    unitconversion: 1
-    yzplot:
-        zrange: []
-        contours: [-1000,-100.0,-50,-10.0,-5.0,-1.0,-0.1,0.1,1.0,5,10,50,100,1000]
-        diffcontours: [-10.0,-2.0,-1.0,-0.75,-0.5,-0.25,-0.1,-0.01,0.01,0.1,0.25,0.5,0.75,1.0,2.0,10.0]
-    xyplot:
-        levels:
-            500: [0.0001, 0.0003, 0.0005, 0.001, 0.0025, 0.005, 0.01, 0.02, 0.03, 0.04, 0.05]
-        diff_500: [-10e-2,-10e-3,-10e-4,-10e-5,-10e-6,10e-6,10e-5,10e-4,10e-3,10e-2]
-
-V:
-    unitconversion: 1
-    yzplot:
-        zrange: []
-        contours: [-50,-10.0,-5.0,-2.5,-1.0,-0.1,0.1,1.0,2.5,5,10,50]
-        diffcontours: [-10.0,-2.0,-1.0,-0.75,-0.5,-0.25,-0.1,-0.01,0.01,0.1,0.25,0.5,0.75,1.0,2.0,10.0]
-    xyplot:
-        levels:
-            500: [0.0001, 0.0003, 0.0005, 0.001, 0.0025, 0.005, 0.01, 0.02, 0.03, 0.04, 0.05]
-        diff_500: [-10e-2,-10e-3,-10e-4,-10e-5,-10e-6,10e-6,10e-5,10e-4,10e-3,10e-2]
-
-Q:
-    unitconversion: 1
-    yzplot:
-        cmap: BrBG
-        contours: [0.000001,0.00001,0.0001, 0.0003, 0.0005, 0.001, 0.0025, 0.005, 0.01, 0.02, 0.03]
-        diffcontours: [-10e-4,-10e-5,-10e-6,-10e-7,10e-7,10e-6,10e-5,10e-4]
-    xyplot:
-        cmap: BrBG
-        levels:
-            500: [0.0001, 0.0003, 0.0005, 0.001, 0.0025, 0.005, 0.01, 0.02, 0.03, 0.04, 0.05]
-        diff_500: [-10e-2,-10e-3,-10e-4,-10e-5,-10e-6,10e-6,10e-5,10e-4,10e-3,10e-2]
-
-LIGHTNING_TOTAL_FLASHRATE:
-    long_name: Lightning_flashrate
-    unitconversion: 1
-    units: 1 min-1 km-2
-    yzplot:
-        zrange: []
-        contours: []
-        diffcontours: []
-    xyplot:
-        levels:
-            500: []
-        diff_500: []
-
-TROPPB:
-    long_name: Tropopause pressure based on blended estimate
-    unitconversion: .01
-    units: hPa
-    yzplot:
-        zrange: []
-        contours: []
-        diffcontours: []
-    xyplot:
-        levels:
-            500: [80.0, 90.0, 100.0, 110.0, 120.0, 150.0, 175.0, 200.0, 225.0, 250.0, 275.0, 300.0, 325.0, 350.0, 400.0, 500.0, 600.0]
-        diff_500: [-30.0,-20.0,-15.0,-10.0,-8.0,-4.0,-2.0,-1.0,1.0,2.0,4.0,8.0,10.0,15.0,20.0,30.0]
-
-HCHO:
-    unitconversion: 1
-    <<: *DIFF_PROP
-    xyplot:
-        levels:
-            0: []
-        diff_0: []
-
-TPREC:
-    long_name: Total Precipitation
-    unitconversion: 86400
-    units: kg m-2 d-1
-    cmap: BrBG
-    yzplot:
-        zrange: []
-        contours: []
-        diffcontours: []
-    xyplot:
-        levels:
-            500: [0.0,0.1,1.0,5.0,10.0,50.0,100.0,150.0,200.0,300.0,400.0,500.0,600.0,700.0,800.0]
-        diff_500: [-400.0,-200.0,-100.0,-50.0,-10.0,-1.0,-0.5,-0.1,-0.001,0.001,0.1,0.5,1.0,10.0,50.0,100.0,200.0,400.0]
 
 SO2:
     <<: *DIFF_PROP
@@ -220,24 +81,6 @@ SO2:
         times: all
         grid: yes
 
-NO:
-    long_name: Nitrogen oxide
-    unitconversion: 1000000000.0
-    units: ppb
-    yzplot:
-        zrange: []
-        #diffMin: navy
-        #diffMax: darkred
-        contours: [0.0,0.0001,0.001,0.01,0.02,0.03,0.04,0.08,0.10,0.50,1.0,5.0,10.0,100.]
-        diffcontours: [-10.0,-1.0,-0.1,-0.01,-0.001,-0.0001,0.0001,0.001,0.01,0.1,1.0,10.0]
-    xyplot:
-        levels:
-            500: [0.001,0.01,0.1,1.0,2.5,5.0,10.0,20.0,30.0,40.0,50.0]
-        diff_500: [-10.0,-5.0,-1.0,-0.00001,0.00001,1.0,5.0,10.0]
-    xtplot:
-        times: all
-        grid: yes
-
 NO2:
     <<: *DIFF_PROP
     long_name: Nitrogen dioxide
@@ -252,21 +95,6 @@ NO2:
     xyplot:
         levels:
             500: [0.001,0.01,0.1,1.0,2.5,5.0,10.0,20.0,30.0,40.0,50.0]
-        diff_500: [-10.0,-5.0,-1.0,-0.00001,0.00001,1.0,5.0,10.0]
-
-NOy:
-    long_name: Reactive Nitrogen
-    unitconversion: 1000000000.0
-    units: ppb
-    yzplot:
-        zrange: []
-        #diffMin: navy
-        #diffMax: darkred
-        contours: [0.0,0.001,0.01,0.02,0.03,0.04,0.08,0.10,0.20,0.30,0.60,0.80,1.0,5.0,10.0,100.0]
-        diffcontours: [-10.0,-1.0,-0.1,-0.01,-0.001,-0.0001,0.0001,0.001,0.01,0.1,1.0,10.0]
-    xyplot:
-        levels:
-        500: [0.001,0.01,0.1,1.0,2.5,5.0,10.0,20.0,30.0,40.0,50.0]
         diff_500: [-10.0,-5.0,-1.0,-0.00001,0.00001,1.0,5.0,10.0]
 
 CO:
@@ -286,80 +114,4 @@ CO:
     xtplot:
         times: all
         grid: yes
-
-co:
-    long_name: Carbon monoxide
-    unitconversion: 1000000000.0
-    units: ppb
-    xyplot:
-        levels:
-            0: [50,52,54,56,58,60,65,70,80,90,100,110,150,200,300]
-
-TOTCOL_O3:
-    long_name: Ozone total column density
-    unitconversion: 1
-    units: dobsons
-    cmap: coolwarm
-    yzplot:
-        zrange: []
-        contours: []
-        diffcontours: []
-    xyplot:
-        levels:
-            1000: [180,220,240,260,280,300,320,340,360,380,400,420,440]
-        diff_1000: [-20,-16,-12,-8,-4,4,8,12,16,20]
-
-TROPCOL_O3:
-    long_name: Ozone tropospheric column density
-    unitconversion: 1
-    units: dobsons
-    cmap: coolwarm
-    yzplot:
-        zrange: []
-        contours: []
-        diffcontours: []
-    xyplot:
-        levels:
-            1000: [0,10,15,20,25,30,35,40,45,50,60,70]
-        diff_1000: [-4.0,-2.0,-1.0,-0.1,-0.01,0.01,0.1,1.0,2.0,4.0]
-
-
-e90:
-    long_name: Constant burden 90 day tracer
-    unitconversion: 1000000000.0
-    units: ppb
-    cmap: BrBG
-    yzplot:
-        zrange: [1000 , 70]
-        contours: [0.0, 1e-3, 0.01, 0.1, 1, 10, 50.0, 90.0, 100.0, 105.0, 110.0, 120.0, 140.0, 160.0, 180.0, 200.0]
-        diffcontours: [-100.0, -10.0, -5.0, -2.0, -1.0, 0.0, 1.0, 2.0, 5.0, 10.0, 100.0]
-    xyplot:
-        levels:
-            500: [0.0, 50.0, 90.0, 100.0, 105.0, 110.0, 120.0, 140.0, 160.0, 180.0, 200.0]
-        diff_500: [-30.0, -25.0, -20.0, -15.0, -10.0, -5.0, 0.0, 5.0, 10.0, 15.0, 20.0, 25.0, 30.0]
-
-AOADAYS:
-    unitconversion: 1
-    units: days
-    time: 1
-    line_contours: True
-    <<: *DIFF_PROP
-    yzplot:
-        cmap: jet
-        zrange: [1000, 1]
-        zscale: log  # linear, log (default), custom
-        add_tropp_height: yes
-        contours: [0.0, 10.0, 20.0, 30.0, 40.0, 50.0, 150.0, 300.0, 600.0, 900.0, 1000.0, 1100.0, 1200.0, 1300.0, 1400.0, 1500.0, 1600.0]
-        diffcontours: [-100.0, -80.0, -60.0, -40.0, -20.0, 0.0, 20.0, 40.0, 60.0, 80.0, 100.0]
-        diff_cmap: magma
-    xyplot:
-        cmap: inferno
-        levels:
-            10: [0.0, 1000.0, 1100.0, 1200.0, 1300.0, 1400.0, 1500.0, 1600.0, 1700.0, 1800.0, 1900.0, 2000.0]
-            50: [0.0, 400.0, 500.0, 600.0, 1000.0, 1200.0, 1400.0, 1600.0, 1800.0]
-            500: [0.0, 5.0, 10.0, 15.0, 20.0, 25.0, 30.0, 35.0, 40.0, 45.0, 50.0, 55.0, 60.0]
-        diff_10: [-50.0, -45.0, -40.0, -30.0, -20.0, -10.0, 0.0, 10.0, 20.0, 30.0, 40.0, 45.0, 50.0]
-        diff_50:  [-60.0, -55.0, -50.0, -40.0, -30.0, -20.0, -10.0, 0.0, 10.0, 20.0, 30.0, 40.0, 50.0, 55.0, 60.0]
-        diff_500: [-10.0, -8.0, -6.0, -4.0, -2.0, -1.0, 0.0, 1.0, 2.0, 4.0, 6.0, 8.0, 10.0]
-        diff_cmap: Wistia
 

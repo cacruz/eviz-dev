@@ -1,32 +1,27 @@
 inputs:
-    - name : /discover/nobackup/projects/jh_tutorials/eviz/sample_data/merra2/MERRA2_400.inst6_3d_ana_Np.20211123.nc4  # 576x361x42x4
-      description: 3d,6-Hourly,Instantaneous,Pressure-Level,Analysis,Analyzed Meteorological Fields
-      to_plot:
-        T: xy,yz
-        O3: yz
-        SLP: xy
+   - name : MERRA2_400.inst3_3d_asm_Np.2020110*.nc4
+     location: /Users/ccruz/data/eviz/merra2
+     description: Ocean DAS
+     to_plot:
+          T: xy
+          U: xy,yz
+          V: xy,yz
 
-    - name : /discover/nobackup/projects/jh_tutorials/eviz/sample_data/merra2/d5124_m2_jan10.tavg1_2d_ocn_Nx.diurnal.202111.nc4 # 576x361x1x24
-      description: Ocean DAS
-      to_plot:
-          RAINOCN: tx
-          FRSEAICE: polar
-          U10M: xt
-          TAUXWTR: xy
-          TAUYWTR: xy
-
-    - name : /discover/nobackup/projects/jh_tutorials/eviz/sample_data/merra2/MERRA2_400.tavgU_2d_lnd_Nx.202111.nc4  # 576x361x1x24
-      description: 2d,1-Hourly,Time-Averaged,Single-Level,Assimilation,Land Surface Diagnostics Diurnal Mean
-      to_plot:
-          TSURF: xt,xy
-          TSOIL1: xt,xy
-          RUNOFF: xt,xy
+   - name         : MERRA2_400.inst6_3d_ana_Np.20211123.nc4
+     location     : /Users/ccruz/data/eviz/merra2
+     exp_name    : MERRA2_400.inst6_3d_ana_Np
+     exp_id    : MERRA2_400
+     to_plot       :
+         O3: xy,yz
+         SLP: xy
 
 outputs:
+    output_dir: /Users/ccruz/scratch/eviz/output/geos
     print_to_file: yes
     print_format: jpg
-    make_pdf: no
     print_basic_stats: yes
+    #make_gif: yes
+    #gif_fps: 2
 
 history:
     use_history: no

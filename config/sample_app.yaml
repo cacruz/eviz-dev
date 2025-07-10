@@ -63,10 +63,13 @@ for_inputs:
 
     # This option is here because we need to specify the fields to be used in the correlation plots
     # Note: this is to be moved to SPECS file in a future release
-    pearsonplot:
+    correlation:
         space_corr: no
         time_corr: yes
-        fields: sm_obs,soil_moisture
+        # Note that correlation can be done by specifying two field names, as follows:
+        fields: sm_obs,soil_moisture  # and assumes that bith fields are in the same file
+            # Otherwise, if fields are in different files, use the file exp_ids as follows:
+        ids: BenchmarkFc180,RefD1
         
     # The following options, trop_height and sphum_field, are GEOS-specific, i.e. "--source geos" or
     # "-s geos" or its sub-classes (currently only ccm, cf). Therefore, options will be ignored if

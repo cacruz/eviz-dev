@@ -1,0 +1,23 @@
+soil_moisture:
+  units: m³/m³
+  name: Soil Moisture
+  corrplot:
+    time_lev: all  # Use all time points for correlation
+    cmap: RdBu_r  # Diverging colormap suitable for correlation
+    levels:
+      0: []
+    rc_params:
+      axes.titlelocation : center
+      font.size : 12
+
+sm_obs:
+  units: m³/m³
+  name: Soil Moisture
+  corrplot:
+    time_lev: all  # Use all time points for correlation
+    cmap: RdBu_r  # Diverging colormap suitable for correlation
+    levels:
+      0: []
+    rc_params:
+      axes.titlelocation : center
+      font.size : 12

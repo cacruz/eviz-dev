@@ -1,29 +1,27 @@
 inputs:
-   - name     : /discover/nobackup/projects/jh_tutorials/eviz/sample_data/lis/LIS_HIST_201507121200_gdas.d01.nc
-     exp_id: gdas
+   - name  : /Users/ccruz/data/eviz/lis/lastday-3yrspinup/LIS_HIST_201507121200.d01.nc
+     exp_id: file1
      to_plot  :
         AvgSurfT_tavg: xy
-        Tempbot_inst: xy
-        Greenness_inst: xy
-        CanopInt_inst: xy
-        Albedo_inst: xy
-        SoilTemp_inst: xy
-        RelSMC_inst: xy
-   - name     : /discover/nobackup/projects/jh_tutorials/eviz/sample_data/lis/LIS_HIST_201507121200_nldas.d01.nc
-     exp_id: nldas
-     to_plot  :
-        AvgSurfT_tavg: xy
-        Tempbot_inst: xy
-        Greenness_inst: xy
-        CanopInt_inst: xy
-        Albedo_inst: xy
-        SoilTemp_inst: xy
-        RelSMC_inst: xy
-
-for_inputs:
-    compare:
-      exp_list: gdas,nldas
-
+#        Tempbot_inst: xy
+#        Greenness_inst: xy
+#        CanopInt_inst: xy
+#        Albedo_inst: xy
+#        SoilTemp_inst: xy
+#        RelSMC_inst: xy
+#   - name  : /Users/ccruz/data/eviz/lis/lastday-3yrspinup/LIS_HIST_201507111200.d01.nc
+#     exp_id: file2
+#     to_plot  :
+#        AvgSurfT_tavg: xy
+#        Tempbot_inst: xy
+#        Greenness_inst: xy
+#        CanopInt_inst: xy
+#        Albedo_inst: xy
+#        SoilTemp_inst: xy
+#        RelSMC_inst: xy
 
 outputs:
+    output_dir: /Users/ccruz/scratch/eviz/output/lis
     print_to_file: yes
+    add_logo: yes
+

@@ -1,0 +1,5 @@
+AvgSurfT_tavg:
+    xtplot:
+        times: all
+        grid: yes
+

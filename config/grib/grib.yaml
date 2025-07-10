@@ -1,0 +1,14 @@
+# recreates:
+# https://docs.xarray.dev/en/stable/examples/ERA5-GRIB-example.html
+inputs:
+   - name: era5-2mt-2019-03-uk.grib
+     location: /Users/ccruz/data/eviz/era5
+     format: grib
+     to_plot:
+        t2m: xy,xt
+
+outputs:
+    output_dir: /Users/ccruz/scratch/eviz/output/grib
+    print_to_file: yes
+    print_format: jpg
+

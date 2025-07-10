@@ -1,0 +1,120 @@
+# CCM field-specific configurations.
+# Start list of CCM passive tracers
+# ---------------------------------
+diff_prop: &DIFF_PROP
+    diff_percd: [ -500., -50., -10., -5., -0.5, 0.5, 5., 10., 50., 500. ]
+    diff_percc: [ -500., -50., -10., -5., -0.5, 0.5, 5., 10., 50., 500. ]
+    diff_ratio: [ .5,.6,.7,.8,.9,1.0,1.1,1.2,1.3,1.4,1.5 ]
+
+SLP:
+    
+    xyplot:
+        cbar_sci_notation: yes
+        tave: yes  # averages over all time
+        levels:
+            0: []
+PS:
+    units: mb
+    xyplot:
+        tave: yes  # averages over all time
+        levels:
+            0: []
+        rc_params:
+            contour.linewidth: 0.5
+EMIS:
+    xtplot:
+        times: all
+        grid: yes
+    xyplot:
+        tave: yes  # averages over all time
+        levels:
+            0: []
+        rc_params:
+            contour.linewidth: 0.5
+
+TROPPB:
+    xtplot:
+        times: all
+        grid: yes
+    xyplot:
+        line_contours: no
+        tave: yes  # averages over all time
+        levels:
+            0: []
+FRSEAICE:
+    name: Sea ice cover
+    xtplot:
+        tave: yes  # averages over all time
+        levels:
+            0: []
+    polarplot:
+        time: 1
+        pole: north
+        grid: yes
+        cmap: BuPu
+        boundary: yes
+        levels:
+            0: []
+
+BC:
+# model writes out BC in kg/kg and so we can specify destination units ppb
+# and let the unit conversion module convert to ppb. This is equivalent to
+# specifying unitconversion: 2.412e9 (as well as units: ppb)
+    units: ppb
+    yzplot:
+#        tave: yes  # averages over all time
+        cmap: coolwarm
+        zrange: [1000, 700]
+        zscale: linear  # linear, log (default), custom
+        contours: []
+        rc_params:
+            contour.linewidth: 0.5
+    xyplot:
+#        tave: yes  # averages over all time
+        levels:
+            950: []
+    xtplot:
+        times: all
+        grid: yes
+NH3:
+    units: ppb
+    yzplot:
+        line_contours: no
+        tave: yes  # averages over all time
+        cmap: coolwarm
+        zrange: [1000, 700]
+        zscale: log  # linear, log (default), custom
+        contours: []
+    xyplot:
+#        tave: yes  # averages over all time
+        levels:
+            950: []
+SO2:
+    units: ppb
+    yzplot:
+        line_contours: no
+        tave: yes  # averages over all time
+        cmap: coolwarm
+        zrange: [1000, 700]
+        zscale: log  # linear, log (default), custom
+        contours: []
+    xyplot:
+#        tave: yes  # averages over all time
+        levels:
+            950: []
+SO4:
+    units: ppb
+    yzplot:
+        tave: yes  # averages over all time
+        cmap: coolwarm
+        zrange: [1000, 700]
+        zscale: log  # linear, log (default), custom
+        contours: []
+        rc_params:
+            contour.linewidth: 0.5
+    xyplot:
+#        tave: yes  # averages over all time
+        levels:
+            950: []
+        rc_params:
+            contour.linewidth: 0.5

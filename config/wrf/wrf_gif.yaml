@@ -1,0 +1,19 @@
+inputs:
+   - name         : wrfout_d01_2015-07-11_12:00:00
+     location     : /Users/ccruz/data/eviz/wrf
+     exp_name: nu-wrf-noahmp
+     exp_id: nu-wrf-noahmp
+     to_plot:
+       T2: xy
+
+outputs:
+    output_dir: /Users/ccruz/scratch/eviz/output/wrf_gif
+    print_to_file: yes
+    make_gif: yes
+    gif_fps: 2
+    mpl_style: fivethirtyeight
+    print_format: png
+
+system_opts:
+    use_mp_pool: no
+    archive_web_results: no

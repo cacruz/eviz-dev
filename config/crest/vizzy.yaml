@@ -1,0 +1,48 @@
+inputs:
+- name: /Users/ccruz/data/eviz/crest/vizzy/uncoupled_output.zarr
+  description: Uncoupled
+  exp_id: uncoupled
+  to_plot:
+      soil_moisture: sc
+#      LE: xy
+#      NEE: xy
+#      streamflow: xy
+#      swe: xy
+
+#- name: /Users/ccruz/data/eviz/crest/vizzy/multihead_output.zarr
+#  description: Multi-head
+#  exp_id: mh
+#  to_plot:
+#      soil_moisture: xy
+#      LE: xy
+#      NEE: xy
+#      streamflow: xy
+#      swe: xy
+
+#- name: /Users/ccruz/data/eviz/crest/vizzy/coupled_output.zarr
+#  description: Coupled 
+#  exp_id: coupled
+#  to_plot:
+#      soil_moisture: xy
+#      LE: xy
+#      NEE: xy
+#      streamflow: xy
+#      swe: xy
+
+#for_inputs:
+#    compare:
+#        ids: uncoupled,mh,coupled
+#    shared_cbar: true
+
+outputs:
+  output_dir: /Users/ccruz/scratch/eviz/output/vizzy
+  make_pdf: false
+  print_format: png
+  print_to_file: yes
+  make_gif: yes
+  gif_fps: 2
+
+system_opts:
+  archive_web_results: false
+  use_mp_pool: false
+

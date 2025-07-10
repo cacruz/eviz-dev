@@ -1,0 +1,43 @@
+# GEOS field-specific configurations.
+# ---------------------------------
+T:
+    xtplot:
+        times: all
+    xyplot:
+        levels:
+            500: []
+    yzplot:
+#        profile_dim: yc
+        zrange: [1000, 0.1]
+        zscale: log
+        contours: []
+U:
+    xtplot:
+        times: all
+    xyplot:
+        levels:
+            500: []
+    yzplot:
+#        profile_dim: yc
+        zrange: [1000, 0.1]
+        zscale: log
+        contours: []
+
+H:
+    xtplot:
+        times: all
+    xyplot:
+        levels:
+            500: []
+    yzplot:
+#        profile_dim: yc
+        zrange: [1000, 0.1]
+        zscale: log
+        contours: []
+
+SLP:
+    xtplot:
+        times: all
+    xyplot:
+        levels:
+            0: []

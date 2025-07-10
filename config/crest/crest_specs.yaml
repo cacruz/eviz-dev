@@ -3,14 +3,19 @@ sm_obs:
     grid: yes
     time_lev: all
   xyplot:
+    time_lev: all
+    extent: conus
     levels:
       0: []
+      
 
 soil_moisture:
   xtplot:
     grid: yes
     time_lev: all
   xyplot:
+    time_lev: all
+    extent: conus
     levels:
       0: []
 

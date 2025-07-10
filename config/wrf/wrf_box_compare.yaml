@@ -1,0 +1,45 @@
+inputs:
+   - name         : wrfout_d01_2015-07-11_12:00:00
+     location     : /Users/ccruz/data/eviz/wrf
+     description: NUWRF (NoahMP) output
+     exp_id: nu-wrf-noahmp
+     to_plot:
+       TSK: box
+
+   - name         : wrfout_d01_2015-07-11_12:00:00.wrf-arw
+     location     : /Users/ccruz/data/eviz/wrf
+     description: WRF (Noah) output
+     exp_id: wrf-arw
+     to_plot:
+       TSK: box
+
+   - name         : wrfout_d01_2015-07-11_12:00:00.wrf-arw-nmp
+     location     : /Users/ccruz/data/eviz/wrf
+     description: WRF (NoahMP) output
+     exp_id: wrf-arw-noahmp
+     to_plot:
+       TSK: box
+
+for_inputs:
+#compare:
+#  ids: nu-wrf-noahmp,wrf-arw,wrf-arw-noahmp
+    overlay:
+      ids: nu-wrf-noahmp,wrf-arw,wrf-arw-noahmp
+      box_colors: blue,green,orange
+      add_legend: no
+
+outputs:
+    output_dir: /Users/ccruz/scratch/eviz/output/wrf_compare
+    print_to_file: yes
+
+
+system_opts:
+    use_mp_pool: no
+    archive_web_results: no
+
+
+
+#dark_background
+#fivethirtyeight
+#seaborn-v0_8
+#eviz/lib/templates/hurricane.mplstyle

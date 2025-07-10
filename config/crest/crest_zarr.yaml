@@ -1,0 +1,49 @@
+inputs:
+#- name: /Users/ccruz/data/eviz/crest/uncoupled.zarr
+- name: /Users/ccruz/projects/terrahydro/development/terrahydro/uncoupled.zarr
+  description: Uncoupled Model
+  exp_id: uncoupled
+  to_plot:
+      soil_moisture: xy
+#      LE: xy
+#      NEE: xy
+#      streamflow: xy
+#      swe: xy
+
+- name: /Users/ccruz/projects/terrahydro/development/terrahydro/mh.zarr
+  description: Multi-Head Model
+  exp_id: mh
+  to_plot:
+      soil_moisture: xy
+#      LE: xy
+#      NEE: xy
+#      streamflow: xy
+#      swe: xy
+
+- name: /Users/ccruz/projects/terrahydro/development/terrahydro/coupled.zarr
+  description: Coupled Model
+  exp_id: coupled
+  to_plot:
+      soil_moisture: xy
+#      LE: xy
+#      NEE: xy
+#      streamflow: xy
+#      swe: xy
+
+for_inputs:
+    compare:
+        ids: uncoupled,mh,coupled
+    shared_cbar: true
+
+outputs:
+  output_dir: /Users/ccruz/scratch/eviz/output/crest_zarr
+  make_pdf: false
+  print_format: png
+  print_to_file: yes
+#  make_gif: yes
+#  gif_fps: 1
+
+system_opts:
+  archive_web_results: false
+  use_mp_pool: false
+

@@ -1,0 +1,153 @@
+tas:
+    unitconversion: 1
+    cmap: coolwarm
+    xtplot:
+#        add_trend: yes
+        time_all: all
+        grid: yes 
+        mean_type: point_sel
+        point_sel: [180, 45]
+        rc_params:
+            font.size: 8
+            axes.titlesize: small
+            axes.titlelocation: left
+#            axes.labelcolor: green
+#            lines.linewidth: 0.5
+#            ytick.color: red
+
+    xyplot:
+        tave: yes
+        levels:
+            0: []
+            #0: [210,225,235,245,255,270,280,290,295,300,305,310,315]
+
+
+tmp:
+    name: Temperature
+    unitconversion: 1
+    cmap: coolwarm
+    xtplot:
+        time_lev: all
+        grid: yes
+        point_sel: [0.5, 7.5]
+        area_sel: [-10.5, 10.5, 5, 25] 
+    txplot:
+        times: all
+        grid: yes
+        contours: []
+#        xrange: [-25, 50]
+#        yrange: [0, 40]
+        mean_type: year
+        x_axis: lat
+        rc_params:
+            axes.labelpad: 1.0
+            axes.titlesize: small
+            axes.titlelocation: left
+            lines.linewidth: 0.5
+            ytick.color: red
+            xtick.labelbottom: false
+            ytick.left: false
+#            ytick.labelleft:     true
+            ytick.major.left:    true
+            ytick.minor.left:   false
+    
+    xyplot:
+        levels:
+            0: []
+
+ta:
+    name: Air Temperature
+    unitconversion: 1
+    units: K
+    cmap: coolwarm
+    xyplot:
+        time_lev: all
+        levels:
+            100000: []
+
+    yzplot:
+        zscale: log
+        profile_dim: yc
+        zrange: []
+        cmap: coolwarm
+
+    txplot:
+        mean_type: xc
+        trange: [2019-01-01, 2020-01-01]
+        xrange: [0, 360]
+        yrange: [0, 40]
+        space_dim: lat   # lat, lon, or lev
+
+hgt:
+    txplot:
+        level: 500
+        mean_type: xc
+        trange: [1945-11-01, 1945-11-30]
+        #xrange: [-180, 180] # range is 0, 358
+        yrange: [60, 35]  # range is 90, -90
+        space_dim: lat   # lat, lon, or lev
+        # reverse time-axis ordering (default increases bottom-to-top)
+        torder: rev   
+
+    yzplot:
+        profile_dim: yc
+        zrange: []
+       
+air:
+    name: Monthly Mean Air Temperature at sigma level 0.995
+    cmap: coolwarm
+    xtplot:
+        time_lev: all 
+        grid: yes
+        add_trend: yes
+# or use rolling average instead of trendline
+#        mean_type: rolling
+#        window_size: 30
+
+    xyplot:
+        levels:
+            0: []
+
+    txplot:
+        add_grid: false
+        line_contours: false
+        mean_type: xc
+        yrange: [60, 35]  # range is 90, -90
+        torder: rev
+
+pr:
+    name: Precipitation
+    cmap: PuBu
+    xtplot:
+        time_lev: all
+        grid: yes
+        add_trend: yes
+
+    xyplot:
+        levels:
+            0: []
+
+    txplot:
+        add_grid: true
+        line_contours: false
+
+sst:
+    name: Sea surface temperature
+    cmap: coolwarm
+    xyplot:
+        fill_value: -9.99999917e+33
+        levels:
+            0: []
+
+ts:
+    name: Surface Temperature
+    cmap: coolwarm
+    units: C
+    xtplot:
+        time_lev: all
+        grid: yes
+        add_trend: yes
+        trend_polyfit: 1
+        mean_type: rolling
+        window_size: 10
+

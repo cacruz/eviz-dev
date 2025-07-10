@@ -1,0 +1,12 @@
+inputs:
+   - name     : /Users/ccruz/data/eviz/mopitt/MOP03JM-202205-L3V95.6.3.he5
+   - description: Global map of MOPITT column CO
+     to_plot  :
+         RetrievedCOTotalColumnDay: xy
+
+outputs:
+    output_dir: /Users/ccruz/scratch/eviz/output/mopitt
+    print_to_file: yes
+    print_format: png
+
+  

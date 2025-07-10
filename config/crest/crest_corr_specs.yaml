@@ -1,0 +1,6 @@
+soil_moisture:
+  units: m³/m³
+  name: Soil Moisture
+  corrplot:
+    time_lev: all
+    cmap: RdBu_r

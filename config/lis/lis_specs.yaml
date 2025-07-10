@@ -1,7 +1,7 @@
 # LIS field-specific configuration
 AvgSurfT_tavg:
     xyplot:
-#        projection: albers
+#        projection: lambert
         levels:
             0:
         contours:

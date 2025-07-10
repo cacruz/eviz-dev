@@ -1,0 +1,30 @@
+soil_moisture:
+  units: m³/m³
+  name: Soil Moisture
+  boxplot:
+    time_lev: -1
+
+NEE:
+  units: µmolCO₂/m²s
+  name: Net Ecosystem Exchange 
+  boxplot:
+    time_lev: -1
+
+LE:
+  units: W/m²
+  name: Latent Heat
+  boxplot:
+    time_lev: -1
+
+streamflow:
+  units: mm
+  name: Streamflow
+  boxplot:
+    time_lev: -1
+
+swe:
+  units: in
+  name: Snow Water Equivalent
+  boxplot:
+    time_lev: -1
+

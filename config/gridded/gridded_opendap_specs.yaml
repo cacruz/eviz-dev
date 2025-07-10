@@ -1,0 +1,21 @@
+air:
+    name: Monthly Mean Air Temperature at sigma level 0.995
+    cmap: coolwarm
+    xtplot:
+        time_lev: all
+        grid: yes
+        add_trend: yes
+# or use rolling average instead of trendline
+#        mean_type: rolling
+#        window_size: 30
+
+    xyplot:
+        levels:
+            0: []
+
+    txplot:
+        add_grid: false
+        line_contours: false
+        mean_type: xc
+        yrange: [60, 35]  # range is 90, -90
+        torder: rev
