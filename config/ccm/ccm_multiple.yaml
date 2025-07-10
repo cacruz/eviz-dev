@@ -1,6 +1,6 @@
 inputs:
 #   - name         : RefD2.tavg24_2d_dad_Nx.monthly.clim.JJA.nc4
-#     location     : /Users/ccruz/data/eviz/ccm
+#     location     : ${HOME}/data/eviz/ccm
 #     exp_name    : RefD2
 #     exp_id    : RefD2
 #     to_plot       :
@@ -11,7 +11,7 @@ inputs:
 #        FRSEAICE: polar
 
    - name         : RefD1.tavg24_3d_aer_Np.monthly.clim.M01.nc4
-     location     : /Users/ccruz/data/eviz/ccm
+     location     : ${HOME}/data/eviz/ccm
      exp_name    : RefD1
      exp_id    : RefD1
      to_plot       :
@@ -23,7 +23,7 @@ inputs:
 
 for_inputs:
     # Personal copy
-    airmass_file_name: /Users/ccruz/data/eviz/ccm/RefD2.tavg24_3d_dac_Np.AIRMASS.ANN.nc4
+    airmass_file_name: ${HOME}/data/eviz/ccm/RefD2.tavg24_3d_dac_Np.AIRMASS.ANN.nc4
     #airmass_file_name: https://portal.nccs.nasa.gov/datashare/astg/eviz/airmass/RefD2.tavg24_3d_dac_Np.AIRMASS.ANN.nc4
     airmass_field_name: AIRMASS
 

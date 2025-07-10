@@ -1,16 +1,16 @@
 inputs:
-   - name  : /Users/ccruz/data/eviz/lis/day11/LIS_HIST_20150711*
+   - name  : ${HOME}/data/eviz/lis/day11/LIS_HIST_20150711*
      exp_id: file1
      to_plot  :
         AvgSurfT_tavg: xt
 
-   - name  : /Users/ccruz/data/eviz/lis/day12/LIS_HIST_20150712*
+   - name  : ${HOME}/data/eviz/lis/day12/LIS_HIST_20150712*
      exp_id: file2
      to_plot  :
         AvgSurfT_tavg: xt
 
 outputs:
-    output_dir: /Users/ccruz/scratch/eviz/output/lis_xt_compare
+    output_dir: ${HOME}/scratch/eviz/output/lis_xt_compare
     print_to_file: yes
 
 for_inputs:

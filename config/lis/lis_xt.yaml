@@ -1,9 +1,9 @@
 inputs:
-   - name  : /Users/ccruz/data/eviz/lis/lastday-3yrspinup/LIS_HIST_2015071*.d01.nc
+   - name  : ${HOME}/data/eviz/lis/lastday-3yrspinup/LIS_HIST_2015071*.d01.nc
      exp_id: file1
      to_plot  :
         AvgSurfT_tavg: xt
 
 outputs:
-    output_dir: /Users/ccruz/scratch/eviz/output/lis_multiple
+    output_dir: ${HOME}/scratch/eviz/output/lis_multiple
     print_to_file: yes

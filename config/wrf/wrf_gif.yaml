@@ -1,13 +1,13 @@
 inputs:
    - name         : wrfout_d01_2015-07-11_12:00:00
-     location     : /Users/ccruz/data/eviz/wrf
+     location     : ${HOME}/data/eviz/wrf
      exp_name: nu-wrf-noahmp
      exp_id: nu-wrf-noahmp
      to_plot:
        T2: xy
 
 outputs:
-    output_dir: /Users/ccruz/scratch/eviz/output/wrf_gif
+    output_dir: ${HOME}/scratch/eviz/output/wrf_gif
     print_to_file: yes
     make_gif: yes
     gif_fps: 2

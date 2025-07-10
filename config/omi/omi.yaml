@@ -2,12 +2,12 @@ inputs:
    - name     :  OMI-Aura_L3-OMTO3d_2018m1001_v003-2019m0802t075840.he5.nc4
 #    - name     : MOP03JM-202205-L3V95.6.3.he5
 #   - name     : OMI-Aura_L3-OMTO3e_2022m0709_v003-2022m0711t031807.he5
-     location : /Users/ccruz/data/eviz/omi
+     location : ${HOME}/data/eviz/omi
      to_plot  :
          ColumnAmountO3: xy
 #          RetrievedCOTotalColumnDay: xy
 outputs:
-    output_dir: /Users/ccruz/scratch/eviz/output/omi
+    output_dir: ${HOME}/scratch/eviz/output/omi
     print_to_file: yes
     print_format: png
 

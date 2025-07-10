@@ -1,13 +1,13 @@
 inputs:
    - name: RefD2.tavg24_3d_dat_Np.monthly.clim.ANN.nc4
-     location: /Users/ccruz/data/eviz/merra2
+     location: ${HOME}/data/eviz/merra2
      exp_name  :  RefD2_ANN
      exp_id    : RefD2
      to_plot:
         stO3: xy
 
    - name: OMI-Aura_L3-OMTO3d_2022.ANN.nc4
-     location  : /Users/ccruz/data/eviz/satellite/omiO3_2022
+     location  : ${HOME}/data/eviz/satellite/omiO3_2022
      format: hdf5
      exp_name  : OMI-Aura
      exp_id    : OMI-Aura
@@ -30,7 +30,7 @@ system_opts:
 
 for_inputs:
     # Personal copy
-    airmass_file_name: /Users/ccruz/data/eviz/ccm/RefD2.tavg24_3d_dac_Np.AIRMASS.ANN.nc4
+    airmass_file_name: ${HOME}/data/eviz/ccm/RefD2.tavg24_3d_dac_Np.AIRMASS.ANN.nc4
     # On DISCOVER
     airmass_file_name: /css/astg/eviz/airmass/RefD2.tavg24_3d_dac_Np.AIRMASS.ANN.nc4
     # URL used on OSS or AWS

@@ -1,7 +1,7 @@
 inputs:
    - name: RefD2.tavg24_3d_dat_Np.monthly.clim.ANN.nc4
 #     reader   : netcdf4
-     location  : /Users/ccruz/data/eviz/ccm
+     location  : ${HOME}/data/eviz/ccm
      exp_id    : RefD2ann
      description : RedD2ann Simulation
      to_plot   :
@@ -14,7 +14,7 @@ inputs:
 #      cmap: coolwarm
 
 outputs:
-    output_dir: /Users/ccruz/scratch/eviz/output/ccm_omi_compare
+    output_dir: ${HOME}/scratch/eviz/output/ccm_omi_compare
     print_to_file: yes
     print_format: png
     make_pdf: no

@@ -6,4 +6,4 @@ inputs:
 
 outputs:
     print_to_file: yes
-    output_dir: /Users/ccruz/scratch/eviz/output/gridded_opendap
+    output_dir: ${HOME}/scratch/eviz/output/gridded_opendap

@@ -1,20 +1,20 @@
 inputs:
    - name         : wrfout_d01_2015-07-11_12:00:00
-     location     : /Users/ccruz/data/eviz/wrf
+     location     : ${HOME}/data/eviz/wrf
      exp_name: nu-wrf-noahmp
      exp_id: nu-wrf-noahmp
      to_plot:
        TSK: xt
   
    - name         : wrfout_d01_2015-07-11_12:00:00.wrf-arw-nmp
-     location     : /Users/ccruz/data/eviz/wrf
+     location     : ${HOME}/data/eviz/wrf
      exp_name: wrf-noahmp
      exp_id: wrf-noahmp
      to_plot:
        TSK: xt
   
    - name         : wrfout_d01_2015-07-11_12:00:00.wrf-arw
-     location     : /Users/ccruz/data/eviz/wrf
+     location     : ${HOME}/data/eviz/wrf
      exp_name: wrf-arw
      exp_id: wrf-arw
      to_plot:
@@ -27,7 +27,7 @@ for_inputs:
 #      ids: nu-wrf-noahmp,wrf-noahmp
 
 outputs:
-    output_dir: /Users/ccruz/scratch/eviz/output/wrf_compare
+    output_dir: ${HOME}/scratch/eviz/output/wrf_compare
     print_to_file: yes
 
 

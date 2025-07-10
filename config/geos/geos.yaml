@@ -1,6 +1,6 @@
 inputs:
    - name : MERRA2_400.inst3_3d_asm_Np.2020110*.nc4
-     location: /Users/ccruz/data/eviz/merra2
+     location: ${HOME}/data/eviz/merra2
      description: Ocean DAS
      to_plot:
           T: xy
@@ -8,7 +8,7 @@ inputs:
           V: xy,yz
 
    - name         : MERRA2_400.inst6_3d_ana_Np.20211123.nc4
-     location     : /Users/ccruz/data/eviz/merra2
+     location     : ${HOME}/data/eviz/merra2
      exp_name    : MERRA2_400.inst6_3d_ana_Np
      exp_id    : MERRA2_400
      to_plot       :
@@ -16,7 +16,7 @@ inputs:
          SLP: xy
 
 outputs:
-    output_dir: /Users/ccruz/scratch/eviz/output/geos
+    output_dir: ${HOME}/scratch/eviz/output/geos
     print_to_file: yes
     print_format: jpg
     print_basic_stats: yes
