@@ -150,4 +150,21 @@ ts:
         trend_polyfit: 1
         mean_type: rolling
         window_size: 10
+z:
+    name: Ocean Topography
+    xyplot:
+        fill_value: -2147483648
+        levels:
+            0: []
 
+p:
+    name: SFC  Pressure
+    xyplot:
+        levels:
+            0: []
+
+t:
+    name: Temperature
+    yzplot:
+        profile_dim: yc
+        zrange: []

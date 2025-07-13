@@ -33,7 +33,6 @@ outputs:
     print_to_file: yes
     print_format: png
     make_pdf: no
-#    print_basic_stats: yes
     log_file: false
     add_logo: true
 

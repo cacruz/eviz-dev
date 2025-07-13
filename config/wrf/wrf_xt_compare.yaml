@@ -4,21 +4,21 @@ inputs:
      exp_name: nu-wrf-noahmp
      exp_id: nu-wrf-noahmp
      to_plot:
-       TSK: xt
+         Q2: xt
   
    - name         : wrfout_d01_2015-07-11_12:00:00.wrf-arw-nmp
      location     : ${HOME}/data/eviz/wrf
      exp_name: wrf-noahmp
      exp_id: wrf-noahmp
      to_plot:
-       TSK: xt
+        Q2: xt
   
    - name         : wrfout_d01_2015-07-11_12:00:00.wrf-arw
      location     : ${HOME}/data/eviz/wrf
      exp_name: wrf-arw
      exp_id: wrf-arw
      to_plot:
-       TSK: xt
+        Q2: xt
 
 for_inputs:
     overlay:

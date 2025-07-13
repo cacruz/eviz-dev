@@ -5,7 +5,7 @@ inputs:
      exp_id      : BenchAnn
      description : Benchmark GMI Simulation
      to_plot       :
-         co_25: xy,yz
+         Be10: xy
          aoa: yz
          stO3: yz
      ignore: Var_
@@ -15,7 +15,7 @@ inputs:
      exp_id    : RefD2ann
      description : RedD2ann Simulation
      to_plot   :
-         co_25: xy,yz
+         Be10: xy
          aoa: yz
          stO3: yz
      ignore: Var_

@@ -3,22 +3,22 @@ inputs:
      exp_id: file1
      to_plot  :
         AvgSurfT_tavg: xy
-#        Tempbot_inst: xy
-#        Greenness_inst: xy
-#        CanopInt_inst: xy
-#        Albedo_inst: xy
-#        SoilTemp_inst: xy
-#        RelSMC_inst: xy
-#   - name  : ${HOME}/data/eviz/lis/lastday-3yrspinup/LIS_HIST_201507111200.d01.nc
-#     exp_id: file2
-#     to_plot  :
-#        AvgSurfT_tavg: xy
-#        Tempbot_inst: xy
-#        Greenness_inst: xy
-#        CanopInt_inst: xy
-#        Albedo_inst: xy
-#        SoilTemp_inst: xy
-#        RelSMC_inst: xy
+        Tempbot_inst: xy
+        Greenness_inst: xy
+        CanopInt_inst: xy
+        Albedo_inst: xy
+        SoilTemp_inst: xy
+        RelSMC_inst: xy
+   - name  : ${HOME}/data/eviz/lis/lastday-3yrspinup/LIS_HIST_201507111200.d01.nc
+     exp_id: file2
+     to_plot  :
+       AvgSurfT_tavg: xy
+       Tempbot_inst: xy
+       Greenness_inst: xy
+       CanopInt_inst: xy
+       Albedo_inst: xy
+       SoilTemp_inst: xy
+       RelSMC_inst: xy
 
 outputs:
     output_dir: ${HOME}/scratch/eviz/output/lis

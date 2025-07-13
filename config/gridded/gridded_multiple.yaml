@@ -1,9 +1,4 @@
 inputs:
-   - name: OST_ElNinox0.5_144x90.1979-2008avg.CMIP5PRE.nc
-     location: ${HOME}/data/eviz/modelE
-     to_plot:
-        sst: xy
-
    - name: tas_Amon_CESM2_historical_r1i1p1f1_gn_185001-201412.nc
      location: ${HOME}/data/eviz/cesm2
      description: CMIP6 20th century experiments (1850-2014) with CAM6. 288x192x1980 (2D+time)
@@ -28,16 +23,34 @@ inputs:
         air: xt,xy,tx
 
    - name: pr_Amon_GISS-E2-1-G_abrupt-2xCO2_r1i1p1f2_gn_185001-194412.nc
-     location: ${HOME}/data/eviz/modelE
+     location: ${HOME}/data/eviz/giss
      description: CMIP6 model data
      to_plot:
         pr: xt,tx
 
    - name: ts_Amon_GISS-E2-1-G_abrupt-2xCO2_r1i1p1f2_gn_185001-194412.nc
-     location: ${HOME}/data/eviz/modelE
+     location: ${HOME}/data/eviz/giss
      description: CMIP6 model data produced by GISS (abrupt doubling of CO2)
      to_plot:
         ts: xt
+
+   - name: OST_ElNinox0.5_144x90.1979-2008avg.CMIP5PRE.nc
+     location: ${HOME}/data/eviz/giss
+     to_plot:
+        sst: xy
+
+# TODO: Fix ordering of dimensions such as specified in this file
+#   - name: ETOPO1_SGT.nc
+#     location: ${HOME}/data/eviz/giss
+#     to_plot:
+#        z: xy
+
+# TODO: Fix ordering of dimensions such as specified in this file
+   - name: 1JUL1981.rsfE04F102_2010_QUOCA_PSV_NINTa4.nc
+     location: ${HOME}/data/eviz/giss
+     to_plot:
+#        p: xy
+        t: yz
 
 outputs:
     output_dir: ${HOME}/scratch/eviz/output/gridded_multiple

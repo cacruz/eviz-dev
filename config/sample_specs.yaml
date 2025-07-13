@@ -14,7 +14,7 @@ fieldname:
         name: unavailable_name  # add name here if it is known that data does not provide one
         time_lev: 1  # select time level
         line_contours: true  # will apply line contours on top of filled contours
-        cmap: jet   # select from matplotlib
+        use_cmap: jet   # select from matplotlib
         grid: yes   # plot grid (default is no)
         cscale: log # colorbar scale, linear(default), log
         tave: yes  # averages over all time
@@ -58,7 +58,7 @@ fieldname:
         cscale: log # colorbar scale, linear(default), log
         zorder: rev  # reverse ordering of vertical levels (default is do nothing)
         add_tropp_height: yes   #  add tropopause height line (default is True) - overrides app-level settings
-        cmap: gnuplot   # select from matplotlib
+        use_cmap: gnuplot   # select from matplotlib
         grid: yes   # plot grid (default is no)
         # Contour levels are OPTIONAL
         contours: [] # Let eviz determine contour levels for you
@@ -104,7 +104,7 @@ fieldname:
         pole: south   # default: north
         grid: yes
         boundary: yes  # circular boundary
-        cmap: BuPu
+        use_cmap: BuPu
         levels:
             # Levels HAVE to be specified! But diff_ levels are not!
             1000: [6.0, 6.5, 6.6, 6.7, 6.8, 6.9, 7.0, 7.5, 8.0, 9.0, 10.0]
@@ -114,7 +114,7 @@ fieldname:
     # two variables, such as model output vs. observations or one climate variable against another 
     scplot:
         grid: yes
-        cmap: coolwarm
+        use_cmap: coolwarm
         extent: [lonW, lonE, latS, latN]  # or conus
         projection: # (default: Plate Carree) [lambert, albers, ortho, stereo, polar]
 
@@ -139,7 +139,7 @@ PM25:
     units: ppb
     scplot:
         # eviz-specific options described above
-        cmap: BuPu
+        use_cmap: BuPu
         extent: conus
         projection: lambert
         # rc_params are optional and matplotlib-specific. They can be used to customize the plot further.
