@@ -283,10 +283,12 @@ class NuWrf(GriddedSource):
             if zc:
                 coords.append(zc)
         else:
-            for name in self.get_model_dim_name('zc').split(","):
-                if hasattr(source_data, "coords") and name in source_data.coords.keys():
-                    coords.append(name)
-                    break
+            zc = self.get_model_dim_name('zc') 
+            if zc:
+                for name in self.get_model_dim_name('zc').split(","):
+                    if hasattr(source_data, "coords") and name in source_data.coords.keys():
+                        coords.append(name)
+                        break
 
         if source_name == 'wrf':
             tc = self.get_model_dim_name('tc')   # field_dim_name(source_data, 'tc')?

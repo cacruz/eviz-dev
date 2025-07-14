@@ -235,27 +235,23 @@ class MatplotlibYZPlotter(MatplotlibBasePlotter):
                     name = field_name
 
                 fig.suptitle_eviz(name, 
+                                # TODO: use rc_params
                                 fontweight='bold',
                                 fontstyle='italic',
+                                color='red',
                                 fontsize=pu.image_font_size(fig.subplots))        
                 
             elif config.compare:
 
                 fig.suptitle_eviz(text=config.map_params[findex].get('field', 'No name'), 
+                                # TODO: use rc_params
                                 fontweight='bold',
                                 fontstyle='italic',
+                                color='red',
                                 fontsize=pu.image_font_size(fig.subplots))        
 
-                # fig.text(0.5, 0.98, name,
-                #         fontweight='bold',
-                #         fontstyle='italic',
-                #         fontsize=pu.image_font_size(fig.subplots),
-                #         ha='center',
-                #         va='top',
-                #         transform=fig.transFigure)
-
-                if config.add_logo:
-                    pu.add_logo_ax(fig, desired_width_ratio=0.05)
+            if config.add_logo:
+                pu.add_logo_ax(fig, desired_width_ratio=0.05)
 
     @staticmethod
     def _plot_profile(config, data2d, fig, ax, ax_opts, ax_dims,

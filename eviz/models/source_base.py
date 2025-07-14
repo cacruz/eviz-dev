@@ -124,7 +124,7 @@ class GenericSource(BaseSource):
             elif self.config_manager.overlay:
                 self.process_side_by_side_plots()
             # TODO: Should be either single or comparison - not a separate category
-            elif self.config_manager.corrplot:
+            elif self.config_manager.correlation:
                 self.process_corr_plots()
             else:
                 has_corr = False
@@ -395,7 +395,7 @@ class GenericSource(BaseSource):
                     self.config_manager.ax_opts['extent'] = [lonW, lonE, latS, latN]
                     self.config_manager.ax_opts['central_lon'] = np.mean([lonW, lonE])
                     self.config_manager.ax_opts['central_lat'] = np.mean([latS, latN])
-                    print(f"Extent: {self.config_manager.ax_opts['extent']} ")
+                    self.logger.info(f"Extent: {self.config_manager.ax_opts['extent']} ")
                     return data2d, xs, ys, field_name, plot_type, file_index, figure
             else:
                 x = data2d[dim1_name].values if dim1_name in data2d.coords else None
@@ -919,6 +919,7 @@ class GenericSource(BaseSource):
         tc_dim = self.config_manager.get_model_dim_name('tc') or 'time'
 
         has_vertical_dim = zc_dim and zc_dim in data_array.dims
+        self.config_manager.level = None
         for level_val in levels.keys():
             self.config_manager.level = level_val
             for t in time_levels:
@@ -1309,6 +1310,7 @@ class GenericSource(BaseSource):
 
         has_vertical_dim = zc_dim and zc_dim in d_temp.dims
         if has_vertical_dim:
+            self.logger.debug(f"Selected vertical level: {level}")                
             # No level specified, use the first level
             if self.config_manager.ax_opts.get('zsum', False):
                 pass
@@ -1344,16 +1346,20 @@ class GenericSource(BaseSource):
                 data2d.attrs = data_array.attrs.copy()
                 return apply_conversion(self.config_manager, data2d, data_array.name)
 
+        # At this time we still have a  3D field:
         if self.config_manager.ax_opts.get('zave', False):
             self.logger.debug("Averaging over vertical levels.")
             data2d = apply_mean(self.config_manager, data2d, level='all')
             data2d.attrs = data_array.attrs.copy()
+            # Now it's 2D:
             return apply_conversion(self.config_manager, data2d, data_array.name)
 
+        # At this time we still have a  3D field:
         if self.config_manager.ax_opts.get('zsum', False):
             self.logger.debug("Summing over vertical levels.")
             data2d_zsum = apply_zsum(data2d)
             data2d.attrs = data_array.attrs.copy()
+            # Now it's 2D:
             return apply_conversion(self.config_manager, data2d_zsum, data_array.name)
 
         if np.isnan(data2d.values).any():
@@ -2129,12 +2135,9 @@ class GenericSource(BaseSource):
         if data_array is None:
             return None
 
-        corr_settings = {}
-        if hasattr(self.config_manager, 'input_config') and hasattr(self.config_manager.input_config, '_corrplot'):
-            corr_settings = self.config_manager.input_config._corrplot
         
         # Determine correlation type (time or space)
-        do_time_corr = corr_settings.get('time_corr', True)
+        do_time_corr = self.config_manager.get('time_corr', True)
         
         # For correlation analysis, we typically want to preserve the time dimension
         # if it exists, as we'll correlate across time at each grid point

@@ -197,7 +197,7 @@ class ConfigManager:
         Returns:
             bool: True if plots should be overlaid, False otherwise
         """
-        # Only consider overlaying for profile plot, box plots,  and time series
+        # Only consider overlaying for profile plot, box plots, and time series
         if plot_type not in ['yz', 'xt', 'bo']:
             return False
             
@@ -388,11 +388,11 @@ class ConfigManager:
         self.a_list = []
         self.b_list = []
 
-        if not (self.input_config._compare or self.input_config._compare_diff or self.input_config._overlay):
+        if not (self.input_config.compare or self.input_config.compare_diff or self.input_config.overlay):
             self.logger.debug("Comparison not enabled")
             return
 
-        compare_ids = self.input_config._compare_exp_ids or self.input_config._overlay_exp_ids or []
+        compare_ids = self.input_config.compare_exp_ids or self.input_config.overlay_exp_ids or []
         if not compare_ids:
             return
 
@@ -580,64 +580,54 @@ class ConfigManager:
         return self.config.map_params
 
     @property
-    def correlation(self):
-        """Flag indicating if correlation plots are to be created."""
-        return self.input_config._correlation
-
-    @property
     def overlay(self):
         """Flag indicating if overlay mode is active."""
-        return self.input_config._overlay
+        return self.input_config.overlay
 
     @property
     def compare(self):
         """Flag indicating if comparison mode is active."""
-        return self.input_config._compare
+        return self.input_config.compare
 
     @property
     def compare_diff(self):
         """Flag indicating if difference comparison mode is active."""
-        return self.input_config._compare_diff
+        return self.input_config.compare_diff
 
     @property
     def extra_diff_plot(self):
         """Flag indicating if extra difference plots should be generated."""
-        return self.input_config._extra_diff_plot
+        return self.input_config.extra_diff_plot
 
     @property
     def shared_cbar(self):
         """Use a shared colorbar in comparison plots."""
-        return self.input_config._shared_cbar
-
-    @property
-    def corrplot(self):
-        """The correlation plot options to use."""
-        return self.input_config._corrplot
+        return self.input_config.shared_cbar
 
     @property
     def add_legend(self):
         """Add legend to the box plots"""
-        return self.input_config._add_legend
+        return self.input_config.add_legend
 
     @property
     def box_colors(self):
         """List of colors used in box plots"""
-        return self.input_config._box_colors
+        return self.input_config.box_colors
 
     @property
     def plot_backend(self):
         """The backend to use for plotting."""
-        return self.input_config._plot_backend
+        return self.input_config.plot_backend
 
     @property
     def cmap(self):
         """The colormap to use for plotting."""
-        return self.input_config._cmap
+        return self.input_config.cmap
 
     @property
     def use_cartopy(self):
         """Flag indicating if cartopy should be used for plotting."""
-        return self.input_config._use_cartopy
+        return self.input_config.use_cartopy
 
     @property
     def have_specs_yaml_file(self):
@@ -672,17 +662,17 @@ class ConfigManager:
     @property
     def use_trop_height(self):
         """Flag indicating if tropopause height should be used."""
-        return self.input_config._use_trop_height
+        return self.input_config.use_trop_height
 
     @use_trop_height.setter
     def use_trop_height(self, value):
         """Set the use_trop_height flag."""
-        self.input_config._use_trop_height = value
+        self.input_config.use_trop_height = value
 
     @property
     def use_sphum_conv(self):
         """Flag indicating if specific humidity conversion should be used."""
-        return self.input_config._use_sphum_conv
+        return self.input_config.use_sphum_conv
 
     @property
     def add_logo(self):
@@ -702,7 +692,7 @@ class ConfigManager:
     @property
     def print_format(self):
         """The format to use for printing output."""
-        return self.input_config.print_format
+        return self.output_config.print_format
 
     @property
     def make_gif(self):
@@ -745,19 +735,34 @@ class ConfigManager:
         return self.input_config._to_plot
 
     @property
+    def correlation(self):
+        """Flag indicating if correlation plots are to be created."""
+        return self.input_config.correlation
+
+    @property
     def correlation_method(self):
         """The correlation method to use."""
         return self.input_config._method
 
     @property
+    def time_corr(self):
+        """Flag indicating if time correlation is to be created."""
+        return self.input_config.time_corr
+
+    @property
+    def space_corr(self):
+        """Flag indicating if space correlation is to be created."""
+        return self.input_config.space_corr
+
+    @property
     def overlay_exp_ids(self):
         """The experiment IDs to overlay."""
-        return self.input_config._overlay_exp_ids
+        return self.input_config.overlay_exp_ids
 
     @property
     def compare_exp_ids(self):
         """The experiment IDs to compare."""
-        return self.input_config._compare_exp_ids
+        return self.input_config.compare_exp_ids
 
     # State variables used during plotting
     @property
