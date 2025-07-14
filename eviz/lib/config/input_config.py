@@ -29,11 +29,11 @@ class InputConfig:
     overlay_exp_ids: List[str] = field(default_factory=list, init=False)
     extra_diff_plot: bool = field(default=False, init=False)
     profile: bool = field(default=False, init=False)
+    # TODO: remove cmap from here and use value from output_config
     cmap: str = field(default="rainbow", init=False)
     comp_panels: tuple = field(default=(1, 1), init=False)
     subplot_specs: tuple = field(default=(1, 1), init=False)
     use_cartopy: bool = field(default=False, init=False)
-    plot_backend: str = field(default="matplotlib", init=False)
     box_colors: List[str] = field(default_factory=list, init=False)
     add_legend: bool = field(default=False, init=False)
     shared_cbar: bool = field(default=False, init=False)
@@ -202,8 +202,7 @@ class InputConfig:
         if 'wrf' in path_lower or 'wrfout' in path_lower:
             return 'NetCDF'
         if any(keyword in path_lower for keyword in ['hdf5', '.h5', '.he5']):
-            if not (path_lower.endswith('.hdf') and not any(ext_key in path_lower for ext_key in ['.h5', '.he5'])):
-                return 'HDF5'
+            return 'HDF5'
         if any(keyword in path_lower for keyword in ['hdf4', '.hdf']):
             if not any(ext_key in path_lower for ext_key in ['.h5', '.he5', 'hdf5']):
                 return 'HDF4'
@@ -220,6 +219,8 @@ class InputConfig:
             return 'ZARR'
         elif file_extension.startswith('.wrf'):
             return 'NetCDF'
+        elif file_extension in ['.grib', '.grib2']:
+            return 'GRIB'
         else:
             if any(x in path_lower for x in ['netcdf', 'nc']):
                 return 'NetCDF'
@@ -293,7 +294,6 @@ class InputConfig:
         self.use_cartopy = for_inputs.get('use_cartopy', False)
         self.comp_panels = for_inputs.get('comp_panels', (1, 1))
         self.subplot_specs = for_inputs.get('subplot_specs', (1, 1))
-        self.plot_backend = for_inputs.get('plot_backend', 'matplotlib')
         self.box_colors = for_inputs.get('box_colors', False)
         self.add_legend = for_inputs.get('add_legend', False)
         self.shared_cbar = for_inputs.get('shared_cbar', False)

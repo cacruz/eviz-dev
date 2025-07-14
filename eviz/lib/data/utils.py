@@ -68,6 +68,13 @@ def apply_conversion(config, data2d, name):
     return data2d
 
 
+def apply_zsum(data2d):
+    """ Sum over vertical levels (column sum)"""
+    data2d_zsum = data2d.sum(dim='lev')
+    data2d_zsum.attrs = data2d.attrs.copy()
+    return data2d_zsum.squeeze()
+
+
 def apply_mean(config, d, level=None):
     """ Compute various averages over coordinates """
     if level:
@@ -93,13 +100,6 @@ def apply_mean(config, d, level=None):
 
     data2d.attrs = d.attrs.copy()  # retain units
     return data2d.squeeze()
-
-
-def apply_zsum(data2d):
-    """ Sum over vertical levels (column sum)"""
-    data2d_zsum = data2d.sum(dim='lev')
-    data2d_zsum.attrs = data2d.attrs.copy()
-    return data2d_zsum.squeeze()
 
 
 def grid_cell_areas(lon1d, lat1d, radius=constants.R_EARTH_M):

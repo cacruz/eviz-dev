@@ -177,7 +177,7 @@ class GenericSource(BaseSource):
         Args:
             field_name: Name of the field to plot
             plot_type: Type of plot to create
-            backend: Backend to use (defaults to config_manager.plot_backend)
+            backend: Backend to use (defaults to config_manager.output_backend)
             
         Returns:
             An instance of the appropriate plotter
@@ -198,7 +198,7 @@ class GenericSource(BaseSource):
         Returns:
             The created plot object
         """
-        backend = getattr(self.config_manager, 'plot_backend', 'matplotlib')
+        backend = getattr(self.config_manager, 'output_backend', 'matplotlib')
         
         plot_type = self.get_plot_type(field_name)
         plotter = self.create_plotter(field_name, plot_type, backend)

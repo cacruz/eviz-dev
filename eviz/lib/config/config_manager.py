@@ -615,9 +615,9 @@ class ConfigManager:
         return self.input_config.box_colors
 
     @property
-    def plot_backend(self):
+    def output_backend(self):
         """The backend to use for plotting."""
-        return self.input_config.plot_backend
+        return self.output_config.backend
 
     @property
     def cmap(self):
@@ -718,6 +718,16 @@ class ConfigManager:
     def print_basic_stats(self):
         """Flag indicating if basic statistics should be printed."""
         return self.output_config.print_basic_stats
+
+    @property
+    def fig_style(self):
+        """Variable indicating what figure style to use for plotting."""
+        return self.output_config.fig_style
+
+    @property
+    def output_dpi(self):
+        """Variable indicating what DPI value to use for plotting."""
+        return self.output_config.dpi
 
     @property
     def use_mp_pool(self):

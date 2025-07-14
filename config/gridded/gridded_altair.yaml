@@ -3,11 +3,10 @@ inputs:
      to_plot:
          SLP: xy
          H: yz
- 
-for_inputs:
-    plot_backend: altair
 
 outputs:
     output_dir: ${HOME}/scratch/eviz/output/gridded_altair
     print_to_file: yes
+    visualization:
+        backend: altair
 

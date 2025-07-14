@@ -169,8 +169,8 @@ class TestGenericSource:
             mock_plotter = MagicMock()
             mock_create_plotter.return_value = mock_plotter
             
-            # Set a plot_backend attribute on config_manager
-            generic_source.config_manager.plot_backend = 'matplotlib'
+            # Set a output_backend attribute on config_manager
+            generic_source.config_manager.output_backend = 'matplotlib'
             
             data_to_plot = ('data', 'x', 'y', 'field_name', 'plot_type', 0, None)
             generic_source.create_plot('temperature', data_to_plot)
