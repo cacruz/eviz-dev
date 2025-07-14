@@ -66,9 +66,9 @@ def test_input_config_initialization_defaults(minimal_app_data):
     assert config.readers == {}
     assert not config.compare
     assert not config.compare_diff
-    assert config._cmap == "rainbow" 
-    assert config._comp_panels == (1,1) 
-    assert not config._use_cartopy 
+    assert config.cmap == "rainbow" 
+    assert config.comp_panels == (1,1) 
+    assert not config.use_cartopy 
 
 
 def test_input_config_initialize_calls_internal_methods(minimal_app_data):
@@ -196,14 +196,14 @@ def test_init_for_inputs_compare_diff(mock_data_source_factory):
         mock_get_logger.return_value = mock_logger_instance
         config.initialize() 
 
-    assert config._compare_diff  
-    assert config._compare_exp_ids == ['exp1', 'exp2']
-    assert config._extra_diff_plot
-    assert config._profile
-    assert config._cmap == 'coolwarm'
-    assert config._comp_panels == (2, 2) 
-    assert config._use_cartopy
-    assert config._subplot_specs == (2,2)
+    assert config.compare_diff  
+    assert config.compare_exp_ids == ['exp1', 'exp2']
+    assert config.extra_diff_plot
+    assert config.profile
+    assert config.cmap == 'coolwarm'
+    assert config.comp_panels == (2, 2) 
+    assert config.use_cartopy
+    assert config.subplot_specs == (2,2)
 
 def test_init_for_inputs_compare(mock_data_source_factory):
     app_data = AppData(
@@ -225,12 +225,12 @@ def test_init_for_inputs_compare(mock_data_source_factory):
         mock_get_logger.return_value = mock_logger_instance
         config.initialize()
 
-    assert config._compare
-    assert config._compare_exp_ids == ['runA', 'runB', 'runC']
-    assert not config._profile
-    assert config._cmap == 'viridis'
+    assert config.compare
+    assert config.compare_exp_ids == ['runA', 'runB', 'runC']
+    assert not config.profile
+    assert config.cmap == 'viridis'
     mock_get_shape.assert_called_once_with(3) 
-    assert config._comp_panels == (1,3)
+    assert config.comp_panels == (1,3)
 
 
 def test_get_primary_reader(app_data_with_inputs, mock_data_source_factory):
@@ -276,7 +276,7 @@ def test_set_trop_height_file_list(mock_data_source_factory):
         mock_get_logger.return_value = mock_logger_instance
         config._init_for_inputs() 
 
-    assert config._use_trop_height
+    assert config.use_trop_height
     assert len(config.trop_height_file_list) == 2
     assert config.trop_height_file_list[0]['filename'] == '/path/trop/trop1.nc'
     assert config.trop_height_file_list[0]['exp_name'] == 'expA'
@@ -308,14 +308,14 @@ def test_to_dict_serialization(app_data_with_inputs, mock_data_source_factory):
             mock_get_logger.return_value = MagicMock()
             config.initialize()
 
-    config._compare_exp_ids = ['exp1']
-    config._extra_diff_plot = True
-    config._profile = False
-    config._cmap = "custom_map"
-    config._comp_panels = (2,1)
-    config._use_trop_height = True
-    config._subplot_specs = (1,1)
-    config._use_cartopy = True
+    config.compare_exp_ids = ['exp1']
+    config.extra_diff_plot = True
+    config.profile = False
+    config.cmap = "custom_map"
+    config.comp_panels = (2,1)
+    config.use_trop_height = True
+    config.subplot_specs = (1,1)
+    config.use_cartopy = True
 
     result_dict = config.to_dict()
 
