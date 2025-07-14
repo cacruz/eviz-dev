@@ -1,42 +1,43 @@
 inputs:
    - name: RefD2.tavg24_3d_dat_Np.monthly.clim.ANN.nc4
-     location: ${HOME}/data/eviz/merra2
-     exp_name  :  RefD2_ANN
-     exp_id    : RefD2
-     to_plot:
-        stO3: xy
-
-   - name: OMI-Aura_L3-OMTO3d_2022.ANN.nc4
-     location  : ${HOME}/data/eviz/satellite/omiO3_2022
-     format: hdf5
-     exp_name  : OMI-Aura
+     reader   : netcdf
+     location  : ${HOME}/data/eviz/ccm
+     exp_id    : RefD2ann
+     description : RedD2ann Simulation
+     to_plot   :
+         stO3: xy
+     ignore: Var_
+   - name     :  OMI-Aura_L3-OMTO3d_2018m1001_v003-2019m0802t075840.he5.nc4
+     reader: hdf5
+     location : ${HOME}/data/eviz/omi
      exp_id    : OMI-Aura
      description : OMI-Aura_L3 O3 Column Data
-     to_plot   :
+     to_plot  :
          ColumnAmountO3: xy
 
+#for_inputs:
+#    compare_diff:
+#      ids: OMI-Aura,RefD2ann
+#      cmap: coolwarm
+    # Personal copy
+    #airmass_file_name: ${HOME}/data/eviz/ccm/RefD2.tavg24_3d_dac_Np.AIRMASS.ANN.nc4
+    # On DISCOVER
+    #airmass_file_name: /css/astg/eviz/airmass/RefD2.tavg24_3d_dac_Np.AIRMASS.ANN.nc4
+    # URL used on OSS or AWS
+#    airmass_url: https://portal.nccs.nasa.gov/datashare/astg/eviz/airmass/RefD2.tavg24_3d_dac_Np.AIRMASS.ANN.nc4
+    #airmass_field_name: AIRMASS
+
 outputs:
-    output_dir: ${HOME}/scratch/eviz/output/comparisons
+    output_dir: ${HOME}/scratch/eviz/output/ccm_omi
     print_to_file: yes
     print_format: png
     make_pdf: no
-    print_basic_stats: yes
-    log_file: false
+#    print_basic_stats: yes
+#    log_file: false
+#    add_logo: true
 
 system_opts:
     use_mp_pool: no
     archive_web_results: no
 
 
-for_inputs:
-    # Personal copy
-    airmass_file_name: ${HOME}/data/eviz/ccm/RefD2.tavg24_3d_dac_Np.AIRMASS.ANN.nc4
-    # On DISCOVER
-    airmass_file_name: /css/astg/eviz/airmass/RefD2.tavg24_3d_dac_Np.AIRMASS.ANN.nc4
-    # URL used on OSS or AWS
-    airmass_url: https://portal.nccs.nasa.gov/datashare/astg/eviz/airmass/RefD2.tavg24_3d_dac_Np.AIRMASS.ANN.nc4
-    airmass_field_name: AIRMASS
-#    compare:
-#      ids: MERRA2,OMI-Aura
-#      cmap: coolwarm
-#      extra_diff: ratio
