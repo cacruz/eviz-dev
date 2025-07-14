@@ -25,23 +25,7 @@ outputs:
     print_format: png
     make_pdf: no
     print_basic_stats: yes
-    # New visualization options
-    visualization:
-      backend: matplotlib
-      style: default
-      dpi: 300
-      colormap: viridis
-      contour_levels: 20
-      add_colorbar: true
-      add_title: true
-      add_grid: true
 
 system_opts:
     use_mp_pool: no
     archive_web_results: no
-    # New caching options
-    caching:
-      enabled: true
-      cache_dir: /tmp/eviz_cache
-      max_size_mb: 1000
-      ttl_hours: 24

@@ -28,8 +28,3 @@ system_opts:
     use_mp_pool: no
     archive_web_results: no
 
-#dark_background
-#fivethirtyeight
-#seaborn-v0_8
-#eviz/lib/templates/hurricane.mplstyle
-
