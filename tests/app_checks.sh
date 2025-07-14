@@ -116,12 +116,12 @@ if prompt "Source: 'geos', MERRA2 averaging"; then
 fi
    
 if prompt  "Source: 'ccm', with 2 files"; then
-   python autoviz.py -s ccm -v 0
+   python autoviz.py -s gridded -v 0
    echo
 fi
    
 if prompt "Source: 'ccm', 2 files and unit conversions"; then
-   python autoviz.py -s ccm -v 0 -f $EVIZ_CONFIG_PATH/ccm/ccm_multiple.yaml
+   python autoviz.py -s gridded -v 0 -f $EVIZ_CONFIG_PATH/ccm/ccm_multiple.yaml
    echo
 fi
    
@@ -135,8 +135,13 @@ if prompt "Source: 'wrf', GIF option"; then
    echo
 fi
 
-if prompt  "Source: 'lis', with 1 file (multiple 2D fields)"; then
-   python autoviz.py -s lis -v 0
+if prompt  "Source: 'lis', (time series from multiple files)"; then
+   python autoviz.py -s lis -v 0 -f $EVIZ_CONFIG_PATH/lis/lis_xt.yaml
+   echo
+fi
+
+if prompt  "Source: 'lis', with multiple files"; then
+   python autoviz.py -s lis -v 0 -f $EVIZ_CONFIG_PATH/lis/lis_gif.yaml
    echo
 fi
 
@@ -174,27 +179,27 @@ echo "Comparison-plot tests"
 echo "---------------------"
 
 if prompt "Source: 'ccm' vs 'ccm' (compare)"; then
-   python autoviz.py -s ccm -v 0 -f  $EVIZ_CONFIG_PATH/ccm/ccm_compare.yaml
+   python autoviz.py -s gridded -v 0 -f  $EVIZ_CONFIG_PATH/ccm/ccm_compare.yaml
    echo
 fi
    
 if prompt "Source: 'ccm' vs 'ccm' (compare-diff 3x1)"; then
-   python autoviz.py -s ccm -v 0 -f  $EVIZ_CONFIG_PATH/ccm/ccm_compare_3x1.yaml
+   python autoviz.py -s gridded -v 0 -f  $EVIZ_CONFIG_PATH/ccm/ccm_compare_3x1.yaml
    echo
 fi
    
 if prompt "Source: 'ccm' vs 'ccm' (compare-diff 2x2)"; then
-   python autoviz.py -s ccm -v 0 -f  $EVIZ_CONFIG_PATH/ccm/ccm_compare_2x2.yaml
+   python autoviz.py -s gridded -v 0 -f  $EVIZ_CONFIG_PATH/ccm/ccm_compare_2x2.yaml
    echo
 fi
    
-if prompt "Source: 'ccm' vs 'merra2' (compare-diff 3x1)"; then
-   python autoviz.py -s ccm -v 0 -f  $EVIZ_CONFIG_PATH/ccm_merra2/app.yaml
-   echo
-fi
+#if prompt "Source: 'ccm' vs 'merra2' (compare-diff 3x1)"; then
+#   python autoviz.py -s ccm -v 0 -f  $EVIZ_CONFIG_PATH/ccm_merra2/app.yaml
+#   echo
+#fi
    
 if prompt "Source: 'ccm' vs 'ccm' (overlay, single plot)"; then
-   python autoviz.py -s ccm -v 0 -f  $EVIZ_CONFIG_PATH/ccm/ccm_compare_overlay.yaml
+   python autoviz.py -s gridded -v 0 -f  $EVIZ_CONFIG_PATH/ccm/ccm_compare_overlay.yaml
    echo
 fi
    
@@ -233,24 +238,22 @@ if prompt "Source: crest, (zarr data)"; then
    echo
 fi
 
-echo "Source: 'ccm' vs 'omi' "
-python autoviz.py -s ccm,omi  -f $EVIZ_CONFIG_PATH/ccm/ccm_omi_compare.yaml -v 0
+if prompt "Source: 2 readers, (ccm and omi)"; then
+   python autoviz.py -s ccm -v 0 -f $EVIZ_CONFIG_PATH/ccm/ccm_omi.yaml
+   echo
+fi
 
-#echo "Source: ccm,mopitt"
-#python autoviz.py -s ccm,mopitt -v 0
+# What should be the source?!
+#if prompt "Source: 2 readers compared, (ccm and omi)"; then
+#   python autoviz.py -s ccm -v 0 -f $EVIZ_CONFIG_PATH/ccm/ccm_omi_compare.yaml
+#   echo
+#fi
 
-#echo "Source: cf,geos (geos=merra2)"
-#python autoviz.py -s cf,geos -v 0
-
-#echo "Source: cf,airnow"
-#python autoviz.py -s cf,airnow -v 0
-
-#echo "Source: cf,omi"
-#python autoviz.py -s cf,omi -v 0
-
-#echo "Source: cf,geos (comparison cf,merra2 + single cf)"
-#python autoviz.py -s cf,geos -v 0
-
+# What should be the source?!
+#if prompt "Source: multiple readers, (ccm, omi, airnow)"; then
+#   python autoviz.py -s ccm -v 0 -f $EVIZ_CONFIG_PATH/ccm/multiple_readers.yaml
+#   echo
+#fi
 
 # Altair backend
 
