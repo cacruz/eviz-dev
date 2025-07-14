@@ -62,9 +62,9 @@ class MatplotlibXYPlotter(MatplotlibBasePlotter):
         else:
             self.ax = ax_temp[0]
 
-        ax_opts = fig.update_ax_opts(field_name, self.ax, 'xy', level=0)
-        fig.plot_text(field_name, self.ax, 'xy', level=0, data=data2d)
-        self._plot_xy_data(config, self.ax, data2d, x, y, field_name, fig, ax_opts, 0, plot_type, findex)
+        ax_opts = fig.update_ax_opts(field_name, self.ax, 'xy', level=config.level)
+        fig.plot_text(field_name, self.ax, 'xy', level=config.level, data=data2d)
+        self._plot_xy_data(config, self.ax, data2d, x, y, field_name, fig, ax_opts, plot_type, findex)
         
         # Add shared colorbar if enabled
         if config.compare and config.shared_cbar:
@@ -72,7 +72,7 @@ class MatplotlibXYPlotter(MatplotlibBasePlotter):
         
         return fig
 
-    def _plot_xy_data(self, config, ax, data2d, x, y, field_name, fig, ax_opts, level, plot_type, findex):
+    def _plot_xy_data(self, config, ax, data2d, x, y, field_name, fig, ax_opts, plot_type, findex):
         """Helper function to plot XY data on a single axes."""
         with mpl.rc_context(rc=ax_opts.get('rc_params', {})):
             if 'fill_value' in config.spec_data[field_name]['xyplot']:
@@ -144,14 +144,14 @@ class MatplotlibXYPlotter(MatplotlibBasePlotter):
                 elif config.ax_opts.get('zsum', False):
                     level_text = ' (Total Column)'
                 else:
-                    if str(level) == '0':
+                    if str(config.level) == '0':
                         level_text = ''
                     else:
-                        if level is not None:
-                            if level > 10000:
-                                level_text = '@ ' + str(level) + ' Pa'
+                        if config.level is not None:
+                            if config.level > 10000:
+                                level_text = '@ ' + str(config.level) + ' Pa'
                             else:
-                                level_text = '@ ' + str(level) + ' mb'
+                                level_text = '@ ' + str(config.level) + ' mb'
 
                 if level_text:
                     title_str = title_str + level_text
@@ -169,8 +169,8 @@ class MatplotlibXYPlotter(MatplotlibBasePlotter):
                                 fontstyle='italic',
                                 fontsize=self._image_font_size(fig.subplots))
 
-                if config.add_logo:
-                    self._add_logo_ax(fig, desired_width_ratio=0.05)
+            if config.add_logo:
+                self._add_logo_ax(fig, desired_width_ratio=0.05)
 
             # Collect filled contour objects for shared colorbar
             if not hasattr(config, '_filled_contours'):

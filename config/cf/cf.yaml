@@ -1,6 +1,6 @@
 inputs:
    - name         : GEOS-CF.v01.rpl.chm_tavg_1hr_g1440x721_p40.20171003_*.nc4
-     location     : /Users/ccruz/data/eviz/cf
+     location     : ${HOME}/data/eviz/cf
      exp_name    : GEOS-CF v1 Spinup
      description : test1
      to_plot       :

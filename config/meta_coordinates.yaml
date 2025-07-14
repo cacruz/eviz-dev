@@ -12,7 +12,7 @@ xc:
     cf: lon
     gmi: longitude_dim
     grib: lon,longitude,im
-    gridded: lon,longitude,im
+    gridded: lon,longitude,im,Longitude
     crest: lon,longitude,im
     airnow: Longitude
     omi: Longitude,longitude,lon
@@ -35,7 +35,7 @@ yc:
     cf: lat
     gmi: latitude_dim
     grib: lat,latitude,jm
-    gridded: lat,latitude,jm
+    gridded: lat,latitude,jm,Latitude
     crest: lat,latitude,jm
     airnow: Latitude
     omi: Latitude,latitude,lat

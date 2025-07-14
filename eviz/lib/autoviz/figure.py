@@ -80,7 +80,7 @@ class Figure(mfigure.Figure):
         _frame_params = {}
         rindex = 0
         _frame_params[rindex] = list()
-        
+
         if self.config_manager.compare and not self.config_manager.compare_diff:
             # Side-by-side comparison
             if self._subplots[1] == 3:
@@ -208,6 +208,7 @@ class Figure(mfigure.Figure):
             if self._ax_opts['extent'] != [-180, 180, -90, 90]:
                 self._frame_params[self._rindex][2] = 8
                 self._frame_params[self._rindex][3] = 8
+
         if self._frame_params[self._rindex][2] and self._frame_params[self._rindex][3]:
             figsize = (self._frame_params[self._rindex][2], self._frame_params[self._rindex][3])
             self.set_size_inches(figsize)
@@ -269,7 +270,7 @@ class Figure(mfigure.Figure):
             else:
                 # For single plots, use 1x1 layout
                 nrows, ncols = 1, 1
-        
+
         # Create figure with rc_params applied
         fig = cls(config_manager, plot_type, nrows=nrows, ncols=ncols)
 
@@ -484,8 +485,8 @@ class Figure(mfigure.Figure):
             'taverange': 'all',
             'cmap_set_over': None,
             'cmap_set_under': None,
-            'use_cmap': self.config_manager.input_config._cmap,
-            'use_diff_cmap': self.config_manager.input_config._cmap,
+            'use_cmap': self.config_manager.input_config.cmap,
+            'use_diff_cmap': self.config_manager.input_config.cmap,
             'cscale': None,
             'zscale': 'linear',
             'cbar_sci_notation': False,

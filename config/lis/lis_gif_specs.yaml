@@ -1,0 +1,5 @@
+AvgSurfT_tavg:
+    xyplot:
+        time_lev: all
+        levels:
+           0: []

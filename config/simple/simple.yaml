@@ -1,5 +1,5 @@
 inputs:
-   - name: /Users/ccruz/data/eviz/ccm/RefD2.tavg24_3d_dat_Np.monthly.clim.JJA.nc4
+   - name: ${HOME}/data/eviz/ccm/RefD2.tavg24_3d_dat_Np.monthly.clim.JJA.nc4
      to_plot:
         co_25: yz
         Be10: xy

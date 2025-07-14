@@ -1,9 +1,10 @@
 inputs:
    - name  : ${HOME}/data/eviz/lis/lastday-3yrspinup/LIS_HIST_2015071*.d01.nc
-     exp_id: file1
      to_plot  :
-        AvgSurfT_tavg: xt
+        AvgSurfT_tavg: xy
 
 outputs:
-    output_dir: ${HOME}/scratch/eviz/output/lis_xt
+    output_dir: ${HOME}/scratch/eviz/output/lis_gif
     print_to_file: yes
+#    make_gif: yes
+

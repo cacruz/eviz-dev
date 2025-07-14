@@ -32,6 +32,12 @@ inputs:
         aoa: yz
      ignore: Var_,PS
 
+# The following example shows a file witout an extension. We can specify using what 'reader' to 
+# use to read the file. We know WRF output is NetCDF4 so we use 'netcdf':
+inputs:
+   - name         : /Users/ccruz/scratch/eviz/wrf/wrf_output/wrfout_d01_2019-07-01_00:00:00
+     reader       : netcdf   # other options are grib, hdf5, and csv
+
 # Entries here are applied to the inputs above
 for_inputs:
     # If compare is specified then side-by-side comparison plots will be created between files
@@ -53,7 +59,7 @@ for_inputs:
       # Use different colormap for comparison plots
       # These are matplotlib colormaps: https://matplotlib.org/stable/users/explain/colors/colormaps.html
       cmap: coolwarm
-    overlay:   # to overlay line plots (only works with xt and yc profiles) or box plots
+    overlay:   # to overlay 'line' plots (only works with xt and yc profiles) or 'box' plots
       ids: BenchmarkFc180,RefD1  # IDs associated with input exp_id values in inputs section.
       # If we are using box plots, we can specify colors for each box. 
       # If nothin specified, cycle through MPL color table

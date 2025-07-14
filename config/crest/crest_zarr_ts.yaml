@@ -1,10 +1,10 @@
 inputs:
-- name: /Users/ccruz/data/eviz/crest/uncoupled.zarr
+- name: ${HOME}/data/eviz/crest/uncoupled.zarr
   description: Uncoupled Model
   exp_id: uncoupled
   to_plot:
       soil_moisture: xy
-- name: /Users/ccruz/data/eviz/crest/mh.zarr
+- name: ${HOME}/data/eviz/crest/mh.zarr
   description: MH Model
   exp_id: mh
   to_plot:
@@ -16,7 +16,7 @@ for_inputs:
     ids: uncoupled,mh
 
 outputs:
-  output_dir: /Users/ccruz/scratch/eviz/output/crest_zarr_ts
+  output_dir: ${HOME}/scratch/eviz/output/crest_zarr_ts
   make_pdf: false
   print_format: png
   print_to_file: yes

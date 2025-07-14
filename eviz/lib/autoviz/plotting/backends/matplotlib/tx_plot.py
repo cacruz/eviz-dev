@@ -11,7 +11,7 @@ from .base import MatplotlibBasePlotter
 
 
 class MatplotlibTXPlotter(MatplotlibBasePlotter):
-    """Matplotlib implementation of TX (Hovmoller) plotting."""
+    """Matplotlib implementation of TX (Hovmöller) plotting."""
     def __init__(self):
         super().__init__()
         self.fig = None

@@ -1,5 +1,5 @@
 inputs:
-- name: /Users/ccruz/data/eviz/crest/vizzy/uncoupled_output.zarr
+- name: ${HOME}/data/eviz/crest/vizzy/uncoupled_output.zarr
   description: Uncoupled
   exp_id: uncoupled
   to_plot:
@@ -9,7 +9,7 @@ inputs:
 #      swe: box
 #      streamflow: box
 
-- name: /Users/ccruz/data/eviz/crest/vizzy/coupled_output.zarr
+- name: ${HOME}/data/eviz/crest/vizzy/coupled_output.zarr
   description: Coupled
   exp_id: coupled
   to_plot:
@@ -19,7 +19,7 @@ inputs:
 #      swe: box
 #      streamflow: box
 
-- name: /Users/ccruz/data/eviz/crest/vizzy/multihead_output.zarr
+- name: ${HOME}/data/eviz/crest/vizzy/multihead_output.zarr
   description: Multihead
   exp_id: mh
   to_plot:
@@ -37,7 +37,7 @@ for_inputs:
       add_legend: no
 
 outputs:
-  output_dir: /Users/ccruz/scratch/eviz/output/crest_box
+  output_dir: ${HOME}/scratch/eviz/output/crest_box
   make_pdf: false
   print_format: png
   print_to_file: yes

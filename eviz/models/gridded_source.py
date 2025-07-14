@@ -389,7 +389,7 @@ class GriddedSource(GenericSource):
                                      sdat2_dataset: xr.Dataset):
         """Process comparison plots for xy or polar plot types."""
         file_index1, file_index2 = file_indices
-        nrows, ncols = self.config_manager.input_config._comp_panels
+        nrows, ncols = self.config_manager.input_config.comp_panels
 
         levels = self.config_manager.get_levels(field_name1, plot_type + 'plot')
         if not levels:
@@ -440,7 +440,7 @@ class GriddedSource(GenericSource):
                                         sdat2_dataset: xr.Dataset):
         """Process comparison plots for other plot types."""
         file_index1, file_index2 = file_indices
-        nrows, ncols = self.config_manager.input_config._comp_panels
+        nrows, ncols = self.config_manager.input_config.comp_panels
 
         figure = Figure.create_eviz_figure(self.config_manager, plot_type, nrows=nrows,
                                            ncols=ncols)

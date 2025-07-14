@@ -1,6 +1,6 @@
 inputs:
    - name        : bench_10-17-6_gmi_free_c180_72lev.tavg24_3d_dat_Np.monthly.clim.ANN.nc4
-     location    :  /Users/ccruz/data/eviz/ccm
+     location    :  ${HOME}/data/eviz/ccm
      exp_name    : BenchAnn
      exp_id      : BenchAnn
      description : Benchmark GMI Simulation
@@ -8,7 +8,7 @@ inputs:
          aoa: yz
      ignore: Var_
    - name: RefD2.tavg24_3d_dat_Np.monthly.clim.ANN.nc4
-     location  : /Users/ccruz/data/eviz/ccm
+     location  : ${HOME}/data/eviz/ccm
      exp_name  : RefD2ann
      exp_id    : RefD2ann
      description : RedD2ann Simulation
@@ -16,7 +16,7 @@ inputs:
          aoa: yz
      ignore: Var_
    - name: RefD1.tavg24_3d_dat_Np.monthly.clim.ANN.nc4
-     location  : /Users/ccruz/data/eviz/ccm
+     location  : ${HOME}/data/eviz/ccm
      exp_name  : RefD1ann
      exp_id    : RefD1ann
      description : RedD1ann Simulation
@@ -29,11 +29,10 @@ for_inputs:
       ids: BenchAnn,RefD2ann,RefD1ann
 
 outputs:
-    output_dir: /Users/ccruz/scratch/eviz/output/ccm_overlay
+    output_dir: ${HOME}/scratch/eviz/output/ccm_overlay
     print_to_file: yes
     print_format: png
     make_pdf: no
-#    print_basic_stats: yes
     log_file: false
     add_logo: true
 

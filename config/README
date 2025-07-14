@@ -1,0 +1,31 @@
+This directory contains several directories for all the data source types 
+that EViz supports and for which a variety of config files are provided.
+
+Note the config files specify the location of the data as well
+as the output path of the visualizations. Both of these paths
+are assumed to be in the $HOME directory of the user. The data 
+is in
+
+$HOME/data/eviz  (multiple subdirectories will be here)
+
+the output is in
+
+$HOME/scratch/eviz/output  (multiple subdirectories will be here).
+
+In the APP YAML file, these paths are specified as follows:
+
+inputs:
+   - name     : ${HOME}/data/eviz/airnow/HourlyAQObs*
+     description: 25 μm particulate matter
+     reader   : csv
+     to_plot  :
+        PM25: sc
+
+outputs:
+    output_dir: ${HOME}/scratch/eviz/output/airnow
+    print_to_file: yes
+
+
+Change ${HOME} to whatever path works in your case. This can (and should) 
+be done via environment variables.
+

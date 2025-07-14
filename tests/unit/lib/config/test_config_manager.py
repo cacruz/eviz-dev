@@ -31,11 +31,11 @@ def mock_input_config():
     ]
     
     # Add attributes needed for setup_comparison
-    input_config._compare_exp_ids = ['exp1', 'exp2']
-    input_config._overlay_exp_ids = None
-    input_config._compare = False
-    input_config._compare_diff = False
-    input_config._overlay = False
+    input_config.compare_exp_ids = ['exp1', 'exp2']
+    input_config.overlay_exp_ids = None
+    input_config.compare = False
+    input_config.compare_diff = False
+    input_config.overlay = False
     
     return input_config
 
@@ -196,7 +196,7 @@ class TestConfigManager:
         }
         
         # Test profile plot with overlay enabled
-        mock_input_config._overlay = True
+        mock_input_config.overlay = True
         assert config_manager.should_overlay_plots('temperature', 'yz') is True
         
         # Test non-profile plot with overlay enabled
@@ -209,7 +209,7 @@ class TestConfigManager:
         assert config_manager.should_overlay_plots('temperature', 'bo') is True
         
         # Test with overlay disabled
-        mock_input_config._overlay = False
+        mock_input_config.overlay = False
         assert config_manager.should_overlay_plots('temperature', 'yz') is False
         assert config_manager.should_overlay_plots('temperature', 'xt') is False
     
@@ -500,16 +500,16 @@ class TestConfigManager:
     def test_property_delegation_to_configs(self, config_manager):
         """Test property delegation to various config objects."""
         # Test delegation to input_config
-        config_manager.input_config._correlation = True
+        config_manager.input_config.correlation = True
         assert config_manager.correlation is True
         
-        config_manager.input_config._overlay = True
+        config_manager.input_config.overlay = True
         assert config_manager.overlay is True
         
-        config_manager.input_config._compare = True
+        config_manager.input_config.compare = True
         assert config_manager.compare is True
         
-        config_manager.input_config._compare_diff = True
+        config_manager.input_config.compare_diff = True
         assert config_manager.compare_diff is True
         
         # Test delegation to output_config

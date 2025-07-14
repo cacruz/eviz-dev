@@ -25,8 +25,8 @@ class TestFigure:
         
         # Mock input_config
         self.mock_config_manager.input_config = MagicMock()
-        self.mock_config_manager.input_config._cmap = 'viridis'
-        self.mock_config_manager.input_config._comp_panels = (3, 1)
+        self.mock_config_manager.input_config.cmap = 'viridis'
+        self.mock_config_manager.input_config.comp_panels = (3, 1)
         
         # Mock spec_data with a sample field
         self.mock_config_manager.spec_data = {

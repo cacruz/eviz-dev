@@ -294,7 +294,7 @@ def print_map(config: "ConfigManager",
         return fname
 
     # Get the backend from config
-    backend = getattr(config, 'plot_backend', 'matplotlib')
+    backend = getattr(config, 'output_backend', 'matplotlib')
     
     output_dir = resolve_output_dir(config)
     fname = build_filename(config, plot_type, findex, level)

@@ -1,5 +1,5 @@
 inputs:
-   - name     : /Users/ccruz/data/eviz/airnow/HourlyAQObs*
+   - name     : ${HOME}/data/eviz/airnow/HourlyAQObs*
      description: 25 μm particulate matter
      reader   : csv
      to_plot  :
@@ -9,6 +9,6 @@ inputs:
 #    plot_backend: hvplot
 
 outputs:
-    output_dir: /Users/ccruz/scratch/eviz/output/airnow
+    output_dir: ${HOME}/scratch/eviz/output/airnow
     print_to_file: yes
  
