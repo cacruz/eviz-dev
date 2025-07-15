@@ -19,6 +19,12 @@ inputs:
        aoa: yz,xy
      ignore: Var_
 
+for_inputs:
+    airmass_file_name: ${HOME}/data/eviz/ccm/RefD2.tavg24_3d_dac_Np.AIRMASS.ANN.nc4
+    airmass_field_name: AIRMASS
+# Use URL
+#    airmass_url: https://portal.nccs.nasa.gov/datashare/astg/eviz/airmass/RefD2.tavg24_3d_dac_Np.AIRMASS.ANN.nc4
+
 outputs:
     output_dir: ${HOME}/scratch/eviz/output/ccm
     print_to_file: yes

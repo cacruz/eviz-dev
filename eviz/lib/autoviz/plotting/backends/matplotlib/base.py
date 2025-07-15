@@ -19,6 +19,7 @@ DEFAULT_COLORBAR_TICKFORMAT = "%.1f"
 
 class MatplotlibBasePlotter(BasePlotter):
     """Base class for all Matplotlib plotters with common functionality."""
+
     def __init__(self):
         super().__init__()
         self.fig = None
@@ -28,13 +29,15 @@ class MatplotlibBasePlotter(BasePlotter):
     def plot(self, config, data_to_plot):
         pass
 
-    def filled_contours(self, config, field_name, ax, x, y, data2d, 
-                        transform=None, vmin=None, vmax=None):
+    def filled_contours(
+        self, config, field_name, ax, x, y, data2d, transform=None, vmin=None, vmax=None
+    ):
         """Plot filled contours."""
         # Check if data is all NaN
         if np.isnan(data2d).all():
-            self.logger.warning(f"All values are NaN for {field_name}. "
-                                f"Cannot create contour plot.")
+            self.logger.warning(
+                f"All values are NaN for {field_name}. Cannot create contour plot."
+            )
             ax.set_facecolor("whitesmoke")
             ax.text(
                 0.5,
@@ -57,17 +60,9 @@ class MatplotlibBasePlotter(BasePlotter):
         ):
             self._create_clevs(field_name, config.ax_opts, data2d)
 
-        norm = colors.BoundaryNorm(config.ax_opts["clevs"], ncolors=256, clip=False)
-
-        if config.compare:
-            cmap_str = config.ax_opts["use_diff_cmap"]
-        else:
-            cmap_str = config.ax_opts["use_cmap"]
-
-        # Check for constant field
-        data_vmin, data_vmax = np.nanmin(data2d), np.nanmax(data2d)
-        if np.isclose(data_vmin, data_vmax):
-            self.logger.debug("Fill with a neutral color and print text")
+        # Check if field was marked as constant during level creation
+        if config.ax_opts.get("is_constant_field", False):
+            self.logger.debug("Rendering constant field with neutral color and text")
             ax.set_facecolor("whitesmoke")
             ax.text(
                 0.5,
@@ -81,6 +76,11 @@ class MatplotlibBasePlotter(BasePlotter):
                 fontweight="bold",
             )
             return None
+
+        if config.compare:
+            cmap_str = config.ax_opts["use_diff_cmap"]
+        else:
+            cmap_str = config.ax_opts["use_cmap"]
 
         try:
             if np.all(np.diff(config.ax_opts["clevs"]) > 0):
@@ -118,16 +118,20 @@ class MatplotlibBasePlotter(BasePlotter):
         """Create contour levels for the plot."""
         self.logger.debug(f"Create contour levels for {field_name}")
         # Check if clevs already exists and is not empty
-        if 'clevs' in ax_opts and ax_opts['clevs'] is not None and len(ax_opts['clevs']) > 0:
+        if (
+            "clevs" in ax_opts
+            and ax_opts["clevs"] is not None
+            and len(ax_opts["clevs"]) > 0
+        ):
             return
-        
+
         if np.isnan(data2d).all():
             self.logger.warning("All values are NaN! Cannot create contour levels.")
             # Set default contour levels to avoid errors
-            ax_opts['clevs'] = np.array([0, 1])
-            ax_opts['clevs_prec'] = 0
+            ax_opts["clevs"] = np.array([0, 1])
+            ax_opts["clevs_prec"] = 0
             return
-        
+
         if vmin is not None and vmax is not None:
             dmin, dmax = vmin, vmax
         else:
@@ -135,34 +139,65 @@ class MatplotlibBasePlotter(BasePlotter):
             dmin = np.nanmin(data2d)
             dmax = np.nanmax(data2d)
         self.logger.debug(f"dmin: {dmin}, dmax: {dmax}")
-        
-        # Check if min equals max (constant field)
-        if np.isclose(dmin, dmax):
-            # Create simple contour levels around the constant value
-            ax_opts['clevs'] = np.array([dmin - 0.1, dmin, dmin + 0.1])
-            ax_opts['clevs_prec'] = 1
+
+        # Use a single consistent threshold
+        variation_threshold = float(ax_opts.get("variation_threshold", 1e-12))
+        data_range = np.abs(dmax - dmin)
+
+        self.logger.debug(f"range: {data_range}, threshold: {variation_threshold}")
+
+        # Determine if field should be treated as constant based on relative variation
+        max_abs_value = max(np.abs(dmin), np.abs(dmax))
+
+        # For very small values, use absolute threshold
+        # For larger values, use relative threshold (e.g., 0.01% of the maximum absolute value)
+        if max_abs_value < 1e-10:
+            # Very small values - use absolute threshold
+            is_constant = data_range < variation_threshold
+        else:
+            # Larger values - use relative threshold
+            relative_threshold = max(variation_threshold, 1e-6 * max_abs_value)
+            is_constant = data_range < relative_threshold
+
+        if is_constant:
+            self.logger.debug(
+                "Field variation below threshold — will be treated as constant in plotting."
+            )
+            # Set a flag to indicate this should be rendered as constant field
+            ax_opts["is_constant_field"] = True
+            # Still create minimal contour levels to avoid errors
+            center = (dmin + dmax) / 2
+            ax_opts["clevs"] = np.array(
+                [center - variation_threshold, center, center + variation_threshold]
+            )
+            ax_opts["clevs_prec"] = max(
+                0, int(-np.floor(np.log10(variation_threshold)))
+            )
             return
-        
+
+        # Normal case - create proper contour levels
+        ax_opts["is_constant_field"] = False
+
         # Calculate appropriate precision
-        range_val = abs(dmax - dmin)
+        range_val = data_range
         precision = max(0, int(np.ceil(-np.log10(range_val)))) if range_val != 0 else 6
         if 1.0 <= range_val <= 9.0:
             precision = 1
         elif 0.1 <= range_val < 1.0:
             precision = 2
 
-        ax_opts['clevs_prec'] = precision
+        ax_opts["clevs_prec"] = precision
         self.logger.debug(f"range_val: {range_val}, precision: {precision}")
-        
-        if not ax_opts.get('create_clevs', True):
+
+        # Create contour levels
+        num_levels = int(ax_opts.get("num_clevs", 10))
+        if not ax_opts.get("create_clevs", True):
             clevs = np.around(np.linspace(dmin, dmax, 10), decimals=precision)
         else:
-            clevs = np.around(np.linspace(dmin, dmax, ax_opts.get('num_clevs', 10)),
-                            decimals=precision)
+            clevs = np.around(np.linspace(dmin, dmax, num_levels), decimals=precision)
             clevs = np.unique(clevs)  # Remove duplicates
-        
+
         # Check if levels are strictly increasing
-        # If not enough unique levels, regenerate with more precision or fallback
         if len(set(clevs)) <= 2:
             self.logger.debug("Not enough unique contour levels.")
             # Try with more levels and higher precision
@@ -171,14 +206,14 @@ class MatplotlibBasePlotter(BasePlotter):
             if len(clevs) <= 2:
                 # As a last resort, just use [dmin, dmax]
                 clevs = np.array([dmin, dmax])
-        
+
         # Ensure strictly increasing
-        clevs = np.unique(clevs)  # Remove duplicates, again
-        ax_opts['clevs'] = clevs
-        
-        self.logger.debug(f'Created contour levels: {ax_opts["clevs"]}')
-        if ax_opts['clevs'][0] == 0.0:
-            ax_opts['extend_value'] = "max"
+        clevs = np.unique(clevs)
+        ax_opts["clevs"] = clevs
+
+        self.logger.debug(f"Created contour levels: {ax_opts['clevs']}")
+        if ax_opts["clevs"][0] == 0.0:
+            ax_opts["extend_value"] = "max"
 
     def line_contours(self, fig, ax, ax_opts, x, y, data2d, transform=None):
         """Add line contours to the plot."""
@@ -214,11 +249,15 @@ class MatplotlibBasePlotter(BasePlotter):
                     len(seg) == 0 for seg in clines.allsegs
                 ):
                     return
-                self.clabel_with_default_fontsize(ax, clines, fmt=contour_format, fontsize=8)
+                self.clabel_with_default_fontsize(
+                    ax, clines, fmt=contour_format, fontsize=8
+                )
             except Exception as e:
                 self.logger.error(f"Error adding contour lines: {e}")
 
-    def set_colorbar(self, config, cfilled, fig, ax, ax_opts, findex, field_name, data2d):
+    def set_colorbar(
+        self, config, cfilled, fig, ax, ax_opts, findex, field_name, data2d
+    ):
         """Add a colorbar to the plot."""
         self.logger.debug(f"Create colorbar for {field_name}")
         try:
@@ -256,8 +295,9 @@ class MatplotlibBasePlotter(BasePlotter):
                 cbar_label = self.units
             else:
                 cbar_label = ax_opts["clabel"]
-            self.style_colorbar(cbar, ax_opts, data2d,
-                                fmt=fmt, fontsize=8, label=cbar_label)
+            self.style_colorbar(
+                cbar, ax_opts, data2d, fmt=fmt, fontsize=8, label=cbar_label
+            )
 
             for t in cbar.ax.get_xticklabels():
                 t.set_fontsize(pu.contour_tick_font_size(fig.subplots))
@@ -272,56 +312,58 @@ class MatplotlibBasePlotter(BasePlotter):
 
     def add_shared_colorbar(self, fig, cfilled_objects, field_name, config):
         """Add a shared colorbar for all plots.
-        
+
         Args:
             fig: The figure object
             cfilled_objects: List of filled contour objects
             field_name: Name of the field being plotted
             config: Configuration manager
-            
+
         Returns:
             The created colorbar object
         """
         self.logger.debug(f"Adding shared colorbar for {field_name}")
-        
+
         # First, check if we already have a shared colorbar and remove it
-        if hasattr(fig, '_shared_colorbar_ax') and fig._shared_colorbar_ax in fig.axes:
+        if hasattr(fig, "_shared_colorbar_ax") and fig._shared_colorbar_ax in fig.axes:
             self.logger.debug("Removing existing shared colorbar")
             fig._shared_colorbar_ax.remove()
-        
+
         # Filter out None values
         valid_contours = [c for c in cfilled_objects if c is not None]
-        
+
         if not valid_contours:
             self.logger.warning("No valid contours for shared colorbar")
             return None
-        
-        self.logger.debug(f"Found {len(valid_contours)} valid contours for shared colorbar")
+
+        self.logger.debug(
+            f"Found {len(valid_contours)} valid contours for shared colorbar"
+        )
         for i, contour in enumerate(valid_contours):
             self.logger.debug(f"Contour {i} clim: {contour.get_clim()}")
-        
+
         # Get the min and max values across all contours for THIS field only
         vmin = min(c.get_clim()[0] for c in valid_contours)
         vmax = max(c.get_clim()[1] for c in valid_contours)
-        
+
         self.logger.debug(f"Shared colorbar range for {field_name}: {vmin} to {vmax}")
-        
+
         # Create a new axes for the colorbar
-        colorbar_width = getattr(config, 'colorbar_width', 0.02)
+        colorbar_width = getattr(config, "colorbar_width", 0.02)
         cbar_ax = fig.add_axes([0.92, 0.15, colorbar_width, 0.7])
-        
+
         fig._shared_colorbar_ax = cbar_ax
-        
+
         # Create the colorbar using the first valid contour
         cbar = fig.colorbar(valid_contours[0], cax=cbar_ax)
-        
+
         # Encompass all data for this field
         cbar.mappable.set_clim(vmin, vmax)
-        
+
         tick_font_size = 8  # Fixed size for shared colorbar
         cbar.ax.tick_params(labelsize=tick_font_size)
         cbar.set_label(self.units, size=10)
-        
+
         return cbar
 
     @staticmethod
@@ -499,19 +541,18 @@ class MatplotlibBasePlotter(BasePlotter):
     @staticmethod
     def clabel_with_default_fontsize_mpl(contour, **kwargs):
         """Label contours with a default font size if not specified (QuadContourSet)."""
-        if 'fontsize' not in kwargs:
-            kwargs['fontsize'] = 12
+        if "fontsize" not in kwargs:
+            kwargs["fontsize"] = 12
         return contour.ax.clabel(contour, **kwargs)
 
     @staticmethod
     def clabel_with_default_fontsize(ax, contour, **kwargs):
         """Label contours with a default font size if not specified (GeoContourSet)."""
-        kwargs.setdefault('fontsize', DEFAULT_CONTOUR_LABELSIZE)
+        kwargs.setdefault("fontsize", DEFAULT_CONTOUR_LABELSIZE)
         return ax.clabel(contour, **kwargs)
 
     @staticmethod
-    def style_colorbar(cbar, ax_opts, data, 
-                       fmt="%.1f", fontsize=8, label=None):
+    def style_colorbar(cbar, ax_opts, data, fmt="%.1f", fontsize=8, label=None):
         """Style the colorbar with a given format and font size."""
         # Set tick label font size
         cbar.ax.tick_params(labelsize=fontsize)
@@ -534,7 +575,7 @@ class MatplotlibBasePlotter(BasePlotter):
         vmax = np.nanmax(data)
         max_val = max(abs(vmin), abs(vmax))
 
-        clevs = ax_opts.get('clevs', None)
+        clevs = ax_opts.get("clevs", None)
         num_clevs = len(clevs) if clevs is not None else 0
 
         really_small_vals = max_val < 1e-3 or num_clevs > 10
@@ -557,5 +598,3 @@ class MatplotlibBasePlotter(BasePlotter):
                 ha="left",
                 fontsize=8,
             )
-
-
