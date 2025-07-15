@@ -34,33 +34,6 @@ class AltairXYPlotter(XYPlotter):
             fill_value = config.spec_data[field_name]['xyplot']['fill_value']
             data2d = data2d.where(data2d != fill_value, np.nan)
         
-        # Convert xarray DataArray to pandas DataFrame for Altair
-        df = self._convert_to_dataframe(data2d, x, y)
-        
-        self.logger.debug(f"DataFrame shape: {df.shape}")
-        self.logger.debug(f"DataFrame columns: {df.columns}")
-        
-        if df.empty or 'value' not in df.columns:
-            self.logger.error("DataFrame is empty or missing 'value' column")
-            # Create a simple chart with a message
-            chart = alt.Chart(pd.DataFrame({'x': [0], 'y': [0], 'text': ['No data to display']})).mark_text(
-                align='center',
-                baseline='middle',
-                fontSize=20
-            ).encode(
-                x=alt.X('x:Q', scale=alt.Scale(domain=[-1, 1]), axis=None),
-                y=alt.Y('y:Q', scale=alt.Scale(domain=[-1, 1]), axis=None),
-                text='text:N'
-            ).properties(
-                width=800,
-                height=500,
-                title=field_name
-            )
-            self.plot_object = chart
-            return chart
-        
-        self.logger.debug(f"DataFrame value range: {df['value'].min()} to {df['value'].max()}")
-
         # Get colormap - convert matplotlib colormap to Vega colormap
         cmap = ax_opts.get('use_cmap', 'viridis')
         # Temporary: Map common matplotlib colormaps to Vega schemes
@@ -97,11 +70,7 @@ class AltairXYPlotter(XYPlotter):
         
         # Convert xarray DataArray to pandas DataFrame for Altair
         df = self._convert_to_dataframe(data2d, x, y)
-        
-        self.logger.debug(f"DataFrame shape: {df.shape}")
-        self.logger.debug(f"DataFrame columns: {df.columns}")
-        self.logger.debug(f"DataFrame value range: {df['value'].min()} to {df['value'].max()}")
-        
+                
         if df.empty:
             self.logger.error("DataFrame is empty after processing")
             return None
