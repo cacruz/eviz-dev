@@ -17,7 +17,6 @@ class HistoryConfig:
     def to_dict(self) -> dict:
         """Return a dictionary representation of the HistoryConfig."""
         return {
-            "history": self.history,
             "use_history": self.use_history,
             "history_dir": self.history_dir,
         }   

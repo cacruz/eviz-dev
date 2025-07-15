@@ -519,7 +519,6 @@ class DataProcessor:
             Regridded version of d2 that matches d1's grid.
         """
         if dims is None:
-
             common_dims = set(d1.dims).intersection(set(d2.dims))
             if len(common_dims) >= 2:
                 dims = list(common_dims)[:2]
@@ -532,9 +531,8 @@ class DataProcessor:
         self.logger.debug(f"d1 shape: {d1.shape}, dims: {d1.dims}")
         self.logger.debug(f"d2 shape: {d2.shape}, dims: {d2.dims}")
         
-        if len(d1.dims) != len(d2.dims):
-            self.logger.debug("Arrays have different number of dimensions")
-            
+        if len(d1.dims) != len(d2.dims):            
+
             if len(d1.dims) < len(d2.dims):
                 self.logger.debug(f"d1 has fewer dimensions ({len(d1.dims)}) than d2 ({len(d2.dims)})")
                 
@@ -556,11 +554,7 @@ class DataProcessor:
                         d1 = d1.isel({dim: 0})
                 
                 d1 = d1.squeeze()
-        
-        self.logger.debug("After dimension adjustment:")
-        self.logger.debug(f"d1 shape: {d1.shape}, dims: {d1.dims}")
-        self.logger.debug(f"d2 shape: {d2.shape}, dims: {d2.dims}")
-        
+                
         # Compute resolution for each dimension to determine which grid to use as target
         def mean_resolution(da, dim):
             coords = da.coords[dim].values
@@ -585,7 +579,6 @@ class DataProcessor:
             
         except Exception as e:
             self.logger.error(f"Error during regridding: {e}")
-            self.logger.warning("Returning dummy array with zeros")
             return xr.zeros_like(d1)
 
     def _regrid(self,
@@ -664,10 +657,6 @@ class DataProcessor:
         Returns:
             DataArray containing the computed difference
         """
-        self.logger.debug(f"Computing difference using method: {method}")
-        self.logger.debug(f"d1 shape: {d1.shape}, dims: {d1.dims}")
-        self.logger.debug(f"d2 shape: {d2.shape}, dims: {d2.dims}")
-        
         if d1.shape != d2.shape:
             self.logger.warning(f"Shape mismatch in compute_difference: d1 {d1.shape} vs d2 {d2.shape}")
             

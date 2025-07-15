@@ -26,6 +26,9 @@ class YAMLParser:
         self.meta_attrs = u.read_meta_attrs()
         self.species_db = u.read_species_db()
 
+        # for key, value in self.to_dict().items():
+        #     self.logger.debug(f"{key} = {value}")
+
     def _concatenate_yaml(self) -> List[Dict[str, Any]]:
         """Read and merge multiple YAML files and their associated specs."""
         concat = []

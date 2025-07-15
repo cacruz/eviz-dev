@@ -246,6 +246,7 @@ class Autoviz:
             self.config_adapter.process_configuration()
 
             # Load custom MPL style used for figures
+            self.logger.info(f"Loading style: {self._config_manager.fig_style}")
             load_style(self._config_manager.fig_style)  
 
             all_data_sources = {}

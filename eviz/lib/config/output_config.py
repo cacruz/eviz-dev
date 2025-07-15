@@ -27,7 +27,7 @@ class OutputConfig:
         self.make_pdf = outputs.get("make_pdf", False)
         self.print_basic_stats = outputs.get("print_basic_stats", False)
         self.mpl_style = outputs.get("mpl_style", "classic")
-        self.fig_style = outputs.get("fig_style", "default")
+        self.fig_style = outputs.get("style", "default")
         self.make_gif = outputs.get("make_gif", False)
         self.gif_fps = outputs.get("gif_fps", 10)
         self.dpi = outputs.get("dpi", 300)
@@ -43,7 +43,7 @@ class OutputConfig:
             self.backend = "matplotlib"
         if not hasattr(self, 'colormap'):
             self.colormap = "coolwarm"
-        if not hasattr(self, 'fig_style'):
+        if not hasattr(self, 'style'):
             self.fig_style = "default"
         if not hasattr(self, 'dpi'):
             self.dpi = 300
@@ -57,7 +57,7 @@ class OutputConfig:
             outputs_config = outputs["visualization"]
             self.backend = outputs_config.get("backend", self.backend)
             self.colormap = outputs_config.get("colormap", self.colormap)
-            self.fig_style = outputs_config.get("fig_style", self.fig_style)
+            self.fig_style = outputs_config.get("style", self.fig_style)
             self.dpi = outputs_config.get("dpi", self.dpi)
             self.gif_fps = outputs_config.get("gif_fps", self.gif_fps)
             self.mpl_style = outputs_config.get("mpl_style", self.mpl_style)
@@ -79,7 +79,7 @@ class OutputConfig:
         return {
             "backend": self.backend,
             "colormap": self.colormap,
-            "fig_style": self.fig_style,
+            "style": self.fig_style,
             "dpi": self.dpi,
             "gif_fps": self.gif_fps,
             "mpl_style": self.mpl_style,

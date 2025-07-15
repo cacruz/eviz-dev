@@ -22,7 +22,7 @@ def test_initialize_defaults():
         assert config.archive_web_results is False
         assert config.collection == ""
         assert config.event_stamp is None
-        mock_logger.debug.assert_called()
+
 
 
 def test_initialize_with_options_sets_event_stamp(monkeypatch):
@@ -40,7 +40,6 @@ def test_initialize_with_options_sets_event_stamp(monkeypatch):
         assert config.archive_web_results is True
         assert config.collection == "mycoll"
         assert config.event_stamp == "20240101-123456"
-        mock_logger.debug.assert_called()
 
 
 def test_logger_property():

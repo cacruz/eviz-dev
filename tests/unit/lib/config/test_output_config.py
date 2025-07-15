@@ -37,7 +37,7 @@ def test_initialize_with_outputs():
         "make_pdf": True,
         "print_basic_stats": True,
         "mpl_style": "seaborn",
-        "fig_style": "fancy",
+        "style": "fancy",
         "make_gif": True,
         "gif_fps": 20,
         "dpi": 150,
@@ -45,7 +45,7 @@ def test_initialize_with_outputs():
         "visualization": {
             "backend": "plotly",
             "colormap": "viridis",
-            "fig_style": "fancy",
+            "style": "fancy",
             "dpi": 150,
             "gif_fps": 20,
             "mpl_style": "seaborn-dark",
@@ -113,7 +113,7 @@ def test_to_dict_serialization():
     d = config.to_dict()
     assert d["backend"] == "matplotlib"
     assert d["colormap"] == "coolwarm"
-    assert d["fig_style"] == "default"
+    assert d["style"] == "default"
     assert d["dpi"] == 300
     assert d["gif_fps"] == 10
     assert d["mpl_style"] == "classic"
@@ -131,7 +131,7 @@ def test_init_visualization_branch():
         "visualization": {
             "backend": "matplotlib",
             "colormap": "coolwarm",
-            "fig_style": "default",
+            "style": "default",
             "dpi": 300,
             "gif_fps": 10,
             "mpl_style": "seaborn",

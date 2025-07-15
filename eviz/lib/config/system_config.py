@@ -16,19 +16,13 @@ class SystemConfig:
         """Initialize system configuration."""
         system_opts = self.app_data.system_opts
 
-        self.use_mp_pool = system_opts.get('use_mp_pool', False)
+        self.use_mp_pool = system_opts.get("use_mp_pool", False)
 
-        self.archive_web_results = system_opts.get('archive_web_results', False)
+        self.archive_web_results = system_opts.get("archive_web_results", False)
         if self.archive_web_results:
             self.event_stamp = strftime("%Y%m%d-%H%M%S")
 
-        self.collection = system_opts.get('collection', '')
-
-        self.logger.debug(f"SystemConfig initialized with: "
-                          f"use_mp_pool={self.use_mp_pool}, "
-                          f"archive_web_results={self.archive_web_results}, "
-                          f"collection={self.collection}, "
-                          f"event_stamp={self.event_stamp}")
+        self.collection = system_opts.get("collection", "")
 
     @property
     def logger(self):

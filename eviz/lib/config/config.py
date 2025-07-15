@@ -77,6 +77,10 @@ class Config:
         self._assign_app_data_to_subconfigs()
 
         self.initialize()
+        
+        for key, value in self.to_dict().items():
+            self.logger.debug(f"{key} = {value}")
+
 
     def _assign_app_data_to_subconfigs(self):
         """Assign app_data to all sub-configurations."""
