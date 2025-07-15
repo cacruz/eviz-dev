@@ -1,0 +1,46 @@
+# Font
+font.family        : sans-serif
+font.sans-serif    : DejaVu Sans
+font.size          : 11
+
+# Figure
+figure.figsize     : 6, 4
+figure.dpi         : 150
+figure.facecolor   : #111111
+savefig.facecolor  : #111111
+savefig.edgecolor  : #111111
+savefig.bbox       : tight
+
+# Axes
+axes.facecolor     : #111111
+axes.edgecolor     : #cccccc
+axes.labelcolor    : #eeeeee
+axes.titlesize     : 12
+axes.labelsize     : 11
+axes.grid          : True
+grid.color         : #444444
+grid.linestyle     : --
+grid.linewidth     : 0.5
+
+# Ticks
+xtick.color        : #dddddd
+ytick.color        : #dddddd
+xtick.direction    : in
+ytick.direction    : in
+
+# Lines and markers
+lines.linewidth    : 2
+lines.markersize   : 5
+
+# Legend
+legend.facecolor   : #222222
+legend.edgecolor   : #444444
+legend.fontsize    : 10
+legend.frameon     : True
+
+# Color cycle (better contrast on dark)
+axes.prop_cycle    : cycler('color', ['#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd', '#8c564b'])
+
+# PDF compatibility
+pdf.fonttype       : 42
+ps.fonttype        : 42

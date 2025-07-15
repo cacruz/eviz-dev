@@ -1,0 +1,46 @@
+# === Font ===
+font.family        : sans-serif
+font.sans-serif    : DejaVu Sans
+font.size          : 12
+
+# === Figure ===
+figure.figsize     : 6, 4
+figure.dpi         : 150
+figure.facecolor   : none
+savefig.facecolor  : none
+savefig.edgecolor  : none
+savefig.bbox       : tight
+savefig.transparent: True
+
+# === Axes ===
+axes.facecolor     : none
+axes.edgecolor     : white
+axes.labelcolor    : white
+axes.labelsize     : 12
+axes.titlesize     : 14
+axes.titlecolor    : white
+axes.grid          : False
+
+# === Ticks ===
+xtick.color        : white
+ytick.color        : white
+xtick.direction    : out
+ytick.direction    : out
+
+# === Lines ===
+lines.linewidth    : 2
+lines.markersize   : 5
+
+# === Colorbar / Legend / Text ===
+legend.frameon     : False
+legend.fontsize    : 11
+legend.edgecolor   : white
+text.color         : white
+
+# === Patch background (axes patch, legends, etc) ===
+patch.edgecolor    : white
+patch.facecolor    : none
+
+# === PDF compatibility ===
+pdf.fonttype       : 42
+ps.fonttype        : 42

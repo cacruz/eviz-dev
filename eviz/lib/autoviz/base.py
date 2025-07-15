@@ -23,6 +23,7 @@ from eviz.models.source_factory import (AirnowFactory,
                                         FluxnetFactory,
                                         )
 from eviz.lib.config.paths_config import PathsConfig
+from eviz.lib.utils import load_style
 
 # Suppress matplotlib debug messages
 logging.getLogger('matplotlib').setLevel(logging.WARNING)
@@ -224,7 +225,6 @@ class Autoviz:
             raise ValueError(f"No factories found for sources: {self.source_names}")
         self._config_manager = create_config(
             self.args)  # Use ConfigManager instead of Config
-        # TODO: enable processing of S3 buckets
 
     def run(self):
         """
@@ -244,6 +244,9 @@ class Autoviz:
         try:
             self.logger.info("Processing configuration using adapter")
             self.config_adapter.process_configuration()
+
+            # Load custom MPL style used for figures
+            load_style(self._config_manager.fig_style)  
 
             all_data_sources = {}
             try:

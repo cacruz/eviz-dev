@@ -6,6 +6,8 @@ import yaml
 import logging
 import pathlib
 import subprocess
+import matplotlib.pyplot as plt
+import seaborn as sns
 from functools import wraps
 from typing import Any, Dict, List
 from yaml import SafeLoader
@@ -325,3 +327,19 @@ def squeeze_fig_aspect(fig, preserve='h'):
         raise ValueError(
             'preserve must be "h" or "w", not {}'.format(preserve))
     fig.set_size_inches(new_size, forward=True)
+
+
+def load_style(style_name, context="notebook", palette="deep"):
+    """Load a custom matplotlib style from the styles directory."""
+    if style_name == "default":
+        return
+
+    style_file = os.path.join(os.path.dirname(__file__), "styles", f"{style_name}.mplstyle")
+    if not os.path.exists(style_file):
+        logger.error(f"Style '{style_name}' not found at {style_file}. Using default style.")
+        return    
+        
+    plt.style.use(style_file)
+    sns.set_context(context)
+    sns.set_palette(palette)
+
