@@ -489,6 +489,7 @@ class Figure(mfigure.Figure):
             'use_diff_cmap': self.config_manager.input_config.cmap,
             'cscale': None,
             'zscale': 'linear',
+            'variation_threshold': 1e-12,
             'cbar_sci_notation': False,
             'custom_title': False,
             'add_grid': False,

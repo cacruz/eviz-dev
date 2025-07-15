@@ -36,7 +36,7 @@ inputs:
 # use to read the file. We know WRF output is NetCDF4 so we use 'netcdf':
 inputs:
    - name         : /Users/ccruz/scratch/eviz/wrf/wrf_output/wrfout_d01_2019-07-01_00:00:00
-     reader       : netcdf   # other options are grib, hdf5, and csv
+     reader       : netcdf   # other options are grib, hdf5, zarr, and csv (see source_factory.py)
 
 # Entries here are applied to the inputs above
 for_inputs:

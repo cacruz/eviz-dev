@@ -1357,7 +1357,7 @@ class GenericSource(BaseSource):
         # At this time we still have a  3D field:
         if self.config_manager.ax_opts.get('zsum', False):
             self.logger.debug("Summing over vertical levels.")
-            data2d_zsum = apply_zsum(data2d)
+            data2d_zsum = apply_zsum(self.config_manager, data2d, data_array.name)
             data2d.attrs = data_array.attrs.copy()
             # Now it's 2D:
             return apply_conversion(self.config_manager, data2d_zsum, data_array.name)

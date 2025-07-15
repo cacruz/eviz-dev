@@ -8,12 +8,24 @@ inputs:
          stO3: xy
      ignore: Var_
 
+   - name: RefD2.tavg24_2d_emi_Nx.monthly.clim.ANN.nc4
+     reader   : netcdf
+     location  : ${HOME}/data/eviz/ccm
+     description : 
+     to_plot   :
+         EMSOILNOX: xy
+
+   - name     :  OMI-Aura_L3-OMTO3d_2018m1001_v003-2019m0802t075840.he5.nc4
+     reader: hdf5
+     location : ${HOME}/data/eviz/omi
+     to_plot  :
+         ColumnAmountO3: xy
+
 for_inputs:
-    # Personal copy
     airmass_file_name: ${HOME}/data/eviz/ccm/RefD2.tavg24_3d_dac_Np.AIRMASS.ANN.nc4
-    # URL used on OSS or AWS
-#    airmass_url: https://portal.nccs.nasa.gov/datashare/astg/eviz/airmass/RefD2.tavg24_3d_dac_Np.AIRMASS.ANN.nc4
     airmass_field_name: AIRMASS
+# Use URL
+#    airmass_url: https://portal.nccs.nasa.gov/datashare/astg/eviz/airmass/RefD2.tavg24_3d_dac_Np.AIRMASS.ANN.nc4
 
 outputs:
     output_dir: ${HOME}/scratch/eviz/output/ccm_omi

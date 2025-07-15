@@ -7,10 +7,10 @@ import requests
 from eviz.lib import constants as constants
 
 from eviz.lib.data.units import (
-    get_species_name, adjust_units, moles_to_mass, mass_to_moles,
+    adjust_units, moles_to_mass, mass_to_moles,
     mb_to_Pa, Pa_to_hPa, Pa_to_mb, mb_to_hPa, hPa_to_mb, g_to_mg, mg_to_g,
     kg_to_mg, mg_to_kg, g_to_kg, kg_to_g, f_to_c, c_to_f, c_to_k, k_to_c,
-    f_to_k, k_to_f, mol_to_ppb, ppb_to_mol
+    f_to_k, k_to_f
 )
 
 
@@ -68,21 +68,6 @@ def mock_dataset():
         data_vars={"AIRMASS": (["lat", "lon"], np.ones((10, 10)))},
         coords={"lat": np.linspace(-90, 90, 10), "lon": np.linspace(-180, 180, 10)}
     )
-
-
-@pytest.mark.parametrize(
-    ('key', 'expected'),
-    (
-            ('o3', 'O3'),
-            ('no2', 'NO2'),
-            ('so2', 'SO2'),
-            ('so4', 'SO4'),
-            ('nh3', 'NH3'),
-            ('bc', 'BC')
-    )
-)
-def test_get_species_name(key, expected):
-    assert get_species_name(key) == expected
 
 
 @pytest.mark.parametrize(
@@ -180,12 +165,4 @@ def test_f_to_k():
 def test_k_to_f():
     assert k_to_f(273.15) == 32
     assert k_to_f(373.15) == 212
-
-
-def test_mol_to_ppb():
-    assert mol_to_ppb(mol_frac=1e-9) == 1
-
-
-def test_ppb_to_mol():
-    assert ppb_to_mol(ppb=1e9) == 1
 

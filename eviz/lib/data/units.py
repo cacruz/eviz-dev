@@ -18,9 +18,13 @@ Some functions are adopted from GCpy - with minor modifications
 
 AVOGADRO = constants.AVOGADRO
 MOLAR_MASS_AIR = constants.MW_AIR_KG
-DU_CONVERSION = 2.6867e16  # molecules/cm² for 1 DU
+DU_CONVERSION_CGS = 2.6867e16  # molecules/cm² for 1 DU
+DU_CONVERSION = 2.6867e20  # molecules/cm² for 1 DU
 PPB_CONVERSION = 1e9
 
+
+# Cache for airmass data to avoid repeated reads
+_airmass_cache = {}
 
 def get_airmass(config, dry_run=False):
     """
@@ -33,38 +37,76 @@ def get_airmass(config, dry_run=False):
     Returns:
         airmass field: xArray
     """
-    airmass_file_name = constants.AIRMASS_URL
-    airmass_field_name = 'AIRMASS'
-    if config.app_data is not None:
-        if hasattr(config.app_data, 'for_inputs'):
-            airmass_file_name = result if (
-                result := u.get_nested_key_value(config.app_data.for_inputs, [
-                    'airmass_file_name'])) else constants.AIRMASS_URL
-            airmass_field_name = result if (
-                result := u.get_nested_key_value(config.app_data.for_inputs,
-                                                 ['airmass_field_name'])) else 'AIRMASS'
-
-    logger.debug(f"Loading airmass data from {airmass_file_name}")
-
+    global _airmass_cache
+    
+    # Get configuration values
+    airmass_file_name = u.get_nested_key_value(config.app_data.for_inputs, ['airmass_file_name']) if (
+        config.app_data is not None and hasattr(config.app_data, 'for_inputs')
+    ) else None
+    
+    airmass_field_name = u.get_nested_key_value(config.app_data.for_inputs, ['airmass_field_name']) if (
+        config.app_data is not None and hasattr(config.app_data, 'for_inputs')
+    ) else 'AIRMASS'
+    
+    # If no local file specified, use the URL
+    if not airmass_file_name:
+        airmass_file_name = constants.AIRMASS_URL
+    
+    # Expand environment variables in the file path if it's a local file
+    if airmass_file_name and 'https' not in airmass_file_name:
+        airmass_file_name = os.path.expandvars(airmass_file_name)
+    
+    # Create a cache key based on file name and field name
+    cache_key = f"{airmass_file_name}:{airmass_field_name}"
+    
+    # For dry run, just check if the file exists
     if dry_run:
         if 'https' in airmass_file_name:
             import requests
             response = requests.head(airmass_file_name, timeout=5)
             return response.status_code in (200, 302, 307, 443)
         else:
-            import os
             return os.path.exists(airmass_file_name)
-
-    if 'https' in airmass_file_name:
-        ds = download_airmass(airmass_file_name)
-        return ds[airmass_field_name]
-    else:
+    
+    # Check if we have this data in the cache
+    if cache_key in _airmass_cache:
+        logger.debug(f"Using cached airmass data for {airmass_file_name}")
+        return _airmass_cache[cache_key]
+    
+    logger.info(f"Loading airmass data from {airmass_file_name}")
+    
+    # Try local file first if it's not a URL
+    if 'https' not in airmass_file_name:
         try:
             ds = xr.open_dataset(airmass_file_name, decode_cf=True)
+            airmass_data = ds[airmass_field_name]
+            # Cache the result
+            _airmass_cache[cache_key] = airmass_data
+            return airmass_data
         except FileNotFoundError as e:
-            logger.error(f"Cannot continue: {e}")
-            sys.exit()
-        return ds[airmass_field_name]
+            logger.warning(f"Local airmass file not found: {e}")
+            logger.info(f"Falling back to URL: {constants.AIRMASS_URL}")
+            # Fall back to URL if local file not found
+            try:
+                ds = download_airmass(constants.AIRMASS_URL)
+                airmass_data = ds[airmass_field_name]
+                # Cache the result
+                _airmass_cache[cache_key] = airmass_data
+                return airmass_data
+            except Exception as e:
+                logger.error(f"Failed to download airmass data: {e}")
+                sys.exit(1)
+    else:
+        # Direct URL access
+        try:
+            ds = download_airmass(airmass_file_name)
+            airmass_data = ds[airmass_field_name]
+            # Cache the result
+            _airmass_cache[cache_key] = airmass_data
+            return airmass_data
+        except Exception as e:
+            logger.error(f"Failed to download airmass data: {e}")
+            sys.exit(1)
 
 
 def download_airmass(url):
@@ -198,55 +240,6 @@ def adjust_units(units):
     return unit_desc
 
 
-def check_units(ref_da, dev_da, enforce_units=True) -> bool:
-    """ Ensures the units of two xarray DataArrays are the same.
-
-    Parameters:
-        ref_da: xarray DataArray
-            First data array containing a units attribute.
-        dev_da: xarray DataArray
-            Second data array containing a units attribute.
-        enforce_units: bool
-            Whether to stop program if ref and dev units do not match (default: True)
-    """
-    units_ref = ref_da.units.strip()
-    units_dev = dev_da.units.strip()
-    if units_ref != units_dev:
-        units_match = False
-        logger.warning("WARNING: ref and dev concentration units do not match!")
-        logger.warning("Ref units: {}".format(units_ref))
-        logger.warning("Dev units: {}".format(units_dev))
-        if enforce_units:
-            # if enforcing units, stop the program if
-            # units do not match
-            assert units_ref == units_dev, \
-                "Units do not match: ref {} and dev {}!".format(
-                    units_ref, units_dev)
-    else:
-        units_match = True
-    return units_match
-
-
-def data_unit_is_mol_per_mol(da):
-    """
-    Check if the units of an xarray DataArray are mol/mol based on a set
-    list of unit strings mol/mol may be.
-
-    Parameters:
-        da: xarray DataArray
-            Data array containing a units attribute
-
-    Returns:
-        is_molmol: bool
-            Whether input units are mol/mol
-    """
-    conc_units = ["mol mol-1 dry", "mol/mol", "mol mol-1"]
-    is_molmol = False
-    if da.units.strip() in conc_units:
-        is_molmol = True
-    return is_molmol
-
-
 #  Mass conversions
 def moles_to_mass(num_moles, molar_mass):
     """Convert moles to mass"""
@@ -261,26 +254,31 @@ def mass_to_moles(g_of_element, molar_mass):
 
 
 def mb_to_hPa(mb):
+    """  Convert mb to hPa """
     return mb
 
 
 def mb_to_Pa(mb):
+    """  Convert mb to Pa """
     return mb * 100
 
-
 def Pa_to_hPa(Pa):
+    """  Convert Pa to hPa """
     return Pa / 100
 
 
 def Pa_to_mb(Pa):
+    """  Convert Pa to mb """
     return Pa / 100
 
 
 def hPa_to_Pa(hPa):
+    """  Convert hPa to Pa """
     return hPa / 100
 
 
 def hPa_to_mb(hPa):
+    """  Convert hPa to mb """
     return hPa
 
 
@@ -355,22 +353,6 @@ def kg_to_mol(kg_frac, molar_mass_species):
     return kg_frac * (MOLAR_MASS_AIR / molar_mass_species)
 
 
-def kg_to_du(kg_frac, molar_mass_species, airmass):
-    """Convert kg to DU"""
-    mol_frac = kg_to_mol(kg_frac, molar_mass_species)
-    return mol_to_du(mol_frac, molar_mass_species, airmass)
-
-
-def mol_to_du(mol_frac, molar_mass_species, airmass):
-    """Convert molar fraction to DU"""
-    return mol_frac * (airmass / molar_mass_species) * (1 / DU_CONVERSION)
-
-
-def du_to_mol(du, molar_mass_species, airmass):
-    """Convert DU to molar fraction"""
-    return du * molar_mass_species * DU_CONVERSION / airmass
-
-
 def mol_to_molecules_cm2(mol_frac, air_column_density):
     """
     Convert from mol mol⁻¹ to molecules cm⁻².
@@ -383,94 +365,212 @@ def mol_to_molecules_cm2(mol_frac, air_column_density):
     return mol_frac * air_column_density
 
 
-def kg_to_ppb(kg_frac, molar_mass_species):
+def compute_column_DU(
+    mixing_ratio: xr.DataArray,
+    airmass: xr.DataArray,
+    molar_mass_species: float,
+    mixing_ratio_units: str = "mol/mol",
+    vertical_dim: str = "lev"
+) -> xr.DataArray:
     """
-    Convert from kg kg⁻¹ to parts per billion (ppb).
+    Convert 3D mixing ratio of a chemical species to column Dobson Units (DU).
 
-    Parameters:
-        kg_frac (dataarray values): mass fraction of the species (kg kg⁻¹)
-        molar_mass_species: molar mass (mol/mol)
-    Returns:
-        concentration in parts per billion (ppb)
-    """
-    return kg_frac * (MOLAR_MASS_AIR / molar_mass_species) * PPB_CONVERSION
+    Parameters
+    ----------
+    mixing_ratio : xr.DataArray
+        Mixing ratio of the species (mol/mol or kg/kg). Shape must match airmass.
+    airmass : xr.DataArray
+        Airmass per model layer [kg/m²]. Same shape as mixing_ratio.
+    molar_mass_species : float
+        Molar mass of the chemical species [kg/mol] (e.g., 0.048 for O3).
+    mixing_ratio_units : str, optional
+        Units of the mixing ratio ("mol/mol" or "kg/kg"). Default is "mol/mol".
+    vertical_dim : str, optional
+        Name of the vertical dimension. Default is "lev".
 
-
-def mol_to_ppb(mol_frac):
-    """
-    Convert from mol mol⁻¹ to parts per billion (ppb).
-
-    Parameters:
-        mol_frac (dataarray values): molar fraction of the species (mol mol⁻¹)
-    Returns:
-        concentration in parts per billion (ppb)
-    """
-    return mol_frac * PPB_CONVERSION
-
-
-def ppb_to_mol(ppb):
-    """
-    Convert from parts per billion (ppb) to mol mol⁻¹.
-
-    Parameters:
-        ppb (dataarray values): concentration in parts per billion
-    Returns:
-        mol_frac: molar fraction of the species (mol mol⁻¹)
-    """
-    return ppb / PPB_CONVERSION
-
-
-def calculate_total_column(species, airmass, species_name):
-    """
-    Calculate the total column of a given species in mol/m², molecules/cm², and Dobson Units (DU).
-
-    Parameters:
-        species (xarray.DataArray): Mixing ratio of the species (in mol/mol)
-        airmass (xarray.DataArray): Airmass (in kg/m²)
-        species_name (str): Name of the species (for DU conversion)
-
-    Returns:
-        total_column_mol_m2 (xarray.DataArray): Total column of the species in mol/m²
-        total_column_molecules_cm2 (xarray.DataArray): Total column of the species in molecules/cm²
-        total_column_du (xarray.DataArray): Total column of the species in Dobson Units (DU)
+    Returns
+    -------
+    xr.DataArray
+        2D field of total column DU [DU] over latitude/longitude.
     """
 
-    # Ensure the dimensions match
-    assert species.shape == airmass.shape, "Species and airmass fields must have the same shape"
+    if mixing_ratio.shape != airmass.shape:
+        raise ValueError("mixing_ratio and airmass must have the same shape")
 
-    # Calculate total column in mol/m²
-    total_column_mol_m2 = (species * airmass).sum(dim='lev')
-
-    # Convert total column from mol/m² to molecules/cm²
-    total_column_molecules_cm2 = total_column_mol_m2 * AVOGADRO * 1e-4
-
-    # Convert total column from mol/m² to Dobson Units (DU)
-    # Note: DU is typically used for ozone; ensure correct usage for other species
-    if species_name.lower() == "ozone":
-        total_column_du = total_column_mol_m2 * (DU_CONVERSION / AVOGADRO)
+    if mixing_ratio_units == "mol/mol":
+        DU_factor = AVOGADRO / (DU_CONVERSION * MOLAR_MASS_AIR)  # ≈ 77552
+    elif mixing_ratio_units == "kg/kg":
+        DU_factor = AVOGADRO / (DU_CONVERSION * molar_mass_species)  # ≈ 46584 for O3, varies for other species
     else:
-        total_column_du = xr.full_like(total_column_mol_m2,
-                                       np.nan)  # DU conversion not typically applicable
+        raise ValueError(f"Unsupported mixing_ratio_units: {mixing_ratio_units}. Use 'mol/mol' or 'kg/kg'.")
 
-    return total_column_mol_m2, total_column_molecules_cm2, total_column_du
+    du_per_level = mixing_ratio * airmass * DU_factor
+
+    return du_per_level.sum(dim=vertical_dim)
 
 
-def get_species_name(species_name):
-    species_map = {
-        'o3': 'O3',
-        'no2': 'NO2',
-        'so2': 'SO2',
-        'so4': 'SO4',
-        'nh3': 'NH3',
-        'bc': 'BC'
-    }
+def convert_DU_to_mixing_ratio(
+    total_DU: xr.DataArray,
+    airmass: xr.DataArray,
+    molar_mass_species: float,
+    output_units: str = "mol/mol"
+) -> xr.DataArray:
+    """
+    Convert total column Dobson Units (DU) to a 3D mixing ratio field.
 
-    f = str(species_name).lower()
-    for key in species_map:
-        if key in f:
-            return species_map[key]
+    Assumes the species is uniformly distributed over the vertical profile
+    according to airmass weight (i.e., mass-weighted uniform scaling).
 
-    print("Field not found in known fields:", f)
+    Parameters
+    ----------
+    total_DU : xr.DataArray
+        2D field of total column Dobson Units [DU].
+    airmass : xr.DataArray
+        3D field of air mass per layer [kg/m²].
+    molar_mass_species : float
+        Molar mass of the species [kg/mol] (e.g., 0.048 for ozone).
+    output_units : str, optional
+        Desired units of mixing ratio: "mol/mol" or "kg/kg".
+
+    Returns
+    -------
+    xr.DataArray
+        3D mixing ratio field in requested units.
+    """
+
+    # Compute total airmass column (sum over vertical levels)
+    total_airmass = airmass.sum(dim='lev') 
+
+    if output_units == "mol/mol":
+        DU_to_molmol = (DU_CONVERSION * MOLAR_MASS_AIR) / AVOGADRO
+        # Distribute total DU across levels using normalized airmass weights
+        weight = airmass / total_airmass
+        mixing_ratio = total_DU * weight * DU_to_molmol  # broadcasted
+    elif output_units == "kg/kg":
+        DU_to_kgkg = (DU_CONVERSION * molar_mass_species) / AVOGADRO
+        weight = airmass / total_airmass
+        mixing_ratio = total_DU * weight * DU_to_kgkg
+    else:
+        raise ValueError(f"Unsupported output_units: {output_units}. Use 'mol/mol' or 'kg/kg'.")
+
+    return mixing_ratio
+
+
+def mixing_ratio_to_ppb(
+    mixing_ratio,
+    units="mol/mol",
+    molar_mass_species=None
+):
+    """
+    Convert mixing ratio to parts per billion (ppb).
+
+    Supports both scalar and xarray.DataArray inputs.
+
+    Parameters
+    ----------
+    mixing_ratio : float, np.ndarray, or xr.DataArray
+        Mixing ratio in mol/mol or kg/kg.
+    units : str
+        Units of input mixing ratio. One of "mol/mol" or "kg/kg".
+    molar_mass_species : float, optional
+        Required if units is "kg/kg". Molar mass of species in kg/mol.
+
+    Returns
+    -------
+    Same type as input (xr.DataArray or float), with values in ppb.
+    """
+
+    # Helper function for scalar/numpy inputs
+    def _convert_scalar(value):
+        if units == "mol/mol":
+            return value * 1e9
+        elif units == "kg/kg":
+            if molar_mass_species is None:
+                raise ValueError("molar_mass_species must be provided for 'kg/kg' input.")
+            molmol = (value / molar_mass_species) * MOLAR_MASS_AIR
+            return molmol * 1e9
+        else:
+            raise ValueError("Unsupported units: use 'mol/mol' or 'kg/kg'.")
+
+    # If input is xarray.DataArray
+    if isinstance(mixing_ratio, xr.DataArray):
+        result = mixing_ratio.copy()
+
+        if units == "mol/mol":
+            result.data = mixing_ratio.data * 1e9
+        elif units == "kg/kg":
+            if molar_mass_species is None:
+                raise ValueError("molar_mass_species must be provided for 'kg/kg' input.")
+            molmol = (mixing_ratio / molar_mass_species) * MOLAR_MASS_AIR
+            result.data = molmol.data * 1e9
+        else:
+            raise ValueError("Unsupported units: use 'mol/mol' or 'kg/kg'.")
+
+        result.attrs["units"] = "ppb"
+        result.name = mixing_ratio.name or "mixing_ratio_ppb"
+        return result
+
+    else:  # scalar or ndarray
+        return _convert_scalar(mixing_ratio)
+
+
+def ppb_to_mixing_ratio(
+    ppb,
+    output_units="mol/mol",
+    molar_mass_species=None
+):
+    """
+    Convert from parts per billion (ppb) to mixing ratio.
+
+    Supports scalar, NumPy, and xarray.DataArray inputs.
+
+    Parameters
+    ----------
+    ppb : float, np.ndarray, or xr.DataArray
+        Mixing ratio in ppb.
+    output_units : str
+        Desired output units: "mol/mol" or "kg/kg".
+    molar_mass_species : float, optional
+        Required if output_units is "kg/kg". Molar mass of species in kg/mol.
+
+    Returns
+    -------
+    Same type as input (xr.DataArray or float), with converted mixing ratio.
+    """
+
+    # Internal helper for scalar inputs
+    def _convert_scalar(val):
+        if output_units == "mol/mol":
+            return val * 1e-9
+        elif output_units == "kg/kg":
+            if molar_mass_species is None:
+                raise ValueError("molar_mass_species must be provided for 'kg/kg' output.")
+            molmol = val * 1e-9
+            return (molmol * molar_mass_species) / MOLAR_MASS_AIR
+        else:
+            raise ValueError("Unsupported output_units. Use 'mol/mol' or 'kg/kg'.")
+
+    # xarray support
+    if isinstance(ppb, xr.DataArray):
+        result = ppb.copy()
+
+        if output_units == "mol/mol":
+            result.data = ppb.data * 1e-9
+            result.attrs["units"] = "mol/mol"
+        elif output_units == "kg/kg":
+            if molar_mass_species is None:
+                raise ValueError("molar_mass_species must be provided for 'kg/kg' output.")
+            molmol = ppb.data * 1e-9
+            result.data = (molmol * molar_mass_species) / MOLAR_MASS_AIR
+            result.attrs["units"] = "kg/kg"
+        else:
+            raise ValueError("Unsupported output_units. Use 'mol/mol' or 'kg/kg'.")
+
+        result.name = ppb.name or "mixing_ratio"
+        return result
+
+    else:
+        return _convert_scalar(ppb)
 
 
 @dataclass
@@ -510,12 +610,9 @@ class Units:
             air_column_density (xArray)
             airmass (xArray)
         """
-        species_name = get_species_name(species_name)
-
         if species_name not in self.species_db:
             self.logger.warning(f"Species {species_name} not found in data.")
             return data
-            # raise ValueError(f"Species {species_name} not found in data.")
 
         # Get a consistent value for the units string
         # (ignoring minor differences in formatting)
@@ -546,169 +643,115 @@ class Units:
 
         # Mass of dry air in kg (required when converting from v/v)
         area_m2 = 1.0
-        vv_to_kg = 1.0
         if not hasattr(self, 'processor') or self.processor is None:
             self.processor = DataProcessor(self.config)
 
-        if 'mol/mol' in from_unit:
-            if self.config.map_params[self.config.findex]['to_plot'][self.config.pindex] == 'xy':
-                lev_to_plot = int(np.where(self.airmass.coords[
-                                               self.config.get_model_dim_name(
-                                                   'zc')].values == self.config.level)[0])
-                self.airmass = self.airmass.isel(lev=lev_to_plot)
+        if from_unit in ['mol/mol', 'kg/kg'] and to_unit in ['DU'] :
+            new_data = compute_column_DU(
+                    mixing_ratio=data,
+                    airmass=self.airmass,
+                    molar_mass_species=molar_mass_species,
+                    mixing_ratio_units=from_unit
+            )
 
-                dim1 = self.config_manager.get_model_dim_name('xc')  # e.g., 'lon'
-                dim2 = self.config_manager.get_model_dim_name('yc')  # e.g., 'lat'
-                self.airmass, x, y = self.processor.regrid(self.airmass, data, dim1, dim2)
+        elif from_unit in ['DU'] and to_unit in ['mol/mol', 'kg/kg']:
+            new_data = convert_DU_to_mixing_ratio(
+                    total_DU=data,
+                    airmass=self.airmass,
+                    molar_mass_species=molar_mass_species, 
+                    output_units=from_unit
+            )
+        elif from_unit in ['mol/mol'] and to_unit in ['ppb'] :
+            new_data = mixing_ratio_to_ppb(data, units="mol/mol")
 
-            # Conversion factor for v/v to kg
-            # v/v * kg dry air / g/mol dry air * g/mol species = kg species
-            if "DU" in to_unit:
-                vv_to_kg = self.airmass.values  # / MOLAR_MASS_AIR * mw_g
+        elif from_unit in ['kg/kg'] and to_unit in ['ppb'] :
+            new_data = mixing_ratio_to_ppb(data, units="kg/kg", 
+                                           molar_mass_species=molar_mass_species)
 
-                # Conversion factor for v/v to kg
-                # v/v * kg dry air / g/mol dry air * g/mol species = kg species
-            elif "g" in to_unit:
-                vv_to_kg = self.airmass
+        elif from_unit in ['ppb'] and to_unit in ['mol/mol'] :
+            new_data = ppb_to_mixing_ratio(data, output_units="mol/mol")
 
-                # Conversion factor for v/v to molec/cm3
-                # v/v * kg dry air * mol/g dry air * molec/mol dry air /
-                #  (area_m2 * box_height ) * 1m3/10^6cm3 = molec/cm3
-                area_m2 = calculate_total_area(data)
-                box_height = 1.0  # TODO
-                if "molec" in to_unit:
-                    vv_to_MND = self.airmass / MOLAR_MASS_AIR * AVOGADRO / (
-                            area_m2 * box_height) / 1e6
-
-        elif 'kg/kg' in from_unit:
-            if "DU" in to_unit:
-                self.airmass = self.airmass.isel(lev=lev_to_plot)
-
-                dim1 = self.config_manager.get_model_dim_name('xc')
-                dim2 = self.config_manager.get_model_dim_name('yc')
-                self.airmass, x, y = self.processor.regrid(self.airmass, data, dim1, dim2)
-                vv_to_kg = self.airmass  # / MOLAR_MASS_AIR * mw_g
-
-                # Conversion factor for v/v to kg
-                # v/v * kg dry air / g/mol dry air * g/mol species = kg species
-            if "ppb" in to_unit:
-                pass
-
-                # Conversion factor for v/v to kg
-                # v/v * kg dry air / g/mol dry air * g/mol species = kg species
-
-        # Number of seconds should be passed via the interval argument, but...
-        interval = [2678400.0]
-        numsec = interval
-        # Special handling is required if multiple times in interval (for
-        # broadcast)
-        if len(interval) > 1:
-            if 'time' in data.dims:
-                # Need to right pad the interval array with new axes up to the
-                # time dim of the dataset to enable broadcasting
-                numnewdims = len(data.dims) - (data.dims.index('time') + 1)
-                for _ in range(numnewdims):
-                    numsec = numsec[:, np.newaxis]
-            else:
-                # Raise an error if no time in dataset but interval has length > 1
-                raise ValueError(
-                    'Interval passed to convert_units has length greater than one but data array has no time dimension')
-
-        # TODO: needs testing
-        if to_unit == "kg/m2/s":
-            data = data * area_m2
-            data = data * numsec
-
-        # TODO: needs testing
-        elif to_unit == 'kg/kg':
-            # Calculate total column in mol/m²
-            total_column_mol_m2 = data * vv_to_kg
-            # Convert total column from mol/m² to molecules/cm²
-            data.values = total_column_mol_m2 * AVOGADRO * 1e-4
-
-            # kgm2 = data * get_airmass(self.config)
-            # molm2 = kgm2 / self.config.species_db[sp_name]['MW_kg']
-            # moleculem2 = molm2 * AVOGADRO
-            # data.values = moleculem2 * 1e-4
-
-        elif 'ppb' in to_unit:
-            pass
-
-        # TODO: needs testing
-        elif 'molmol-1' in to_unit or 'mol/mol' in to_unit:
-
-            if "DU" in to_unit:
-                data = data * vv_to_kg
-
-            elif "g" in to_unit:
-                data = data * vv_to_kg
-            else:
-                pass
-
-        # TODO: needs testing
-        elif to_unit == 'DU':
-            # Calculate kg/kg
-            kgkg = data * (molar_mass_species / MOLAR_MASS_AIR)
-            # Calculate kgm2 
-            kgm2 = kgkg * vv_to_kg
-            # Calculate molm2
-            molm2 = kgm2 / molar_mass_species
-            # Calculate moleculecm2
-            moleculecm2 = (molm2 * AVOGADRO) * 1e-4
-            # Calculate DU
-            total_column_du = moleculecm2 / DU_CONVERSION
-            total_column_du.attrs["units"] = to_unit
-            return total_column_du
-
+        elif from_unit in ['ppb'] and to_unit in ['kg/kg'] :
+            new_data = mixing_ratio_to_ppb(data, units="kg/kg", 
+                                           molar_mass_species=molar_mass_species)
         else:
-            raise ValueError(
-                f"Units ({to_unit}) in variable {species_name} are not supported")
 
-        conversion_functions = {
-            'moles': {
-                'g': lambda d: moles_to_mass(d, self.species_db['MW_g']),
-            },
-            'g': {
-                'mg': lambda d: g_to_mg(d),
-                'kg': lambda d: g_to_kg(d),
-                'moles': lambda d: mass_to_moles(d, self.species_db['MW_g']),
-            },
-            'mg': {
-                'g': lambda d: mg_to_g(d),
-                'kg': lambda d: mg_to_kg(d),
-            },
-            'kg': {
-                'g': lambda d: kg_to_g(d),
-                'mg': lambda d: kg_to_mg(d),
-            },
-            'mol/mol': {
-                'kg/kg': lambda d: mol_to_kg(d, molar_mass_species),
-                # 'DU': lambda d: mol_to_du(d, molar_mass_species, airmass),
-                # 'DU': total_column_du,
-                'ppb': lambda d: mol_to_ppb(d),
-                'molecules/cm2': lambda d: mol_to_molecules_cm2(d, air_column_density)
-            },
-            'kg/kg': {
-                'mol/mol': lambda d: kg_to_mol(d, molar_mass_species),
-                'DU': lambda d: kg_to_du(d, molar_mass_species, airmass),
-                'ppb': lambda d: kg_to_ppb(d, molar_mass_species)
-            },
-            'DU': {
-                'mol/mol': lambda d: du_to_mol(d, molar_mass_species, airmass)
-            },
-            'ppb': {
-                'mol/mol': lambda d: ppb_to_mol(d)
-            },
-            'mol': {
-                'mol/mol': lambda d: moles_to_mass(d, molar_mass_species)
-            },
-        }
+            # Number of seconds should be passed via the interval argument, but...
+            interval = [2678400.0]
+            numsec = interval
+            # Special handling is required if multiple times in interval (for
+            # broadcast)
+            if len(interval) > 1:
+                if 'time' in data.dims:
+                    # Need to right pad the interval array with new axes up to the
+                    # time dim of the dataset to enable broadcasting
+                    numnewdims = len(data.dims) - (data.dims.index('time') + 1)
+                    for _ in range(numnewdims):
+                        numsec = numsec[:, np.newaxis]
+                else:
+                    # Raise an error if no time in dataset but interval has length > 1
+                    raise ValueError(
+                        'Interval passed to convert_units has length greater than one but data array has no time dimension')
 
-        if from_unit not in conversion_functions or to_unit not in conversion_functions[
-            from_unit]:
-            raise ValueError(f"Conversion from {from_unit} to {to_unit} not supported.")
+            # TODO: needs testing
+            if to_unit == "kg/m2/s":
+                data = data * area_m2
+                data = data * numsec
 
-        new_data = conversion_functions[from_unit][to_unit](data)
+            if from_unit in ['mol/mol', 'kg/kg'] and to_unit in ['DU'] :
+                new_data = compute_column_DU(
+                        mixing_ratio=data,
+                        airmass=self.airmass,
+                        molar_mass_species=molar_mass_species,
+                        mixing_ratio_units=from_unit
+                )
+
+            elif from_unit in ['mol/mol'] and to_unit in ['ppb'] :
+                new_data = mixing_ratio_to_ppb(data, units="mol/mol")
+
+            elif from_unit in ['kg/kg'] and to_unit in ['ppb'] :
+                new_data = mixing_ratio_to_ppb(data, units="kg/kg", 
+                                            molar_mass_species=molar_mass_species)
+
+            else:
+                raise ValueError(
+                    f"Units ({to_unit}) in variable {species_name} are not supported")
+
+            conversion_functions = {
+                'moles': {
+                    'g': lambda d: moles_to_mass(d, self.species_db['MW_g']),
+                },
+                'g': {
+                    'mg': lambda d: g_to_mg(d),
+                    'kg': lambda d: g_to_kg(d),
+                    'moles': lambda d: mass_to_moles(d, self.species_db['MW_g']),
+                },
+                'mg': {
+                    'g': lambda d: mg_to_g(d),
+                    'kg': lambda d: mg_to_kg(d),
+                },
+                'kg': {
+                    'g': lambda d: kg_to_g(d),
+                    'mg': lambda d: kg_to_mg(d),
+                },
+                'mol/mol': {
+                    'kg/kg': lambda d: mol_to_kg(d, molar_mass_species),
+                    'molecules/cm2': lambda d: mol_to_molecules_cm2(d, air_column_density)
+                },
+                'kg/kg': {
+                    'mol/mol': lambda d: kg_to_mol(d, molar_mass_species),
+                },
+                'mol': {
+                    'mol/mol': lambda d: moles_to_mass(d, molar_mass_species)
+                },
+            }
+
+            if from_unit not in conversion_functions or to_unit not in conversion_functions[
+                from_unit]:
+                raise ValueError(f"Conversion from {from_unit} to {to_unit} not supported.")
+
+            new_data = conversion_functions[from_unit][to_unit](data)
+
         new_data.attrs["units"] = to_unit
         return new_data
 

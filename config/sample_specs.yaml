@@ -1,8 +1,14 @@
 # Available options:
 # Note: in all cases where contour levels are specified, enter [] to let eviz compute levels
 fieldname:
-    unitconversion: 1  # used to convert data units
-    units: days  # some data do not contain units metadata, if so specify here
+    # The following unit conversion "factor", and the correspondint "units", is applied 
+    # as is. Thus, the field values are multiplied by "unitconversion" and the output
+    # values are applied, as attributes, the specified units. However, if "unitconversion" is
+    # not specified but units are, the units are used as "destinations" units and the field
+    # values are converted to these units using the units module.
+    unitconversion: 1  # a factor used to convert the field units
+    units: days  # specify destination units
+    variation_threshold: 1e-14  # use for fields with very small values  
     diff_percd: [-500., -50., -10., -5., -0.5, 0.5, 5., 10., 50., 500.]   # % diff range
     diff_percc: [-500., -50., -10., -5., -0.5, 0.5, 5., 10., 50., 500.]   # % change range
     diff_ratio: [.5,.6,.7,.8,.9,1.0,1.1,1.2,1.3,1.4,1.5]   # ratio diff range
