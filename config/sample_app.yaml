@@ -130,12 +130,21 @@ outputs:
     make_pdf: no
     # Use make_git to create GIF for one field only! If multiple fields are specified, default is used
     make_gif: yes  # default is no
-    # frames per second of GIF animation
-    gif_fps: 1  # default is 1; ignored if make_gif = no
-    # Compute and pint basic stats (mean, std) on plot
+    # Compute and print basic stats (mean, std) on plot
     print_basic_stats: yes
     mpl_style: classic
     # Some mpl_style options are: ggplot, fivethirtyeight, Solarize_Light2, dark_background, seaborn-v0_8
     # This last one has additional sub-options: seaborn-v0_8-<option> where <option> is
     # colorblind, dark, deep, muted, notebook, pastel, poster, talk, ticks, white, whitegrid
+
+    # Other visualization options
+    visualization:
+        # Specify a style sheet for plots (default is default)
+        style: default  #  Options: publication, transparent, darkmode
+        # Specify a backend for plots (default is matplotlib)
+        backend: matplotlib  # Options: hvplot, altair (not fully supported)
+        # DPI for image files (default is 300)
+        dpi: 600
+        # frames per second for GIF animations (default is 10)
+        gif_fps: 3
 

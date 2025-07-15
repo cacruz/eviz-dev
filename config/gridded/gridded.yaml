@@ -18,4 +18,8 @@ inputs:
 outputs:
     output_dir: ${HOME}/scratch/eviz/output/gridded
     print_to_file: yes
+    visualization:
+        style: darkmode
+        backend: matplotlib  # Options: hvplot, altair (not fully supported)
+
 

@@ -27,33 +27,40 @@ class OutputConfig:
         self.make_pdf = outputs.get("make_pdf", False)
         self.print_basic_stats = outputs.get("print_basic_stats", False)
         self.mpl_style = outputs.get("mpl_style", "classic")
-        self.fig_style = outputs.get("style", "default")
+        self.fig_style = outputs.get("fig_style", "default")
         self.make_gif = outputs.get("make_gif", False)
         self.gif_fps = outputs.get("gif_fps", 10)
         self.dpi = outputs.get("dpi", 300)
-        self.backend: str = field(default="matplotlib", init=False)
+        self.backend = "matplotlib"
         self._init_visualization(outputs)
 
         self._set_output_dir()
 
     def _init_visualization(self, outputs: Dict[str, Any]) -> None:
         """Initialize parameters in the `visualization` subsection ."""
-        self.backend = "matplotlib"
-        self.colormap = "coolwarm"
-        self.fig_style = "default"
-        self.dpi = 300
-        self.gif_fps = 10
-        self.mpl_style = "seaborn"
-        # see plt.style.available
-
+        # Set default values if not already set
+        if not hasattr(self, 'backend'):
+            self.backend = "matplotlib"
+        if not hasattr(self, 'colormap'):
+            self.colormap = "coolwarm"
+        if not hasattr(self, 'fig_style'):
+            self.fig_style = "default"
+        if not hasattr(self, 'dpi'):
+            self.dpi = 300
+        if not hasattr(self, 'gif_fps'):
+            self.gif_fps = 10
+        if not hasattr(self, 'mpl_style'):
+            self.mpl_style = "classic"
+            
+        # Override with visualization-specific settings if present
         if "visualization" in outputs:
             outputs_config = outputs["visualization"]
-            self.backend = outputs_config.get("backend", "matplotlib")
-            self.colormap = outputs_config.get("colormap", "coolwarm")
-            self.fig_style = outputs_config.get("style", "default")
-            self.dpi = outputs_config.get("dpi", 300)
-            self.gif_fps = outputs_config.get("gif_fps", 10)
-            self.mpl_style = outputs_config.get("mpl_style", "seaborn")
+            self.backend = outputs_config.get("backend", self.backend)
+            self.colormap = outputs_config.get("colormap", self.colormap)
+            self.fig_style = outputs_config.get("fig_style", self.fig_style)
+            self.dpi = outputs_config.get("dpi", self.dpi)
+            self.gif_fps = outputs_config.get("gif_fps", self.gif_fps)
+            self.mpl_style = outputs_config.get("mpl_style", self.mpl_style)
 
     def _set_output_dir(self):
         """Set the output directory."""
@@ -72,7 +79,7 @@ class OutputConfig:
         return {
             "backend": self.backend,
             "colormap": self.colormap,
-            "style": self.fig_style,
+            "fig_style": self.fig_style,
             "dpi": self.dpi,
             "gif_fps": self.gif_fps,
             "mpl_style": self.mpl_style,

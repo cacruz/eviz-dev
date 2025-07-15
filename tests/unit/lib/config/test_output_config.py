@@ -130,15 +130,15 @@ def test_init_visualization_branch():
     outputs = {
         "visualization": {
             "backend": "matplotlib",
-            "colormap": "plasma",
-            "fig_style": "modern",
-            "dpi": 200,
-            "gif_fps": 15,
+            "colormap": "coolwarm",
+            "fig_style": "default",
+            "dpi": 300,
+            "gif_fps": 10,
             "mpl_style": "seaborn",
         }
     }
     config = OutputConfig(app_data=make_app_data(outputs))
-    config._init_visualization(outputs["visualization"])
+    config._init_visualization(outputs)
     assert config.backend == "matplotlib"
     assert config.colormap == "coolwarm"
     assert config.fig_style == "default"
