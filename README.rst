@@ -31,7 +31,7 @@ EViz can be installed using conda:
 Documentation
 -------------
 For comprehensive documentation, tutorials, and examples, please visit our documentation site:
-https://cacruz.github.io/eviz-dev
+https://cacruz.github.io/eviz
 
 For questions, comments, bug reports or feature requests please use the issues section: https://github.com/cacruz/eviz-dev/issues on Github. 
 
